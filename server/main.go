@@ -1,8 +1,12 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/GrGLeo/ctf/shared"
+)
 
 func main() {
-  fmt.Println("Hello, world!")
+  fmt.Println(shared.Hello())
   fmt.Println("Send from server")
 }
