@@ -36,16 +36,11 @@ func NewLogger(env string) *zap.SugaredLogger {
   )
   if env == "DEV" {
     log, err = zap.NewDevelopment()
-    if err != nil {
-      fmt.Println("Failed to build logger")
-      os.Exit(1)
-    }
   } else {
     log, err = zap.NewProduction()
-    if err != nil {
-      fmt.Println("Failed to build logger")
-      os.Exit(1)
-    }
+  }
+  if err != nil {
+    fmt.Println("Failed to build logger")
   }
   logger := log.Sugar()
   return logger
