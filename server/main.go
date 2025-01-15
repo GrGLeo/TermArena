@@ -67,6 +67,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger) {
       log.Infow("Writing to client", "ip", conn.RemoteAddr())
       if _, err := conn.Write([]byte{65, 66, 67}); err != nil {
         log.Infow("Client disconnect", "ip", conn.RemoteAddr())
+        return
       }
     }
   }
