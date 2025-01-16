@@ -74,5 +74,11 @@ func (m AnimationModel) View() string {
 		view.WriteString("\n")
 	}
   view.WriteString("Press Enter to pass")
-	return borderStyle.Render(view.String())
+  return lipgloss.Place(
+    m.width * 2,
+    m.height / 2,
+    lipgloss.Center,
+    lipgloss.Center,
+    borderStyle.Render(view.String()),
+  )
 }

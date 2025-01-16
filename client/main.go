@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net"
 	"os"
 
@@ -53,6 +54,7 @@ func (m MetaModel) Init() tea.Cmd {
 }
 
 func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+  log.Print(msg)
   var cmd tea.Cmd
   var newmodel tea.Model
   switch m.state {
@@ -61,21 +63,21 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     case model.TickMsg:
       newmodel, cmd = m.AnimationModel.Update(msg)
       m.AnimationModel = newmodel.(model.AnimationModel)
+      return m, cmd
     case tea.KeyMsg:
-      if msg.String() == "enter" {
+      if msg.Type == tea.KeyEnter {
         m.state = Login
         return m, m.LoginModel.Init()
       }
       return m, cmd
-  case tea.WindowSizeMsg:
-    // Capture terminal size change (resize)
-    m.width = msg.Width
-    m.height = msg.Height
+    case tea.WindowSizeMsg:
+      log.Print("this was called")
+      m.width = msg.Width
+      m.height = msg.Height
 
-    // Pass the new dimensions to both models
-    m.AnimationModel.SetDimension(m.width, m.height)
-    m.LoginModel.SetDimension(m.width, m.height)
-  }
+      m.AnimationModel.SetDimension(m.width, m.height)
+      m.LoginModel.SetDimension(m.width, m.height)
+    }
 
   case Login:
     newmodel, cmd := m.LoginModel.Update(msg)
@@ -97,6 +99,13 @@ func (m MetaModel) View() string {
 
 func main() {
 	model := NewMetaModel()
+
+
+  f, err := tea.LogToFile("debug.log", "debug")
+  if err != nil {
+    log.Fatal(err)
+  }
+  defer f.Close()
 	p := tea.NewProgram(model, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		os.Exit(1)
