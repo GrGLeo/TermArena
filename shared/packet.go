@@ -3,7 +3,15 @@ package shared
 import (
 	"bytes"
 	"errors"
+	"strconv"
 )
+
+/*
+code 0: send login
+code 1: receive login response
+code 2: send action
+code 3: receive board
+*/
 
 type MessageType interface {
   GetMessage() string
@@ -31,6 +39,14 @@ func (lp LoginPayload) GetMessage() string {
   return "login"
 }
 
+type LoginResp struct {
+  code int
+}
+
+func (lr LoginResp) GetMessage() string {
+  return "respLogin"
+}
+
 
 func (p *Packet) Serialize() ([]byte, error) {
   var buf bytes.Buffer
@@ -47,7 +63,7 @@ func (p *Packet) Serialize() ([]byte, error) {
 }
 
 
-func DeSerialize(data []byte) (*LoginPayload, error) {
+func DeSerialize(data []byte) (MessageType, error) {
   if len(data) < 2 {
     return &LoginPayload{}, errors.New("invalid packet length")
   }
@@ -56,7 +72,8 @@ func DeSerialize(data []byte) (*LoginPayload, error) {
     return &LoginPayload{}, errors.New("invalid version")
   }
   messageType := data[1]
-  if messageType == 0 {
+  switch messageType {
+  case 0:
     payloadData := data[2:]
     parts := bytes.SplitN(payloadData, []byte{0x00}, 2)
     username := string(parts[0])
@@ -65,6 +82,13 @@ func DeSerialize(data []byte) (*LoginPayload, error) {
       Username: username,
       Password: password,
     }, nil
+  case 1:
+    payLoadData := data[:2]
+    code, err := strconv.Atoi(string(payLoadData))
+    if err != nil {
+      return LoginResp{}, err
+    }
+    return LoginResp{code: code}, nil
   }
-  return &LoginPayload{}, nil
+  return LoginPayload{}, nil
 }
