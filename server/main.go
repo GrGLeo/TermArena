@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"time"
 
+	"github.com/GrGLeo/ctf/shared"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
@@ -60,14 +60,28 @@ func HandleClient(ctx context.Context, server *net.TCPListener, connChannel chan
 }
 
 func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger) {
-  ticker := time.NewTicker(1 * time.Second)
+  buffer := make([]byte, 1024)
   for {
-    select {
-    case <- ticker.C:
-      log.Infow("Writing to client", "ip", conn.RemoteAddr())
-      if _, err := conn.Write([]byte{65, 66, 67}); err != nil {
-        log.Infow("Client disconnect", "ip", conn.RemoteAddr())
-        return
+    n, err := conn.Read(buffer)
+    if err != nil {
+      if err.Error() == "EOF" {
+        // Client disconnected cleanly
+        log.Infow("Client disconnected", "ip", conn.RemoteAddr())
+      } else {
+        // Other errors
+        log.Infow("Error reading from client", "ip", conn.RemoteAddr(), "error", err)
+      }
+      return // Exit if there's an error or if the client disconnects
+    }
+    if n > 0 {
+      log.Infow("Received data", "ip", conn.RemoteAddr(), "data", buffer[:n])
+      message, err := shared.DeSerialize(buffer[:n])
+      if err != nil {
+        log.Infow("Error deserializing packet", "ip", conn.RemoteAddr(), "error", err)
+      }
+      switch message.GetMessage() {
+      case "login":
+        log.Infow("Received login", "username", message.Username)
       }
     }
   }

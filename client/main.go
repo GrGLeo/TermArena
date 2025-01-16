@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/GrGLeo/ctf/client/communication"
 	"github.com/GrGLeo/ctf/client/model"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -15,6 +16,7 @@ const (
 	Menu  = "menu"
 	Game  = "game"
 )
+
 
 type MetaModel struct {
 	AnimationModel model.AnimationModel
@@ -31,16 +33,17 @@ func NewMetaModel() MetaModel {
 		state:          Intro,
 		AnimationModel: model.NewAnimationModel(),
     LoginModel: model.NewLoginModel(),
+    Connection: MakeConnection(),
 	}
 }
 
-func (m MetaModel) MakeConnection() {
+func MakeConnection() *net.TCPConn{
 	tcpAddr, err := net.ResolveTCPAddr("tcp", "localhost:8080")
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	if err != nil {
-		return
+		return nil
 	}
-	m.Connection = conn
+  return conn
 }
 
 func (m MetaModel) Init() tea.Cmd {
@@ -82,6 +85,9 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
   case Login:
     newmodel, cmd := m.LoginModel.Update(msg)
     m.LoginModel = newmodel.(model.LoginModel)
+    if loginMsg, ok := msg.(model.LoginMsg); ok {
+      communication.SendLoginPacket(m.Connection, loginMsg.Username, loginMsg.Password)
+    }
     return m, cmd
 	}
 	return m, nil
