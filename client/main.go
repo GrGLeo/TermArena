@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net"
-	"os"
 
 	"github.com/GrGLeo/ctf/client/communication"
 	"github.com/GrGLeo/ctf/client/model"
@@ -21,6 +20,7 @@ const (
 type MetaModel struct {
 	AnimationModel model.AnimationModel
   LoginModel model.LoginModel
+  GameModel model.GameModel
 	state          string
 	Username       string
 	Connection     *net.TCPConn
@@ -29,11 +29,13 @@ type MetaModel struct {
 }
 
 func NewMetaModel() MetaModel {
+  conn := MakeConnection()
 	return MetaModel{
 		state:          Intro,
 		AnimationModel: model.NewAnimationModel(),
     LoginModel: model.NewLoginModel(),
-    Connection: MakeConnection(),
+    Connection: conn,
+    GameModel: model.NewGameModel(conn),
 	}
 }
 
@@ -74,10 +76,8 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
       }
       return m, cmd
     case tea.WindowSizeMsg:
-      log.Print("this was called")
       m.width = msg.Width
       m.height = msg.Height
-
       m.AnimationModel.SetDimension(m.width, m.height)
       m.LoginModel.SetDimension(m.width, m.height)
     }
@@ -105,7 +105,9 @@ func (m MetaModel) View() string {
 
 func main() {
 	model := NewMetaModel()
-
+  // Handle futur received packet
+  msgs := make(chan tea.Msg)
+  go communication.ListenForPackets(model.Connection, msgs)
 
   f, err := tea.LogToFile("debug.log", "debug")
   if err != nil {
@@ -113,7 +115,14 @@ func main() {
   }
   defer f.Close()
 	p := tea.NewProgram(model, tea.WithAltScreen())
+   
+  go func() {
+    for msg := range msgs {
+      p.Send(msg)
+    }
+  }()
+
 	if _, err := p.Run(); err != nil {
-		os.Exit(1)
+    log.Fatal(err)
 	}
 }

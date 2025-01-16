@@ -83,6 +83,11 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger) {
       switch message.GetMessage() {
       case "login":
         log.Infow("Received login", "username", message.Username)
+        // send ok message 
+        packet := shared.NewPacket(1, 0, []byte{0})
+        data, _ := packet.Serialize()
+        conn.Write(data)
+        // create a new game 
         game := game.NewGameRoom(1, log)
         game.AddPlayer(conn)
         go game.StartGame()
