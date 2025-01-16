@@ -43,9 +43,9 @@ func TestRunLengthEncode(t *testing.T) {
   }
   expectSec := strings.Join(stringSec, string([]byte{0x00}))
 
+  // Third test set up
   pattern := []game.Cell{1, 1, 2, 2, 2, 3, 3, 1, 1, 1}
 	patternLength := len(pattern)
-	// Initialize the board with the repeating pattern
 	var gridThree [20][50]game.Cell
 	for i := 0; i < 20; i++ {
 		for j := 0; j < 50; j++ {
@@ -53,14 +53,12 @@ func TestRunLengthEncode(t *testing.T) {
 		}
 	}
 
-	// Generate the expected RLE string
 	var stringThree []string
 	for i := 0; i < 20; i++ {
     part := fmt.Sprintf("1:2\x002:3\x003:2\x001:5\x002:3\x003:2\x001:5\x002:3\x003:2\x001:5\x002:3\x003:2\x001:5\x002:3\x003:2\x001:3")
 		stringThree = append(stringThree, part)
 	}
 	expectedThree := strings.Join(stringThree, string([]byte{0x00}))
-
 
 	tests := []struct {
 		name     string

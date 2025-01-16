@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/GrGLeo/ctf/server/game"
 	"github.com/GrGLeo/ctf/shared"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
@@ -82,6 +83,10 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger) {
       switch message.GetMessage() {
       case "login":
         log.Infow("Received login", "username", message.Username)
+        game := game.NewGameRoom(1, log)
+        game.AddPlayer(conn)
+        go game.StartGame()
+
       }
     }
   }
