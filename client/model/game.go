@@ -1,8 +1,11 @@
 package model
 
 import (
+	"fmt"
+	"log"
 	"net"
 
+	"github.com/GrGLeo/ctf/client/communication"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -23,9 +26,19 @@ func (m GameModel) Init() tea.Cmd {
 }
 
 func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+  switch msg := msg.(type) {
+  case communication.BoardMsg:
+    log.Print("Received board")
+    m.board = msg.Board
+  case tea.KeyMsg:
+    switch msg.Type {
+    case tea.KeyCtrlC, tea.KeyEsc:
+      return m, tea.Quit
+    }
+  }
   return m, nil
 }
 
 func (m GameModel) View() string {
-  return ""
+  return fmt.Sprintf("%v", m.board)
 }

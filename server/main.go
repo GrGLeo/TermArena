@@ -80,13 +80,17 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger) {
       if err != nil {
         log.Infow("Error deserializing packet", "ip", conn.RemoteAddr(), "error", err)
       }
-      switch message.GetMessage() {
-      case "login":
-        log.Infow("Received login", "username", message.Username)
+      switch msg := message.(type) {
+      case *shared.LoginPacket:
+        log.Infow("Received login", "username", msg.Username)
         // send ok message 
-        packet := shared.NewPacket(1, 0, []byte{0})
+        packet := shared.NewPacket(1, 1, []byte{0})
         data, _ := packet.Serialize()
-        conn.Write(data)
+        n, err := conn.Write(data)
+        if err != nil {
+          log.Errorw("Error writting login resp", n, "ip", conn.RemoteAddr())
+        }
+        log.Infow("Login response", "byte", n, "ip", conn.RemoteAddr())
         // create a new game 
         game := game.NewGameRoom(1, log)
         game.AddPlayer(conn)

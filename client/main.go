@@ -33,7 +33,7 @@ func NewMetaModel() MetaModel {
 	return MetaModel{
 		state:          Intro,
 		AnimationModel: model.NewAnimationModel(),
-    LoginModel: model.NewLoginModel(),
+    LoginModel: model.NewLoginModel(conn),
     Connection: conn,
     GameModel: model.NewGameModel(conn),
 	}
@@ -65,7 +65,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
   switch m.state {
   case Intro:
     switch msg := msg.(type) {
-    case model.TickMsg:
+    case communication.TickMsg:
       newmodel, cmd = m.AnimationModel.Update(msg)
       m.AnimationModel = newmodel.(model.AnimationModel)
       return m, cmd
@@ -83,14 +83,26 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     }
 
   case Login:
-    newmodel, cmd := m.LoginModel.Update(msg)
+    newmodel, cmd = m.LoginModel.Update(msg)
     m.LoginModel = newmodel.(model.LoginModel)
-    if loginMsg, ok := msg.(model.LoginMsg); ok {
+    if loginMsg, ok := msg.(communication.LoginMsg); ok {
       communication.SendLoginPacket(m.Connection, loginMsg.Username, loginMsg.Password)
     }
+    switch msg.(type) {
+    case communication.ResponseMsg:
+      log.Print("enter communication response msg")
+      m.state = Game
+      return m, m.GameModel.Init()
+    }
+
+  case Game:
+    log.Print("enter Game")
+    newmodel, cmd = m.GameModel.Update(msg)
+    m.GameModel = newmodel.(model.GameModel)
+
     return m, cmd
-	}
-	return m, nil
+  }
+  return m, nil
 }
 
 func (m MetaModel) View() string {

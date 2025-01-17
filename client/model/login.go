@@ -2,7 +2,9 @@ package model
 
 import (
 	"log"
+	"net"
 
+	"github.com/GrGLeo/ctf/client/communication"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -45,10 +47,11 @@ type LoginModel struct {
   selected int
   buttons []string
   width, height int
+  conn *net.TCPConn
   style *Styles
 }
 
-func NewLoginModel() LoginModel {
+func NewLoginModel(conn *net.TCPConn) LoginModel {
   tiUser := textinput.New()
   tiUser.Placeholder = "username"
   tiUser.Focus()
@@ -63,6 +66,7 @@ func NewLoginModel() LoginModel {
     password: tiPass,
     selected: 0,
     buttons: []string{"login", "quit"},
+    conn: conn,
     style: DefaultStyle(),
   }
 }
@@ -104,6 +108,8 @@ func (m LoginModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
       if m.selected >= 2 {
         switch m.buttons[m.selected - 2] {
         case "login":
+          
+          communication.SendLoginPacket(m.conn, m.username.Value(), m.password.Value())
           return m, PassLogin(m.username.Value(), m.password.Value())
         case "quit":
           return m, tea.Quit

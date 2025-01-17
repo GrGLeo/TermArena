@@ -3,8 +3,10 @@ package game
 import (
 	"fmt"
 	"net"
+	"os"
 	"time"
 
+	"github.com/GrGLeo/ctf/shared"
 	"go.uber.org/zap"
 )
 
@@ -50,11 +52,16 @@ func (gr *GameRoom) StartGame() {
         }
         encodedBoard := gr.board.RunLengthEncode()
         for _, conn := range gr.playerConnection {
-          _, err := conn.Write(encodedBoard)
+          packet := shared.NewPacket(1, 3, encodedBoard)
+          data, err := packet.Serialize()
+          if err != nil {
+            gr.logger.Warn("Error serializing board")
+          }
+          _, err = conn.Write(data)
           if err != nil {
             gr.logger.Warn("Player disconnect. Closing game")
             // For now we stop the game
-            return
+            os.Exit(1)
           }
           gr.logger.Infow("Sent board", "board", encodedBoard)
         }

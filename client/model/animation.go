@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GrGLeo/ctf/client/communication"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -36,16 +37,16 @@ func (m *AnimationModel) SetDimension(height, width int) {
 
 func (m AnimationModel) Init() tea.Cmd {
 	return tea.Tick(time.Millisecond*200, func(t time.Time) tea.Msg {
-		return TickMsg{Time: t}
+		return communication.TickMsg{Time: t}
 	})
 }
 
 func (m AnimationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case TickMsg:
+	case communication.TickMsg:
 		m.FrameIndex = (m.FrameIndex + 1) % len(m.Frames)
 		return m, tea.Tick(time.Millisecond*200, func(t time.Time) tea.Msg {
-			return TickMsg{Time: t}
+			return communication.TickMsg{Time: t}
 		})
 	case tea.KeyMsg:
 		if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyEsc {
