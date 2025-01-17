@@ -140,8 +140,8 @@ func (m LoginModel) View() string {
 	}
 
   return lipgloss.Place(
-    m.width * 2,
-    m.height / 2,
+    m.width,
+    m.height,
     lipgloss.Center,
     lipgloss.Center,
     lipgloss.JoinVertical(

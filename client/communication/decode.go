@@ -1,17 +1,19 @@
 package communication
 
 import (
-	"bytes"
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 )
 
 func DecodeRLE(rle []byte) ([20][50]int, error) {
-  parts := bytes.Split(rle, []byte{0x00}) 
+  parts := strings.Split(string(rle), "|") 
+  log.Println("PARTS", parts)
   var decoded []int
 
   for _, part := range parts {
+  log.Println("PART", part)
     subParts := strings.SplitN(string(part), ":", 2)
     if len(subParts) != 2 {
       return [20][50]int{}, errors.New("Failed to decode RLE")

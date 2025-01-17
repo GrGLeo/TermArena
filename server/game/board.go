@@ -47,7 +47,7 @@ func(b *Board) RunLengthEncode() []byte {
       rle = append(rle, fmt.Sprintf("%d:%d", b.Grid[row][len(b.Grid[row])-1], count))
     }
   }
-  rleString := strings.Join(rle, string([]byte{0x00}))
+  rleString := strings.Join(rle, "|")
   return []byte(rleString)
 }
 

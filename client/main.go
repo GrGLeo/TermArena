@@ -78,8 +78,9 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     case tea.WindowSizeMsg:
       m.width = msg.Width
       m.height = msg.Height
-      m.AnimationModel.SetDimension(m.width, m.height)
-      m.LoginModel.SetDimension(m.width, m.height)
+      m.AnimationModel.SetDimension(m.height, m.width)
+      m.LoginModel.SetDimension(m.height, m.width)
+      m.GameModel.SetDimension(m.height, m.width)
     }
 
   case Login:
@@ -111,6 +112,8 @@ func (m MetaModel) View() string {
 		return m.AnimationModel.View()
   case Login:
     return m.LoginModel.View()
+  case Game:
+    return m.GameModel.View()
 	}
 	return ""
 }

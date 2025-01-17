@@ -94,7 +94,7 @@ func DeSerialize(data []byte) (MessageType, error) {
     code := int(data[2])
     return &RespPacket{Code: code}, nil
   case 3:
-    return &BoardPacket{EncodedBoard: data[:2]}, nil
+    return &BoardPacket{EncodedBoard: data[2:]}, nil
   }
   return &LoginPacket{}, nil
 }
