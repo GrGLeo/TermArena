@@ -1,12 +1,19 @@
 package communication
 
 import (
+	"log"
 	"net"
 
 	"github.com/GrGLeo/ctf/shared"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
+type GamePacketMsg struct {
+  Packet []byte
+}
+
 func SendLoginPacket(conn *net.TCPConn, username, password string) error {
+  log.Print("sending message")
   payload := []byte(username + string([]byte{0x00}) + password)
   packet := shared.NewPacket(1, 0, payload)
   data, err := packet.Serialize()
@@ -15,4 +22,36 @@ func SendLoginPacket(conn *net.TCPConn, username, password string) error {
   }
   _, err = conn.Write(data)
   return err
+}
+
+func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
+  log.Println("ListenForPackets enter")
+  buf := make([]byte, 1024)
+  for {
+    n, err := conn.Read(buf)
+    if err != nil {
+      // Handle disconnection or read error
+      return
+    }
+    // Send the packet as a message to the model
+    message, err := shared.DeSerialize(buf[:n])
+    log.Println("message", message)
+    log.Printf("Unknown type: %T\n", message)
+    if err != nil {
+      return
+    }
+    switch msg := message.(type) {
+    case *shared.RespPacket:
+      log.Println("case loginResp")
+      msgs <- ResponseMsg{Code: msg.Code}
+    case *shared.BoardPacket:
+      board, err := DecodeRLE(msg.EncodedBoard)
+      if err != nil {
+        log.Print(err.Error())
+      }
+      msgs <- BoardMsg{Board: board}
+    default:
+      msgs <- GamePacketMsg{Packet: buf[:n]}
+    }
+  }
 }

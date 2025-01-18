@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net"
-	"os"
 
 	"github.com/GrGLeo/ctf/client/communication"
 	"github.com/GrGLeo/ctf/client/model"
@@ -21,6 +20,7 @@ const (
 type MetaModel struct {
 	AnimationModel model.AnimationModel
   LoginModel model.LoginModel
+  GameModel model.GameModel
 	state          string
 	Username       string
 	Connection     *net.TCPConn
@@ -29,11 +29,13 @@ type MetaModel struct {
 }
 
 func NewMetaModel() MetaModel {
+  conn := MakeConnection()
 	return MetaModel{
 		state:          Intro,
 		AnimationModel: model.NewAnimationModel(),
-    LoginModel: model.NewLoginModel(),
-    Connection: MakeConnection(),
+    LoginModel: model.NewLoginModel(conn),
+    Connection: conn,
+    GameModel: model.NewGameModel(conn),
 	}
 }
 
@@ -63,7 +65,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
   switch m.state {
   case Intro:
     switch msg := msg.(type) {
-    case model.TickMsg:
+    case communication.TickMsg:
       newmodel, cmd = m.AnimationModel.Update(msg)
       m.AnimationModel = newmodel.(model.AnimationModel)
       return m, cmd
@@ -74,23 +76,34 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
       }
       return m, cmd
     case tea.WindowSizeMsg:
-      log.Print("this was called")
       m.width = msg.Width
       m.height = msg.Height
-
-      m.AnimationModel.SetDimension(m.width, m.height)
-      m.LoginModel.SetDimension(m.width, m.height)
+      m.AnimationModel.SetDimension(m.height, m.width)
+      m.LoginModel.SetDimension(m.height, m.width)
+      m.GameModel.SetDimension(m.height, m.width)
     }
 
   case Login:
-    newmodel, cmd := m.LoginModel.Update(msg)
+    newmodel, cmd = m.LoginModel.Update(msg)
     m.LoginModel = newmodel.(model.LoginModel)
-    if loginMsg, ok := msg.(model.LoginMsg); ok {
+    if loginMsg, ok := msg.(communication.LoginMsg); ok {
       communication.SendLoginPacket(m.Connection, loginMsg.Username, loginMsg.Password)
     }
+    switch msg.(type) {
+    case communication.ResponseMsg:
+      log.Print("enter communication response msg")
+      m.state = Game
+      return m, m.GameModel.Init()
+    }
+
+  case Game:
+    log.Print("enter Game")
+    newmodel, cmd = m.GameModel.Update(msg)
+    m.GameModel = newmodel.(model.GameModel)
+
     return m, cmd
-	}
-	return m, nil
+  }
+  return m, nil
 }
 
 func (m MetaModel) View() string {
@@ -99,13 +112,17 @@ func (m MetaModel) View() string {
 		return m.AnimationModel.View()
   case Login:
     return m.LoginModel.View()
+  case Game:
+    return m.GameModel.View()
 	}
 	return ""
 }
 
 func main() {
 	model := NewMetaModel()
-
+  // Handle futur received packet
+  msgs := make(chan tea.Msg)
+  go communication.ListenForPackets(model.Connection, msgs)
 
   f, err := tea.LogToFile("debug.log", "debug")
   if err != nil {
@@ -113,7 +130,14 @@ func main() {
   }
   defer f.Close()
 	p := tea.NewProgram(model, tea.WithAltScreen())
+   
+  go func() {
+    for msg := range msgs {
+      p.Send(msg)
+    }
+  }()
+
 	if _, err := p.Run(); err != nil {
-		os.Exit(1)
+    log.Fatal(err)
 	}
 }
