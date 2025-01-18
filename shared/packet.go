@@ -90,6 +90,41 @@ func (rp *RespPacket) Serialize() []byte {
 }
 
 
+type ActionPacket struct {
+  version, code int
+  action int
+}
+
+func NewActionPacket(action int) *ActionPacket {
+  return &ActionPacket{
+    version: 1,
+    code: 2,
+    action: action,
+  }
+}
+
+func (ap ActionPacket) Version() int {
+  return ap.version
+}
+
+func (ap ActionPacket) Code() int {
+  return ap.code
+}
+
+func (ap ActionPacket) Action() int {
+  return ap.action
+}
+
+func (ap ActionPacket) Serialize() []byte {
+  var buf bytes.Buffer
+  buf.WriteByte(byte(ap.version))
+  buf.WriteByte(byte(ap.code))
+  buf.WriteByte(byte(ap.action))
+  return buf.Bytes()
+
+}
+
+
 type BoardPacket struct {
   version, code int
   EncodedBoard []byte
@@ -171,6 +206,14 @@ func DeSerialize(data []byte) (Packet, error) {
             code:    code,
         }, nil
         
+    case 2:
+      action := int(data[2])
+      return &ActionPacket{
+        version: version,
+        code: code,
+        action: action,
+      }, nil
+
     case 3: // BoardPacket
         // All remaining bytes are the encoded board
         encodedBoard := data[2:]

@@ -75,7 +75,6 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger) {
       return // Exit if there's an error or if the client disconnects
     }
     if n > 0 {
-      log.Infow("Received data", "ip", conn.RemoteAddr(), "data", buffer[:n])
       message, err := shared.DeSerialize(buffer[:n])
       if err != nil {
         log.Infow("Error deserializing packet", "ip", conn.RemoteAddr(), "error", err)
@@ -95,7 +94,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger) {
         game := game.NewGameRoom(1, log)
         game.AddPlayer(conn)
         go game.StartGame()
-
+        return
       }
     }
   }
