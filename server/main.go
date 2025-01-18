@@ -84,8 +84,8 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger) {
       case *shared.LoginPacket:
         log.Infow("Received login", "username", msg.Username)
         // send ok message 
-        packet := shared.NewPacket(1, 1, []byte{0})
-        data, _ := packet.Serialize()
+        packet := shared.NewRespPacket()
+        data := packet.Serialize()
         n, err := conn.Write(data)
         if err != nil {
           log.Errorw("Error writting login resp", n, "ip", conn.RemoteAddr())

@@ -14,13 +14,12 @@ type GamePacketMsg struct {
 
 func SendLoginPacket(conn *net.TCPConn, username, password string) error {
   log.Print("sending message")
-  payload := []byte(username + string([]byte{0x00}) + password)
-  packet := shared.NewPacket(1, 0, payload)
-  data, err := packet.Serialize()
-  if err != nil {
-    return err
-  }
-  _, err = conn.Write(data)
+  loginPacket := shared.NewLoginPacket(username, password)
+  log.Println("logingPacket:",loginPacket)
+  data := loginPacket.Serialize()
+  deseri, _ :=shared.DeSerialize(data)
+  log.Println("logingPacketDeseri",deseri)
+  _, err := conn.Write(data)
   return err
 }
 
@@ -43,7 +42,7 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
     switch msg := message.(type) {
     case *shared.RespPacket:
       log.Println("case loginResp")
-      msgs <- ResponseMsg{Code: msg.Code}
+      msgs <- ResponseMsg{Code: msg.Code()}
     case *shared.BoardPacket:
       board, err := DecodeRLE(msg.EncodedBoard)
       if err != nil {

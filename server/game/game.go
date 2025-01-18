@@ -52,12 +52,9 @@ func (gr *GameRoom) StartGame() {
         }
         encodedBoard := gr.board.RunLengthEncode()
         for _, conn := range gr.playerConnection {
-          packet := shared.NewPacket(1, 3, encodedBoard)
-          data, err := packet.Serialize()
-          if err != nil {
-            gr.logger.Warn("Error serializing board")
-          }
-          _, err = conn.Write(data)
+          packet := shared.NewBoardPacket(encodedBoard)
+          data := packet.Serialize()
+          _, err := conn.Write(data)
           if err != nil {
             gr.logger.Warn("Player disconnect. Closing game")
             // For now we stop the game
