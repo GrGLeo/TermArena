@@ -42,6 +42,20 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     case tea.KeyCtrlC, tea.KeyEsc:
       return m, tea.Quit
     }
+    switch msg.String() {
+    case "w":
+      communication.SendAction(m.conn,0)
+      return m, nil
+    case "s":
+      communication.SendAction(m.conn,1)
+      return m, nil
+    case "a":
+      communication.SendAction(m.conn,2)
+      return m, nil
+    case "d":
+      communication.SendAction(m.conn,3)
+      return m, nil
+    }
   }
   return m, nil
 }

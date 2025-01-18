@@ -1,13 +1,50 @@
 package game
 
-type action int 
+
+type actionType int 
 
 const (
-  moveUp action = iota
+  moveUp actionType = iota
   moveDown
   moveLeft
   moveRight
   spellOne
   spellTwo
+  NoAction
 )
 
+func Move(p *Player, board *Board) {
+  maxY := len(board.Grid)
+  maxX := len(board.Grid[0])
+
+  posX := p.X
+  posY := p.Y
+  switch p.Action {
+  case moveUp:
+    if posY > 1 {
+      p.Y -= 1
+    }
+  case moveDown:
+    if posY < maxY-1 {
+      p.Y += 1
+    }
+  case moveLeft:
+    if posX > 1 {
+      p.X -= 1
+    }
+  case moveRight:
+    if posX < maxX-1 {
+      p.X += 1
+    }
+  }
+  // old position is cleared
+  board.Grid[posY][posX] = 0
+  // moving the char on the board
+  board.Grid[p.Y][p.X] = p.number
+  p.Action = NoAction 
+}
+
+type ActionMsg struct {
+  ConnAddr string
+  Action int
+}

@@ -15,10 +15,15 @@ type GamePacketMsg struct {
 func SendLoginPacket(conn *net.TCPConn, username, password string) error {
   log.Print("sending message")
   loginPacket := shared.NewLoginPacket(username, password)
-  log.Println("logingPacket:",loginPacket)
   data := loginPacket.Serialize()
-  deseri, _ :=shared.DeSerialize(data)
-  log.Println("logingPacketDeseri",deseri)
+  _, err := conn.Write(data)
+  return err
+}
+
+func SendAction(conn *net.TCPConn, action int) error {
+  log.Println("sending action")
+  actionPacket := shared.NewActionPacket(action)
+  data := actionPacket.Serialize()
   _, err := conn.Write(data)
   return err
 }
