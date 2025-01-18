@@ -2,8 +2,8 @@ package shared
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
-	"log"
 )
 
 /*
@@ -13,88 +13,174 @@ code 2: send action
 code 3: receive board
 */
 
-type MessageType interface {
-  GetMessage() string
+type Packet interface {
+  Version() int
+  Code() int
+  Serialize() []byte
 }
 
-type Packet struct {
-  Version byte
-  MessageType byte
-  Payload []byte
-}
-
-func NewPacket(version, message byte, payload []byte) *Packet {
-  return &Packet{
-    Version: version,
-    MessageType: message,
-    Payload: payload,
-  }
-}
 
 type LoginPacket struct {
+  version, code int
   Username, Password string
 }
 
-func (lp LoginPacket) GetMessage() string {
-  return "login"
+func NewLoginPacket (username, password string) *LoginPacket {
+  return &LoginPacket{
+    version: 1,
+    code: 0,
+    Username: username,
+    Password: password,
+  }
 }
+
+func (lp *LoginPacket) Version() int {
+  return lp.version
+}
+
+func (lp *LoginPacket) Code() int {
+  return lp.code
+}
+
+func (lp *LoginPacket) Serialize() []byte {
+  var buf bytes.Buffer
+  buf.WriteByte(byte(lp.version))
+  buf.WriteByte(byte(lp.code))
+
+  if err := binary.Write(&buf, binary.BigEndian, uint16(len(lp.Username))); err != nil {
+    return nil
+  }
+  if _, err := buf.WriteString(lp.Username); err != nil {
+    return nil
+  }
+  if err := binary.Write(&buf, binary.BigEndian, uint16(len(lp.Password))); err != nil {
+    return nil
+  }
+  if _, err := buf.WriteString(lp.Password); err != nil {
+    return nil
+  }
+  return buf.Bytes()
+}
+
 
 type RespPacket struct {
-  Code int
+  version, code int
 }
 
-func (rp RespPacket) GetMessage() string {
-  return "respLogin"
+func NewRespPacket() *RespPacket {
+  return &RespPacket{
+    version: 1,
+    code: 1,
+  }
 }
+
+func (rp RespPacket) Version() int {
+  return rp.version
+}
+
+func (rp RespPacket) Code() int {
+  return rp.code
+}
+
+func (rp *RespPacket) Serialize() []byte {
+  var buf bytes.Buffer
+  buf.WriteByte(byte(rp.version))
+  buf.WriteByte(byte(rp.code))
+  return buf.Bytes()
+}
+
 
 type BoardPacket struct {
+  version, code int
   EncodedBoard []byte
 }
- 
-func (bp BoardPacket) GetMessage() string {
-  return "BoardPacket"
+
+func NewBoardPacket(encodedBoard []byte) *BoardPacket {
+  return &BoardPacket{
+    version: 1,
+    code: 3,
+    EncodedBoard: encodedBoard,
+  }
 }
 
-func (p *Packet) Serialize() ([]byte, error) {
+func (bp BoardPacket) Version() int {
+  return bp.version
+}
+
+func (bp BoardPacket) Code() int {
+  return bp.code
+}
+
+func (bp *BoardPacket) Serialize() []byte {
   var buf bytes.Buffer
-	if err := buf.WriteByte(p.Version); err != nil {
-		return nil, err
-	}
-	if err := buf.WriteByte(p.MessageType); err != nil {
-		return nil, err
-	}
-	if _, err := buf.Write(p.Payload); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+  buf.WriteByte(byte(bp.version))
+  buf.WriteByte(byte(bp.code))
+  buf.Write(bp.EncodedBoard)
+  return buf.Bytes()
 }
+ 
 
+func DeSerialize(data []byte) (Packet, error) {
+    // Check minimum packet length (version + code)
+    if len(data) < 2 {
+        return nil, errors.New("invalid packet length")
+    }
 
-func DeSerialize(data []byte) (MessageType, error) {
-  log.Print(string(data))
-  if len(data) < 2 {
-    return &LoginPacket{}, errors.New("invalid packet length")
-  }
-  version := data[0]
-  if version != 1 {
-    return &LoginPacket{}, errors.New("invalid version")
-  }
-  messageType := data[1]
-  switch messageType {
-  case 0:
-    payloadData := data[2:]
-    parts := bytes.SplitN(payloadData, []byte{0x00}, 2)
-    username := string(parts[0])
-    password := string(parts[1])
-    return &LoginPacket{
-      Username: username,
-      Password: password,
-    }, nil
-  case 1:
-    code := int(data[2])
-    return &RespPacket{Code: code}, nil
-  case 3:
-    return &BoardPacket{EncodedBoard: data[2:]}, nil
-  }
-  return &LoginPacket{}, nil
+    version := int(data[0])
+    if version != 1 {
+        return nil, errors.New("invalid version")
+    }
+
+    code := int(data[1])
+    
+    // Parse based on message type
+    switch code {
+    case 0: // LoginPacket
+        if len(data) < 4 {
+            return nil, errors.New("invalid login packet length")
+        }
+        
+        // Username
+        usernameLen := binary.BigEndian.Uint16(data[2:4])
+        if len(data) < int(4+usernameLen) {
+            return nil, errors.New("invalid username length")
+        }
+        username := string(data[4:4+usernameLen])
+        
+        // Password
+        pwStart := 4 + usernameLen
+        if len(data) < int(pwStart+2) {
+            return nil, errors.New("invalid packet length for password length")
+        }
+        passwordLen := binary.BigEndian.Uint16(data[pwStart:pwStart+2])
+        if len(data) < int(pwStart+2+passwordLen) {
+            return nil, errors.New("invalid password length")
+        }
+        password := string(data[pwStart+2:pwStart+2+passwordLen])
+        
+        return &LoginPacket{
+            version:  version,
+            code:     code,
+            Username: username,
+            Password: password,
+        }, nil
+        
+    case 1: // RespPacket
+        return &RespPacket{
+            version: version,
+            code:    code,
+        }, nil
+        
+    case 3: // BoardPacket
+        // All remaining bytes are the encoded board
+        encodedBoard := data[2:]
+        return &BoardPacket{
+            version:      version,
+            code:        code,
+            EncodedBoard: encodedBoard,
+        }, nil
+        
+    default:
+        return nil, errors.New("unknown message type")
+    }
 }
