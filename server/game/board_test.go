@@ -21,7 +21,7 @@ func TestRunLengthEncode(t *testing.T) {
   for i := 0; i < 20; i++ {
     stringOne = append(stringOne, "1:50")
   }
-  expectOne := strings.Join(stringOne, string([]byte{0x00}))
+  expectOne := strings.Join(stringOne, "|")
   
   // Second test set up
   gridSec := game.Board{}
@@ -41,7 +41,7 @@ func TestRunLengthEncode(t *testing.T) {
       stringSec = append(stringSec, "2:4")
     }
   }
-  expectSec := strings.Join(stringSec, string([]byte{0x00}))
+  expectSec := strings.Join(stringSec, "|")
 
   // Third test set up
   pattern := []game.Cell{1, 1, 2, 2, 2, 3, 3, 1, 1, 1}
@@ -55,10 +55,10 @@ func TestRunLengthEncode(t *testing.T) {
 
 	var stringThree []string
 	for i := 0; i < 20; i++ {
-    part := fmt.Sprintf("1:2\x002:3\x003:2\x001:5\x002:3\x003:2\x001:5\x002:3\x003:2\x001:5\x002:3\x003:2\x001:5\x002:3\x003:2\x001:3")
+    part := fmt.Sprintf("1:2|2:3|3:2|1:5|2:3|3:2|1:5|2:3|3:2|1:5|2:3|3:2|1:5|2:3|3:2|1:3")
 		stringThree = append(stringThree, part)
 	}
-	expectedThree := strings.Join(stringThree, string([]byte{0x00}))
+	expectedThree := strings.Join(stringThree, "|")
 
 	tests := []struct {
 		name     string
