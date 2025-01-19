@@ -1,6 +1,9 @@
 package communication
 
-import "time"
+import (
+	"net"
+	"time"
+)
 
 // TickMsg is used to send a time-based tick message.
 type TickMsg struct {
@@ -25,3 +28,16 @@ type ResponseMsg struct {
 type BoardMsg struct {
   Board [20][50]int
 }
+
+// ConnectionMsg to pass the connection to meta model
+type ConnectionMsg struct {
+    Conn *net.TCPConn
+}
+
+type GamePacketMsg struct {
+  Packet []byte
+}
+
+// ReconnectMsg serve to signal the connection success 
+type ReconnectMsg struct{}
+

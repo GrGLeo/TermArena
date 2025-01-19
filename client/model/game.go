@@ -69,6 +69,7 @@ func (m GameModel) View() string {
 
   // Iterate through the board and apply styles
   for _, row := range m.board {
+    log.Println(len(row))
     for _, cell := range row {
       if cell == 0 {
         builder.WriteString(bgStyle.Render(" ")) // Render empty space for 0

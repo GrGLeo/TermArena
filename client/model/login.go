@@ -108,7 +108,6 @@ func (m LoginModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
       if m.selected >= 2 {
         switch m.buttons[m.selected - 2] {
         case "login":
-          
           communication.SendLoginPacket(m.conn, m.username.Value(), m.password.Value())
           return m, PassLogin(m.username.Value(), m.password.Value())
         case "quit":

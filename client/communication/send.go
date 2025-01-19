@@ -8,8 +8,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type GamePacketMsg struct {
-  Packet []byte
+func MakeConnection() (*net.TCPConn, error) {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", "localhost:8080")
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	if err != nil {
+		return nil, NewConnectionError(500, "Failed to dial server")
+	}
+	return conn, nil
 }
 
 func SendLoginPacket(conn *net.TCPConn, username, password string) error {
