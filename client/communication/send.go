@@ -30,7 +30,9 @@ func SendAction(conn *net.TCPConn, action int) error {
   log.Println("sending action")
   actionPacket := shared.NewActionPacket(action)
   data := actionPacket.Serialize()
+  log.Println("sending action")
   _, err := conn.Write(data)
+  log.Println("sending action")
   return err
 }
 

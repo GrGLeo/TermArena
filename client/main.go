@@ -54,6 +54,7 @@ func (m MetaModel) Init() tea.Cmd {
 }
 
 func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+  log.Println(m.Connection)
 	var cmd tea.Cmd
 	var newmodel tea.Model
 	switch m.state {
@@ -64,7 +65,6 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.height = msg.Height
 			m.WaitingModel.SetDimension(m.height, m.width)
 			m.AnimationModel.SetDimension(m.height, m.width)
-			m.LoginModel.SetDimension(m.height, m.width)
 			m.GameModel.SetDimension(m.height, m.width)
 		case communication.ConnectionMsg:
 			m.Connection = msg.Conn
@@ -90,6 +90,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.Type == tea.KeyEnter {
 				m.state = Login
         m.LoginModel = model.NewLoginModel(m.Connection)
+        m.LoginModel.SetDimension(m.height, m.width)
 				return m, m.LoginModel.Init()
 			}
 			return m, cmd
@@ -109,6 +110,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case communication.ResponseMsg:
 			log.Print("enter communication response msg")
 			m.state = Game
+      m.GameModel.SetConnection(m.Connection)
 			return m, m.GameModel.Init()
 		}
 
@@ -148,7 +150,6 @@ func main() {
 	// Serve as a bridge to pass message from ListenForPackets to models
 	go func() {
 		for msg := range model.msgs {
-			log.Println("Channel:", msg)
 			p.Send(msg)
 		}
 	}()

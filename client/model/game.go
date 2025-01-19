@@ -1,7 +1,6 @@
 package model
 
 import (
-	"log"
 	"net"
 	"strings"
 
@@ -32,11 +31,14 @@ func (m *GameModel) SetDimension(height, width int) {
   m.width = width
 }
 
+func (m *GameModel) SetConnection (conn *net.TCPConn) {
+  m.conn = conn
+}
+
 func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
   switch msg := msg.(type) {
   case communication.BoardMsg:
     m.board = msg.Board
-    log.Println(m.board)
   case tea.KeyMsg:
     switch msg.Type {
     case tea.KeyCtrlC, tea.KeyEsc:
@@ -69,7 +71,6 @@ func (m GameModel) View() string {
 
   // Iterate through the board and apply styles
   for _, row := range m.board {
-    log.Println(len(row))
     for _, cell := range row {
       if cell == 0 {
         builder.WriteString(bgStyle.Render(" ")) // Render empty space for 0
