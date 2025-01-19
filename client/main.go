@@ -31,60 +31,55 @@ type MetaModel struct {
 }
 
 func NewMetaModel() MetaModel {
-	state := Intro
-	conn, err := communication.MakeConnection()
 	msgs := make(chan tea.Msg)
 
-	if err != nil {
-		state = Disconnect
-	} else {
-		go communication.ListenForPackets(conn, msgs)
-	}
+  state := Disconnect
 	return MetaModel{
 		state:          state,
 		AnimationModel: model.NewAnimationModel(),
-		LoginModel:     model.NewLoginModel(conn),
-		Connection:     conn,
-		GameModel:      model.NewGameModel(conn),
+		msgs:           msgs,
 	}
 }
 
 func (m MetaModel) Init() tea.Cmd {
 	switch m.state {
 	case Disconnect:
-		return m.WaitingModel.Init()
+		return tea.Batch(m.WaitingModel.Init(), communication.AttemptReconnect())
 	case Intro:
 		return m.AnimationModel.Init()
 	case Login:
 		return m.LoginModel.Init()
 	}
-	return nil
+	return communication.AttemptReconnect()
 }
 
 func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	log.Print(msg)
 	var cmd tea.Cmd
 	var newmodel tea.Model
 	switch m.state {
 	case Disconnect:
-    switch msg := msg.(type) {
-    case tea.WindowSizeMsg:
-      m.width = msg.Width
-      m.height = msg.Height
-      m.WaitingModel.SetDimension(m.height, m.width)
+		switch msg := msg.(type) {
+		case tea.WindowSizeMsg:
+			m.width = msg.Width
+			m.height = msg.Height
+			m.WaitingModel.SetDimension(m.height, m.width)
 			m.AnimationModel.SetDimension(m.height, m.width)
 			m.LoginModel.SetDimension(m.height, m.width)
 			m.GameModel.SetDimension(m.height, m.width)
-    case communication.ConnectionMsg:
-      m.Connection = msg.Conn
-      m.state = Intro
-      go communication.ListenForPackets(m.Connection, m.msgs)
-      return m, m.AnimationModel.Init()
+		case communication.ConnectionMsg:
+			m.Connection = msg.Conn
+			m.state = Intro
+			go communication.ListenForPackets(m.Connection, m.msgs)
+			return m, m.AnimationModel.Init()
+		case communication.ReconnectMsg:
+			newmodel, cmd = m.WaitingModel.Update(msg)
+			m.WaitingModel = newmodel.(model.WaitingModel)
+			return m, tea.Batch(cmd, communication.AttemptReconnect())
     default:
-      newmodel, cmd = m.WaitingModel.Update(msg)
-      m.WaitingModel = newmodel.(model.WaitingModel)
-      return m, tea.Batch(cmd, communication.AttemptReconnect())
-    }
+			newmodel, cmd = m.WaitingModel.Update(msg)
+			m.WaitingModel = newmodel.(model.WaitingModel)
+      return m, cmd
+		}
 	case Intro:
 		switch msg := msg.(type) {
 		case communication.TickMsg:
@@ -94,13 +89,14 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			if msg.Type == tea.KeyEnter {
 				m.state = Login
+        m.LoginModel = model.NewLoginModel(m.Connection)
 				return m, m.LoginModel.Init()
 			}
 			return m, cmd
 		case tea.WindowSizeMsg:
 			m.width = msg.Width
 			m.height = msg.Height
-      m.WaitingModel.SetDimension(m.height, m.width)
+			m.WaitingModel.SetDimension(m.height, m.width)
 			m.AnimationModel.SetDimension(m.height, m.width)
 			m.LoginModel.SetDimension(m.height, m.width)
 			m.GameModel.SetDimension(m.height, m.width)
@@ -109,9 +105,6 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case Login:
 		newmodel, cmd = m.LoginModel.Update(msg)
 		m.LoginModel = newmodel.(model.LoginModel)
-		if loginMsg, ok := msg.(communication.LoginMsg); ok {
-			communication.SendLoginPacket(m.Connection, loginMsg.Username, loginMsg.Password)
-		}
 		switch msg.(type) {
 		case communication.ResponseMsg:
 			log.Print("enter communication response msg")
@@ -131,8 +124,8 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m MetaModel) View() string {
 	switch m.state {
-  case Disconnect:
-    return m.WaitingModel.View()
+	case Disconnect:
+		return m.WaitingModel.View()
 	case Intro:
 		return m.AnimationModel.View()
 	case Login:
@@ -152,12 +145,13 @@ func main() {
 	}
 	defer f.Close()
 	p := tea.NewProgram(model, tea.WithAltScreen())
-  // Serve as a bridge to pass message from outise to model
-  go func() {
-        for msg := range model.msgs {
-            p.Send(msg)
-        }
-    }()
+	// Serve as a bridge to pass message from ListenForPackets to models
+	go func() {
+		for msg := range model.msgs {
+			log.Println("Channel:", msg)
+			p.Send(msg)
+		}
+	}()
 
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)

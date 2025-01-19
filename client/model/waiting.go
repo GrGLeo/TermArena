@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -49,7 +48,6 @@ func (m WaitingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m WaitingModel) View() string {
-  log.Println("View from WaitingModel")
 	str := fmt.Sprintf("\n\n   %s Trying to reach server. ...press Esc/Ctrl+c to quit\n\n", m.spinner.View())
 
 	return lipgloss.Place(

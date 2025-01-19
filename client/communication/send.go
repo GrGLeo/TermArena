@@ -9,6 +9,7 @@ import (
 )
 
 func MakeConnection() (*net.TCPConn, error) {
+  log.Println("Connection Attempt")
 	tcpAddr, err := net.ResolveTCPAddr("tcp", "localhost:8080")
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	if err != nil {
@@ -51,7 +52,6 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
     }
     switch msg := message.(type) {
     case *shared.RespPacket:
-      log.Println("case loginResp")
       msgs <- ResponseMsg{Code: msg.Code()}
     case *shared.BoardPacket:
       board, err := DecodeRLE(msg.EncodedBoard)

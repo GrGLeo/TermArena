@@ -1,7 +1,6 @@
 package model
 
 import (
-	"log"
 	"net"
 
 	"github.com/GrGLeo/ctf/client/communication"
@@ -81,7 +80,7 @@ func (m LoginModel) Init() tea.Cmd {
 }
 
 func (m LoginModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-  log.Print("login: ", m.height, m.width)
+  var cmd tea.Cmd
   switch msg := msg.(type) {
   case tea.WindowSizeMsg:
     m.width = msg.Width
@@ -109,14 +108,13 @@ func (m LoginModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         switch m.buttons[m.selected - 2] {
         case "login":
           communication.SendLoginPacket(m.conn, m.username.Value(), m.password.Value())
-          return m, PassLogin(m.username.Value(), m.password.Value())
+          return m, cmd 
         case "quit":
           return m, tea.Quit
         }
       }
     }
   }
-  var cmd tea.Cmd
   if m.username.Focused() {
     m.username, cmd = m.username.Update(msg)
   } else {
