@@ -16,9 +16,12 @@ type LoginMsg struct {
   Password string
 }
 
-/* ResponseMsg is used to validate login
+/*
+ResponseMsg is used to validate login
 code 0: login succes
-code 1: invalid credential */
+
+code 1: invalid credential
+*/
 type ResponseMsg struct {
   Code int
 }
@@ -34,6 +37,7 @@ type ConnectionMsg struct {
     Conn *net.TCPConn
 }
 
+// GamePacketMsg is a default message send, but isn't handle yet
 type GamePacketMsg struct {
   Packet []byte
 }
