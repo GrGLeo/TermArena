@@ -10,5 +10,5 @@ run-client:
 run-server:
 	go run ./server
 
-run-test:
+test:
 	go test -v ./...
