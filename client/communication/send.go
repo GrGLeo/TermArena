@@ -8,8 +8,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type GamePacketMsg struct {
-  Packet []byte
+func MakeConnection() (*net.TCPConn, error) {
+  log.Println("Connection Attempt")
+	tcpAddr, err := net.ResolveTCPAddr("tcp", "localhost:8080")
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	if err != nil {
+		return nil, NewConnectionError(500, "Failed to dial server")
+	}
+	return conn, nil
 }
 
 func SendLoginPacket(conn *net.TCPConn, username, password string) error {
@@ -24,7 +30,9 @@ func SendAction(conn *net.TCPConn, action int) error {
   log.Println("sending action")
   actionPacket := shared.NewActionPacket(action)
   data := actionPacket.Serialize()
+  log.Println("sending action")
   _, err := conn.Write(data)
+  log.Println("sending action")
   return err
 }
 
@@ -46,7 +54,6 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
     }
     switch msg := message.(type) {
     case *shared.RespPacket:
-      log.Println("case loginResp")
       msgs <- ResponseMsg{Code: msg.Code()}
     case *shared.BoardPacket:
       board, err := DecodeRLE(msg.EncodedBoard)

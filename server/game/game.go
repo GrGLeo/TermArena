@@ -51,7 +51,7 @@ func (gr *GameRoom) StartGame() {
   if len(gr.playerConnection) == gr.PlayerNumber {
     gr.logger.Info("Game starting")
     go gr.HandleAction()
-    ticker := time.NewTicker(100 * time.Millisecond)
+    ticker := time.NewTicker(50 * time.Millisecond)
     defer ticker.Stop()
     for {
       select {
