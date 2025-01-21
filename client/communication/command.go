@@ -26,5 +26,3 @@ func LoginCommand(code int) tea.Cmd {
       return ResponseMsg{Code: 1}
     }
 }
-
-

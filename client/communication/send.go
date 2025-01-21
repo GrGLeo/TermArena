@@ -27,17 +27,13 @@ func SendLoginPacket(conn *net.TCPConn, username, password string) error {
 }
 
 func SendAction(conn *net.TCPConn, action int) error {
-  log.Println("sending action")
   actionPacket := shared.NewActionPacket(action)
   data := actionPacket.Serialize()
-  log.Println("sending action")
   _, err := conn.Write(data)
-  log.Println("sending action")
   return err
 }
 
 func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
-  log.Println("ListenForPackets enter")
   buf := make([]byte, 1024)
   for {
     n, err := conn.Read(buf)
@@ -48,7 +44,6 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
     // Send the packet as a message to the model
     message, err := shared.DeSerialize(buf[:n])
     log.Println("message", message)
-    log.Printf("Unknown type: %T\n", message)
     if err != nil {
       return
     }
@@ -62,6 +57,7 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
       }
       msgs <- BoardMsg{Board: board}
     default:
+      log.Printf("Unknown type: %T\n", message)
       msgs <- GamePacketMsg{Packet: buf[:n]}
     }
   }

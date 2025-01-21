@@ -115,20 +115,16 @@ func (gr *GameRoom) ListenToConnection(conn *net.TCPConn) {
       return
     }
     if n > 0 {
-      gr.logger.Infow("Received data", "ip", conn.RemoteAddr(), "data", buffer[:n])
       message, err := shared.DeSerialize(buffer[:n])
       if err != nil {
         gr.logger.Infow("Error deserializing packet", "ip", conn.RemoteAddr(), "error", err)
       }
       switch msg := message.(type) {
       case *shared.ActionPacket:
-        gr.logger.Infow("Enter ActionPacket")
-        gr.logger.Infow("Packet content", "action", msg.Action())
         playerAction := &ActionMsg{
           ConnAddr: conn.RemoteAddr().String(),
           Action: msg.Action(),
         }
-        gr.logger.Infow("Message content", "action", playerAction.Action, "ip", playerAction.ConnAddr)
         gr.actionChan <- playerAction
       }
     }

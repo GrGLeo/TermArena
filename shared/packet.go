@@ -155,6 +155,28 @@ func (bp *BoardPacket) Serialize() []byte {
 }
  
 
+// DeSerialize deserializes a byte slice into a specific Packet type based on the message code.
+// It supports multiple packet types: LoginPacket, RespPacket, ActionPacket, and BoardPacket.
+//
+// Parameters:
+// - data: A byte slice containing the serialized packet data.
+//
+// Returns:
+// - Packet: The deserialized Packet, which could be one of the supported types.
+// - error: An error if the data does not conform to the expected format or contains invalid values.
+//
+// The function performs the following steps:
+//
+// 1. Checks that the input data has at least 2 bytes for the version and code.
+//
+// 2. Validates the version, expecting it to be 1.
+//
+// 3. Reads the message code and parses the data accordingly:
+//    - For LoginPacket, it extracts the username and password.
+//    - For RespPacket, it returns a basic response packet.
+//    - For ActionPacket, it reads the action value.
+//    - For BoardPacket, it treats all remaining data as the encoded board.
+// 4. Returns an error for unsupported or malformed packet types.
 func DeSerialize(data []byte) (Packet, error) {
     // Check minimum packet length (version + code)
     if len(data) < 2 {
