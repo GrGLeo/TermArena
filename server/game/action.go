@@ -21,7 +21,7 @@ func Move(p *Player, board *Board) {
   posY := p.Y
   switch p.Action {
   case moveUp:
-    if posY > 1 {
+    if posY >= 1 {
       p.Y -= 1
     }
   case moveDown:
@@ -29,7 +29,7 @@ func Move(p *Player, board *Board) {
       p.Y += 1
     }
   case moveLeft:
-    if posX > 1 {
+    if posX >= 1 {
       p.X -= 1
     }
   case moveRight:
