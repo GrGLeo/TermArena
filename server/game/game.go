@@ -30,6 +30,12 @@ func NewGameRoom(number int, logger *zap.SugaredLogger) *GameRoom {
     actionChan: make(chan *ActionMsg),
     playerChar: make(map[string]*Player),
   }
+  // Place walls on map
+  // if any error occur we skip the walls placement
+  walls, err := LoadWalls("server/game/config.json")
+  if err == nil {
+    gr.board.PlaceAllWall(walls)
+  }
   for n := range number {
     gr.board.PlacePlayer(n)
   }
