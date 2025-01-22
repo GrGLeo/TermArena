@@ -1,0 +1,16 @@
+{
+  "walls": [
+    {
+      "StartPos": [0, 0],
+      "EndPos": [0, 0]
+    },
+    {
+      "StartPos": [5, 5],
+      "EndPos": [5, 10]
+    },
+    {
+      "StartPos": [10, 10],
+      "EndPos": [15, 10]
+    }
+  ]
+}

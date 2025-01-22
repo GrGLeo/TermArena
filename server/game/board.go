@@ -1,7 +1,9 @@
 package game
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -84,5 +86,20 @@ func (w WallPosition) GetEndPos() (int, int) {
   return w.EndPos[0], w.EndPos[1]
 }
 
+type WallJSON struct {
+  Walls []WallPosition `json:"walls"`
+}
 
-
+// Read from a config file to get all walls placement
+func LoadWalls(filename string) ([]WallPosition, error) {
+  var wallJSON WallJSON
+  file, err := os.ReadFile(filename)
+  if err != nil {
+    return nil, err
+  }
+  err = json.Unmarshal(file, &wallJSON)
+  if err != nil {
+    return nil, err
+  }
+  return wallJSON.Walls, nil
+}
