@@ -22,19 +22,27 @@ func Move(p *Player, board *Board) {
   switch p.Action {
   case moveUp:
     if posY >= 1 {
-      p.Y -= 1
+      if board.Grid[posY - 1][posX] != Wall {
+        p.Y -= 1
+      }
     }
   case moveDown:
     if posY < maxY-1 {
-      p.Y += 1
+      if board.Grid[posY + 1][posX] != Wall {
+        p.Y += 1
+      }
     }
   case moveLeft:
     if posX >= 1 {
-      p.X -= 1
+      if board.Grid[posY][posX - 1] != Wall {
+        p.X -= 1
+      }
     }
   case moveRight:
     if posX < maxX-1 {
-      p.X += 1
+      if board.Grid[posY][posX + 1] != Wall {
+        p.X += 1
+      }
     }
   }
   // old position is cleared
@@ -43,6 +51,7 @@ func Move(p *Player, board *Board) {
   board.Grid[p.Y][p.X] = p.number
   p.Action = NoAction 
 }
+
 
 type ActionMsg struct {
   ConnAddr string
