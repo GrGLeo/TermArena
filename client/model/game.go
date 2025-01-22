@@ -65,17 +65,21 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m GameModel) View() string {
   // Define styles
   bgStyle := lipgloss.NewStyle().Background(lipgloss.Color("0"))
-  blueStyle := lipgloss.NewStyle().Background(lipgloss.Color("4"))
+  blueStyle := lipgloss.NewStyle().Background(lipgloss.Color("21"))
+  grayStyle := lipgloss.NewStyle().Background(lipgloss.Color("240"))
 
   var builder strings.Builder
 
   // Iterate through the board and apply styles
   for _, row := range m.board {
     for _, cell := range row {
-      if cell == 0 {
+      switch cell {
+      case 0:
         builder.WriteString(bgStyle.Render(" ")) // Render empty space for 0
-      } else if cell == 2 {
-        builder.WriteString(blueStyle.Render(" ")) // Render blue for 1
+      case 1:
+        builder.WriteString(grayStyle.Render(" ")) // Render gray for 1
+      case 2:
+        builder.WriteString(blueStyle.Render(" ")) // Render blue for 2
       }
     }
     builder.WriteString("\n") // New line at the end of each row
