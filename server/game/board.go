@@ -28,6 +28,23 @@ func (b *Board) PlacePlayer(n int) {
   }
 }
 
+func (b *Board) PlaceWall(wall WallPosition) {
+  ys,xs := wall.GetStartPos()
+  ye,xe := wall.GetEndPos()
+  for i := ys; i <= ye; i++ {
+    for j := xs; j <= xe; j++ {
+      b.Grid[i][j] = Wall
+    }
+  }
+}
+
+func (b *Board) PlaceAllWall(walls []WallPosition) {
+  for _, wall := range walls {
+    b.PlaceWall(wall)
+  }
+}
+
+
 func(b *Board) RunLengthEncode() []byte {
   var rle []string
   
@@ -50,4 +67,22 @@ func(b *Board) RunLengthEncode() []byte {
   rleString := strings.Join(rle, "|")
   return []byte(rleString)
 }
+
+
+type WallPosition struct {
+  StartPos [2]int // Y and X start position on the borad
+  EndPos [2]int // Y and X end position on the board
+}
+
+// Return Y and X start position
+func (w WallPosition) GetStartPos() (int, int) {
+  return w.StartPos[0], w.StartPos[1]
+}
+  
+// Return Y and X end position
+func (w WallPosition) GetEndPos() (int, int) {
+  return w.EndPos[0], w.EndPos[1]
+}
+
+
 

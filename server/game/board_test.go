@@ -94,3 +94,106 @@ func TestRunLengthEncode(t *testing.T) {
 	}
 }
 
+func TestWallPlacement(t *testing.T) {
+	tests := []struct {
+		name         string
+		board        *game.Board
+		wallPosition game.WallPosition
+		expectedGrid [20][50]game.Cell
+	}{
+		{
+			name:  "Single cell wall",
+			board: &game.Board{},
+			wallPosition: game.WallPosition{
+				StartPos: [2]int{1, 1},
+				EndPos:   [2]int{1, 1},
+			},
+			expectedGrid: func() [20][50]game.Cell {
+				var grid [20][50]game.Cell
+				grid[1][1] = game.Wall
+				return grid
+			}(),
+		},
+		{
+			name:  "Horizontal wall",
+			board: &game.Board{},
+			wallPosition: game.WallPosition{
+				StartPos: [2]int{2, 3},
+				EndPos:   [2]int{2, 6},
+			},
+			expectedGrid: func() [20][50]game.Cell {
+				var grid [20][50]game.Cell
+				for j := 3; j <= 6; j++ {
+					grid[2][j] = game.Wall
+				}
+				return grid
+			}(),
+		},
+		{
+			name:  "Vertical wall",
+			board: &game.Board{},
+			wallPosition: game.WallPosition{
+				StartPos: [2]int{4, 5},
+				EndPos:   [2]int{7, 5},
+			},
+			expectedGrid: func() [20][50]game.Cell {
+				var grid [20][50]game.Cell
+				for i := 4; i <= 7; i++ {
+					grid[i][5] = game.Wall
+				}
+				return grid
+			}(),
+		},
+		{
+			name:  "Rectangular wall",
+			board: &game.Board{},
+			wallPosition: game.WallPosition{
+				StartPos: [2]int{6, 6},
+				EndPos:   [2]int{8, 8},
+			},
+			expectedGrid: func() [20][50]game.Cell {
+				var grid [20][50]game.Cell
+				for i := 6; i <= 8; i++ {
+					for j := 6; j <= 8; j++ {
+						grid[i][j] = game.Wall
+					}
+				}
+				return grid
+			}(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.board.PlaceWall(tt.wallPosition)
+			for i := 0; i < len(tt.board.Grid); i++ {
+				for j := 0; j < len(tt.board.Grid[i]); j++ {
+					if tt.board.Grid[i][j] != tt.expectedGrid[i][j] {
+						t.Errorf("Mismatch at Grid[%d][%d]: got %v, want %v", i, j, tt.board.Grid[i][j], tt.expectedGrid[i][j])
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestPlaceAllWall(t *testing.T) {
+  b := game.Init()
+  walls := []game.WallPosition{
+    {StartPos: [2]int{0, 0}, EndPos: [2]int{0, 0}}, // Single cell
+    {StartPos: [2]int{5, 5}, EndPos: [2]int{5, 10}}, // Horizontal wall
+  }
+  b.PlaceAllWall(walls)
+
+  // Check single-cell wall
+  if b.Grid[0][0] != game.Wall {
+    t.Error("Wall not placed at (0,0)")
+  }
+
+  // Check horizontal wall
+  for x := 5; x <= 10; x++ {
+    if b.Grid[5][x] != game.Wall {
+      t.Errorf("Wall not placed at (5, %d)", x)
+    }
+  }
+}
