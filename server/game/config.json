@@ -12,5 +12,19 @@
       "StartPos": [10, 10],
       "EndPos": [15, 10]
     }
+  ],
+  "flags": [
+    {
+      "teamID":1,
+      "posX": 0,
+      "posY": 10,
+      "is_captured": false
+    },
+    {
+      "teamID":2,
+      "posX": 49,
+      "posY": 10,
+      "is_captured": false
+    }
   ]
 }
