@@ -25,8 +25,8 @@ CaptureTheFlag is a terminal-based multiplayer game where players navigate a boa
 1. Ensure [Go](https://golang.org/dl/) is installed.
 2. Clone the repository:
    <code>
-   git clone https://github.com/yourusername/CaptureTheFlag.git
-   cd CaptureTheFlag
+   git clone https://github.com/GrGLeo/ctf.git
+   cd ctf
    </code>
 
 ## Usage
@@ -43,8 +43,21 @@ To run the game locally, open two terminals:
    </code>
 
 ## Game Mechanics
-- Players move around a 20x50 board to capture flags.
-- The board refreshes every 100ms to reflect the latest player positions.
+- Players move around a 20x50 board to capture the enemy flag.
+- Walls are placed on the board.  The configuration of walls are done through a config.json file
+```json
+{
+    "walls": [
+        {
+            "StartPos": [5, 10],
+            "EndPos": [5, 15]
+        }
+    ]
+}
+```
+- Player collision are checked against walls, and walls can't be traversed.
+- The board refreshes every 50ms to reflect the latest player positions.
+
 
 ## Server Details
 - The server handles multiple player connections.
@@ -52,6 +65,6 @@ To run the game locally, open two terminals:
 - The board is compressed using RLE before sending to clients to optimize network usage.
 
 ## Future Improvements
-- Implement walls on the map to create variety
-- Add the flag, and capturing mechanism 
-- Manage multiplayer, room creation, room finding, room closing.
+- Add the flag, and capturing mechanism. 
+- Add player abilities (dash & freeze spell).
+- Multiplayer room management. 
