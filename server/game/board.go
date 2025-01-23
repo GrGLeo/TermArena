@@ -63,7 +63,9 @@ func (b *Board) CheckFlagWon(team, y, x int) bool {
     posY, posX := flag.GetBase()
     // Check if flag is won
     if int(flag.TeamId) == team && posX == x && posY == y {
-      b.PlaceFlag(flag)
+      // I need to replace the other enemy flag
+      enemyFalg := (i + 1) % 2
+      b.PlaceFlag(b.Flags[enemyFalg])
       return true
     }
   }
