@@ -1,7 +1,7 @@
 package game
 
 type Flag struct {
-	TeamId     int  `json:"teamID"`
+	TeamId     Cell  `json:"teamID"`
 	PosX       int  `json:"posx"`
 	PosY       int  `json:"posy"`
 	baseX      int  
@@ -13,7 +13,7 @@ func (f *Flag) Move(x, y int, board *Board) {
 	board.Grid[f.PosY][f.PosX] = Empty
 	f.PosX = x
 	f.PosY = y
-	board.Grid[y][x] = Flag1
+	board.Grid[y][x] = f.TeamId
 }
 
 func (f *Flag) SetBase() {

@@ -1,5 +1,7 @@
 package game
 
+import "fmt"
+
 
 type actionType int 
 
@@ -39,13 +41,19 @@ func (p *Player) Move(board *Board) {
   // moving the char on the board
   board.Grid[p.Y][p.X] = p.number
   // Check if flag is attached and need to move
-  if p.HasFlag && (p.X != posX || p.Y != posY) {
-    p.Flag.Move(posX, posY, board)
-    p.Action = NoAction 
+  if p.HasFlag {
+    if board.CheckFlagWon(p.TeamID, p.Y, p.X) {
+      fmt.Println("won")
+      p.HasFlag = false
+      p.Flag = nil
+    } else if p.X != posX || p.Y != posY {
+      p.Flag.Move(posX, posY, board)
+      p.Action = NoAction 
+    }
     return
   }
   // Check if player catch flag
-  if flag := board.CheckFlag(p.TeamID, p.X, p.Y); flag != nil  {
+  if flag := board.CheckFlagCaptured(p.TeamID, p.Y, p.X); flag != nil  {
     p.HasFlag = true
     p.Flag = flag
     p.Action = NoAction 

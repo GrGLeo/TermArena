@@ -22,7 +22,7 @@ const (
 
 type Board struct {
   Grid [20][50]Cell
-  Flags []Flag
+  Flags []*Flag
 }
 
 func Init() *Board {
@@ -45,15 +45,29 @@ func (b *Board) IsValidPosition(x, y int) bool {
 	return b.Grid[y][x] != Wall
 }
 
-func (b *Board) CheckFlag(team, x, y int) *Flag {
+func (b *Board) CheckFlagCaptured(team, y, x int) *Flag {
   for i := range b.Flags {
-    flag := &b.Flags[i]
-    if flag.TeamId != team && flag.PosX == x && flag.PosY == y {
+    flag := b.Flags[i]
+    // Check if flag is captured
+    if int(flag.TeamId) != team && flag.PosX == x && flag.PosY == y {
       flag.IsCaptured = true
       return flag
     }
   }
   return nil
+}
+
+func (b *Board) CheckFlagWon(team, y, x int) bool {
+  for i := range b.Flags {
+    flag := b.Flags[i]
+    posY, posX := flag.GetBase()
+    // Check if flag is won
+    if int(flag.TeamId) == team && posX == x && posY == y {
+      b.PlaceFlag(flag)
+      return true
+    }
+  }
+  return false
 }
 
 /*
@@ -79,17 +93,20 @@ func (b *Board) PlaceAllWalls(walls []WallPosition) {
 }
 
 // Initial placement of flag
-func (b *Board) PlaceFlag(flag Flag) {
-  posX, posY := flag.GetBase()
-  if flag.TeamId == 1 {
+func (b *Board) PlaceFlag(flag *Flag) {
+  posY, posX := flag.GetBase()
+  fmt.Println(posY, posX)
+  fmt.Println(flag.TeamId)
+  if flag.TeamId == 6 {
     b.Grid[posY][posX] = Flag1
   } else {
+    fmt.Println("here")
     b.Grid[posY][posX] = Flag2
   }
 }
 
 // Place both flag at the start of the game
-func (b *Board) PlaceAllFlags(flags []Flag) {
+func (b *Board) PlaceAllFlags(flags []*Flag) {
   for _, flag := range flags {
     flag.SetBase()
     b.PlaceFlag(flag)
@@ -138,7 +155,7 @@ type ConfigJSON struct {
 }
 
 // Read from a config file to get all walls placement
-func LoadConfig(filename string) ([]WallPosition, []Flag, error) {
+func LoadConfig(filename string) ([]WallPosition, []*Flag, error) {
   var configJSON ConfigJSON
   file, err := os.ReadFile(filename)
   if err != nil {
@@ -149,5 +166,10 @@ func LoadConfig(filename string) ([]WallPosition, []Flag, error) {
     fmt.Println(err.Error())
     return nil, nil, err
   }
-  return configJSON.Walls, configJSON.Flag, nil
+
+  flagPtrs := make([]*Flag, len(configJSON.Flag))
+  for i := range configJSON.Flag {
+    flagPtrs[i] = &configJSON.Flag[i]
+  }
+  return configJSON.Walls, flagPtrs, nil
 }

@@ -14,7 +14,7 @@ func NewPlayer(n int) *Player {
 	case 0:
 		return &Player{
 			number: Player1,
-			TeamID: 1,
+			TeamID: 6,
 			X:      1,
 			Y:      6,
 			Action: NoAction,
