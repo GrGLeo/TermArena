@@ -22,6 +22,7 @@ const (
 
 type Board struct {
   Grid [20][50]Cell
+  Flags []Flag
 }
 
 func Init() *Board {
@@ -44,10 +45,22 @@ func (b *Board) IsValidPosition(x, y int) bool {
 	return b.Grid[y][x] != Wall
 }
 
+func (b *Board) CheckFlag(team, x, y int) *Flag {
+  for i := range b.Flags {
+    flag := &b.Flags[i]
+    if flag.TeamId != team && flag.PosX == x && flag.PosY == y {
+      flag.IsCaptured = true
+      return flag
+    }
+  }
+  return nil
+}
+
 /*
 MANAGE ALL CELLS PLACEMENT
 */
 
+// Initial wall placement
 func (b *Board) PlaceWall(wall WallPosition) {
   ys,xs := wall.GetStartPos()
   ye,xe := wall.GetEndPos()
@@ -58,22 +71,30 @@ func (b *Board) PlaceWall(wall WallPosition) {
   }
 }
 
-func (b *Board) PlaceAllWall(walls []WallPosition) {
+// Place all wall at the start of the game
+func (b *Board) PlaceAllWalls(walls []WallPosition) {
   for _, wall := range walls {
     b.PlaceWall(wall)
   }
 }
 
-func (b *Board) PlaceFlags(flags []Flag) {
-  for _, flag := range flags {
-    posX := flag.PosX
-    posY := flag.PosY
-    if flag.TeamId == 1 {
-      b.Grid[posY][posX] = Flag1
-    } else {
-      b.Grid[posY][posX] = Flag2
-    }
+// Initial placement of flag
+func (b *Board) PlaceFlag(flag Flag) {
+  posX, posY := flag.GetBase()
+  if flag.TeamId == 1 {
+    b.Grid[posY][posX] = Flag1
+  } else {
+    b.Grid[posY][posX] = Flag2
   }
+}
+
+// Place both flag at the start of the game
+func (b *Board) PlaceAllFlags(flags []Flag) {
+  for _, flag := range flags {
+    flag.SetBase()
+    b.PlaceFlag(flag)
+  }
+  b.Flags = flags
 }
 
 func (b *Board) RunLengthEncode() []byte {

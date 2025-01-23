@@ -35,8 +35,8 @@ func NewGameRoom(number int, logger *zap.SugaredLogger) *GameRoom {
   walls, flags, err := LoadConfig("server/game/config.json")
   gr.logger.Infoln(flags)
   if err == nil {
-    gr.board.PlaceAllWall(walls)
-    gr.board.PlaceFlags(flags)
+    gr.board.PlaceAllWalls(walls)
+    gr.board.PlaceAllFlags(flags)
   }
   for n := range number {
     gr.board.PlacePlayer(n)

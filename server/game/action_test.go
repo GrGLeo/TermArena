@@ -95,7 +95,7 @@ func TestMove(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			Move(tt.player, tt.board)
+			tt.player.Move(tt.board)
 			if tt.player.X != tt.expectedX || tt.player.Y != tt.expectedY {
 				t.Errorf("Move() = %v, %v; want %v, %v", tt.player.X, tt.player.Y, tt.expectedX, tt.expectedY)
 			}

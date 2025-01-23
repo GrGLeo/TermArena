@@ -38,7 +38,22 @@ func (p *Player) Move(board *Board) {
   board.Grid[posY][posX] = 0
   // moving the char on the board
   board.Grid[p.Y][p.X] = p.number
+  // Check if flag is attached and need to move
+  if p.HasFlag && (p.X != posX || p.Y != posY) {
+    p.Flag.Move(posX, posY, board)
+    p.Action = NoAction 
+    return
+  }
+  // Check if player catch flag
+  if flag := board.CheckFlag(p.TeamID, p.X, p.Y); flag != nil  {
+    p.HasFlag = true
+    p.Flag = flag
+    p.Action = NoAction 
+    return
+  }
+
   p.Action = NoAction 
+  return
 }
 
 
