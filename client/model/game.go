@@ -1,6 +1,7 @@
 package model
 
 import (
+	"log"
 	"net"
 	"strings"
 
@@ -67,8 +68,11 @@ func (m GameModel) View() string {
   bgStyle := lipgloss.NewStyle().Background(lipgloss.Color("0"))
   blueStyle := lipgloss.NewStyle().Background(lipgloss.Color("21"))
   grayStyle := lipgloss.NewStyle().Background(lipgloss.Color("240"))
+  Flag1Style := lipgloss.NewStyle().Background(lipgloss.Color("201"))
+  Flag2Style := lipgloss.NewStyle().Background(lipgloss.Color("94"))
 
   var builder strings.Builder
+  log.Println(m.board)
 
   // Iterate through the board and apply styles
   for _, row := range m.board {
@@ -77,9 +81,19 @@ func (m GameModel) View() string {
       case 0:
         builder.WriteString(bgStyle.Render(" ")) // Render empty space for 0
       case 1:
-        builder.WriteString(grayStyle.Render(" ")) // Render gray for 1
+        builder.WriteString(grayStyle.Render(" ")) // Render gray for walls
       case 2:
-        builder.WriteString(blueStyle.Render(" ")) // Render blue for 2
+        builder.WriteString(blueStyle.Render(" ")) // Render blue for player1
+      case 3:
+        builder.WriteString(blueStyle.Render(" ")) // Render blue for player2
+      case 4:
+        builder.WriteString(blueStyle.Render(" ")) // Render blue for player3
+      case 5:
+        builder.WriteString(blueStyle.Render(" ")) // Render blue for player4
+      case 6:
+        builder.WriteString(Flag1Style.Render(" ")) // Render blue for flag1
+      case 7:
+        builder.WriteString(Flag2Style.Render(" ")) // Render blue for flag2
       }
     }
     builder.WriteString("\n") // New line at the end of each row

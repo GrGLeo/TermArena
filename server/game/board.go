@@ -22,6 +22,7 @@ const (
 
 type Board struct {
   Grid [20][50]Cell
+  Flags []*Flag
 }
 
 func Init() *Board {
@@ -44,10 +45,38 @@ func (b *Board) IsValidPosition(x, y int) bool {
 	return b.Grid[y][x] != Wall
 }
 
+func (b *Board) CheckFlagCaptured(team, y, x int) *Flag {
+  for i := range b.Flags {
+    flag := b.Flags[i]
+    // Check if flag is captured
+    if int(flag.TeamId) != team && flag.PosX == x && flag.PosY == y {
+      flag.IsCaptured = true
+      return flag
+    }
+  }
+  return nil
+}
+
+func (b *Board) CheckFlagWon(team, y, x int) bool {
+  for i := range b.Flags {
+    flag := b.Flags[i]
+    posY, posX := flag.GetBase()
+    // Check if flag is won
+    if int(flag.TeamId) == team && posX == x && posY == y {
+      // I need to replace the other enemy flag
+      enemyFalg := (i + 1) % 2
+      b.PlaceFlag(b.Flags[enemyFalg])
+      return true
+    }
+  }
+  return false
+}
+
 /*
 MANAGE ALL CELLS PLACEMENT
 */
 
+// Initial wall placement
 func (b *Board) PlaceWall(wall WallPosition) {
   ys,xs := wall.GetStartPos()
   ye,xe := wall.GetEndPos()
@@ -58,22 +87,30 @@ func (b *Board) PlaceWall(wall WallPosition) {
   }
 }
 
-func (b *Board) PlaceAllWall(walls []WallPosition) {
+// Place all wall at the start of the game
+func (b *Board) PlaceAllWalls(walls []WallPosition) {
   for _, wall := range walls {
     b.PlaceWall(wall)
   }
 }
 
-func (b *Board) PlaceFlags(flags []Flag) {
-  for _, flag := range flags {
-    posX := flag.PosX
-    posY := flag.PosY
-    if flag.TeamId == 1 {
-      b.Grid[posY][posX] = Flag1
-    } else {
-      b.Grid[posY][posX] = Flag2
-    }
+// Initial placement of flag
+func (b *Board) PlaceFlag(flag *Flag) {
+  posY, posX := flag.GetBase()
+  if flag.TeamId == 6 {
+    b.Grid[posY][posX] = Flag1
+  } else {
+    b.Grid[posY][posX] = Flag2
   }
+}
+
+// Place both flag at the start of the game
+func (b *Board) PlaceAllFlags(flags []*Flag) {
+  for _, flag := range flags {
+    flag.SetBase()
+    b.PlaceFlag(flag)
+  }
+  b.Flags = flags
 }
 
 func (b *Board) RunLengthEncode() []byte {
@@ -117,7 +154,7 @@ type ConfigJSON struct {
 }
 
 // Read from a config file to get all walls placement
-func LoadConfig(filename string) ([]WallPosition, []Flag, error) {
+func LoadConfig(filename string) ([]WallPosition, []*Flag, error) {
   var configJSON ConfigJSON
   file, err := os.ReadFile(filename)
   if err != nil {
@@ -125,8 +162,12 @@ func LoadConfig(filename string) ([]WallPosition, []Flag, error) {
   }
   err = json.Unmarshal(file, &configJSON)
   if err != nil {
-    fmt.Println(err.Error())
     return nil, nil, err
   }
-  return configJSON.Walls, configJSON.Flag, nil
+
+  flagPtrs := make([]*Flag, len(configJSON.Flag))
+  for i := range configJSON.Flag {
+    flagPtrs[i] = &configJSON.Flag[i]
+  }
+  return configJSON.Walls, flagPtrs, nil
 }

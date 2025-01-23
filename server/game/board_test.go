@@ -183,7 +183,7 @@ func TestPlaceAllWall(t *testing.T) {
     {StartPos: [2]int{0, 0}, EndPos: [2]int{0, 0}}, // Single cell
     {StartPos: [2]int{5, 5}, EndPos: [2]int{5, 10}}, // Horizontal wall
   }
-  b.PlaceAllWall(walls)
+  b.PlaceAllWalls(walls)
 
   // Check single-cell wall
   if b.Grid[0][0] != game.Wall {

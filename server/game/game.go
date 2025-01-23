@@ -33,10 +33,11 @@ func NewGameRoom(number int, logger *zap.SugaredLogger) *GameRoom {
   // Place walls on map
   // if any error occur we skip the walls placement
   walls, flags, err := LoadConfig("server/game/config.json")
-  gr.logger.Infoln(flags)
-  if err == nil {
-    gr.board.PlaceAllWall(walls)
-    gr.board.PlaceFlags(flags)
+  if err != nil {
+    gr.logger.Warnw("Error while reading the config", "error", err.Error())
+  } else {
+    gr.board.PlaceAllWalls(walls)
+    gr.board.PlaceAllFlags(flags)
   }
   for n := range number {
     gr.board.PlacePlayer(n)
