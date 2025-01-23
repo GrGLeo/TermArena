@@ -97,12 +97,9 @@ func (b *Board) PlaceAllWalls(walls []WallPosition) {
 // Initial placement of flag
 func (b *Board) PlaceFlag(flag *Flag) {
   posY, posX := flag.GetBase()
-  fmt.Println(posY, posX)
-  fmt.Println(flag.TeamId)
   if flag.TeamId == 6 {
     b.Grid[posY][posX] = Flag1
   } else {
-    fmt.Println("here")
     b.Grid[posY][posX] = Flag2
   }
 }
@@ -165,7 +162,6 @@ func LoadConfig(filename string) ([]WallPosition, []*Flag, error) {
   }
   err = json.Unmarshal(file, &configJSON)
   if err != nil {
-    fmt.Println(err.Error())
     return nil, nil, err
   }
 
