@@ -1,8 +1,5 @@
 package game
 
-import "fmt"
-
-
 type actionType int 
 
 const (
@@ -43,7 +40,9 @@ func (p *Player) Move(board *Board) {
   // Check if flag is attached and need to move
   if p.HasFlag {
     if board.CheckFlagWon(p.TeamID, p.Y, p.X) {
-      fmt.Println("won")
+      // We need to reset the flag pos.
+      board.Grid[p.Flag.PosY][p.Flag.PosX] = Empty
+      p.Flag.ResetPos()
       p.HasFlag = false
       p.Flag = nil
     } else if p.X != posX || p.Y != posY {
@@ -59,7 +58,6 @@ func (p *Player) Move(board *Board) {
     p.Action = NoAction 
     return
   }
-
   p.Action = NoAction 
   return
 }

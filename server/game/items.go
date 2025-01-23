@@ -21,6 +21,12 @@ func (f *Flag) SetBase() {
   f.baseY = f.PosY
 }
 
+// SetBase need to be called first
+func (f *Flag) ResetPos() {
+  f.PosX = f.baseX
+  f.PosY = f.baseY
+}
+
 // Return base flag position Y and X coordinate
 func (f *Flag) GetBase() (int, int) {
   return f.baseY, f.baseX
