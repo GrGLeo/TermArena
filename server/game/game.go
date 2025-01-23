@@ -50,8 +50,9 @@ func (gr *GameRoom) AddPlayer(conn *net.TCPConn) {
   gr.playerChar[conn.RemoteAddr().String()] = player
   gr.playerConnection = append(gr.playerConnection, conn)
   go gr.ListenToConnection(conn)
-  gr.logger.Infow("Payer added", "id", conn.RemoteAddr())
+  gr.logger.Infow("Payer joined", "id", conn.RemoteAddr())
 }
+
 
 func (gr *GameRoom) StartGame() {
   if len(gr.playerConnection) == gr.PlayerNumber {
@@ -66,18 +67,22 @@ func (gr *GameRoom) StartGame() {
           // process each player action
           Move(player, gr.board)
         }
-        encodedBoard := gr.board.RunLengthEncode()
-        for _, conn := range gr.playerConnection {
-          packet := shared.NewBoardPacket(encodedBoard)
-          data := packet.Serialize()
-          _, err := conn.Write(data)
-          if err != nil {
-            gr.logger.Warn("Player disconnect. Closing game")
-            // For now we stop the game
-            os.Exit(1)
-          }
-        }
+        gr.broadcastState()
       }
+    }
+  }
+}
+
+func (gr *GameRoom) broadcastState() {
+  encodedBoard := gr.board.RunLengthEncode()
+  for _, conn := range gr.playerConnection {
+    packet := shared.NewBoardPacket(encodedBoard)
+    data := packet.Serialize()
+    _, err := conn.Write(data)
+    if err != nil {
+      gr.logger.Warn("Player disconnect. Closing game")
+      // For now we stop the game
+      os.Exit(1)
     }
   }
 }
@@ -90,7 +95,6 @@ func (gr *GameRoom) HandleAction() {
         gr.logger.Info("Action channel closed, stopping action handling")
         return // Exit the loop if the channel is closed
       }
-
       gr.gameMutex.Lock()
       player, exists := gr.playerChar[actionMsg.ConnAddr]
       if exists {

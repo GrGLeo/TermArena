@@ -46,28 +46,34 @@ func (b *Board) PlaceAllWall(walls []WallPosition) {
   }
 }
 
-
-func(b *Board) RunLengthEncode() []byte {
+func (b *Board) RunLengthEncode() []byte {
   var rle []string
-  
-  for row := 0; row < len(b.Grid); row++ {
+
+  for _, row := range b.Grid {
+    var current Cell = Empty
     count := 0
-    for col := 1; col < len(b.Grid[row]); col++ {
-      if b.Grid[row][col] == b.Grid[row][col-1] {
+
+    for x, cell := range row {
+      if x == 0 {
+        current = cell
+        count = 1
+        continue
+      }
+
+      if cell == current {
         count++
       } else {
-        count += 1
-        rle = append(rle, fmt.Sprintf("%d:%d", b.Grid[row][col-1], count))
-        count = 0
+        rle = append(rle, fmt.Sprintf("%d:%d", current, count))
+        current = cell
+        count = 1
       }
     }
     if count > 0 {
-      count += 1
-      rle = append(rle, fmt.Sprintf("%d:%d", b.Grid[row][len(b.Grid[row])-1], count))
+      rle = append(rle, fmt.Sprintf("%d:%d", current, count))
     }
   }
-  rleString := strings.Join(rle, "|")
-  return []byte(rleString)
+
+  return []byte(strings.Join(rle, "|"))
 }
 
 

@@ -59,6 +59,38 @@ func TestMove(t *testing.T) {
 			expectedY: 10,
 			expectedGrid: createBoardWithPlayer(25, 10),
     },
+		{
+			name: "Wall collision left",
+			player: &Player{X: 36, Y: 15, Action: moveLeft, number: Player1},
+			board: &Board{Grid: createBoardWithPlayer(36, 15)},
+			expectedX: 36,
+			expectedY: 15,
+			expectedGrid: createBoardWithPlayer(36, 15),
+    },
+		{
+			name: "Wall collision right",
+			player: &Player{X: 34, Y: 15, Action: moveRight, number: Player1},
+			board: &Board{Grid: createBoardWithPlayer(34, 15)},
+			expectedX: 34,
+			expectedY: 15,
+			expectedGrid: createBoardWithPlayer(34, 15),
+    },
+		{
+			name: "Wall collision up",
+			player: &Player{X: 35, Y: 16, Action: moveUp, number: Player1},
+			board: &Board{Grid: createBoardWithPlayer(35, 16)},
+			expectedX: 35,
+			expectedY: 16,
+			expectedGrid: createBoardWithPlayer(35, 16),
+    },
+		{
+			name: "Wall collision down",
+			player: &Player{X: 35, Y: 14, Action: moveDown, number: Player1},
+			board: &Board{Grid: createBoardWithPlayer(35, 14)},
+			expectedX: 35,
+			expectedY: 14,
+      expectedGrid: createBoardWithPlayer(35, 14),
+    },
 	}
 
 	for _, tt := range tests {
@@ -85,6 +117,7 @@ func createBoardWithPlayer(x, y int) [20][50]Cell {
 			grid[i][j] = Empty
 		}
 	}
+  grid[15][35] = Wall
 	grid[y][x] = Player1
 	return grid
 }
