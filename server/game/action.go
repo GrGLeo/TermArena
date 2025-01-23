@@ -13,37 +13,26 @@ const (
   NoAction
 )
 
-func Move(p *Player, board *Board) {
-  maxY := len(board.Grid)
-  maxX := len(board.Grid[0])
-
+func (p *Player) Move(board *Board) {
   posX := p.X
   posY := p.Y
+  newX := p.X
+  newY := p.Y
+
   switch p.Action {
   case moveUp:
-    if posY >= 1 {
-      if board.Grid[posY - 1][posX] != Wall {
-        p.Y -= 1
-      }
-    }
+    newY--
   case moveDown:
-    if posY < maxY-1 {
-      if board.Grid[posY + 1][posX] != Wall {
-        p.Y += 1
-      }
-    }
+    newY++
   case moveLeft:
-    if posX >= 1 {
-      if board.Grid[posY][posX - 1] != Wall {
-        p.X -= 1
-      }
-    }
+    newX--
   case moveRight:
-    if posX < maxX-1 {
-      if board.Grid[posY][posX + 1] != Wall {
-        p.X += 1
-      }
-    }
+    newX++
+  }
+  valid := board.IsValidPosition(newX, newY)
+  if valid {
+    p.X = newX
+    p.Y = newY
   }
   // old position is cleared
   board.Grid[posY][posX] = 0

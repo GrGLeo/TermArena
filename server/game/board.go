@@ -30,6 +30,15 @@ func (b *Board) PlacePlayer(n int) {
   }
 }
 
+// Check if the position is within the grid bounds
+// And if the position is not a wall
+func (b *Board) IsValidPosition(x, y int) bool {
+	if y < 0 || y >= len(b.Grid) || x < 0 || x >= len(b.Grid[y]) {
+		return false
+	}
+	return b.Grid[y][x] != Wall
+}
+
 func (b *Board) PlaceWall(wall WallPosition) {
   ys,xs := wall.GetStartPos()
   ye,xe := wall.GetEndPos()

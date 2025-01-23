@@ -65,7 +65,7 @@ func (gr *GameRoom) StartGame() {
       case <- ticker.C:
         for _, player := range gr.playerChar {
           // process each player action
-          Move(player, gr.board)
+          player.Move(gr.board)
         }
         gr.broadcastState()
       }
