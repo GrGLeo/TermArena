@@ -1,7 +1,6 @@
 package model
 
 import (
-	"log"
 	"net"
 	"strings"
 
@@ -85,7 +84,6 @@ func (m GameModel) View() string {
     }
     builder.WriteString("\n") // New line at the end of each row
   }
-  log.Println(builder.String())
   return lipgloss.Place(
     m.width,
     m.height,
