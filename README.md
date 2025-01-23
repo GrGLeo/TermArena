@@ -57,6 +57,8 @@ To run the game locally, open two terminals:
 ```
 - Player collision are checked against walls, and walls can't be traversed.
 - The board refreshes every 50ms to reflect the latest player positions.
+- Two flag are placed in each team side. The player need to capture the enemy flag and bring it back  
+to his base.
 
 
 ## Server Details

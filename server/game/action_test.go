@@ -119,54 +119,53 @@ func TestMoveWithFlag(t *testing.T) {
 		PosY: 17,
 	}
 	tests := []struct {
-		name         string
-		player       *Player
-		board        *Board
-		flag         *Flag
-		expectedX    int
-		expectedY    int
+		name      string
+		player    *Player
+		board     *Board
+		flag      *Flag
+		expectedX int
+		expectedY int
 	}{
 		{
-			name:         "Flag follow up",
-			player:       &Player{X: 30, Y: 12, Action: moveUp, number: Player1, HasFlag: true, Flag: flag},
-			board:        &Board{Grid: createBoardWithPlayer(30, 12)},
-			flag:         flag,
-			expectedX:    30,
-			expectedY:    12,
+			name:      "Flag follow up",
+			player:    &Player{X: 30, Y: 12, Action: moveUp, number: Player1, HasFlag: true, Flag: flag},
+			board:     &Board{Grid: createBoardWithPlayer(30, 12)},
+			flag:      flag,
+			expectedX: 30,
+			expectedY: 12,
 		},
 		{
-			name:         "Flag follow down",
-			player:       &Player{X: 30, Y: 14, Action: moveDown, number: Player1, HasFlag: true, Flag: flag},
-			board:        &Board{Grid: createBoardWithPlayer(30, 14)},
-			flag:         flag,
-			expectedX:    30,
-			expectedY:    14,
+			name:      "Flag follow down",
+			player:    &Player{X: 30, Y: 14, Action: moveDown, number: Player1, HasFlag: true, Flag: flag},
+			board:     &Board{Grid: createBoardWithPlayer(30, 14)},
+			flag:      flag,
+			expectedX: 30,
+			expectedY: 14,
 		},
 		{
-			name:         "Flag follow left",
-			player:       &Player{X: 29, Y: 13, Action: moveLeft, number: Player1, HasFlag: true, Flag: flag},
-			board:        &Board{Grid: createBoardWithPlayer(29, 13)},
-			flag:         flag,
-			expectedX:    29,
-			expectedY:    13,
+			name:      "Flag follow left",
+			player:    &Player{X: 29, Y: 13, Action: moveLeft, number: Player1, HasFlag: true, Flag: flag},
+			board:     &Board{Grid: createBoardWithPlayer(29, 13)},
+			flag:      flag,
+			expectedX: 29,
+			expectedY: 13,
 		},
 		{
-			name:         "Flag follow right",
-			player:       &Player{X: 31, Y: 13, Action: moveRight, number: Player1, HasFlag: true, Flag: flag},
-			board:        &Board{Grid: createBoardWithPlayer(31, 13)},
-			flag:         flag,
-			expectedX:    31,
-			expectedY:    13,
+			name:      "Flag follow right",
+			player:    &Player{X: 31, Y: 13, Action: moveRight, number: Player1, HasFlag: true, Flag: flag},
+			board:     &Board{Grid: createBoardWithPlayer(31, 13)},
+			flag:      flag,
+			expectedX: 31,
+			expectedY: 13,
 		},
 		{
-			name:         "Flag follow up with wall",
-			player:       &Player{X: 35, Y: 16, Action: moveUp, number: Player1, HasFlag: true, Flag: flagWall},
-			board:        &Board{Grid: createBoardWithPlayer(35, 16)},
-			flag:         flagWall,
-			expectedX:    35,
-			expectedY:    17,
+			name:      "Flag follow up with wall",
+			player:    &Player{X: 35, Y: 16, Action: moveUp, number: Player1, HasFlag: true, Flag: flagWall},
+			board:     &Board{Grid: createBoardWithPlayer(35, 16)},
+			flag:      flagWall,
+			expectedX: 35,
+			expectedY: 17,
 		},
-
 	}
 
 	for _, tt := range tests {
