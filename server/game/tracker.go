@@ -1,0 +1,23 @@
+package game
+
+type Delta struct {
+	X     int
+	Y     int
+	Value Cell
+}
+
+type ChangeTracker struct {
+	Deltas []Delta
+}
+
+func (ct *ChangeTracker) ApplyDelta(x, y int, value Cell) {
+  ct.Deltas = append(ct.Deltas, Delta{X: x, Y: y, Value: value})
+}
+
+func (ct *ChangeTracker) GetDeltas() []Delta {
+  return ct.Deltas
+}
+
+func (ct *ChangeTracker) Reset() {
+  ct.Deltas = nil
+}
