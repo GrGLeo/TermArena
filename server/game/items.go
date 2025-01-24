@@ -10,10 +10,10 @@ type Flag struct {
 }
 
 func (f *Flag) Move(x, y int, board *Board) {
-	board.Grid[f.PosY][f.PosX] = Empty
+	board.CurrentGrid[f.PosY][f.PosX] = Empty
 	f.PosX = x
 	f.PosY = y
-	board.Grid[y][x] = f.TeamId
+	board.CurrentGrid[y][x] = f.TeamId
 }
 
 func (f *Flag) SetBase() {

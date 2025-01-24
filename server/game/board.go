@@ -21,28 +21,24 @@ const (
 )
 
 type Board struct {
-  Grid [20][50]Cell
+  CurrentGrid [20][50]Cell
+  PastGrid [20][50]Cell
   Flags []*Flag
+  Players []*Player
 }
 
 func Init() *Board {
   return &Board{}
 }
 
-func (b *Board) PlacePlayer(n int) {
-  switch n {
-  case 0:
-    b.Grid[6][1] = Player1
-  }
-}
 
 // Check if the position is within the grid bounds
 // And if the position is not a wall
 func (b *Board) IsValidPosition(x, y int) bool {
-	if y < 0 || y >= len(b.Grid) || x < 0 || x >= len(b.Grid[y]) {
+	if y < 0 || y >= len(b.CurrentGrid) || x < 0 || x >= len(b.CurrentGrid[y]) {
 		return false
 	}
-	return b.Grid[y][x] != Wall
+	return b.CurrentGrid[y][x] != Wall
 }
 
 func (b *Board) CheckFlagCaptured(team, y, x int) *Flag {
@@ -76,13 +72,34 @@ func (b *Board) CheckFlagWon(team, y, x int) bool {
 MANAGE ALL CELLS PLACEMENT
 */
 
+// Inital Player placement
+func (b *Board) PlacePlayer(player *Player) {
+  switch player.number {
+  case 0:
+    b.PastGrid[player.Y][player.X] = Player1
+  case 1:
+    b.PastGrid[player.Y][player.X] = Player2
+  case 2:
+    b.PastGrid[player.Y][player.X] = Player3
+  case 3:
+    b.PastGrid[player.Y][player.X] = Player4
+  }
+}
+
+func (b *Board) PlaceAllPlayers(players []*Player) {
+  for _, player := range players {
+    b.PlacePlayer(player)
+  }
+  b.Players = players
+}
+
 // Initial wall placement
 func (b *Board) PlaceWall(wall WallPosition) {
   ys,xs := wall.GetStartPos()
   ye,xe := wall.GetEndPos()
   for i := ys; i <= ye; i++ {
     for j := xs; j <= xe; j++ {
-      b.Grid[i][j] = Wall
+      b.PastGrid[i][j] = Wall
     }
   }
 }
@@ -98,9 +115,9 @@ func (b *Board) PlaceAllWalls(walls []WallPosition) {
 func (b *Board) PlaceFlag(flag *Flag) {
   posY, posX := flag.GetBase()
   if flag.TeamId == 6 {
-    b.Grid[posY][posX] = Flag1
+    b.PastGrid[posY][posX] = Flag1
   } else {
-    b.Grid[posY][posX] = Flag2
+    b.PastGrid[posY][posX] = Flag2
   }
 }
 
@@ -116,7 +133,7 @@ func (b *Board) PlaceAllFlags(flags []*Flag) {
 func (b *Board) RunLengthEncode() []byte {
   var rle []string
 
-  for _, row := range b.Grid {
+  for _, row := range b.CurrentGrid {
     var current Cell = Empty
     count := 0
 
@@ -151,23 +168,29 @@ MANAGE MAP FROM CONFIG
 type ConfigJSON struct {
   Walls []WallPosition `json:"walls"`
   Flag []Flag `json:"flags"`
+  Player []Player `json:"players"`
 }
 
 // Read from a config file to get all walls placement
-func LoadConfig(filename string) ([]WallPosition, []*Flag, error) {
+func LoadConfig(filename string) ([]WallPosition, []*Flag, []*Player, error) {
   var configJSON ConfigJSON
   file, err := os.ReadFile(filename)
   if err != nil {
-    return nil, nil, err
+    return nil, nil, nil, err
   }
   err = json.Unmarshal(file, &configJSON)
   if err != nil {
-    return nil, nil, err
+    return nil, nil, nil, err
   }
 
   flagPtrs := make([]*Flag, len(configJSON.Flag))
   for i := range configJSON.Flag {
     flagPtrs[i] = &configJSON.Flag[i]
   }
-  return configJSON.Walls, flagPtrs, nil
+
+  playerPtrs := make([]*Player, len(configJSON.Player))
+  for i := range configJSON.Player {
+    playerPtrs[i] = &configJSON.Player[i]
+  }
+  return configJSON.Walls, flagPtrs, playerPtrs, nil
 }

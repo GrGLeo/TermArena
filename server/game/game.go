@@ -32,15 +32,13 @@ func NewGameRoom(number int, logger *zap.SugaredLogger) *GameRoom {
   }
   // Place walls on map
   // if any error occur we skip the walls placement
-  walls, flags, err := LoadConfig("server/game/config.json")
+  walls, flags, players, err := LoadConfig("server/game/config.json")
   if err != nil {
     gr.logger.Warnw("Error while reading the config", "error", err.Error())
   } else {
     gr.board.PlaceAllWalls(walls)
     gr.board.PlaceAllFlags(flags)
-  }
-  for n := range number {
-    gr.board.PlacePlayer(n)
+    gr.board.PlaceAllPlayers(players)
   }
   return &gr
 }
@@ -49,7 +47,7 @@ func (gr *GameRoom) AddPlayer(conn *net.TCPConn) {
   gr.gameMutex.Lock()
   defer gr.gameMutex.Unlock()
   playerNumber := len(gr.playerConnection)
-  player := NewPlayer(playerNumber)
+  player := gr.board.Players[playerNumber]
   gr.playerChar[conn.RemoteAddr().String()] = player
   gr.playerConnection = append(gr.playerConnection, conn)
   go gr.ListenToConnection(conn)

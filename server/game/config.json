@@ -26,5 +26,31 @@
       "posY": 10,
       "is_captured": false
     }
+  ],
+  "players": [
+    {
+      "number": 0,
+      "teamID":6,
+      "posX": 1,
+      "posY": 6
+    },
+    {
+      "number": 1,
+      "teamID":6,
+      "posX": 1,
+      "posY": 14
+    },
+    {
+      "number": 2,
+      "teamID":7,
+      "posX": 48,
+      "posY": 6
+    },
+    {
+      "number": 3,
+      "teamID":7,
+      "posX": 48,
+      "posY": 14
+    }
   ]
 }

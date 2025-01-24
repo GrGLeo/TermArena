@@ -34,14 +34,14 @@ func (p *Player) Move(board *Board) {
     p.Y = newY
   }
   // old position is cleared
-  board.Grid[posY][posX] = 0
+  board.CurrentGrid[posY][posX] = 0
   // moving the char on the board
-  board.Grid[p.Y][p.X] = p.number
+  board.CurrentGrid[p.Y][p.X] = p.number
   // Check if flag is attached and need to move
   if p.HasFlag {
     if board.CheckFlagWon(p.TeamID, p.Y, p.X) {
       // We need to reset the flag pos.
-      board.Grid[p.Flag.PosY][p.Flag.PosX] = Empty
+      board.CurrentGrid[p.Flag.PosY][p.Flag.PosX] = Empty
       p.Flag.ResetPos()
       p.HasFlag = false
       p.Flag = nil
