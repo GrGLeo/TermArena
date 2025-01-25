@@ -41,10 +41,11 @@ func (p *Player) Move(board *Board) {
   if p.HasFlag {
     if board.CheckFlagWon(p.TeamID, p.Y, p.X) {
       // We need to reset the flag pos.
-      board.CurrentGrid[p.Flag.PosY][p.Flag.PosX] = Empty
+      board.Tracker.SaveDelta(p.Flag.PosX, p.Flag.PosY, Empty)
       p.Flag.ResetPos()
       p.HasFlag = false
       p.Flag = nil
+      p.Action = NoAction 
     } else if p.X != posX || p.Y != posY {
       p.Flag.Move(posX, posY, board)
       p.Action = NoAction 

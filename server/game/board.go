@@ -39,6 +39,10 @@ func InitBoard(walls []WallPosition, flags []*Flag, players []*Player) *Board {
   return &board
 }
 
+/*
+GAME LOGIC
+*/
+
 // Check if the position is within the grid bounds
 // And if the position is not a wall
 func (b *Board) IsValidPosition(x, y int) bool {
@@ -67,8 +71,9 @@ func (b *Board) CheckFlagWon(team, y, x int) bool {
 		// Check if flag is won
 		if int(flag.TeamId) == team && posX == x && posY == y {
 			// I need to replace the other enemy flag
-			enemyFalg := (i + 1) % 2
-			b.PlaceFlag(b.Flags[enemyFalg])
+			enemyFalgIdx := (i + 1) % 2
+      enemyFalg := b.Flags[enemyFalgIdx]
+      b.Tracker.SaveDelta(enemyFalg.baseX, enemyFalg.baseY, enemyFalg.TeamId)
 			return true
 		}
 	}
@@ -83,7 +88,6 @@ func (b *Board) Update() {
   b.mu.Lock()
   defer b.mu.Unlock()
 	for _, delta := range b.Tracker.GetDeltas() {
-    fmt.Printf("%+v\n", delta)
 		b.CurrentGrid[delta.Y][delta.X] = delta.Value
 	}
 	b.PastGrid = b.CurrentGrid
@@ -126,7 +130,6 @@ func (b *Board) PlacePlayer(player *Player) {
 
 func (b *Board) PlaceAllPlayers(players []*Player) {
 	for _, player := range players {
-    fmt.Printf("%+v\n", player)
 		b.PlacePlayer(player)
 	}
 	b.Players = players

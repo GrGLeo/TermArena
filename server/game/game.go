@@ -1,7 +1,6 @@
 package game
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"sync"
@@ -48,7 +47,6 @@ func (gr *GameRoom) AddPlayer(conn *net.TCPConn) {
   defer gr.gameMutex.Unlock()
   playerNumber := len(gr.playerConnection)
   player := gr.board.Players[playerNumber]
-  fmt.Printf("%+v\n", player)
   gr.playerChar[conn.RemoteAddr().String()] = player
   gr.playerConnection = append(gr.playerConnection, conn)
   go gr.ListenToConnection(conn)
@@ -66,7 +64,6 @@ func (gr *GameRoom) StartGame() {
       select {
       case <- ticker.C:
         for _, player := range gr.playerChar {
-          fmt.Printf("%+v\n", player)
           // process each player action
           player.Move(gr.board)
         }

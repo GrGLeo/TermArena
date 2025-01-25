@@ -1,7 +1,5 @@
 package game
 
-import "fmt"
-
 
 type Delta struct {
 	X     int
@@ -14,7 +12,6 @@ type ChangeTracker struct {
 }
 
 func (ct *ChangeTracker) SaveDelta(x, y int, value Cell) {
-  fmt.Println(x, y, value)
   ct.Deltas = append(ct.Deltas, Delta{X: x, Y: y, Value: value})
 }
 
