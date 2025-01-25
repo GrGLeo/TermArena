@@ -47,6 +47,7 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
     if err != nil {
       return
     }
+    log.Printf("%+v\n", message)
     switch msg := message.(type) {
     case *shared.RespPacket:
       msgs <- ResponseMsg{Code: msg.Code()}
@@ -56,6 +57,9 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
         log.Print(err.Error())
       }
       msgs <- BoardMsg{Board: board}
+    case *shared.DeltaPacket:
+      deltas := DecodeDeltas(msg.Deltas)
+      msgs <- DeltaMsg{Deltas: deltas}
     default:
       log.Printf("Unknown type: %T\n", message)
       msgs <- GamePacketMsg{Packet: buf[:n]}

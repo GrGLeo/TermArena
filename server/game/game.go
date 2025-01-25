@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/GrGLeo/ctf/shared"
@@ -14,6 +15,7 @@ import (
 type GameRoom struct {
   PlayerNumber int
   board *Board
+  tickID atomic.Int32
   actions []actionType
   playerConnection []*net.TCPConn
   playerChar map[string]*Player
@@ -25,22 +27,19 @@ type GameRoom struct {
 func NewGameRoom(number int, logger *zap.SugaredLogger) *GameRoom {
   gr := GameRoom{
     PlayerNumber: number,
-    board: Init(),
     logger: logger,
     actionChan: make(chan *ActionMsg),
     playerChar: make(map[string]*Player),
   }
   // Place walls on map
   // if any error occur we skip the walls placement
-  walls, flags, err := LoadConfig("server/game/config.json")
+  walls, flags, players, err := LoadConfig("server/game/config.json")
+  gr.logger.Infof("%+v\n", *players[0])
   if err != nil {
     gr.logger.Warnw("Error while reading the config", "error", err.Error())
   } else {
-    gr.board.PlaceAllWalls(walls)
-    gr.board.PlaceAllFlags(flags)
-  }
-  for n := range number {
-    gr.board.PlacePlayer(n)
+    board := InitBoard(walls, flags, players) 
+    gr.board = board
   }
   return &gr
 }
@@ -49,9 +48,19 @@ func (gr *GameRoom) AddPlayer(conn *net.TCPConn) {
   gr.gameMutex.Lock()
   defer gr.gameMutex.Unlock()
   playerNumber := len(gr.playerConnection)
-  player := NewPlayer(playerNumber)
+  player := gr.board.Players[playerNumber]
   gr.playerChar[conn.RemoteAddr().String()] = player
   gr.playerConnection = append(gr.playerConnection, conn)
+  // Send the initial grid to the player
+  grid := gr.board.GetCurrentGrid()
+  encodedBoard := RunLengthEncode(grid)
+  packet := shared.NewBoardPacket(encodedBoard)
+  data := packet.Serialize()
+  _, err := conn.Write(data)
+  if err != nil {
+    gr.logger.Warnw("Failed to send initial board to player", "id", conn.RemoteAddr(), "error", err)
+    return
+  }
   go gr.ListenToConnection(conn)
   gr.logger.Infow("Payer joined", "id", conn.RemoteAddr())
 }
@@ -66,21 +75,38 @@ func (gr *GameRoom) StartGame() {
     for {
       select {
       case <- ticker.C:
+        gr.tickID.Add(1)
         for _, player := range gr.playerChar {
           // process each player action
           player.Move(gr.board)
         }
+        gr.board.Update()
         gr.broadcastState()
       }
     }
   }
 }
 
+
 func (gr *GameRoom) broadcastState() {
-  encodedBoard := gr.board.RunLengthEncode()
-  for _, conn := range gr.playerConnection {
+  var data []byte
+  grid := gr.board.GetCurrentGrid()
+  deltas := gr.board.Tracker.GetDeltasByte()
+  defer gr.board.Tracker.Reset()
+  // Check if full board needs to be resend
+  totalCells := len(grid) * len(grid[0])
+  // If more than 50% of the board has change we resend the board
+  if len(deltas) > totalCells / 2 {
+    gr.logger.Infoln("Sending back full board")
+    encodedBoard := RunLengthEncode(grid)
     packet := shared.NewBoardPacket(encodedBoard)
-    data := packet.Serialize()
+    data = packet.Serialize()
+  } else {
+    tickID := uint32(gr.tickID.Load())
+    packet := shared.NewDeltaPacket(tickID, deltas)
+    data = packet.Serialize()
+  }
+  for _, conn := range gr.playerConnection {
     _, err := conn.Write(data)
     if err != nil {
       gr.logger.Warn("Player disconnect. Closing game")

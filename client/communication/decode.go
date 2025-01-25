@@ -6,17 +6,17 @@ import (
 	"strings"
 )
 
-/*
-DecodeRLE decodes a Run-Length Encoded (RLE) byte slice into a 20x50 integer grid.
-
-The input RLE format is expected to be a slice of byte where each segment consists of a value and a count, separated by a colon (":"),
-
-and multiple segments are separated by a pipe ("|").
-
-For example, "1:10|0:40" represents 10 occurrences of the value 1 followed by 40 occurrences of the value 0.
-
-This function returns the decoded 20x50 grid or an error if the decoding process fails.
-*/
+// DecodeRLE decodes a Run-Length Encoded (RLE) byte slice into a 20x50 grid of integers.
+//
+// The RLE format consists of pairs of "value:count" separated by "|". Each pair represents
+// a value repeated 'count' times in the grid.
+//
+// Parameters:
+//   - rle: A byte slice containing the RLE-encoded data.
+//
+// Returns:
+//   - A 20x50 grid of integers representing the decoded data.
+//   - An error if the RLE data is malformed or cannot be decoded.
 func DecodeRLE(rle []byte) ([20][50]int, error) {
   parts := strings.Split(string(rle), "|") 
   var decoded []int
@@ -45,4 +45,25 @@ func DecodeRLE(rle []byte) ([20][50]int, error) {
   }
 
   return grid, nil
+}
+
+
+// DecodeDeltas converts a slice of 3-byte arrays into a slice of 3-integer arrays.
+// Each 3-byte array represents a delta with the following format:
+//   - delta[0]: X-coordinate (byte)
+//   - delta[1]: Y-coordinate (byte)
+//   - delta[2]: Value (byte)
+//
+// Parameters:
+//   - deltas: A slice of 3-byte arrays, where each array represents a delta.
+//
+// Returns:
+//   - A slice of 3-integer arrays, where each array contains the decoded X, Y, and Value.
+func DecodeDeltas(deltas [][3]byte) [][3]int {
+  var decodedDeltas [][3]int 
+  for _, delta := range deltas {
+    decodedDelta := [3]int{int(delta[0]), int(delta[1]), int(delta[2])}
+    decodedDeltas = append(decodedDeltas, decodedDelta)
+  }
+  return decodedDeltas
 }

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"log"
 	"net"
 	"strings"
 
@@ -11,7 +10,7 @@ import (
 )
 
 type GameModel struct {
-  board [20][50]int
+  currentBoard [20][50]int
   conn *net.TCPConn
   height, width int
 }
@@ -39,7 +38,10 @@ func (m *GameModel) SetConnection (conn *net.TCPConn) {
 func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
   switch msg := msg.(type) {
   case communication.BoardMsg:
-    m.board = msg.Board
+    m.currentBoard = msg.Board
+  case communication.DeltaMsg:
+    ApplyDeltas(msg.Deltas, &m.currentBoard)
+    return m, nil
   case tea.KeyMsg:
     switch msg.Type {
     case tea.KeyCtrlC, tea.KeyEsc:
@@ -47,16 +49,16 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     }
     switch msg.String() {
     case "w":
-      communication.SendAction(m.conn,0)
-      return m, nil
-    case "s":
       communication.SendAction(m.conn,1)
       return m, nil
-    case "a":
+    case "s":
       communication.SendAction(m.conn,2)
       return m, nil
-    case "d":
+    case "a":
       communication.SendAction(m.conn,3)
+      return m, nil
+    case "d":
+      communication.SendAction(m.conn,4)
       return m, nil
     }
   }
@@ -72,10 +74,9 @@ func (m GameModel) View() string {
   Flag2Style := lipgloss.NewStyle().Background(lipgloss.Color("94"))
 
   var builder strings.Builder
-  log.Println(m.board)
 
   // Iterate through the board and apply styles
-  for _, row := range m.board {
+  for _, row := range m.currentBoard {
     for _, cell := range row {
       switch cell {
       case 0:
@@ -91,9 +92,9 @@ func (m GameModel) View() string {
       case 5:
         builder.WriteString(blueStyle.Render(" ")) // Render blue for player4
       case 6:
-        builder.WriteString(Flag1Style.Render(" ")) // Render blue for flag1
+        builder.WriteString(Flag1Style.Render(" ")) // Render for flag1
       case 7:
-        builder.WriteString(Flag2Style.Render(" ")) // Render blue for flag2
+        builder.WriteString(Flag2Style.Render(" ")) // Render for flag2
       }
     }
     builder.WriteString("\n") // New line at the end of each row
@@ -105,4 +106,13 @@ func (m GameModel) View() string {
     lipgloss.Center,
     builder.String(),
   )
+}
+
+func ApplyDeltas(deltas [][3]int, currentBoard *[20][50]int){
+  for _, delta := range deltas {
+    x := delta[0]
+    y := delta[1]
+    value := delta[2]
+    currentBoard[y][x] = value
+  }
 }

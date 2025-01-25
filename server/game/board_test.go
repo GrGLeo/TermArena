@@ -12,9 +12,9 @@ import (
 func TestRunLengthEncode(t *testing.T) {
   // First test set up
   gridOne := game.Board{}
-  for i := 0; i < len(gridOne.Grid); i++ {
-    for j := 0; j < len(gridOne.Grid[i]); j++ {
-      gridOne.Grid[i][j] = 1
+  for i := 0; i < len(gridOne.CurrentGrid); i++ {
+    for j := 0; j < len(gridOne.CurrentGrid[i]); j++ {
+      gridOne.CurrentGrid[i][j] = 1
     } 
   }
   stringOne := []string{}
@@ -25,12 +25,12 @@ func TestRunLengthEncode(t *testing.T) {
   
   // Second test set up
   gridSec := game.Board{}
-  for i := 0; i < len(gridSec.Grid); i++ {
-    for j := 0; j < len(gridSec.Grid[i]); j++ {
+  for i := 0; i < len(gridSec.CurrentGrid); i++ {
+    for j := 0; j < len(gridSec.CurrentGrid[i]); j++ {
       if j % 5 == 0 {
-        gridSec.Grid[i][j] = 1
+        gridSec.CurrentGrid[i][j] = 1
       } else {
-        gridSec.Grid[i][j] = 2
+        gridSec.CurrentGrid[i][j] = 2
       }
     }
   }
@@ -78,7 +78,7 @@ func TestRunLengthEncode(t *testing.T) {
 		{
 			name: "Mixed values row",
 			board: game.Board{
-				Grid: gridThree,
+				CurrentGrid: gridThree,
       },
 			expected: expectedThree,
 		},
@@ -86,7 +86,7 @@ func TestRunLengthEncode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.board.RunLengthEncode()
+			result := game.RunLengthEncode(tt.board.GetCurrentGrid())
 			if string(result) != tt.expected {
 				t.Errorf("expected\n %q, got\n %q", tt.expected, result)
 			}
@@ -166,10 +166,10 @@ func TestWallPlacement(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.board.PlaceWall(tt.wallPosition)
-			for i := 0; i < len(tt.board.Grid); i++ {
-				for j := 0; j < len(tt.board.Grid[i]); j++ {
-					if tt.board.Grid[i][j] != tt.expectedGrid[i][j] {
-						t.Errorf("Mismatch at Grid[%d][%d]: got %v, want %v", i, j, tt.board.Grid[i][j], tt.expectedGrid[i][j])
+			for i := 0; i < len(tt.board.PastGrid); i++ {
+				for j := 0; j < len(tt.board.PastGrid[i]); j++ {
+					if tt.board.PastGrid[i][j] != tt.expectedGrid[i][j] {
+						t.Errorf("Mismatch at CurrentGrid[%d][%d]: got %v, want %v", i, j, tt.board.CurrentGrid[i][j], tt.expectedGrid[i][j])
 					}
 				}
 			}
@@ -178,21 +178,20 @@ func TestWallPlacement(t *testing.T) {
 }
 
 func TestPlaceAllWall(t *testing.T) {
-  b := game.Init()
   walls := []game.WallPosition{
     {StartPos: [2]int{0, 0}, EndPos: [2]int{0, 0}}, // Single cell
     {StartPos: [2]int{5, 5}, EndPos: [2]int{5, 10}}, // Horizontal wall
   }
-  b.PlaceAllWalls(walls)
+  b := game.InitBoard(walls, []*game.Flag{},[]*game.Player{})
 
   // Check single-cell wall
-  if b.Grid[0][0] != game.Wall {
+  if b.CurrentGrid[0][0] != game.Wall {
     t.Error("Wall not placed at (0,0)")
   }
 
   // Check horizontal wall
   for x := 5; x <= 10; x++ {
-    if b.Grid[5][x] != game.Wall {
+    if b.CurrentGrid[5][x] != game.Wall {
       t.Errorf("Wall not placed at (5, %d)", x)
     }
   }

@@ -32,6 +32,10 @@ type BoardMsg struct {
   Board [20][50]int
 }
 
+type DeltaMsg struct {
+  Deltas [][3]int
+}
+
 // ConnectionMsg to pass the connection to meta model
 type ConnectionMsg struct {
     Conn *net.TCPConn

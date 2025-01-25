@@ -1,109 +1,134 @@
 package game
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestMove(t *testing.T) {
 	tests := []struct {
-		name         string
-		player       *Player
-		board        *Board
-		expectedX    int
-		expectedY    int
-		expectedGrid [20][50]Cell
+		name           string
+		player         *Player
+		board          *Board
+		expectedX      int
+		expectedY      int
+		expectedPlayer *Player
+		expectedDeltas []Delta // Expected deltas after the move
 	}{
 		{
-			name:         "Move Up",
-			player:       &Player{X: 25, Y: 10, Action: moveUp, number: Player1},
-			board:        &Board{Grid: createBoardWithPlayer(25, 10)},
-			expectedX:    25,
-			expectedY:    9,
-			expectedGrid: createBoardWithPlayer(25, 9),
+			name:   "Move Up",
+			player: &Player{X: 25, Y: 10, Action: moveUp, Number: Player1},
+			board:  &Board{PastGrid: createBoardWithPlayer(25, 10), Tracker: ChangeTracker{}},
+			expectedX:      25,
+			expectedY:      9,
+			expectedPlayer: &Player{X: 25, Y: 9, Number: Player1},
+			expectedDeltas: []Delta{
+				{X: 25, Y: 10, Value: 0}, // Clear old position
+				{X: 25, Y: 9, Value: 2},  // Set new position (assuming Player1 is represented by 1)
+			},
 		},
 		{
-			name:         "Move Down at Bottom Edge",
-			player:       &Player{X: 25, Y: 19, Action: moveDown, number: Player1},
-			board:        &Board{Grid: createBoardWithPlayer(25, 19)},
-			expectedX:    25,
-			expectedY:    19,
-			expectedGrid: createBoardWithPlayer(25, 19),
+			name:   "Move Down at Bottom Edge",
+			player: &Player{X: 25, Y: 19, Action: moveDown, Number: Player1},
+			board:  &Board{PastGrid: createBoardWithPlayer(25, 19), Tracker: ChangeTracker{}},
+			expectedX:      25,
+			expectedY:      19,
+			expectedPlayer: &Player{X: 25, Y: 19, Number: Player1},
+			expectedDeltas: []Delta{}, // No deltas because the player didn't move
 		},
 		{
-			name:         "Move Left",
-			player:       &Player{X: 25, Y: 10, Action: moveLeft, number: Player1},
-			board:        &Board{Grid: createBoardWithPlayer(25, 10)},
-			expectedX:    24,
-			expectedY:    10,
-			expectedGrid: createBoardWithPlayer(24, 10)},
-		{
-			name:         "Move Right at Right Edge",
-			player:       &Player{X: 49, Y: 10, Action: moveRight, number: Player1},
-			board:        &Board{Grid: createBoardWithPlayer(49, 10)},
-			expectedX:    49,
-			expectedY:    10,
-			expectedGrid: createBoardWithPlayer(49, 10),
+			name:   "Move Left",
+			player: &Player{X: 25, Y: 10, Action: moveLeft, Number: Player1},
+			board:  &Board{PastGrid: createBoardWithPlayer(25, 10), Tracker: ChangeTracker{}},
+			expectedX:      24,
+			expectedY:      10,
+			expectedPlayer: &Player{X: 24, Y: 10, Number: Player1},
+			expectedDeltas: []Delta{
+				{X: 25, Y: 10, Value: 0}, // Clear old position
+				{X: 24, Y: 10, Value: 2}, // Set new position
+			},
 		},
 		{
-			name:         "No Action",
-			player:       &Player{X: 25, Y: 10, Action: NoAction, number: Player1},
-			board:        &Board{Grid: createBoardWithPlayer(25, 10)},
-			expectedX:    25,
-			expectedY:    10,
-			expectedGrid: createBoardWithPlayer(25, 10),
+			name:   "Move Right at Right Edge",
+			player: &Player{X: 49, Y: 10, Action: moveRight, Number: Player1},
+			board:  &Board{PastGrid: createBoardWithPlayer(49, 10), Tracker: ChangeTracker{}},
+			expectedX:      49,
+			expectedY:      10,
+			expectedPlayer: &Player{X: 49, Y: 10, Number: Player1},
+			expectedDeltas: []Delta{}, // No deltas because the player didn't move
 		},
 		{
-			name:         "Invalid Action",
-			player:       &Player{X: 25, Y: 10, Action: actionType(999), number: Player1},
-			board:        &Board{Grid: createBoardWithPlayer(25, 10)},
-			expectedX:    25,
-			expectedY:    10,
-			expectedGrid: createBoardWithPlayer(25, 10),
+			name:   "No Action",
+			player: &Player{X: 25, Y: 10, Action: NoAction, Number: Player1},
+			board:  &Board{PastGrid: createBoardWithPlayer(25, 10), Tracker: ChangeTracker{}},
+			expectedX:      25,
+			expectedY:      10,
+			expectedPlayer: &Player{X: 25, Y: 10, Number: Player1},
+			expectedDeltas: []Delta{}, // No deltas because no action was taken
 		},
 		{
-			name:         "Wall collision left",
-			player:       &Player{X: 36, Y: 15, Action: moveLeft, number: Player1},
-			board:        &Board{Grid: createBoardWithPlayer(36, 15)},
-			expectedX:    36,
-			expectedY:    15,
-			expectedGrid: createBoardWithPlayer(36, 15),
+			name:   "Invalid Action",
+			player: &Player{X: 25, Y: 10, Action: actionType(999), Number: Player1},
+			board:  &Board{PastGrid: createBoardWithPlayer(25, 10), Tracker: ChangeTracker{}},
+			expectedX:      25,
+			expectedY:      10,
+			expectedPlayer: &Player{X: 25, Y: 10, Number: Player1},
+			expectedDeltas: []Delta{}, // No deltas because the action was invalid
 		},
 		{
-			name:         "Wall collision right",
-			player:       &Player{X: 34, Y: 15, Action: moveRight, number: Player1},
-			board:        &Board{Grid: createBoardWithPlayer(34, 15)},
-			expectedX:    34,
-			expectedY:    15,
-			expectedGrid: createBoardWithPlayer(34, 15),
+			name:   "Wall collision left",
+			player: &Player{X: 36, Y: 15, Action: moveLeft, Number: Player1},
+			board:  &Board{PastGrid: createBoardWithPlayer(36, 15), Tracker: ChangeTracker{}},
+			expectedX:      36,
+			expectedY:      15,
+			expectedPlayer: &Player{X: 36, Y: 15, Number: Player1},
+			expectedDeltas: []Delta{}, // No deltas because the player didn't move
 		},
 		{
-			name:         "Wall collision up",
-			player:       &Player{X: 35, Y: 16, Action: moveUp, number: Player1},
-			board:        &Board{Grid: createBoardWithPlayer(35, 16)},
-			expectedX:    35,
-			expectedY:    16,
-			expectedGrid: createBoardWithPlayer(35, 16),
+			name:   "Wall collision right",
+			player: &Player{X: 34, Y: 15, Action: moveRight, Number: Player1},
+			board:  &Board{PastGrid: createBoardWithPlayer(34, 15), Tracker: ChangeTracker{}},
+			expectedX:      34,
+			expectedY:      15,
+			expectedPlayer: &Player{X: 34, Y: 15, Number: Player1},
+			expectedDeltas: []Delta{}, // No deltas because the player didn't move
 		},
 		{
-			name:         "Wall collision down",
-			player:       &Player{X: 35, Y: 14, Action: moveDown, number: Player1},
-			board:        &Board{Grid: createBoardWithPlayer(35, 14)},
-			expectedX:    35,
-			expectedY:    14,
-			expectedGrid: createBoardWithPlayer(35, 14),
+			name:   "Wall collision up",
+			player: &Player{X: 35, Y: 16, Action: moveUp, Number: Player1},
+			board:  &Board{PastGrid: createBoardWithPlayer(35, 16), Tracker: ChangeTracker{}},
+			expectedX:      35,
+			expectedY:      16,
+			expectedPlayer: &Player{X: 35, Y: 16, Number: Player1},
+			expectedDeltas: []Delta{}, // No deltas because the player didn't move
+		},
+		{
+			name:   "Wall collision down",
+			player: &Player{X: 35, Y: 14, Action: moveDown, Number: Player1},
+			board:  &Board{PastGrid: createBoardWithPlayer(35, 14), Tracker: ChangeTracker{}},
+			expectedX:      35,
+			expectedY:      14,
+			expectedPlayer: &Player{X: 35, Y: 14, Number: Player1},
+			expectedDeltas: []Delta{}, // No deltas because the player didn't move
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Reset the tracker before each test
+			tt.board.Tracker.Reset()
+
+			// Perform the move
 			tt.player.Move(tt.board)
+
+			// Check the player's position
 			if tt.player.X != tt.expectedX || tt.player.Y != tt.expectedY {
 				t.Errorf("Move() = %v, %v; want %v, %v", tt.player.X, tt.player.Y, tt.expectedX, tt.expectedY)
 			}
-			for y, row := range tt.board.Grid {
-				for x, val := range row {
-					if val != tt.expectedGrid[y][x] {
-						t.Errorf("Grid[%d][%d] = %v; want %v", y, x, val, tt.expectedGrid[y][x])
-					}
-				}
+
+			// Check the deltas in the tracker
+			actualDeltas := tt.board.Tracker.GetDeltas()
+			if !compareDeltas(actualDeltas, tt.expectedDeltas) {
+				t.Errorf("Deltas = %v; want %v", actualDeltas, tt.expectedDeltas)
 			}
 		})
 	}
@@ -128,40 +153,40 @@ func TestMoveWithFlag(t *testing.T) {
 	}{
 		{
 			name:      "Flag follow up",
-			player:    &Player{X: 30, Y: 12, Action: moveUp, number: Player1, HasFlag: true, Flag: flag},
-			board:     &Board{Grid: createBoardWithPlayer(30, 12)},
+			player:    &Player{X: 30, Y: 12, Action: moveUp, Number: Player1, HasFlag: true, Flag: flag},
+			board:     &Board{PastGrid: createBoardWithPlayer(30, 12)},
 			flag:      flag,
 			expectedX: 30,
 			expectedY: 12,
 		},
 		{
 			name:      "Flag follow down",
-			player:    &Player{X: 30, Y: 14, Action: moveDown, number: Player1, HasFlag: true, Flag: flag},
-			board:     &Board{Grid: createBoardWithPlayer(30, 14)},
+			player:    &Player{X: 30, Y: 14, Action: moveDown, Number: Player1, HasFlag: true, Flag: flag},
+			board:     &Board{PastGrid: createBoardWithPlayer(30, 14)},
 			flag:      flag,
 			expectedX: 30,
 			expectedY: 14,
 		},
 		{
 			name:      "Flag follow left",
-			player:    &Player{X: 29, Y: 13, Action: moveLeft, number: Player1, HasFlag: true, Flag: flag},
-			board:     &Board{Grid: createBoardWithPlayer(29, 13)},
+			player:    &Player{X: 29, Y: 13, Action: moveLeft, Number: Player1, HasFlag: true, Flag: flag},
+			board:     &Board{PastGrid: createBoardWithPlayer(29, 13)},
 			flag:      flag,
 			expectedX: 29,
 			expectedY: 13,
 		},
 		{
 			name:      "Flag follow right",
-			player:    &Player{X: 31, Y: 13, Action: moveRight, number: Player1, HasFlag: true, Flag: flag},
-			board:     &Board{Grid: createBoardWithPlayer(31, 13)},
+			player:    &Player{X: 31, Y: 13, Action: moveRight, Number: Player1, HasFlag: true, Flag: flag},
+			board:     &Board{PastGrid: createBoardWithPlayer(31, 13)},
 			flag:      flag,
 			expectedX: 31,
 			expectedY: 13,
 		},
 		{
 			name:      "Flag follow up with wall",
-			player:    &Player{X: 35, Y: 16, Action: moveUp, number: Player1, HasFlag: true, Flag: flagWall},
-			board:     &Board{Grid: createBoardWithPlayer(35, 16)},
+			player:    &Player{X: 35, Y: 16, Action: moveUp, Number: Player1, HasFlag: true, Flag: flagWall},
+			board:     &Board{PastGrid: createBoardWithPlayer(35, 16)},
 			flag:      flagWall,
 			expectedX: 35,
 			expectedY: 17,
@@ -176,6 +201,18 @@ func TestMoveWithFlag(t *testing.T) {
 			}
 		})
 	}
+}
+
+func compareDeltas(a, b []Delta) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func createBoardWithPlayer(x, y int) [20][50]Cell {
