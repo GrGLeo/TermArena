@@ -80,7 +80,7 @@ func (gr *GameRoom) StartGame() {
           // process each player action
           player.TakeAction(gr.board)
         }
-        gr.board.Update()
+        gr.board.Update(int(gr.tickID.Load()))
         gr.broadcastState()
       }
     }

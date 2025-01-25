@@ -145,6 +145,7 @@ func (p *Player) MakeDash(board *Board){
         Y: y,
         lifeCycle: lifecycle,
       }
+      board.Sprite = append(board.Sprite, sprite)
       fmt.Printf("%+v\n", sprite)
     }
   }

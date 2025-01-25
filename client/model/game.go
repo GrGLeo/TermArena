@@ -129,6 +129,14 @@ func (m GameModel) View() string {
 				builder.WriteString(Flag1Style.Render(" ")) // Render for flag1
 			case 7:
 				builder.WriteString(Flag2Style.Render(" ")) // Render for flag2
+			case 8:
+				builder.WriteString("⣿") // Render for flag2
+			case 9:
+				builder.WriteString("⣶") // Render for flag2
+			case 10:
+				builder.WriteString("⣤") // Render for flag2
+			case 11:
+				builder.WriteString("⣀") // Render for flag2
 			}
 		}
 		builder.WriteString("\n") // New line at the end of each row
