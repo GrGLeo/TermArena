@@ -32,7 +32,11 @@
       "number": 2,
       "teamID":6,
       "X": 1,
-      "Y": 6
+      "Y": 6,
+      "dash": {
+        "range": 4,
+        "cooldown": 5
+      }
     },
     {
       "number": 3,

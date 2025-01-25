@@ -1,6 +1,9 @@
 package game
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 
 type actionType int 
@@ -85,8 +88,10 @@ func (p *Player) Move(board *Board) {
 func (p *Player) MakeDash(board *Board){
   // Verify player is allowed to dash
   lastUsed := p.Dash.LastUsed
-  EndCd := time.Now().Add(p.Dash.Cooldown)
-  if p.HasFlag || lastUsed.After(EndCd) {
+  cooldown := time.Duration(p.Dash.Cooldown) * time.Second
+  EndCd := lastUsed.Add(cooldown)
+  fmt.Println(EndCd, time.Now())
+  if p.HasFlag || time.Now().Before(EndCd) {
     p.Action = NoAction
     return
   }
@@ -95,24 +100,25 @@ func (p *Player) MakeDash(board *Board){
   newX := p.X
   newY := p.Y
 
+  dashRange := p.Dash.Range
   switch p.Facing {
   case Up:
-    newY -= 4
+    newY -= dashRange
     for !board.IsValidPosition(newX, newY) {
       newY++
     }
   case Down:
-    newY += 4
+    newY += dashRange
     for !board.IsValidPosition(newX, newY) {
       newY--
     }
   case Left:
-    newX -= 4
+    newX -= dashRange
     for !board.IsValidPosition(newX, newY) {
       newX++
     }
   case Right:
-    newX += 4
+    newX += dashRange
     for !board.IsValidPosition(newX, newY) {
       newX--
     }

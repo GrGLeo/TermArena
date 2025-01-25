@@ -227,6 +227,7 @@ func LoadConfig(filename string) ([]WallPosition, []*Flag, []*Player, error) {
 	}
 	err = json.Unmarshal(file, &configJSON)
 	if err != nil {
+    fmt.Println(err.Error())
 		return nil, nil, nil, err
 	}
 
@@ -238,6 +239,7 @@ func LoadConfig(filename string) ([]WallPosition, []*Flag, []*Player, error) {
 	playerPtrs := make([]*Player, len(configJSON.Player))
 	for i := range configJSON.Player {
 		playerPtrs[i] = &configJSON.Player[i]
+    fmt.Printf("%+v\n", configJSON.Player[i])
 	}
 	return configJSON.Walls, flagPtrs, playerPtrs, nil
 }

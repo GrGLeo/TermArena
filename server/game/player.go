@@ -20,11 +20,11 @@ type Player struct {
 	Action  actionType
 	HasFlag bool
 	Flag    *Flag
-	Dash    Dash
+  Dash    Dash `json:"dash"`
 }
 
 type Dash struct {
-	Range    int
-	Cooldown time.Duration
-	LastUsed time.Time
+  Range    int `json:"range"`
+  Cooldown int `json:"cooldown"`
+  LastUsed time.Time `json:"-"`
 }
