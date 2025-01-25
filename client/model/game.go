@@ -47,16 +47,16 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     }
     switch msg.String() {
     case "w":
-      communication.SendAction(m.conn,0)
-      return m, nil
-    case "s":
       communication.SendAction(m.conn,1)
       return m, nil
-    case "a":
+    case "s":
       communication.SendAction(m.conn,2)
       return m, nil
-    case "d":
+    case "a":
       communication.SendAction(m.conn,3)
+      return m, nil
+    case "d":
+      communication.SendAction(m.conn,4)
       return m, nil
     }
   }

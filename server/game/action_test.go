@@ -13,7 +13,7 @@ func TestMove(t *testing.T) {
 	}{
 		{
 			name:         "Move Up",
-			player:       &Player{X: 25, Y: 10, Action: moveUp, number: Player1},
+			player:       &Player{X: 25, Y: 10, Action: moveUp, Number: Player1},
 			board:        &Board{CurrentGrid: createBoardWithPlayer(25, 10)},
 			expectedX:    25,
 			expectedY:    9,
@@ -21,7 +21,7 @@ func TestMove(t *testing.T) {
 		},
 		{
 			name:         "Move Down at Bottom Edge",
-			player:       &Player{X: 25, Y: 19, Action: moveDown, number: Player1},
+			player:       &Player{X: 25, Y: 19, Action: moveDown, Number: Player1},
 			board:        &Board{CurrentGrid: createBoardWithPlayer(25, 19)},
 			expectedX:    25,
 			expectedY:    19,
@@ -29,14 +29,14 @@ func TestMove(t *testing.T) {
 		},
 		{
 			name:         "Move Left",
-			player:       &Player{X: 25, Y: 10, Action: moveLeft, number: Player1},
+			player:       &Player{X: 25, Y: 10, Action: moveLeft, Number: Player1},
 			board:        &Board{CurrentGrid: createBoardWithPlayer(25, 10)},
 			expectedX:    24,
 			expectedY:    10,
 			expectedGrid: createBoardWithPlayer(24, 10)},
 		{
 			name:         "Move Right at Right Edge",
-			player:       &Player{X: 49, Y: 10, Action: moveRight, number: Player1},
+			player:       &Player{X: 49, Y: 10, Action: moveRight, Number: Player1},
 			board:        &Board{CurrentGrid: createBoardWithPlayer(49, 10)},
 			expectedX:    49,
 			expectedY:    10,
@@ -44,7 +44,7 @@ func TestMove(t *testing.T) {
 		},
 		{
 			name:         "No Action",
-			player:       &Player{X: 25, Y: 10, Action: NoAction, number: Player1},
+			player:       &Player{X: 25, Y: 10, Action: NoAction, Number: Player1},
 			board:        &Board{CurrentGrid: createBoardWithPlayer(25, 10)},
 			expectedX:    25,
 			expectedY:    10,
@@ -52,7 +52,7 @@ func TestMove(t *testing.T) {
 		},
 		{
 			name:         "Invalid Action",
-			player:       &Player{X: 25, Y: 10, Action: actionType(999), number: Player1},
+			player:       &Player{X: 25, Y: 10, Action: actionType(999), Number: Player1},
 			board:        &Board{CurrentGrid: createBoardWithPlayer(25, 10)},
 			expectedX:    25,
 			expectedY:    10,
@@ -60,7 +60,7 @@ func TestMove(t *testing.T) {
 		},
 		{
 			name:         "Wall collision left",
-			player:       &Player{X: 36, Y: 15, Action: moveLeft, number: Player1},
+			player:       &Player{X: 36, Y: 15, Action: moveLeft, Number: Player1},
 			board:        &Board{CurrentGrid: createBoardWithPlayer(36, 15)},
 			expectedX:    36,
 			expectedY:    15,
@@ -68,7 +68,7 @@ func TestMove(t *testing.T) {
 		},
 		{
 			name:         "Wall collision right",
-			player:       &Player{X: 34, Y: 15, Action: moveRight, number: Player1},
+			player:       &Player{X: 34, Y: 15, Action: moveRight, Number: Player1},
 			board:        &Board{CurrentGrid: createBoardWithPlayer(34, 15)},
 			expectedX:    34,
 			expectedY:    15,
@@ -76,7 +76,7 @@ func TestMove(t *testing.T) {
 		},
 		{
 			name:         "Wall collision up",
-			player:       &Player{X: 35, Y: 16, Action: moveUp, number: Player1},
+			player:       &Player{X: 35, Y: 16, Action: moveUp, Number: Player1},
 			board:        &Board{CurrentGrid: createBoardWithPlayer(35, 16)},
 			expectedX:    35,
 			expectedY:    16,
@@ -84,7 +84,7 @@ func TestMove(t *testing.T) {
 		},
 		{
 			name:         "Wall collision down",
-			player:       &Player{X: 35, Y: 14, Action: moveDown, number: Player1},
+			player:       &Player{X: 35, Y: 14, Action: moveDown, Number: Player1},
 			board:        &Board{CurrentGrid: createBoardWithPlayer(35, 14)},
 			expectedX:    35,
 			expectedY:    14,
@@ -128,7 +128,7 @@ func TestMoveWithFlag(t *testing.T) {
 	}{
 		{
 			name:      "Flag follow up",
-			player:    &Player{X: 30, Y: 12, Action: moveUp, number: Player1, HasFlag: true, Flag: flag},
+			player:    &Player{X: 30, Y: 12, Action: moveUp, Number: Player1, HasFlag: true, Flag: flag},
 			board:     &Board{CurrentGrid: createBoardWithPlayer(30, 12)},
 			flag:      flag,
 			expectedX: 30,
@@ -136,7 +136,7 @@ func TestMoveWithFlag(t *testing.T) {
 		},
 		{
 			name:      "Flag follow down",
-			player:    &Player{X: 30, Y: 14, Action: moveDown, number: Player1, HasFlag: true, Flag: flag},
+			player:    &Player{X: 30, Y: 14, Action: moveDown, Number: Player1, HasFlag: true, Flag: flag},
 			board:     &Board{CurrentGrid: createBoardWithPlayer(30, 14)},
 			flag:      flag,
 			expectedX: 30,
@@ -144,7 +144,7 @@ func TestMoveWithFlag(t *testing.T) {
 		},
 		{
 			name:      "Flag follow left",
-			player:    &Player{X: 29, Y: 13, Action: moveLeft, number: Player1, HasFlag: true, Flag: flag},
+			player:    &Player{X: 29, Y: 13, Action: moveLeft, Number: Player1, HasFlag: true, Flag: flag},
 			board:     &Board{CurrentGrid: createBoardWithPlayer(29, 13)},
 			flag:      flag,
 			expectedX: 29,
@@ -152,7 +152,7 @@ func TestMoveWithFlag(t *testing.T) {
 		},
 		{
 			name:      "Flag follow right",
-			player:    &Player{X: 31, Y: 13, Action: moveRight, number: Player1, HasFlag: true, Flag: flag},
+			player:    &Player{X: 31, Y: 13, Action: moveRight, Number: Player1, HasFlag: true, Flag: flag},
 			board:     &Board{CurrentGrid: createBoardWithPlayer(31, 13)},
 			flag:      flag,
 			expectedX: 31,
@@ -160,7 +160,7 @@ func TestMoveWithFlag(t *testing.T) {
 		},
 		{
 			name:      "Flag follow up with wall",
-			player:    &Player{X: 35, Y: 16, Action: moveUp, number: Player1, HasFlag: true, Flag: flagWall},
+			player:    &Player{X: 35, Y: 16, Action: moveUp, Number: Player1, HasFlag: true, Flag: flagWall},
 			board:     &Board{CurrentGrid: createBoardWithPlayer(35, 16)},
 			flag:      flagWall,
 			expectedX: 35,

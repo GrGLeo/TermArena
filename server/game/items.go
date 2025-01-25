@@ -10,10 +10,10 @@ type Flag struct {
 }
 
 func (f *Flag) Move(x, y int, board *Board) {
-	board.CurrentGrid[f.PosY][f.PosX] = Empty
+  board.Tracker.SaveDelta(f.PosX, f.PosY, Empty)
 	f.PosX = x
 	f.PosY = y
-	board.CurrentGrid[y][x] = f.TeamId
+  board.Tracker.SaveDelta(f.PosX, f.PosY, f.TeamId)
 }
 
 func (f *Flag) SetBase() {

@@ -1,15 +1,16 @@
 package game
 
+
 type actionType int 
 
 const (
-  moveUp actionType = iota
+  NoAction actionType = iota
+  moveUp 
   moveDown
   moveLeft
   moveRight
   spellOne
   spellTwo
-  NoAction
 )
 
 func (p *Player) Move(board *Board) {
@@ -33,10 +34,9 @@ func (p *Player) Move(board *Board) {
     p.X = newX
     p.Y = newY
   }
-  // old position is cleared
-  board.CurrentGrid[posY][posX] = 0
-  // moving the char on the board
-  board.CurrentGrid[p.Y][p.X] = p.number
+  // We save change as delta
+  board.Tracker.SaveDelta(posX, posY, Empty)
+  board.Tracker.SaveDelta(p.X, p.Y, p.Number)
   // Check if flag is attached and need to move
   if p.HasFlag {
     if board.CheckFlagWon(p.TeamID, p.Y, p.X) {

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"sync"
@@ -25,7 +26,6 @@ type GameRoom struct {
 func NewGameRoom(number int, logger *zap.SugaredLogger) *GameRoom {
   gr := GameRoom{
     PlayerNumber: number,
-    board: Init(),
     logger: logger,
     actionChan: make(chan *ActionMsg),
     playerChar: make(map[string]*Player),
@@ -33,12 +33,12 @@ func NewGameRoom(number int, logger *zap.SugaredLogger) *GameRoom {
   // Place walls on map
   // if any error occur we skip the walls placement
   walls, flags, players, err := LoadConfig("server/game/config.json")
+  gr.logger.Infof("%+v\n", *players[0])
   if err != nil {
     gr.logger.Warnw("Error while reading the config", "error", err.Error())
   } else {
-    gr.board.PlaceAllWalls(walls)
-    gr.board.PlaceAllFlags(flags)
-    gr.board.PlaceAllPlayers(players)
+    board := InitBoard(walls, flags, players) 
+    gr.board = board
   }
   return &gr
 }
@@ -48,6 +48,7 @@ func (gr *GameRoom) AddPlayer(conn *net.TCPConn) {
   defer gr.gameMutex.Unlock()
   playerNumber := len(gr.playerConnection)
   player := gr.board.Players[playerNumber]
+  fmt.Printf("%+v\n", player)
   gr.playerChar[conn.RemoteAddr().String()] = player
   gr.playerConnection = append(gr.playerConnection, conn)
   go gr.ListenToConnection(conn)
@@ -65,17 +66,21 @@ func (gr *GameRoom) StartGame() {
       select {
       case <- ticker.C:
         for _, player := range gr.playerChar {
+          fmt.Printf("%+v\n", player)
           // process each player action
           player.Move(gr.board)
         }
+        gr.board.Update()
         gr.broadcastState()
       }
+      break
     }
   }
 }
 
 func (gr *GameRoom) broadcastState() {
-  encodedBoard := gr.board.RunLengthEncode()
+  grid := gr.board.GetCurrentGrid()
+  encodedBoard := RunLengthEncode(grid)
   for _, conn := range gr.playerConnection {
     packet := shared.NewBoardPacket(encodedBoard)
     data := packet.Serialize()

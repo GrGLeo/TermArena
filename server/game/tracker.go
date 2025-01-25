@@ -1,5 +1,6 @@
 package game
 
+
 type Delta struct {
 	X     int
 	Y     int
@@ -10,7 +11,7 @@ type ChangeTracker struct {
 	Deltas []Delta
 }
 
-func (ct *ChangeTracker) ApplyDelta(x, y int, value Cell) {
+func (ct *ChangeTracker) SaveDelta(x, y int, value Cell) {
   ct.Deltas = append(ct.Deltas, Delta{X: x, Y: y, Value: value})
 }
 
