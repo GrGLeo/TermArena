@@ -91,6 +91,7 @@ func (b *Board) Update() {
 		b.CurrentGrid[delta.Y][delta.X] = delta.Value
 	}
 	b.PastGrid = b.CurrentGrid
+  b.Tracker.Reset()
 }
 
 func (b *Board) GetCurrentGrid() [20][50]Cell {
