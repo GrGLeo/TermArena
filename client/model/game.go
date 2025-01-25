@@ -4,8 +4,10 @@ import (
 	"log"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/GrGLeo/ctf/client/communication"
+	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -14,11 +16,18 @@ type GameModel struct {
 	currentBoard  [20][50]int
 	conn          *net.TCPConn
 	height, width int
+	progress      progress.Model
+	dashed        bool
+	dashcooldown  time.Duration
+	dashStart     time.Time
+	percent       float64
 }
 
 func NewGameModel(conn *net.TCPConn) GameModel {
 	return GameModel{
-		conn: conn,
+		conn:         conn,
+		progress:     progress.New(progress.WithDefaultGradient()),
+		dashcooldown: 5 * time.Second,
 	}
 }
 
@@ -29,6 +38,7 @@ func (m GameModel) Init() tea.Cmd {
 func (m *GameModel) SetDimension(height, width int) {
 	m.height = height
 	m.width = width
+	m.progress.Width = 50
 }
 
 func (m *GameModel) SetConnection(conn *net.TCPConn) {
@@ -61,9 +71,26 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			communication.SendAction(m.conn, 4)
 			return m, nil
 		case " ":
-      log.Println("message space")
-			communication.SendAction(m.conn, 5)
+			if !m.dashed {
+				communication.SendAction(m.conn, 5)
+				m.dashed = true
+				m.dashStart = time.Now()
+				return m, doTick()
+			}
 		}
+	case communication.CooldownTickMsg:
+		var percent float64
+		if m.dashed {
+			elapsed := time.Since(m.dashStart)
+			percent = float64(elapsed) / float64(m.dashcooldown)
+			log.Println(percent)
+			if percent >= 1.0 {
+				percent = 1.0
+				m.dashed = false
+			}
+		}
+		m.percent = percent
+		return m, doTick()
 	}
 	return m, nil
 }
@@ -102,6 +129,9 @@ func (m GameModel) View() string {
 		}
 		builder.WriteString("\n") // New line at the end of each row
 	}
+	progressBar := m.progress.ViewAs(m.percent)
+	log.Println(progressBar)
+	builder.WriteString(progressBar)
 	return lipgloss.Place(
 		m.width,
 		m.height,
@@ -109,6 +139,11 @@ func (m GameModel) View() string {
 		lipgloss.Center,
 		builder.String(),
 	)
+}
+func doTick() tea.Cmd {
+	return tea.Tick(50*time.Millisecond, func(time.Time) tea.Msg {
+		return communication.CooldownTickMsg{}
+	})
 }
 
 func ApplyDeltas(deltas [][3]int, currentBoard *[20][50]int) {
