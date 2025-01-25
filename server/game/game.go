@@ -49,6 +49,16 @@ func (gr *GameRoom) AddPlayer(conn *net.TCPConn) {
   player := gr.board.Players[playerNumber]
   gr.playerChar[conn.RemoteAddr().String()] = player
   gr.playerConnection = append(gr.playerConnection, conn)
+  // Send the initial grid to the player
+  grid := gr.board.GetCurrentGrid()
+  encodedBoard := RunLengthEncode(grid)
+  packet := shared.NewBoardPacket(encodedBoard)
+  data := packet.Serialize()
+  _, err := conn.Write(data)
+  if err != nil {
+    gr.logger.Warnw("Failed to send initial board to player", "id", conn.RemoteAddr(), "error", err)
+    return
+  }
   go gr.ListenToConnection(conn)
   gr.logger.Infow("Payer joined", "id", conn.RemoteAddr())
 }
@@ -73,6 +83,7 @@ func (gr *GameRoom) StartGame() {
     }
   }
 }
+
 
 func (gr *GameRoom) broadcastState() {
   grid := gr.board.GetCurrentGrid()
