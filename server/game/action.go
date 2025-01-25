@@ -13,6 +13,19 @@ const (
   spellTwo
 )
 
+func (p *Player) TakeAction(board *Board) {
+  switch p.Action {
+  case NoAction:
+    return
+  case moveUp, moveDown, moveLeft, moveRight:
+    p.Move(board)
+  case spellOne:
+    p.MakeDash(board)
+  default:
+    return
+  }
+}
+
 func (p *Player) Move(board *Board) {
   posX := p.X
   posY := p.Y
@@ -21,17 +34,17 @@ func (p *Player) Move(board *Board) {
 
   switch p.Action {
   case moveUp:
+    p.Facing = Up
     newY--
   case moveDown:
+    p.Facing = Down
     newY++
   case moveLeft:
+    p.Facing = Left
     newX--
   case moveRight:
+    p.Facing = Right
     newX++
-  case NoAction:
-    return
-  default:
-    return
   }
   valid := board.IsValidPosition(newX, newY)
   if valid {
@@ -65,6 +78,29 @@ func (p *Player) Move(board *Board) {
   }
   p.Action = NoAction 
   return
+}
+
+func (p *Player) MakeDash(board *Board){
+  posX := p.X
+  posY := p.Y
+  newX := p.X
+  newY := p.Y
+
+  switch p.Facing {
+  case Up:
+    newY -= 4
+  case Down:
+    newY += 4
+  case Left:
+    newX -= 4
+  case Right:
+    newX += 4
+  }
+  for !board.IsValidPosition(newX, newY) {
+    newY++
+  }
+  board.Tracker.SaveDelta(posX, posY, Empty)
+  board.Tracker.SaveDelta(newX, newY, p.Number)
 }
 
 

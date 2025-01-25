@@ -1,26 +1,30 @@
 package game
 
+import "time"
+
+type Direction int
+
+const (
+	Up Direction = iota
+	Down
+	Left
+	Right
+)
+
 type Player struct {
 	Number  Cell `json:"number"`
 	TeamID  int  `json:"teamID"`
 	X       int  `json:"X"`
 	Y       int  `json:"Y"`
+	Facing  Direction  //Facing direction
 	Action  actionType
 	HasFlag bool
 	Flag    *Flag
+	Dash    Dash
 }
 
-func NewPlayer(n int) *Player {
-	switch n {
-	case 0:
-		return &Player{
-			Number: Player1,
-			TeamID: 6,
-			X:      1,
-			Y:      6,
-			Action: NoAction,
-		}
-	default:
-		return &Player{}
-	}
+type Dash struct {
+	Range    int
+	Cooldown time.Duration
+	LastUsed time.Time
 }
