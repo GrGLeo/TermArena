@@ -24,9 +24,13 @@ type GameModel struct {
 }
 
 func NewGameModel(conn *net.TCPConn) GameModel {
+  yellowGradient := progress.WithGradient(
+    "#FFFF00", // Bright yellow
+    "#FFD700", // Gold
+  )
 	return GameModel{
 		conn:         conn,
-		progress:     progress.New(progress.WithDefaultGradient()),
+		progress:     progress.New(yellowGradient),
 		dashcooldown: 5 * time.Second,
 	}
 }
@@ -85,7 +89,7 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			percent = float64(elapsed) / float64(m.dashcooldown)
 			log.Println(percent)
 			if percent >= 1.0 {
-				percent = 1.0
+				percent = 0
 				m.dashed = false
 			}
 		}
@@ -129,8 +133,12 @@ func (m GameModel) View() string {
 		}
 		builder.WriteString("\n") // New line at the end of each row
 	}
-	progressBar := m.progress.ViewAs(m.percent)
-	log.Println(progressBar)
+
+  var progressBar string
+  log.Println("progress percent", m.progress.Percent())
+  if m.percent != 0.0 {
+	  progressBar = m.progress.ViewAs(m.percent)
+  }
 	builder.WriteString(progressBar)
 	return lipgloss.Place(
 		m.width,
