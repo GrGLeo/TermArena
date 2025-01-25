@@ -129,13 +129,29 @@ func (p *Player) MakeDash(board *Board){
   // Generate sprite
   dx := newX - posX
   dy := newY - posY
+  // Calculate off by one
+  var corX int
+  var corY int
+  if dx != 0 {
+    if dx < 0 {
+      corX = 1
+    } else {
+      corX = -1
+    } 
+  } else {
+    if dy < 0 {
+      corY = 1
+    } else {
+      corY = -1
+    }
+  }
   maxSprite := max(Absolute(dx), Absolute(dy))
   if maxSprite != 0 {
     stepX := dx / maxSprite
     stepY := dy / maxSprite
     for i := 1; i <= maxSprite; i++ {
-      x := posX + stepX * i
-      y := posY + stepY * i
+      x := posX + stepX * i + corX
+      y := posY + stepY * i + corY
       if !board.IsValidPosition(x, y) {
         continue
       }
@@ -145,8 +161,8 @@ func (p *Player) MakeDash(board *Board){
         Y: y,
         lifeCycle: lifecycle,
       }
-      board.Sprite = append(board.Sprite, sprite)
       fmt.Printf("%+v\n", sprite)
+      board.Sprite = append(board.Sprite, sprite)
     }
   }
 

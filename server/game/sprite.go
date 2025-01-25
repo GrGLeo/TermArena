@@ -1,6 +1,5 @@
 package game
 
-import "fmt"
 
 /*
 Dash sprite
@@ -18,18 +17,17 @@ type DashSprite struct {
 }
 
 func (s *DashSprite) Update(tick int) (int, int, Cell) {
-  fmt.Println("from update sprite")
 	cellState := s.lifeCycle / 10
-	s.lifeCycle -= tick
+	s.lifeCycle -= 1
 	switch cellState {
 	case 4:
 		return s.X, s.Y, Dash1
 	case 3:
-		return s.X, s.Y, Dash1
+		return s.X, s.Y, Dash2
 	case 2:
-		return s.X, s.Y, Dash1
+		return s.X, s.Y, Dash3
 	case 1:
-		return s.X, s.Y, Dash1
+		return s.X, s.Y, Dash4
 	case 0:
 		return s.X, s.Y, Empty
 	default:
