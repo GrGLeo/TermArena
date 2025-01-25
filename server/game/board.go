@@ -19,6 +19,10 @@ const (
 	Player4
 	Flag1
 	Flag2
+  Dash1
+  Dash2
+  Dash3
+  Dash4
 )
 
 type Board struct {
@@ -27,6 +31,7 @@ type Board struct {
 	Tracker     ChangeTracker
 	Flags       []*Flag
 	Players     []*Player
+  Sprite      []*Sprite
 	mu          sync.RWMutex
 }
 

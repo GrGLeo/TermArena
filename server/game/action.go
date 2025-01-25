@@ -125,6 +125,31 @@ func (p *Player) MakeDash(board *Board){
   }
   p.X = newX
   p.Y = newY
+  
+  // Generate sprite
+  dx := newX - posX
+  dy := newY - posY
+  maxSprite := max(Absolute(dx), Absolute(dy))
+  if maxSprite != 0 {
+    stepX := dx / maxSprite
+    stepY := dy / maxSprite
+    for i := 1; i <= maxSprite; i++ {
+      x := posX + stepX * i
+      y := posY + stepY * i
+      if !board.IsValidPosition(x, y) {
+        continue
+      }
+      lifecycle := 1 + i * 10
+      sprite := &DashSprite{
+        X: x,
+        Y: y,
+        lifeCycle: lifecycle,
+      }
+      fmt.Printf("%+v\n", sprite)
+    }
+  }
+
+
   board.Tracker.SaveDelta(posX, posY, Empty)
   board.Tracker.SaveDelta(newX, newY, p.Number)
   p.Dash.LastUsed = time.Now()
@@ -135,4 +160,12 @@ func (p *Player) MakeDash(board *Board){
 type ActionMsg struct {
   ConnAddr string
   Action int
+}
+
+func Absolute(v int) int {
+  if v > 0 {
+    return v
+  } else {
+    return -v
+  }
 }
