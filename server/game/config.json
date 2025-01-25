@@ -29,25 +29,25 @@
   ],
   "players": [
     {
-      "number": 0,
+      "number": 2,
       "teamID":6,
       "X": 1,
       "Y": 6
     },
     {
-      "number": 1,
+      "number": 3,
       "teamID":6,
       "X": 1,
       "Y": 14
     },
     {
-      "number": 2,
+      "number": 4,
       "teamID":7,
       "X": 48,
       "Y": 6
     },
     {
-      "number": 3,
+      "number": 5,
       "teamID":7,
       "X": 48,
       "Y": 14

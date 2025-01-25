@@ -73,7 +73,6 @@ func (gr *GameRoom) StartGame() {
         gr.board.Update()
         gr.broadcastState()
       }
-      break
     }
   }
 }
