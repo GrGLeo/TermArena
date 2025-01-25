@@ -43,11 +43,9 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
     }
     // Send the packet as a message to the model
     message, err := shared.DeSerialize(buf[:n])
-    log.Println("message", message)
     if err != nil {
       return
     }
-    log.Printf("%+v\n", message)
     switch msg := message.(type) {
     case *shared.RespPacket:
       msgs <- ResponseMsg{Code: msg.Code()}

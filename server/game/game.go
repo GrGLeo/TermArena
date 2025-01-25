@@ -78,7 +78,7 @@ func (gr *GameRoom) StartGame() {
         gr.tickID.Add(1)
         for _, player := range gr.playerChar {
           // process each player action
-          player.Move(gr.board)
+          player.TakeAction(gr.board)
         }
         gr.board.Update()
         gr.broadcastState()
