@@ -28,15 +28,19 @@ func (p *Player) Move(board *Board) {
     newX--
   case moveRight:
     newX++
+  case NoAction:
+    return
+  default:
+    return
   }
   valid := board.IsValidPosition(newX, newY)
   if valid {
     p.X = newX
     p.Y = newY
+    board.Tracker.SaveDelta(posX, posY, Empty)
+    board.Tracker.SaveDelta(p.X, p.Y, p.Number)
   }
   // We save change as delta
-  board.Tracker.SaveDelta(posX, posY, Empty)
-  board.Tracker.SaveDelta(p.X, p.Y, p.Number)
   // Check if flag is attached and need to move
   if p.HasFlag {
     if board.CheckFlagWon(p.TeamID, p.Y, p.X) {
