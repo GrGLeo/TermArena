@@ -157,6 +157,15 @@ type DeltaPacket struct {
 	Deltas         [][3]byte
 }
 
+func NewDeltaPacket(tickID int, deltas [][3]byte) *DeltaPacket {
+	return &DeltaPacket{
+		version:      1,
+		code:         3,
+		tickID: tickID,
+    Deltas: deltas,
+	}
+}
+
 func (dp DeltaPacket) Version() int {
 	return dp.version
 }

@@ -86,11 +86,22 @@ func (gr *GameRoom) StartGame() {
 
 
 func (gr *GameRoom) broadcastState() {
+  var data []byte
   grid := gr.board.GetCurrentGrid()
-  encodedBoard := RunLengthEncode(grid)
-  for _, conn := range gr.playerConnection {
+  deltas := gr.board.Tracker.GetDeltasByte()
+  // Check if full board needs to be resend
+  totalCells := len(grid) * len(grid[0])
+  // If more than 50% of the board has change we resend the board
+  if len(deltas) > totalCells / 2 {
+    gr.logger.Infoln("Sending back full board")
+    encodedBoard := RunLengthEncode(grid)
     packet := shared.NewBoardPacket(encodedBoard)
-    data := packet.Serialize()
+    data = packet.Serialize()
+  } else {
+    packet := shared.NewDeltaPacket(0, deltas)
+    data = packet.Serialize()
+  }
+  for _, conn := range gr.playerConnection {
     _, err := conn.Write(data)
     if err != nil {
       gr.logger.Warn("Player disconnect. Closing game")

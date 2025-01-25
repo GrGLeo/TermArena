@@ -5,6 +5,7 @@ build-server:
 	go build -o bin/server ./server
 
 run-client:
+	rm debug.log
 	go run ./client
 
 run-server:
