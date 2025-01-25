@@ -153,14 +153,14 @@ func (bp *BoardPacket) Serialize() []byte {
 
 type DeltaPacket struct {
 	version, code int
-	tickID        int
+	tickID        uint32
 	Deltas         [][3]byte
 }
 
-func NewDeltaPacket(tickID int, deltas [][3]byte) *DeltaPacket {
+func NewDeltaPacket(tickID uint32, deltas [][3]byte) *DeltaPacket {
 	return &DeltaPacket{
 		version:      1,
-		code:         3,
+		code:         4,
 		tickID: tickID,
     Deltas: deltas,
 	}
@@ -180,7 +180,7 @@ func (dp *DeltaPacket) Serialize() []byte {
 	buf.WriteByte(byte(dp.code))
   // Write the tickID on 4 byte
   TickIDBytes := make([]byte, 4)
-  binary.BigEndian.PutUint32(TickIDBytes, uint32(dp.tickID))
+  binary.BigEndian.PutUint32(TickIDBytes, dp.tickID)
   buf.Write(TickIDBytes)
   // Write the number of deltas on 2 byte
   deltaCount := len(dp.Deltas)
@@ -289,7 +289,7 @@ func DeSerialize(data []byte) (Packet, error) {
     if len(data) < 6 {
       return nil, errors.New("invalid deltas packet length")
     }
-    tickID := int(binary.BigEndian.Uint32(data[2:6]))
+    tickID := binary.BigEndian.Uint32(data[2:6])
     deltaCount := int(binary.BigEndian.Uint16(data[6:8]))
     expectedLength := 8 + deltaCount * 3
     if len(data) < expectedLength {

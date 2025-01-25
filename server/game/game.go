@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/GrGLeo/ctf/shared"
@@ -14,6 +15,7 @@ import (
 type GameRoom struct {
   PlayerNumber int
   board *Board
+  tickID atomic.Int32
   actions []actionType
   playerConnection []*net.TCPConn
   playerChar map[string]*Player
@@ -73,6 +75,7 @@ func (gr *GameRoom) StartGame() {
     for {
       select {
       case <- ticker.C:
+        gr.tickID.Add(1)
         for _, player := range gr.playerChar {
           // process each player action
           player.Move(gr.board)
@@ -89,6 +92,7 @@ func (gr *GameRoom) broadcastState() {
   var data []byte
   grid := gr.board.GetCurrentGrid()
   deltas := gr.board.Tracker.GetDeltasByte()
+  defer gr.board.Tracker.Reset()
   // Check if full board needs to be resend
   totalCells := len(grid) * len(grid[0])
   // If more than 50% of the board has change we resend the board
@@ -98,7 +102,8 @@ func (gr *GameRoom) broadcastState() {
     packet := shared.NewBoardPacket(encodedBoard)
     data = packet.Serialize()
   } else {
-    packet := shared.NewDeltaPacket(0, deltas)
+    tickID := uint32(gr.tickID.Load())
+    packet := shared.NewDeltaPacket(tickID, deltas)
     data = packet.Serialize()
   }
   for _, conn := range gr.playerConnection {
