@@ -1,5 +1,7 @@
 package game
 
+
+
 type Flag struct {
 	TeamId     Cell  `json:"teamID"`
 	PosX       int  `json:"posx"`
@@ -25,11 +27,17 @@ func (f *Flag) SetBase() {
 func (f *Flag) ResetPos() {
   f.PosX = f.baseX
   f.PosY = f.baseY
+  f.IsCaptured = false
 }
 
 // Return base flag position Y and X coordinate
 func (f *Flag) GetBase() (int, int) {
   return f.baseY, f.baseX
+}
+
+// Check if flag is at his base position and is not captured
+func (f *Flag) IsSafe() bool {
+  return f.baseX == f.PosX && f.baseY == f.PosY && !f.IsCaptured
 }
 
 type WallPosition struct {

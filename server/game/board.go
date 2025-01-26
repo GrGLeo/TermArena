@@ -194,6 +194,16 @@ func (b *Board) PlaceAllFlags(flags []*Flag) {
 	b.Flags = flags
 }
 
+// Check if flag needs to be replace
+func (b *Board) ReplaceHiddenFlag() {
+  for _, flag := range b.Flags {
+    if flag.IsSafe() && b.PastGrid[flag.PosY][flag.PosX] == Empty {
+      fmt.Println("heyo")
+      b.Tracker.SaveDelta(flag.PosX, flag.PosY, flag.TeamId)
+    }
+  }
+}
+
 func RunLengthEncode(grid [20][50]Cell) []byte {
 	var rle []string
 
