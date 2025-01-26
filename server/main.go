@@ -6,7 +6,9 @@ import (
 	"net"
 	"os"
 
-	"github.com/GrGLeo/ctf/server/game"
+	auth "github.com/GrGLeo/ctf/server/authentification"
+	"github.com/GrGLeo/ctf/server/event"
+	//"github.com/GrGLeo/ctf/server/game"
 	"github.com/GrGLeo/ctf/shared"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
@@ -60,7 +62,7 @@ func HandleClient(ctx context.Context, server *net.TCPListener, connChannel chan
   }
 }
 
-func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger) {
+func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.EventBroker) {
   buffer := make([]byte, 1024)
   for {
     n, err := conn.Read(buffer)
@@ -79,23 +81,23 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger) {
       if err != nil {
         log.Infow("Error deserializing packet", "ip", conn.RemoteAddr(), "error", err)
       }
-      switch msg := message.(type) {
-      case *shared.LoginPacket:
-        log.Infow("Received login", "username", msg.Username)
-        // send ok message 
-        packet := shared.NewRespPacket()
-        data := packet.Serialize()
-        n, err := conn.Write(data)
-        if err != nil {
-          log.Errorw("Error writting login resp", n, "ip", conn.RemoteAddr())
-        }
-        log.Infow("Login response", "byte", n, "ip", conn.RemoteAddr())
-        // create a new game 
-        game := game.NewGameRoom(1, log)
-        game.AddPlayer(conn)
-        go game.StartGame()
-        return
+      msg, err := shared.CreateMessage(message)
+      log.Infoln(msg)
+      if err != nil {
+        log.Infow("Error creating message from packet", "ip", conn.RemoteAddr(), "error", err)
       }
+      broker.Publish(msg)
+      response := <- broker.ResponseChannel(msg.Type())
+      data, err:= shared.CreatePacketFromMessage(response)
+      n, err := conn.Write(data)
+      if err != nil {
+        log.Errorw("Error writting login resp", n, "ip", conn.RemoteAddr())
+      }
+      log.Infow("Login response", "byte", n, "ip", conn.RemoteAddr())
+      // create a new game 
+      //game := game.NewGameRoom(1, log)
+      //game.AddPlayer(conn)
+      //go game.StartGame()
     }
   }
 }
@@ -116,9 +118,15 @@ func main() {
   connChannel := make(chan *net.TCPConn)
   ctx := context.Background()
   ctx = context.WithValue(ctx, loggerKey, log)
+  // Initialize new EventBroker
+  broker := event.NewEventBroker()
+  log.Info("New Event Broker initialize")
+  go broker.ProcessMessage()
+  log.Info("Broker ready to process message")
+  broker.Subscribe("login", auth.Authentificate)
   go HandleClient(ctx, server, connChannel)
   for conn := range connChannel {
-    go ProcessClient(conn, log)
+    go ProcessClient(conn, log, broker)
   }
   select{}
 }

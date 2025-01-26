@@ -5,7 +5,7 @@ import (
 )
 
 type Queue struct {
-	items []*Message
+	items []Message
 	mu    sync.Mutex
   cond *sync.Cond
 }
@@ -16,25 +16,25 @@ func NewQueue() *Queue {
   return q
 }
 
-func (q *Queue) Enqueue(item *Message) {
+func (q *Queue) Enqueue(item Message) {
   q.mu.Lock()
   defer q.mu.Unlock()
 	q.items = append(q.items, item)
   q.cond.Signal()
 }
 
-func (q *Queue) Dequeue() *Message {
+func (q *Queue) Dequeue() Message {
   q.mu.Lock()
   defer q.mu.Unlock()
 	for len(q.items) == 0 {
     q.cond.Wait()
 	}
-	packet := q.items[0]
+	msg := q.items[0]
 	q.items = q.items[1:]
-	return packet
+	return msg
 }
 
-func (q *Queue) Peek() *Message {
+func (q *Queue) Peek() Message {
   q.mu.Lock()
   defer q.mu.Unlock()
 	if len(q.items) == 0 {

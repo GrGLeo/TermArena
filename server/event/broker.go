@@ -1,10 +1,13 @@
 package event
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 type EventBroker struct {
 	eventQueue      *Queue
-	subscribers     map[string][]func(Message)
+	subscribers     map[string][]func(Message) Message
 	responseChannel map[string]chan Message
 	mu              sync.Mutex
 }
@@ -12,7 +15,7 @@ type EventBroker struct {
 func NewEventBroker() *EventBroker {
   return &EventBroker{
     eventQueue: NewQueue(),
-    subscribers: make(map[string][]func(Message)),
+    subscribers: make(map[string][]func(Message) Message),
     responseChannel: make(map[string]chan Message),
   }
 }
@@ -20,10 +23,10 @@ func NewEventBroker() *EventBroker {
 func (eb *EventBroker) Publish(msg Message) {
   eb.mu.Lock()
   defer eb.mu.Unlock()
-  eb.eventQueue.Enqueue(&msg)
+  eb.eventQueue.Enqueue(msg)
 }
 
-func (eb *EventBroker) Subscribe(eventType string, callback func(Message)) {
+func (eb *EventBroker) Subscribe(eventType string, callback func(Message) Message) {
   eb.mu.Lock()
   defer eb.mu.Unlock()
   eb.subscribers[eventType] = append(eb.subscribers[eventType], callback)
@@ -46,15 +49,17 @@ func (eb *EventBroker) ProcessMessage() {
       eb.mu.Unlock()
       continue
     }
-    if callbacks, ok := eb.subscribers[msg.Type]; ok {
+    eventType := msg.Type()
+    fmt.Println(eventType)
+    if callbacks, ok := eb.subscribers[eventType]; ok {
       for _, callback := range callbacks {
-        callback(*msg)
+        callback(msg)
       }
     }
     eb.mu.Unlock()
 
-    if channel, ok := eb.responseChannel[msg.Type]; ok {
-      channel <- *msg
+    if channel, ok := eb.responseChannel[eventType]; ok {
+      channel <- msg
     }
   }
 }

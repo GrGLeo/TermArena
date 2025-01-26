@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+
+	"github.com/GrGLeo/ctf/server/event"
 )
 
 /*
@@ -61,6 +63,33 @@ func (lp *LoginPacket) Serialize() []byte {
 	}
 	return buf.Bytes()
 }
+
+func CreateMessage(packet Packet) (event.Message, error) {
+  switch pkt := packet.(type) {
+  case *LoginPacket:
+    return event.LoginMessage{
+      Username: pkt.Username,
+      Password: pkt.Password,
+    }, nil
+  default:
+    return nil, errors.New("No message to create from packet")
+  }
+}
+
+func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
+  switch msg.Type() {
+  case "auth":
+    if err := msg.Validate(); err != nil {
+      packet := NewRespPacket()
+      return packet.Serialize(), nil
+    }
+    packet := NewRespPacket()
+    return packet.Serialize(), nil
+  default:
+    return nil, errors.New("Failed to create packet from message")
+  }
+}
+
 
 type RespPacket struct {
 	version, code int
