@@ -19,6 +19,10 @@ const (
 	Player4
 	Flag1
 	Flag2
+  Dash1
+  Dash2
+  Dash3
+  Dash4
 )
 
 type Board struct {
@@ -27,6 +31,7 @@ type Board struct {
 	Tracker     ChangeTracker
 	Flags       []*Flag
 	Players     []*Player
+  Sprite      []Sprite
 	mu          sync.RWMutex
 }
 
@@ -91,6 +96,17 @@ func (b *Board) Update() {
 		b.CurrentGrid[delta.Y][delta.X] = delta.Value
 	}
 	b.PastGrid = b.CurrentGrid
+}
+
+func (b *Board) UpdateSprite() {
+  for i := 0; i < len(b.Sprite); i++ {
+    x, y, cell := b.Sprite[i].Update()
+    b.Tracker.SaveDelta(x, y, cell)
+    if b.Sprite[i].Clear() {
+      b.Sprite = append(b.Sprite[:i], b.Sprite[i+1:]...)
+      i-- // Adjust index
+    }
+  }
 }
 
 func (b *Board) GetCurrentGrid() [20][50]Cell {
@@ -227,6 +243,7 @@ func LoadConfig(filename string) ([]WallPosition, []*Flag, []*Player, error) {
 	}
 	err = json.Unmarshal(file, &configJSON)
 	if err != nil {
+    fmt.Println(err.Error())
 		return nil, nil, nil, err
 	}
 
@@ -238,6 +255,7 @@ func LoadConfig(filename string) ([]WallPosition, []*Flag, []*Player, error) {
 	playerPtrs := make([]*Player, len(configJSON.Player))
 	for i := range configJSON.Player {
 		playerPtrs[i] = &configJSON.Player[i]
+    fmt.Printf("%+v\n", configJSON.Player[i])
 	}
 	return configJSON.Walls, flagPtrs, playerPtrs, nil
 }

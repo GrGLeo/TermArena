@@ -118,7 +118,7 @@ func TestMove(t *testing.T) {
 			tt.board.Tracker.Reset()
 
 			// Perform the move
-			tt.player.Move(tt.board)
+			tt.player.TakeAction(tt.board)
 
 			// Check the player's position
 			if tt.player.X != tt.expectedX || tt.player.Y != tt.expectedY {
@@ -195,7 +195,7 @@ func TestMoveWithFlag(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.player.Move(tt.board)
+			tt.player.TakeAction(tt.board)
 			if tt.flag.PosX != tt.expectedX || tt.flag.PosY != tt.expectedY {
 				t.Errorf("Move() = %v, %v; want %v, %v", tt.flag.PosX, tt.flag.PosY, tt.expectedX, tt.expectedY)
 			}

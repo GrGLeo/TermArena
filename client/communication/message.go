@@ -49,3 +49,5 @@ type GamePacketMsg struct {
 // ReconnectMsg serve to signal the connection success 
 type ReconnectMsg struct{}
 
+// Cooldown msg for abilities
+type CooldownTickMsg struct{}

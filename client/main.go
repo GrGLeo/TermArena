@@ -65,7 +65,6 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.height = msg.Height
 			m.WaitingModel.SetDimension(m.height, m.width)
 			m.AnimationModel.SetDimension(m.height, m.width)
-			m.GameModel.SetDimension(m.height, m.width)
 		case communication.ConnectionMsg:
 			m.Connection = msg.Conn
 			m.state = Intro
@@ -110,7 +109,8 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case communication.ResponseMsg:
 			log.Print("enter communication response msg")
 			m.state = Game
-      m.GameModel.SetConnection(m.Connection)
+      m.GameModel = model.NewGameModel(m.Connection)
+      m.GameModel.SetDimension(m.height, m.width)
 			return m, m.GameModel.Init()
 		}
 

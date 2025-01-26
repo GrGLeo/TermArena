@@ -1,5 +1,10 @@
 package game
 
+import (
+	"fmt"
+	"time"
+)
+
 
 type actionType int 
 
@@ -13,6 +18,19 @@ const (
   spellTwo
 )
 
+func (p *Player) TakeAction(board *Board) {
+  switch p.Action {
+  case NoAction:
+    return
+  case moveUp, moveDown, moveLeft, moveRight:
+    p.Move(board)
+  case spellOne:
+    p.MakeDash(board)
+  default:
+    return
+  }
+}
+
 func (p *Player) Move(board *Board) {
   posX := p.X
   posY := p.Y
@@ -21,17 +39,17 @@ func (p *Player) Move(board *Board) {
 
   switch p.Action {
   case moveUp:
+    p.Facing = Up
     newY--
   case moveDown:
+    p.Facing = Down
     newY++
   case moveLeft:
+    p.Facing = Left
     newX--
   case moveRight:
+    p.Facing = Right
     newX++
-  case NoAction:
-    return
-  default:
-    return
   }
   valid := board.IsValidPosition(newX, newY)
   if valid {
@@ -67,8 +85,104 @@ func (p *Player) Move(board *Board) {
   return
 }
 
+func (p *Player) MakeDash(board *Board){
+  // Verify player is allowed to dash
+  lastUsed := p.Dash.LastUsed
+  cooldown := time.Duration(p.Dash.Cooldown) * time.Second
+  EndCd := lastUsed.Add(cooldown)
+  fmt.Println(EndCd, time.Now())
+  if p.HasFlag || time.Now().Before(EndCd) {
+    p.Action = NoAction
+    return
+  }
+  posX := p.X
+  posY := p.Y
+  newX := p.X
+  newY := p.Y
+
+  dashRange := p.Dash.Range
+  switch p.Facing {
+  case Up:
+    newY -= dashRange
+    for !board.IsValidPosition(newX, newY) {
+      newY++
+    }
+  case Down:
+    newY += dashRange
+    for !board.IsValidPosition(newX, newY) {
+      newY--
+    }
+  case Left:
+    newX -= dashRange
+    for !board.IsValidPosition(newX, newY) {
+      newX++
+    }
+  case Right:
+    newX += dashRange
+    for !board.IsValidPosition(newX, newY) {
+      newX--
+    }
+  }
+  p.X = newX
+  p.Y = newY
+  
+  // Generate sprite
+  dx := newX - posX
+  dy := newY - posY
+  // Calculate off by one
+  var corX int
+  var corY int
+  if dx != 0 {
+    if dx < 0 {
+      corX = 1
+    } else {
+      corX = -1
+    } 
+  } else {
+    if dy < 0 {
+      corY = 1
+    } else {
+      corY = -1
+    }
+  }
+  maxSprite := max(Absolute(dx), Absolute(dy))
+  if maxSprite != 0 {
+    stepX := dx / maxSprite
+    stepY := dy / maxSprite
+    for i := 1; i <= maxSprite; i++ {
+      x := posX + stepX * i + corX
+      y := posY + stepY * i + corY
+      if !board.IsValidPosition(x, y) {
+        continue
+      }
+      lifecycle := 1 + i * 10
+      sprite := &DashSprite{
+        X: x,
+        Y: y,
+        lifeCycle: lifecycle,
+      }
+      fmt.Printf("%+v\n", sprite)
+      board.Sprite = append(board.Sprite, sprite)
+    }
+  }
+
+
+  board.Tracker.SaveDelta(posX, posY, Empty)
+  board.Tracker.SaveDelta(newX, newY, p.Number)
+  p.Dash.LastUsed = time.Now()
+  p.Action = NoAction
+}
+
 
 type ActionMsg struct {
   ConnAddr string
   Action int
+}
+
+func Absolute(v int) int {
+  if v > 0 {
+    return v
+  } else {
+    return -v
+  }
 }
