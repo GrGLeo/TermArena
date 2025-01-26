@@ -88,6 +88,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
       }
       broker.Publish(msg)
       response := <- broker.ResponseChannel(msg.Type())
+      log.Infoln("response", response)
       data, err:= shared.CreatePacketFromMessage(response)
       n, err := conn.Write(data)
       if err != nil {

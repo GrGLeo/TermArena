@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 
 	"github.com/GrGLeo/ctf/server/event"
 )
@@ -79,6 +80,7 @@ func CreateMessage(packet Packet) (event.Message, error) {
 func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
   switch msg.Type() {
   case "auth":
+    fmt.Println("auth case")
     if err := msg.Validate(); err != nil {
       packet := NewRespPacket()
       return packet.Serialize(), nil

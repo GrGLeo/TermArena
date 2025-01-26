@@ -27,7 +27,7 @@ func (q *Queue) Dequeue() Message {
   q.mu.Lock()
   defer q.mu.Unlock()
 	for len(q.items) == 0 {
-    q.cond.Wait()
+    return nil
 	}
 	msg := q.items[0]
 	q.items = q.items[1:]

@@ -51,15 +51,16 @@ func (eb *EventBroker) ProcessMessage() {
     }
     eventType := msg.Type()
     fmt.Println(eventType)
+    var respMsg Message
     if callbacks, ok := eb.subscribers[eventType]; ok {
       for _, callback := range callbacks {
-        callback(msg)
+        respMsg = callback(msg)
       }
     }
     eb.mu.Unlock()
 
     if channel, ok := eb.responseChannel[eventType]; ok {
-      channel <- msg
+      channel <- respMsg
     }
   }
 }
