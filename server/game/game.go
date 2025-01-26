@@ -76,11 +76,12 @@ func (gr *GameRoom) StartGame() {
       select {
       case <- ticker.C:
         gr.tickID.Add(1)
+        gr.board.UpdateSprite()
         for _, player := range gr.playerChar {
           // process each player action
           player.TakeAction(gr.board)
         }
-        gr.board.Update(int(gr.tickID.Load()))
+        gr.board.Update()
         gr.broadcastState()
       }
     }

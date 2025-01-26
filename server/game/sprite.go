@@ -7,7 +7,7 @@ Dash sprite
 */
 
 type Sprite interface {
-	Update(int) (int, int, Cell)
+	Update() (int, int, Cell)
 	Clear() bool
 }
 
@@ -16,7 +16,7 @@ type DashSprite struct {
 	lifeCycle int
 }
 
-func (s *DashSprite) Update(tick int) (int, int, Cell) {
+func (s *DashSprite) Update() (int, int, Cell) {
 	cellState := s.lifeCycle / 10
 	s.lifeCycle -= 1
 	switch cellState {

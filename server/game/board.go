@@ -89,19 +89,18 @@ func (b *Board) CheckFlagWon(team, y, x int) bool {
 UPDATE AND RETURN BOARDS
 */
 
-func (b *Board) Update(tick int) {
+func (b *Board) Update() {
   b.mu.Lock()
   defer b.mu.Unlock()
-  b.UpdateSprite(tick)
 	for _, delta := range b.Tracker.GetDeltas() {
 		b.CurrentGrid[delta.Y][delta.X] = delta.Value
 	}
 	b.PastGrid = b.CurrentGrid
 }
 
-func (b *Board) UpdateSprite(tick int) {
+func (b *Board) UpdateSprite() {
   for i := 0; i < len(b.Sprite); i++ {
-    x, y, cell := b.Sprite[i].Update(tick)
+    x, y, cell := b.Sprite[i].Update()
     b.Tracker.SaveDelta(x, y, cell)
     if b.Sprite[i].Clear() {
       b.Sprite = append(b.Sprite[:i], b.Sprite[i+1:]...)
