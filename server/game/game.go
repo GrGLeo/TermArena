@@ -56,15 +56,6 @@ func (gr *GameRoom) AddPlayer(conn *net.TCPConn) {
   gr.playerChar[conn.RemoteAddr().String()] = player
   gr.playerConnection = append(gr.playerConnection, conn)
   // Send the initial grid to the player
-  grid := gr.board.GetCurrentGrid()
-  encodedBoard := RunLengthEncode(grid)
-  packet := shared.NewBoardPacket(encodedBoard)
-  data := packet.Serialize()
-  _, err := conn.Write(data)
-  if err != nil {
-    gr.logger.Warnw("Failed to send initial board to player", "id", conn.RemoteAddr(), "error", err)
-    return
-  }
   go gr.ListenToConnection(conn)
   gr.logger.Infow("Payer joined", "id", conn.RemoteAddr())
 }
@@ -72,9 +63,12 @@ func (gr *GameRoom) AddPlayer(conn *net.TCPConn) {
 
 func (gr *GameRoom) StartGame() {
   if len(gr.playerConnection) == gr.PlayerNumber {
+    // Game init
     gr.logger.Info("Game starting")
     gr.SendGameStart()
+    gr.sendInitGrid()
     time.Sleep(1 * time.Second)
+    // Game start 
     go gr.HandleAction()
     ticker := time.NewTicker(50 * time.Millisecond)
     defer ticker.Stop()
@@ -95,6 +89,19 @@ func (gr *GameRoom) StartGame() {
   }
 }
 
+func (gr *GameRoom) sendInitGrid() {
+  grid := gr.board.GetCurrentGrid()
+  encodedBoard := RunLengthEncode(grid)
+  packet := shared.NewBoardPacket(encodedBoard)
+  data := packet.Serialize()
+  for _, conn := range gr.playerConnection {
+    _, err := conn.Write(data)
+    if err != nil {
+      gr.logger.Warnw("Failed to send initial board to player", "id", conn.RemoteAddr(), "error", err)
+      return
+    }
+  }
+}
 
 func (gr *GameRoom) broadcastState() {
   var data []byte
