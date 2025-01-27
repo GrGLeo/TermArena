@@ -121,7 +121,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newmodel, cmd = m.LobbyModel.Update(msg)
 		m.LobbyModel = newmodel.(model.LobbyModel)
 		switch msg.(type) {
-		case communication.ResponseMsg:
+		case communication.GameStartMsg:
 			m.state = Game
 			m.GameModel = model.NewGameModel(m.Connection)
 			m.GameModel.SetDimension(m.height, m.width)

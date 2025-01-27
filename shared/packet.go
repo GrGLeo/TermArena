@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
+	"net"
 
 	"github.com/GrGLeo/ctf/server/event"
 )
@@ -26,7 +26,7 @@ type Packet interface {
 	Serialize() []byte
 }
 
-func CreateMessage(packet Packet) (event.Message, error) {
+func CreateMessage(packet Packet, conn *net.TCPConn) (event.Message, error) {
 	switch pkt := packet.(type) {
 	case *LoginPacket:
 		return event.LoginMessage{
@@ -36,6 +36,7 @@ func CreateMessage(packet Packet) (event.Message, error) {
   case *RoomRequestPacket:
     return event.RoomRequestMessage{
       RoomType: pkt.RoomType,
+      Conn: conn,
     }, nil
 	default:
 		return nil, errors.New("No message to create from packet")
@@ -43,14 +44,16 @@ func CreateMessage(packet Packet) (event.Message, error) {
 }
 
 func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
-	switch msg.Type() {
-	case "auth":
-		fmt.Println("auth case")
+  switch m := msg.(type) {
+	case event.AuthMessage:
 		if err := msg.Validate(); err != nil {
 			packet := NewRespPacket()
 			return packet.Serialize(), nil
 		}
 		packet := NewRespPacket()
+		return packet.Serialize(), nil
+  case event.RoomSearchMessage:
+    packet := NewLookRoomPacket(m.Success)
 		return packet.Serialize(), nil
 	default:
 		return nil, errors.New("Failed to create packet from message")

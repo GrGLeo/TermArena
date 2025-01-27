@@ -51,10 +51,28 @@ func (fm RoomRequestMessage) Type() string {
 }
 
 func (fm RoomRequestMessage) Validate() error {
-  if fm.RoomType >= 3 {
+  if fm.RoomType < 0 || fm.RoomType >= 3 {
     return errors.New("Invalid room type")
+  }
+
+  if fm.Conn == nil {
+    return errors.New("Connection cannot be nil")
   }
   return nil
 }
 
 
+type RoomSearchMessage struct {
+  Success int
+}
+
+func (rs RoomSearchMessage) Type() string {
+  return "search-room"
+}
+
+func (rs RoomSearchMessage) Validate() error {
+  if rs.Success == 1 {
+    return errors.New("Failed to search for a room")
+  }
+  return nil
+}

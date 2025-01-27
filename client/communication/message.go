@@ -34,6 +34,11 @@ type LookRoomMsg struct {
   Code int
 }
 
+// GameStart is sent by the server once the number of player are matched
+type GameStartMsg struct {
+  Code int
+}
+
 // BoardMsg is used to transfer the board to game model
 type BoardMsg struct {
   Board [20][50]int

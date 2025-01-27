@@ -59,6 +59,8 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
       msgs <- ResponseMsg{Code: msg.Code()}
     case *shared.LookRoomPacket:
       msgs <- LookRoomMsg{Code: msg.Success}
+    case *shared.GameStartPacket:
+      msgs <- GameStartMsg{Code: msg.Success}
     case *shared.BoardPacket:
       board, err := DecodeRLE(msg.EncodedBoard)
       if err != nil {

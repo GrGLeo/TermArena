@@ -73,6 +73,8 @@ func (gr *GameRoom) AddPlayer(conn *net.TCPConn) {
 func (gr *GameRoom) StartGame() {
   if len(gr.playerConnection) == gr.PlayerNumber {
     gr.logger.Info("Game starting")
+    gr.SendGameStart()
+    time.Sleep(1 * time.Second)
     go gr.HandleAction()
     ticker := time.NewTicker(50 * time.Millisecond)
     defer ticker.Stop()
@@ -121,6 +123,22 @@ func (gr *GameRoom) broadcastState() {
     }
   }
 }
+
+
+func (gr *GameRoom) SendGameStart() {
+  packet := shared.NewGameStartPacket(0)
+  data := packet.Serialize()
+  for _, conn := range gr.playerConnection {
+    _, err := conn.Write(data)
+    if err != nil {
+      gr.logger.Warn("Player disconnect. Closing game")
+      // For now we stop the game
+      os.Exit(1)
+    }
+    gr.logger.Infow("Send start game", "id", conn.RemoteAddr().String())
+  }
+}
+
 
 func (gr *GameRoom) HandleAction() {
   for {

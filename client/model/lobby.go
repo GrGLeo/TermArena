@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/GrGLeo/ctf/client/communication"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -14,14 +15,21 @@ type LobbyModel struct {
 	options       []string
 	selected      int
 	width, height int
+	looking       bool
 	conn          *net.TCPConn
+	spinner       spinner.Model
 }
 
 func NewLobbyModel(conn *net.TCPConn) LobbyModel {
+  sp := spinner.New()
+  sp.Spinner = spinner.Dot
+  sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+
 	return LobbyModel{
 		options:  []string{"Solo (1 player 1 bot vs 2 bots)", "2 players vs 2 bots", "2 players vs 2 players"},
 		selected: 0,
 		conn:     conn,
+    spinner: sp,
 	}
 }
 
@@ -40,13 +48,16 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case communication.LookRoomMsg:
+		m.looking = true
+    return m, m.spinner.Tick
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEsc, tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyEnter:
 			selectedOption := m.options[m.selected]
-      communication.SendRoomRequestPacket(m.conn, m.selected)
+			communication.SendRoomRequestPacket(m.conn, m.selected)
 			log.Println("Selected option:", selectedOption)
 			return m, nil
 		}
@@ -68,6 +79,10 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	}
+
+  if m.looking {
+    m.spinner, cmd = m.spinner.Update(msg)
+  }
 	return m, cmd
 }
 
@@ -120,6 +135,15 @@ func (m LobbyModel) View() string {
 		Align(lipgloss.Left).
 		Border(lipgloss.NormalBorder(), true, false, false, true).
 		Padding(1, 2)
+    
+    if m.looking {
+		optionsBuilder.WriteString("\n\n")
+		optionsBuilder.WriteString(
+			lipgloss.NewStyle().
+				Foreground(lipgloss.Color("205")).
+				Render("Looking for a room... " + m.spinner.View()),
+		)
+	}
 
 	layout := lipgloss.JoinHorizontal(
 		lipgloss.Top,
