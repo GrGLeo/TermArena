@@ -5,6 +5,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/GrGLeo/ctf/client/communication"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -17,7 +18,6 @@ type LobbyModel struct {
 }
 
 func NewLobbyModel(conn *net.TCPConn) LobbyModel {
-
 	return LobbyModel{
 		options:  []string{"Solo (1 player 1 bot vs 2 bots)", "2 players vs 2 bots", "2 players vs 2 players"},
 		selected: 0,
@@ -46,6 +46,7 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case tea.KeyEnter:
 			selectedOption := m.options[m.selected]
+      communication.SendRoomRequestPacket(m.conn, m.selected)
 			log.Println("Selected option:", selectedOption)
 			return m, nil
 		}

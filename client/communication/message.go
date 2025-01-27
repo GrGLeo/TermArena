@@ -19,13 +19,20 @@ type LoginMsg struct {
 /*
 ResponseMsg is used to validate login
 code 0: login succes
-
 code 1: invalid credential
 */
 type ResponseMsg struct {
   Code int
 }
 
+/*
+LookRoomMsg is used to inform player is in queue
+code 0: player in queue
+code 1: error putting player in queue
+*/
+type LookRoomMsg struct {
+  Code int
+}
 
 // BoardMsg is used to transfer the board to game model
 type BoardMsg struct {

@@ -12,9 +12,12 @@ import (
 /*
 code 0: send login
 code 1: receive login response
-code 2: send action
-code 3: receive RLEboard
-code 4: receive Delta
+code 2: send a find room
+code 3: looking for a room response
+code 4: game start  response
+code 5: send action
+code 6: receive RLEboard
+code 7: receive Delta
 */
 
 type Packet interface {
@@ -22,6 +25,41 @@ type Packet interface {
 	Code() int
 	Serialize() []byte
 }
+
+func CreateMessage(packet Packet) (event.Message, error) {
+	switch pkt := packet.(type) {
+	case *LoginPacket:
+		return event.LoginMessage{
+			Username: pkt.Username,
+			Password: pkt.Password,
+		}, nil
+  case *RoomRequestPacket:
+    return event.RoomRequestMessage{
+      RoomType: pkt.RoomType,
+    }, nil
+	default:
+		return nil, errors.New("No message to create from packet")
+	}
+}
+
+func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
+	switch msg.Type() {
+	case "auth":
+		fmt.Println("auth case")
+		if err := msg.Validate(); err != nil {
+			packet := NewRespPacket()
+			return packet.Serialize(), nil
+		}
+		packet := NewRespPacket()
+		return packet.Serialize(), nil
+	default:
+		return nil, errors.New("Failed to create packet from message")
+	}
+}
+
+/*
+LOGIN PACKET
+*/
 
 type LoginPacket struct {
 	version, code      int
@@ -65,34 +103,6 @@ func (lp *LoginPacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
-func CreateMessage(packet Packet) (event.Message, error) {
-  switch pkt := packet.(type) {
-  case *LoginPacket:
-    return event.LoginMessage{
-      Username: pkt.Username,
-      Password: pkt.Password,
-    }, nil
-  default:
-    return nil, errors.New("No message to create from packet")
-  }
-}
-
-func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
-  switch msg.Type() {
-  case "auth":
-    fmt.Println("auth case")
-    if err := msg.Validate(); err != nil {
-      packet := NewRespPacket()
-      return packet.Serialize(), nil
-    }
-    packet := NewRespPacket()
-    return packet.Serialize(), nil
-  default:
-    return nil, errors.New("Failed to create packet from message")
-  }
-}
-
-
 type RespPacket struct {
 	version, code int
 }
@@ -119,6 +129,99 @@ func (rp *RespPacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
+/*
+FIND GAME PACKET
+*/
+type RoomRequestPacket struct {
+	version, code, RoomType int
+}
+
+func NewRoomRequestPacket(RoomType int) *RoomRequestPacket {
+	return &RoomRequestPacket{
+		version:  1,
+		code:     2,
+    RoomType: RoomType,
+	}
+}
+
+
+func (fp RoomRequestPacket) Version() int {
+	return fp.version
+}
+
+func (fp RoomRequestPacket) Code() int {
+	return fp.code
+}
+
+func (fp *RoomRequestPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(fp.version))
+	buf.WriteByte(byte(fp.code))
+	buf.WriteByte(byte(fp.RoomType))
+	return buf.Bytes()
+}
+
+type LookRoomPacket struct {
+	version, code, Success int
+}
+
+func NewLookRoomPacket(success int) *LookRoomPacket {
+	return &LookRoomPacket{
+		version:  1,
+		code:     3,
+    Success: success,
+	}
+}
+
+func (lp LookRoomPacket) Version() int {
+	return lp.version
+}
+
+func (lp LookRoomPacket) Code() int {
+	return lp.code
+}
+
+func (lp *LookRoomPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(lp.version))
+	buf.WriteByte(byte(lp.code))
+	buf.WriteByte(byte(lp.Success))
+	return buf.Bytes()
+}
+
+type GameStartPacket struct {
+	version, code, Success int
+}
+
+func NewGameStartPacket(success int) *GameStartPacket {
+	return &GameStartPacket{
+		version:  1,
+		code:     4,
+    Success: success,
+	}
+}
+
+func (gp GameStartPacket) Version() int {
+	return gp.version
+}
+
+func (gp GameStartPacket) Code() int {
+	return gp.code
+}
+
+func (gp *GameStartPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(gp.version))
+	buf.WriteByte(byte(gp.code))
+	buf.WriteByte(byte(gp.Success))
+	return buf.Bytes()
+}
+
+
+/*
+GAME PACKETS
+*/
+
 type ActionPacket struct {
 	version, code int
 	action        int
@@ -127,7 +230,7 @@ type ActionPacket struct {
 func NewActionPacket(action int) *ActionPacket {
 	return &ActionPacket{
 		version: 1,
-		code:    2,
+		code:    5,
 		action:  action,
 	}
 }
@@ -161,7 +264,7 @@ type BoardPacket struct {
 func NewBoardPacket(encodedBoard []byte) *BoardPacket {
 	return &BoardPacket{
 		version:      1,
-		code:         3,
+		code:         6,
 		EncodedBoard: encodedBoard,
 	}
 }
@@ -185,15 +288,15 @@ func (bp *BoardPacket) Serialize() []byte {
 type DeltaPacket struct {
 	version, code int
 	tickID        uint32
-	Deltas         [][3]byte
+	Deltas        [][3]byte
 }
 
 func NewDeltaPacket(tickID uint32, deltas [][3]byte) *DeltaPacket {
 	return &DeltaPacket{
-		version:      1,
-		code:         4,
-		tickID: tickID,
-    Deltas: deltas,
+		version: 1,
+		code:    7,
+		tickID:  tickID,
+		Deltas:  deltas,
 	}
 }
 
@@ -209,19 +312,19 @@ func (dp *DeltaPacket) Serialize() []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(byte(dp.version))
 	buf.WriteByte(byte(dp.code))
-  // Write the tickID on 4 byte
-  TickIDBytes := make([]byte, 4)
-  binary.BigEndian.PutUint32(TickIDBytes, dp.tickID)
-  buf.Write(TickIDBytes)
-  // Write the number of deltas on 2 byte
-  deltaCount := len(dp.Deltas)
-  deltaCountBytes := make([]byte, 2)
-  binary.BigEndian.PutUint16(deltaCountBytes, uint16(deltaCount))
-  buf.Write(deltaCountBytes)
-  // Write the deltas
-  for _, delta := range dp.Deltas {
-    buf.Write(delta[:])
-  }
+	// Write the tickID on 4 byte
+	TickIDBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(TickIDBytes, dp.tickID)
+	buf.Write(TickIDBytes)
+	// Write the number of deltas on 2 byte
+	deltaCount := len(dp.Deltas)
+	deltaCountBytes := make([]byte, 2)
+	binary.BigEndian.PutUint16(deltaCountBytes, uint16(deltaCount))
+	buf.Write(deltaCountBytes)
+	// Write the deltas
+	for _, delta := range dp.Deltas {
+		buf.Write(delta[:])
+	}
 	return buf.Bytes()
 }
 
@@ -299,7 +402,28 @@ func DeSerialize(data []byte) (Packet, error) {
 			code:    code,
 		}, nil
 
-	case 2:
+  case 2:
+    return &RoomRequestPacket{
+      version: version,
+      code: code,
+      RoomType: int(data[2]),
+    }, nil
+
+  case 3:
+    return &LookRoomPacket{
+      version: version,
+      code: code,
+      Success: int(data[2]),
+    }, nil
+
+  case 4:
+    return &GameStartPacket{
+      version: version,
+      code: code,
+      Success: int(data[2]),
+    }, nil
+
+	case 5: // ActionPacket
 		action := int(data[2])
 		return &ActionPacket{
 			version: version,
@@ -307,7 +431,7 @@ func DeSerialize(data []byte) (Packet, error) {
 			action:  action,
 		}, nil
 
-	case 3: // BoardPacket
+	case 6: // BoardPacket
 		// All remaining bytes are the encoded board
 		encodedBoard := data[2:]
 		return &BoardPacket{
@@ -316,29 +440,29 @@ func DeSerialize(data []byte) (Packet, error) {
 			EncodedBoard: encodedBoard,
 		}, nil
 
-  case 4: // DeltasPacket
-    if len(data) < 6 {
-      return nil, errors.New("invalid deltas packet length")
-    }
-    tickID := binary.BigEndian.Uint32(data[2:6])
-    deltaCount := int(binary.BigEndian.Uint16(data[6:8]))
-    expectedLength := 8 + deltaCount * 3
-    if len(data) < expectedLength {
-      return nil, errors.New("invalid deltas packet length")
-    }
-    deltas := make([][3]byte, deltaCount)
-    for i := 0; i < deltaCount; i++ {
-      start := 8 + i*3
-      end := start + 3
-      copy(deltas[i][:], data[start:end])
-    }
+	case 7: // DeltasPacket
+		if len(data) < 6 {
+			return nil, errors.New("invalid deltas packet length")
+		}
+		tickID := binary.BigEndian.Uint32(data[2:6])
+		deltaCount := int(binary.BigEndian.Uint16(data[6:8]))
+		expectedLength := 8 + deltaCount*3
+		if len(data) < expectedLength {
+			return nil, errors.New("invalid deltas packet length")
+		}
+		deltas := make([][3]byte, deltaCount)
+		for i := 0; i < deltaCount; i++ {
+			start := 8 + i*3
+			end := start + 3
+			copy(deltas[i][:], data[start:end])
+		}
 
-    return &DeltaPacket{
-      version: version,
-      code: code,
-      tickID: tickID,
-      Deltas: deltas,
-    }, nil
+		return &DeltaPacket{
+			version: version,
+			code:    code,
+			tickID:  tickID,
+			Deltas:  deltas,
+		}, nil
 
 	default:
 		return nil, errors.New("unknown message type")

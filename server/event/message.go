@@ -39,3 +39,20 @@ func (am AuthMessage) Validate() error {
   }
   return nil
 }
+
+type RoomRequestMessage struct {
+  RoomType int
+}
+
+func (fm RoomRequestMessage) Type() string {
+  return "find-room"
+}
+
+func (fm RoomRequestMessage) Validate() error {
+  if fm.RoomType >= 3 {
+    return errors.New("Invalid room type")
+  }
+  return nil
+}
+
+

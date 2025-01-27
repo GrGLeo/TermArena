@@ -26,6 +26,14 @@ func SendLoginPacket(conn *net.TCPConn, username, password string) error {
   return err
 }
 
+func SendRoomRequestPacket(conn *net.TCPConn, roomType int) error {
+  log.Println("sending room request")
+  roomRequestPacket := shared.NewRoomRequestPacket(roomType)
+  data := roomRequestPacket.Serialize()
+  _, err := conn.Write(data)
+  return err
+}
+
 func SendAction(conn *net.TCPConn, action int) error {
   actionPacket := shared.NewActionPacket(action)
   data := actionPacket.Serialize()
@@ -49,6 +57,8 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
     switch msg := message.(type) {
     case *shared.RespPacket:
       msgs <- ResponseMsg{Code: msg.Code()}
+    case *shared.LookRoomPacket:
+      msgs <- LookRoomMsg{Code: msg.Success}
     case *shared.BoardPacket:
       board, err := DecodeRLE(msg.EncodedBoard)
       if err != nil {
