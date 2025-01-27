@@ -44,6 +44,10 @@ func NewGameRoom(number int, logger *zap.SugaredLogger) *GameRoom {
   return &gr
 }
 
+func (gr *GameRoom) PlayersIn() int {
+  return len(gr.playerConnection)
+}
+
 func (gr *GameRoom) AddPlayer(conn *net.TCPConn) {
   gr.gameMutex.Lock()
   defer gr.gameMutex.Unlock()

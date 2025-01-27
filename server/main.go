@@ -8,6 +8,8 @@ import (
 
 	auth "github.com/GrGLeo/ctf/server/authentification"
 	"github.com/GrGLeo/ctf/server/event"
+	manager "github.com/GrGLeo/ctf/server/room_manager.go"
+
 	//"github.com/GrGLeo/ctf/server/game"
 	"github.com/GrGLeo/ctf/shared"
 	"github.com/joho/godotenv"
@@ -120,11 +122,14 @@ func main() {
   ctx := context.Background()
   ctx = context.WithValue(ctx, loggerKey, log)
   // Initialize new EventBroker
-  broker := event.NewEventBroker()
+  broker := event.NewEventBroker(log)
   log.Info("New Event Broker initialize")
+  roomManager := manager.NewRoomManager(log)
+  log.Info("New room manager initialize")
   go broker.ProcessMessage()
   log.Info("Broker ready to process message")
   broker.Subscribe("login", auth.Authentificate)
+  broker.Subscribe("find-room", roomManager.FindRoom)
   go HandleClient(ctx, server, connChannel)
   for conn := range connChannel {
     go ProcessClient(conn, log, broker)

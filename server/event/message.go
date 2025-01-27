@@ -2,6 +2,7 @@ package event
 
 import (
 	"errors"
+	"net"
 )
 
 type Message interface {
@@ -42,6 +43,7 @@ func (am AuthMessage) Validate() error {
 
 type RoomRequestMessage struct {
   RoomType int
+  Conn *net.TCPConn
 }
 
 func (fm RoomRequestMessage) Type() string {
