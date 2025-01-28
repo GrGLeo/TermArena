@@ -54,6 +54,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
   conn := roomRequest.Conn
 
 	rm.logger.Infow("Finding room", "roomType", roomType)
+  rm.logger.Infof("RoomStates: %+v\n", rm.RoomQueues)
 
 	if room, ok := rm.RoomQueues[roomType]; ok {
 		if len(room) > 0 {
@@ -63,7 +64,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 			if oldestRoom.PlayerNumber == oldestRoom.PlayersIn() {
 				rm.RoomStarted = append(rm.RoomStarted, oldestRoom)
 				// we remove the room that is starting
-				room = append(room, room[1:]...)
+				rm.RoomQueues[roomType] = room[1:]
 				go oldestRoom.StartGame()
 				// TODO: we need to send a message to all player in room
 			}
@@ -72,7 +73,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 			rm.logger.Infoln("Creating new room")
 			newRoom := game.NewGameRoom(maxPlayer, rm.logger)
 			newRoom.AddPlayer(conn)
-			room = append(room, newRoom)
+		  rm.RoomQueues[roomType] = append(rm.RoomQueues[roomType], newRoom)
 		}
 	} else {
 		// If the server just started the map is not yet initialize
