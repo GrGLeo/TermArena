@@ -42,19 +42,31 @@
       "number": 3,
       "teamID":6,
       "X": 1,
-      "Y": 14
+      "Y": 14,
+      "dash": {
+        "range": 4,
+        "cooldown": 5
+      }
     },
     {
       "number": 4,
       "teamID":7,
       "X": 48,
-      "Y": 6
+      "Y": 6,
+      "dash": {
+        "range": 4,
+        "cooldown": 5
+      }
     },
     {
       "number": 5,
       "teamID":7,
       "X": 48,
-      "Y": 14
+      "Y": 14,
+      "dash": {
+        "range": 4,
+        "cooldown": 5
+      }
     }
   ]
 }
