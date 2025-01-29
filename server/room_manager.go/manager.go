@@ -56,7 +56,16 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 	rm.logger.Infow("Finding room", "roomType", roomType)
   rm.logger.Infof("RoomStates: %+v\n", rm.RoomQueues)
 
-	if room, ok := rm.RoomQueues[roomType]; ok {
+  // We check for game type
+  if  maxPlayer ==  1 {
+    // We start the game instantly as the player is solo
+		rm.logger.Infoln("Initializing a new room queue and creating a room")
+		newRoom := game.NewGameRoom(maxPlayer, rm.logger)
+		newRoom.AddPlayer(conn)
+    rm.RoomStarted = append(rm.RoomStarted, newRoom)
+    go newRoom.StartGame()
+  } else if room, ok := rm.RoomQueues[roomType]; ok {
+    // We check if there is already a room in a waiting statew
 		if len(room) > 0 {
 			rm.logger.Infoln("Adding player to an existing room")
 			oldestRoom := room[0]
@@ -66,14 +75,13 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 				// we remove the room that is starting
 				rm.RoomQueues[roomType] = room[1:]
 				go oldestRoom.StartGame()
-				// TODO: we need to send a message to all player in room
 			}
 		} else {
 			// In case all room are started we create a new one
 			rm.logger.Infoln("Creating new room")
 			newRoom := game.NewGameRoom(maxPlayer, rm.logger)
 			newRoom.AddPlayer(conn)
-		  rm.RoomQueues[roomType] = append(rm.RoomQueues[roomType], newRoom)
+		rm.RoomQueues[roomType] = append(rm.RoomQueues[roomType], newRoom)
 		}
 	} else {
 		// If the server just started the map is not yet initialize
