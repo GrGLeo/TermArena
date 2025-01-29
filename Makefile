@@ -11,5 +11,8 @@ run-client:
 run-server:
 	go run ./server
 
+run-simulation:
+	go run ./simulation
+
 test:
 	go test -v ./...
