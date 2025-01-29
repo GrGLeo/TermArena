@@ -162,7 +162,7 @@ func (gr *GameRoom) HandleAction() {
       player, exists := gr.playerChar[actionMsg.ConnAddr]
       if exists {
         player.Action = actionType(actionMsg.Action)
-        gr.logger.Infow("Processed action", "roomID", gr.GameID, "conn", actionMsg.ConnAddr, "action", player.Action)
+        //gr.logger.Infow("Processed action", "roomID", gr.GameID, "conn", actionMsg.ConnAddr, "action", player.Action)
       } else {
         gr.logger.Warnw("No player found for connection", "roomID", gr.GameID, "conn", actionMsg.ConnAddr)
       }
