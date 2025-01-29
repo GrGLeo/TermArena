@@ -10,7 +10,7 @@ import (
 
 func MakeConnection() (*net.TCPConn, error) {
   log.Println("Connection Attempt")
-	tcpAddr, err := net.ResolveTCPAddr("tcp", "localhost:8080")
+	tcpAddr, err := net.ResolveTCPAddr("tcp", "localhost:8082")
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	if err != nil {
 		return nil, NewConnectionError(500, "Failed to dial server")

@@ -112,7 +112,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 func main() {
 	log := NewLogger(env)
 	log.Info("Starting server...")
-	serverAddr, err := net.ResolveTCPAddr("tcp", port)
+  serverAddr, err := net.ResolveTCPAddr("tcp", ":8082")
 	if err != nil {
 		log.Fatalln("Failed to resolve TCP Addr", err.Error())
 	}
