@@ -198,7 +198,6 @@ func (b *Board) PlaceAllFlags(flags []*Flag) {
 func (b *Board) ReplaceHiddenFlag() {
   for _, flag := range b.Flags {
     if flag.IsSafe() && b.PastGrid[flag.PosY][flag.PosX] == Empty {
-      fmt.Println("heyo")
       b.Tracker.SaveDelta(flag.PosX, flag.PosY, flag.TeamId)
     }
   }
@@ -265,7 +264,6 @@ func LoadConfig(filename string) ([]WallPosition, []*Flag, []*Player, error) {
 	playerPtrs := make([]*Player, len(configJSON.Player))
 	for i := range configJSON.Player {
 		playerPtrs[i] = &configJSON.Player[i]
-    fmt.Printf("%+v\n", configJSON.Player[i])
 	}
 	return configJSON.Walls, flagPtrs, playerPtrs, nil
 }

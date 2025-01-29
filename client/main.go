@@ -13,6 +13,7 @@ const (
 	Disconnect = "dc"
 	Intro      = "animation"
 	Login      = "login"
+	Lobby      = "lobby"
 	Menu       = "menu"
 	Game       = "game"
 )
@@ -21,6 +22,7 @@ type MetaModel struct {
 	WaitingModel   model.WaitingModel
 	AnimationModel model.AnimationModel
 	LoginModel     model.LoginModel
+	LobbyModel     model.LobbyModel
 	GameModel      model.GameModel
 	state          string
 	Username       string
@@ -33,7 +35,7 @@ type MetaModel struct {
 func NewMetaModel() MetaModel {
 	msgs := make(chan tea.Msg)
 
-  state := Disconnect
+	state := Disconnect
 	return MetaModel{
 		state:          state,
 		AnimationModel: model.NewAnimationModel(),
@@ -54,7 +56,7 @@ func (m MetaModel) Init() tea.Cmd {
 }
 
 func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-  log.Println(m.Connection)
+	log.Println(m.Connection)
 	var cmd tea.Cmd
 	var newmodel tea.Model
 	switch m.state {
@@ -74,10 +76,10 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			newmodel, cmd = m.WaitingModel.Update(msg)
 			m.WaitingModel = newmodel.(model.WaitingModel)
 			return m, tea.Batch(cmd, communication.AttemptReconnect())
-    default:
+		default:
 			newmodel, cmd = m.WaitingModel.Update(msg)
 			m.WaitingModel = newmodel.(model.WaitingModel)
-      return m, cmd
+			return m, cmd
 		}
 	case Intro:
 		switch msg := msg.(type) {
@@ -88,8 +90,8 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			if msg.Type == tea.KeyEnter {
 				m.state = Login
-        m.LoginModel = model.NewLoginModel(m.Connection)
-        m.LoginModel.SetDimension(m.height, m.width)
+				m.LoginModel = model.NewLoginModel(m.Connection)
+				m.LoginModel.SetDimension(m.height, m.width)
 				return m, m.LoginModel.Init()
 			}
 			return m, cmd
@@ -107,12 +109,27 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoginModel = newmodel.(model.LoginModel)
 		switch msg.(type) {
 		case communication.ResponseMsg:
-			log.Print("enter communication response msg")
-			m.state = Game
-      m.GameModel = model.NewGameModel(m.Connection)
-      m.GameModel.SetDimension(m.height, m.width)
-			return m, m.GameModel.Init()
+			m.state = Lobby
+			m.LobbyModel = model.NewLobbyModel(m.Connection)
+			m.LobbyModel.SetDimension(m.height, m.width)
+			return m, m.LobbyModel.Init()
+    default:
+      return m, cmd
 		}
+
+	case Lobby:
+		newmodel, cmd = m.LobbyModel.Update(msg)
+		m.LobbyModel = newmodel.(model.LobbyModel)
+		switch msg.(type) {
+		case communication.GameStartMsg:
+			m.state = Game
+			m.GameModel = model.NewGameModel(m.Connection)
+			m.GameModel.SetDimension(m.height, m.width)
+			return m, m.GameModel.Init()
+    default:
+      return m, cmd
+		}
+
 
 	case Game:
 		log.Print("enter Game")
@@ -132,6 +149,8 @@ func (m MetaModel) View() string {
 		return m.AnimationModel.View()
 	case Login:
 		return m.LoginModel.View()
+	case Lobby:
+		return m.LobbyModel.View()
 	case Game:
 		return m.GameModel.View()
 	}

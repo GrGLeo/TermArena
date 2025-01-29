@@ -1,9 +1,6 @@
 package game
 
-import (
-	"fmt"
-	"time"
-)
+import "time"
 
 
 type actionType int 
@@ -90,7 +87,6 @@ func (p *Player) MakeDash(board *Board){
   lastUsed := p.Dash.LastUsed
   cooldown := time.Duration(p.Dash.Cooldown) * time.Second
   EndCd := lastUsed.Add(cooldown)
-  fmt.Println(EndCd, time.Now())
   if p.HasFlag || time.Now().Before(EndCd) {
     p.Action = NoAction
     return
@@ -161,7 +157,6 @@ func (p *Player) MakeDash(board *Board){
         Y: y,
         lifeCycle: lifecycle,
       }
-      fmt.Printf("%+v\n", sprite)
       board.Sprite = append(board.Sprite, sprite)
     }
   }
