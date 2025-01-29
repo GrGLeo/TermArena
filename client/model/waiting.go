@@ -35,16 +35,16 @@ func (m WaitingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
   switch msg := msg.(type) {
   case tea.KeyMsg:
     switch msg.Type {
-      case tea.KeyCtrlC, tea.KeyEsc:
-        return m, tea.Quit
-      default:
-        return m, nil
-      }
-
+    case tea.KeyCtrlC, tea.KeyEsc:
+      return m, tea.Quit
     default:
-      m.spinner, cmd = m.spinner.Update(msg)
-      return m, cmd
+      return m, nil
     }
+
+  default:
+    m.spinner, cmd = m.spinner.Update(msg)
+    return m, cmd
+  }
 }
 
 func (m WaitingModel) View() string {

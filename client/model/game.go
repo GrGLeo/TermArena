@@ -102,7 +102,10 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m GameModel) View() string {
 	// Define styles
 	bgStyle := lipgloss.NewStyle().Background(lipgloss.Color("0"))
-	blueStyle := lipgloss.NewStyle().Background(lipgloss.Color("21"))
+	p1Style := lipgloss.NewStyle().Background(lipgloss.Color("21"))
+	p2Style := lipgloss.NewStyle().Background(lipgloss.Color("91"))
+	p3Style := lipgloss.NewStyle().Background(lipgloss.Color("34"))
+	p4Style := lipgloss.NewStyle().Background(lipgloss.Color("220"))
 	grayStyle := lipgloss.NewStyle().Background(lipgloss.Color("240"))
 	Flag1Style := lipgloss.NewStyle().Background(lipgloss.Color("201"))
 	Flag2Style := lipgloss.NewStyle().Background(lipgloss.Color("94"))
@@ -118,13 +121,13 @@ func (m GameModel) View() string {
 			case 1:
 				builder.WriteString(grayStyle.Render(" ")) // Render gray for walls
 			case 2:
-				builder.WriteString(blueStyle.Render(" ")) // Render blue for player1
+				builder.WriteString(p1Style.Render(" ")) // Render blue for player1
 			case 3:
-				builder.WriteString(blueStyle.Render(" ")) // Render blue for player2
+				builder.WriteString(p2Style.Render(" ")) // Render blue for player2
 			case 4:
-				builder.WriteString(blueStyle.Render(" ")) // Render blue for player3
+				builder.WriteString(p3Style.Render(" ")) // Render blue for player3
 			case 5:
-				builder.WriteString(blueStyle.Render(" ")) // Render blue for player4
+				builder.WriteString(p4Style.Render(" ")) // Render blue for player4
 			case 6:
 				builder.WriteString(Flag1Style.Render(" ")) // Render for flag1
 			case 7:
