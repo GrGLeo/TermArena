@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"math/rand"
 	"net"
 	"os"
@@ -86,9 +87,19 @@ func (gr *GameRoom) StartGame() {
           player.TakeAction(gr.board)
         }
         gr.board.Update()
-        gr.broadcastState()
+        if err := gr.broadcastState(); err != nil {
+          gr.logger.Infoln(err.Error())
+          return
+        }
       }
     }
+  }
+}
+
+func (gr *GameRoom) CloseGame() {
+  gr.logger.Infow("Closing game", "roomID", gr.GameID)
+  for _, conn := range gr.playerConnection {
+    conn.Close()
   }
 }
 
@@ -106,7 +117,7 @@ func (gr *GameRoom) sendInitGrid() {
   }
 }
 
-func (gr *GameRoom) broadcastState() {
+func (gr *GameRoom) broadcastState() error {
   var data []byte
   grid := gr.board.GetCurrentGrid()
   deltas := gr.board.Tracker.GetDeltasByte()
@@ -127,11 +138,12 @@ func (gr *GameRoom) broadcastState() {
   for _, conn := range gr.playerConnection {
     _, err := conn.Write(data)
     if err != nil {
-      gr.logger.Warn("Player disconnect. Closing game")
-      // For now we stop the game
-      os.Exit(1)
+      err := errors.New("Player disconnect. Closing game") 
+      gr.CloseGame()
+      return err 
     }
   }
+  return nil
 }
 
 
