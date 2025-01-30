@@ -33,6 +33,14 @@ func NewLobbyModel(conn *net.TCPConn) LobbyModel {
 	}
 }
 
+func (m *LobbyModel) SetConn(conn *net.TCPConn) {
+  m.conn = conn
+}
+
+func (m *LobbyModel) SetLooking(search bool) {
+  m.looking = search
+}
+
 func (m *LobbyModel) SetDimension(height, width int) {
 	m.height = height
 	m.width = width

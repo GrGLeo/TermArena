@@ -96,9 +96,17 @@ func (gr *GameRoom) StartGame() {
   }
 }
 
-func (gr *GameRoom) CloseGame() {
+func (gr *GameRoom) CloseGame(success int) {
   gr.logger.Infow("Closing game", "roomID", gr.GameID)
+  closeGamePacket := shared.NewGameClosePacket(success)
+  data := closeGamePacket.Serialize()
   for _, conn := range gr.playerConnection {
+    if _, err := conn.Write(data); err != nil {
+      gr.logger.Infow("Failed to send close game message")
+    }
+    // we close the connection for now.
+    // Client who receive message will recontact the server
+    // this is not clean
     conn.Close()
   }
 }
@@ -139,7 +147,8 @@ func (gr *GameRoom) broadcastState() error {
     _, err := conn.Write(data)
     if err != nil {
       err := errors.New("Player disconnect. Closing game") 
-      gr.CloseGame()
+      // We send closing on error to clients
+      gr.CloseGame(2)
       return err 
     }
   }

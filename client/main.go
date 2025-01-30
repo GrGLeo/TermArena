@@ -56,7 +56,6 @@ func (m MetaModel) Init() tea.Cmd {
 }
 
 func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	log.Println(m.Connection)
 	var cmd tea.Cmd
 	var newmodel tea.Model
 	switch m.state {
@@ -130,13 +129,23 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
       return m, cmd
 		}
 
-
 	case Game:
-		log.Print("enter Game")
-		newmodel, cmd = m.GameModel.Update(msg)
-		m.GameModel = newmodel.(model.GameModel)
-
-		return m, cmd
+    switch msg.(type) {
+    case communication.GameCloseMsg:
+        conn, err := communication.MakeConnection()
+        if err != nil {
+          log.Println("Failed to make connection after game close: ", err.Error())
+        }
+        m.Connection = conn
+        m.state = Lobby
+        m.LobbyModel.SetConn(conn)
+        m.LobbyModel.SetLooking(false)
+			  go communication.ListenForPackets(m.Connection, m.msgs)
+    default:
+      newmodel, cmd = m.GameModel.Update(msg)
+      m.GameModel = newmodel.(model.GameModel)
+	  	return m, cmd
+    }
 	}
 	return m, nil
 }
