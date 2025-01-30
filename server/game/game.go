@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"math/rand"
 	"net"
 	"os"
@@ -86,9 +87,27 @@ func (gr *GameRoom) StartGame() {
           player.TakeAction(gr.board)
         }
         gr.board.Update()
-        gr.broadcastState()
+        if err := gr.broadcastState(); err != nil {
+          gr.logger.Infoln(err.Error())
+          return
+        }
       }
     }
+  }
+}
+
+func (gr *GameRoom) CloseGame(success int) {
+  gr.logger.Infow("Closing game", "roomID", gr.GameID)
+  closeGamePacket := shared.NewGameClosePacket(success)
+  data := closeGamePacket.Serialize()
+  for _, conn := range gr.playerConnection {
+    if _, err := conn.Write(data); err != nil {
+      gr.logger.Infow("Failed to send close game message")
+    }
+    // we close the connection for now.
+    // Client who receive message will recontact the server
+    // this is not clean
+    conn.Close()
   }
 }
 
@@ -106,7 +125,7 @@ func (gr *GameRoom) sendInitGrid() {
   }
 }
 
-func (gr *GameRoom) broadcastState() {
+func (gr *GameRoom) broadcastState() error {
   var data []byte
   grid := gr.board.GetCurrentGrid()
   deltas := gr.board.Tracker.GetDeltasByte()
@@ -127,11 +146,13 @@ func (gr *GameRoom) broadcastState() {
   for _, conn := range gr.playerConnection {
     _, err := conn.Write(data)
     if err != nil {
-      gr.logger.Warn("Player disconnect. Closing game")
-      // For now we stop the game
-      os.Exit(1)
+      err := errors.New("Player disconnect. Closing game") 
+      // We send closing on error to clients
+      gr.CloseGame(2)
+      return err 
     }
   }
+  return nil
 }
 
 

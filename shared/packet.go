@@ -18,6 +18,7 @@ code 4: game start  response
 code 5: send action
 code 6: receive RLEboard
 code 7: receive Delta
+code 8: game close
 */
 
 type Packet interface {
@@ -217,6 +218,34 @@ func (gp *GameStartPacket) Serialize() []byte {
 	buf.WriteByte(byte(gp.version))
 	buf.WriteByte(byte(gp.code))
 	buf.WriteByte(byte(gp.Success))
+	return buf.Bytes()
+}
+
+type GameClosePacket struct {
+	version, code, Success int
+}
+
+func NewGameClosePacket(success int) *GameStartPacket {
+	return &GameStartPacket{
+		version:  1,
+		code:     8,
+    Success: success,
+	}
+}
+
+func (gc GameClosePacket) Version() int {
+	return gc.version
+}
+
+func (gc GameClosePacket) Code() int {
+	return gc.code
+}
+
+func (gc *GameClosePacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(gc.version))
+	buf.WriteByte(byte(gc.code))
+	buf.WriteByte(byte(gc.Success))
 	return buf.Bytes()
 }
 
@@ -466,6 +495,14 @@ func DeSerialize(data []byte) (Packet, error) {
 			tickID:  tickID,
 			Deltas:  deltas,
 		}, nil
+
+  case 8: // GameClosePacket
+  // Success 0: won 1: loose 2: error
+    return &GameClosePacket{
+      version: version,
+      code: code,
+      Success: int(data[2]),
+    }, nil
 
 	default:
 		return nil, errors.New("unknown message type")

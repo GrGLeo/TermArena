@@ -25,7 +25,7 @@ func (m WaitingModel) Init() tea.Cmd {
 
 func NewWaitingModel() WaitingModel {
   s := spinner.New()
-  s.Spinner = spinner.Pulse
+  s.Spinner = spinner.Dot
   s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("256"))
   return WaitingModel{spinner: s}
 }

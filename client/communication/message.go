@@ -39,6 +39,12 @@ type GameStartMsg struct {
   Code int
 }
 
+// GameClose is sent after the server close
+// Code: 0 win. 1 losse. 2 server error
+type GameCloseMsg struct {
+  Code int
+}
+
 // BoardMsg is used to transfer the board to game model
 type BoardMsg struct {
   Board [20][50]int

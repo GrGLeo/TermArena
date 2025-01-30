@@ -1,7 +1,6 @@
 package model
 
 import (
-	"log"
 	"net"
 	"strings"
 	"time"
@@ -87,7 +86,6 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.dashed {
 			elapsed := time.Since(m.dashStart)
 			percent = float64(elapsed) / float64(m.dashcooldown)
-			log.Println(percent)
 			if percent >= 1.0 {
 				percent = 0
 				m.dashed = false
@@ -146,7 +144,6 @@ func (m GameModel) View() string {
 	}
 
   var progressBar string
-  log.Println("progress percent", m.progress.Percent())
   if m.percent != 0.0 {
 	  progressBar = m.progress.ViewAs(m.percent)
   }
