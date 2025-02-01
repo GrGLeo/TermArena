@@ -171,6 +171,100 @@ func (p *Player) MakeDash(board *Board){
 }
 
 
+func (p *Player) MakeFreeze(board *Board) {
+  // Verify player is allowed to cast freeze
+  lastUsed := p.Freeze.LastUsed
+  cooldown := time.Duration(p.Dash.Cooldown) * time.Second
+  EndCd := lastUsed.Add(cooldown)
+  if time.Now().Before(EndCd) {
+    p.Action = NoAction
+    return
+  }
+  switch p.Facing {
+  case Up:
+    if p.Y == 0 {
+      return
+    }
+    minX := p.X - 1
+    if minX < 0 {
+      minX = 0
+    }
+    maxX := p.X + 1
+    if maxX > 49 {
+      maxX = 49
+    }
+    for i := minX; i <= maxX; i++ {
+      sprite := &FreezeSprite{
+        X: i,
+        Y: p.Y - 1,
+        Facing: Up,
+      }
+      board.Sprite = append(board.Sprite, sprite)
+    }
+  case Down:
+    if p.Y == 19 {
+      return
+    }
+    minX := p.X - 1
+    if minX < 0 {
+      minX = 0
+    }
+    maxX := p.X + 1
+    if maxX > 49 {
+      maxX = 49
+    }
+    for i := minX; i <= maxX; i++ {
+      sprite := &FreezeSprite{
+        X: i,
+        Y: p.Y + 1,
+        Facing: Down,
+      }
+      board.Sprite = append(board.Sprite, sprite)
+    }
+  case Left:
+    if p.X == 0 {
+      return
+    }
+    minY := p.Y - 1
+    if minY < 0 {
+      minY = 0
+    }
+    maxY := p.Y + 1
+    if maxY > 19 {
+      maxY = 19
+    }
+    for i := minY; i <= maxY; i++ {
+      sprite := &FreezeSprite{
+        X: p.X - 1,
+        Y: i,
+        Facing: Left,
+      }
+      board.Sprite = append(board.Sprite, sprite)
+    }
+  case Right:
+    if p.X == 49 {
+      return
+    }
+    minY := p.Y - 1
+    if minY < 0 {
+      minY = 0
+    }
+    maxY := p.Y + 1
+    if maxY > 19 {
+      maxY = 19
+    }
+    for i := minY; i <= maxY; i++ {
+      sprite := &FreezeSprite{
+        X: p.X + 1,
+        Y: i,
+        Facing: Right,
+      }
+      board.Sprite = append(board.Sprite, sprite)
+    }
+  }
+}
+
+
 type ActionMsg struct {
   ConnAddr string
   Action int

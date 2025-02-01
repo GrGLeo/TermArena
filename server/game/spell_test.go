@@ -111,6 +111,99 @@ func TestDash(t *testing.T) {
 	}
 }
 
+
+func TestMakeFreeze(t *testing.T) {
+	tests := []struct {
+		name           string
+		player         *Player
+		board          *Board
+		expectedSprites []*FreezeSprite
+	}{
+		{
+			name:      "Freeze Up",
+			player:    createPlayer(25, 10, Up),
+			board:     &Board{PastGrid: createBoardWithPlayer(25, 10), Tracker: ChangeTracker{}},
+			expectedSprites: []*FreezeSprite{
+				{X: 24, Y: 9, Facing: Up},
+				{X: 25, Y: 9, Facing: Up},
+				{X: 26, Y: 9, Facing: Up},
+			},
+		},
+    {
+			name:      "Freeze Up at border",
+			player:    createPlayer(0, 10, Up),
+			board:     &Board{PastGrid: createBoardWithPlayer(0, 10), Tracker: ChangeTracker{}},
+			expectedSprites: []*FreezeSprite{
+				{X: 0, Y: 9, Facing: Up},
+				{X: 1, Y: 9, Facing: Up},
+			},
+		},
+		{
+			name:      "Freeze Down",
+			player:    createPlayer(25, 10, Down),
+			board:     &Board{PastGrid: createBoardWithPlayer(25, 10), Tracker: ChangeTracker{}},
+			expectedSprites: []*FreezeSprite{
+				{X: 24, Y: 11, Facing: Down},
+				{X: 25, Y: 11, Facing: Down},
+				{X: 26, Y: 11, Facing: Down},
+			},
+		},
+		{
+			name:      "Freeze Left",
+			player:    createPlayer(25, 10, Left),
+			board:     &Board{PastGrid: createBoardWithPlayer(25, 10), Tracker: ChangeTracker{}},
+			expectedSprites: []*FreezeSprite{
+				{X: 24, Y: 9, Facing: Left},
+				{X: 24, Y: 10, Facing: Left},
+				{X: 24, Y: 11, Facing: Left},
+			},
+		},
+		{
+			name:      "Freeze Right",
+			player:    createPlayer(25, 10, Right),
+			board:     &Board{PastGrid: createBoardWithPlayer(25, 10), Tracker: ChangeTracker{}},
+			expectedSprites: []*FreezeSprite{
+				{X: 26, Y: 9, Facing: Right},
+				{X: 26, Y: 10, Facing: Right},
+				{X: 26, Y: 11, Facing: Right},
+			},
+		},
+		{
+			name:      "Freeze Out of Bounds",
+			player:    createPlayer(0, 0, Left),
+			board:     &Board{PastGrid: createBoardWithPlayer(0, 0), Tracker: ChangeTracker{}},
+			expectedSprites: []*FreezeSprite{
+				// No sprites should be created because the player is at the edge
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.board.Sprite = nil
+
+			tt.player.MakeFreeze(tt.board)
+
+			if len(tt.board.Sprite) != len(tt.expectedSprites) {
+				t.Errorf("Expected %d sprites, but got %d", len(tt.expectedSprites), len(tt.board.Sprite))
+			}
+
+			for i, expectedSprite := range tt.expectedSprites {
+				actualSprite := tt.board.Sprite[i]
+
+				sprite, ok := actualSprite.(*FreezeSprite)
+				if !ok {
+					t.Errorf("Sprite at index %d is not of type *FreezeSprite, got %T", i, actualSprite)
+					continue
+				}
+				if sprite.X != expectedSprite.X || sprite.Y != expectedSprite.Y || sprite.Facing != expectedSprite.Facing {
+					t.Errorf("Sprite mismatch at index %d: expected %+v, got %+v", i, expectedSprite, sprite)
+				}
+			}
+		})
+	}
+}
+
+
 func createPlayer(x, y int, direction Direction) *Player {
 	return &Player{
 		X:      x,

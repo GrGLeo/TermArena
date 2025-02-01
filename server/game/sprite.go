@@ -1,6 +1,5 @@
 package game
 
-
 /*
 Dash sprite
 ⣿ ⣶ ⣤ ⣀
@@ -37,4 +36,18 @@ func (s *DashSprite) Update() (int, int, Cell) {
 
 func (s *DashSprite) Clear() bool {
 	return s.lifeCycle <= 0
+}
+
+type FreezeSprite struct {
+	X, Y      int
+	lifeCycle int
+	Facing    Direction
+}
+
+func (s *FreezeSprite) Update() (int, int, Cell) {
+  return s.X, s.Y, Empty
+}
+
+func (s *FreezeSprite) Clear() bool {
+  return false
 }
