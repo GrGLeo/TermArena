@@ -34,18 +34,18 @@ func CreateMessage(packet Packet, conn *net.TCPConn) (event.Message, error) {
 			Username: pkt.Username,
 			Password: pkt.Password,
 		}, nil
-  case *RoomRequestPacket:
-    return event.RoomRequestMessage{
-      RoomType: pkt.RoomType,
-      Conn: conn,
-    }, nil
+	case *RoomRequestPacket:
+		return event.RoomRequestMessage{
+			RoomType: pkt.RoomType,
+			Conn:     conn,
+		}, nil
 	default:
 		return nil, errors.New("No message to create from packet")
 	}
 }
 
 func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
-  switch m := msg.(type) {
+	switch m := msg.(type) {
 	case event.AuthMessage:
 		if err := msg.Validate(); err != nil {
 			packet := NewRespPacket()
@@ -53,8 +53,8 @@ func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
 		}
 		packet := NewRespPacket()
 		return packet.Serialize(), nil
-  case event.RoomSearchMessage:
-    packet := NewLookRoomPacket(m.Success)
+	case event.RoomSearchMessage:
+		packet := NewLookRoomPacket(m.Success)
 		return packet.Serialize(), nil
 	default:
 		return nil, errors.New("Failed to create packet from message")
@@ -144,10 +144,9 @@ func NewRoomRequestPacket(RoomType int) *RoomRequestPacket {
 	return &RoomRequestPacket{
 		version:  1,
 		code:     2,
-    RoomType: RoomType,
+		RoomType: RoomType,
 	}
 }
-
 
 func (fp RoomRequestPacket) Version() int {
 	return fp.version
@@ -171,9 +170,9 @@ type LookRoomPacket struct {
 
 func NewLookRoomPacket(success int) *LookRoomPacket {
 	return &LookRoomPacket{
-		version:  1,
-		code:     3,
-    Success: success,
+		version: 1,
+		code:    3,
+		Success: success,
 	}
 }
 
@@ -199,9 +198,9 @@ type GameStartPacket struct {
 
 func NewGameStartPacket(success int) *GameStartPacket {
 	return &GameStartPacket{
-		version:  1,
-		code:     4,
-    Success: success,
+		version: 1,
+		code:    4,
+		Success: success,
 	}
 }
 
@@ -227,9 +226,9 @@ type GameClosePacket struct {
 
 func NewGameClosePacket(success int) *GameStartPacket {
 	return &GameStartPacket{
-		version:  1,
-		code:     8,
-    Success: success,
+		version: 1,
+		code:    8,
+		Success: success,
 	}
 }
 
@@ -248,7 +247,6 @@ func (gc *GameClosePacket) Serialize() []byte {
 	buf.WriteByte(byte(gc.Success))
 	return buf.Bytes()
 }
-
 
 /*
 GAME PACKETS
@@ -290,13 +288,15 @@ func (ap ActionPacket) Serialize() []byte {
 
 type BoardPacket struct {
 	version, code int
+	Points        [2]int
 	EncodedBoard  []byte
 }
 
-func NewBoardPacket(encodedBoard []byte) *BoardPacket {
+func NewBoardPacket(points [2]int, encodedBoard []byte) *BoardPacket {
 	return &BoardPacket{
 		version:      1,
 		code:         6,
+		Points:       points,
 		EncodedBoard: encodedBoard,
 	}
 }
@@ -313,6 +313,8 @@ func (bp *BoardPacket) Serialize() []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(byte(bp.version))
 	buf.WriteByte(byte(bp.code))
+	buf.WriteByte(byte(bp.Points[0]))
+	buf.WriteByte(byte(bp.Points[1]))
 	buf.Write(bp.EncodedBoard)
 	return buf.Bytes()
 }
@@ -320,13 +322,15 @@ func (bp *BoardPacket) Serialize() []byte {
 type DeltaPacket struct {
 	version, code int
 	tickID        uint32
+	Points        [2]int
 	Deltas        [][3]byte
 }
 
-func NewDeltaPacket(tickID uint32, deltas [][3]byte) *DeltaPacket {
+func NewDeltaPacket(tickID uint32, points [2]int, deltas [][3]byte) *DeltaPacket {
 	return &DeltaPacket{
 		version: 1,
 		code:    7,
+		Points:  points,
 		tickID:  tickID,
 		Deltas:  deltas,
 	}
@@ -348,6 +352,9 @@ func (dp *DeltaPacket) Serialize() []byte {
 	TickIDBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(TickIDBytes, dp.tickID)
 	buf.Write(TickIDBytes)
+	// Write the teams points
+	buf.WriteByte(byte(dp.Points[0]))
+	buf.WriteByte(byte(dp.Points[1]))
 	// Write the number of deltas on 2 byte
 	deltaCount := len(dp.Deltas)
 	deltaCountBytes := make([]byte, 2)
@@ -434,26 +441,26 @@ func DeSerialize(data []byte) (Packet, error) {
 			code:    code,
 		}, nil
 
-  case 2:
-    return &RoomRequestPacket{
-      version: version,
-      code: code,
-      RoomType: int(data[2]),
-    }, nil
+	case 2:
+		return &RoomRequestPacket{
+			version:  version,
+			code:     code,
+			RoomType: int(data[2]),
+		}, nil
 
-  case 3:
-    return &LookRoomPacket{
-      version: version,
-      code: code,
-      Success: int(data[2]),
-    }, nil
+	case 3:
+		return &LookRoomPacket{
+			version: version,
+			code:    code,
+			Success: int(data[2]),
+		}, nil
 
-  case 4:
-    return &GameStartPacket{
-      version: version,
-      code: code,
-      Success: int(data[2]),
-    }, nil
+	case 4:
+		return &GameStartPacket{
+			version: version,
+			code:    code,
+			Success: int(data[2]),
+		}, nil
 
 	case 5: // ActionPacket
 		action := int(data[2])
@@ -464,11 +471,17 @@ func DeSerialize(data []byte) (Packet, error) {
 		}, nil
 
 	case 6: // BoardPacket
-		// All remaining bytes are the encoded board
-		encodedBoard := data[2:]
+		// First two bytes are points
+		points := [2]int{}
+		points[0] = int(data[2])
+		points[1] = int(data[3])
+
+		// Rest of data is the encodedBoard
+		encodedBoard := data[4:]
 		return &BoardPacket{
 			version:      version,
 			code:         code,
+			Points:       points,
 			EncodedBoard: encodedBoard,
 		}, nil
 
@@ -477,14 +490,17 @@ func DeSerialize(data []byte) (Packet, error) {
 			return nil, errors.New("invalid deltas packet length")
 		}
 		tickID := binary.BigEndian.Uint32(data[2:6])
-		deltaCount := int(binary.BigEndian.Uint16(data[6:8]))
-		expectedLength := 8 + deltaCount*3
+		points := [2]int{}
+		points[0] = int(data[6])
+		points[1] = int(data[7])
+		deltaCount := int(binary.BigEndian.Uint16(data[8:10]))
+		expectedLength := 10 + deltaCount*3
 		if len(data) < expectedLength {
 			return nil, errors.New("invalid deltas packet length")
 		}
 		deltas := make([][3]byte, deltaCount)
 		for i := 0; i < deltaCount; i++ {
-			start := 8 + i*3
+			start := 10 + i*3
 			end := start + 3
 			copy(deltas[i][:], data[start:end])
 		}
@@ -492,17 +508,18 @@ func DeSerialize(data []byte) (Packet, error) {
 		return &DeltaPacket{
 			version: version,
 			code:    code,
+			Points:  points,
 			tickID:  tickID,
 			Deltas:  deltas,
 		}, nil
 
-  case 8: // GameClosePacket
-  // Success 0: won 1: loose 2: error
-    return &GameClosePacket{
-      version: version,
-      code: code,
-      Success: int(data[2]),
-    }, nil
+	case 8: // GameClosePacket
+		// Success 0: won 1: loose 2: error
+		return &GameClosePacket{
+			version: version,
+			code:    code,
+			Success: int(data[2]),
+		}, nil
 
 	default:
 		return nil, errors.New("unknown message type")

@@ -68,10 +68,10 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
       if err != nil {
         log.Print(err.Error())
       }
-      msgs <- BoardMsg{Board: board}
+      msgs <- BoardMsg{Points: msg.Points, Board: board}
     case *shared.DeltaPacket:
       deltas := DecodeDeltas(msg.Deltas)
-      msgs <- DeltaMsg{Deltas: deltas}
+      msgs <- DeltaMsg{Points: msg.Points, Deltas: deltas}
     default:
       log.Printf("Unknown type: %T\n", message)
       msgs <- GamePacketMsg{Packet: buf[:n]}
