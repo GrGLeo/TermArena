@@ -101,8 +101,19 @@ func (b *Board) Update() {
 
 func (b *Board) UpdateSprite() {
   for i := 0; i < len(b.Sprite); i++ {
-    x, y, cell := b.Sprite[i].Update()
-    b.Tracker.SaveDelta(x, y, cell)
+    switch sprite :=b.Sprite[i].(type) {
+    case *DashSprite:
+      x, y, cell := sprite.Update()
+      b.Tracker.SaveDelta(x, y, cell)
+    case *FreezeSprite:
+      b.Tracker.SaveDelta(sprite.X, sprite.Y, Empty)
+      x, y, cell := sprite.Update()
+      if b.CurrentGrid[y][x] == Wall {
+        sprite.lifeCycle = -1
+      } else {
+        b.Tracker.SaveDelta(x, y, cell)
+      }
+    }
     if b.Sprite[i].Clear() {
       b.Sprite = append(b.Sprite[:i], b.Sprite[i+1:]...)
       i-- // Adjust index

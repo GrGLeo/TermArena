@@ -57,6 +57,9 @@ func (s *FreezeSprite) Update() (int, int, Cell) {
   if !changes {
     return s.X, s.Y, Frozen
   }
+  if s.lifeCycle < 0 {
+    return s.X, s.Y, Empty
+  }
 
   switch s.Facing {
   case Up:
@@ -84,5 +87,5 @@ func (s *FreezeSprite) Update() (int, int, Cell) {
 }
 
 func (s *FreezeSprite) Clear() bool {
-  return s.lifeCycle <= 0
+  return s.lifeCycle < 0
 }

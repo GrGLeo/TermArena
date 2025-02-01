@@ -207,9 +207,13 @@ func (p *Player) MakeFreeze(board *Board) {
       maxX = 49
     }
     for i := minX; i <= maxX; i++ {
+      if board.CurrentGrid[p.Y-1][i] == Wall {
+        continue
+      }
       sprite := &FreezeSprite{
         X: i,
         Y: p.Y - 1,
+        lifeCycle: 17,
         Facing: Up,
       }
       board.Sprite = append(board.Sprite, sprite)
@@ -227,9 +231,13 @@ func (p *Player) MakeFreeze(board *Board) {
       maxX = 49
     }
     for i := minX; i <= maxX; i++ {
+      if board.CurrentGrid[p.Y+1][i] == Wall {
+        continue
+      }
       sprite := &FreezeSprite{
         X: i,
         Y: p.Y + 1,
+        lifeCycle: 17,
         Facing: Down,
       }
       board.Sprite = append(board.Sprite, sprite)
@@ -247,9 +255,13 @@ func (p *Player) MakeFreeze(board *Board) {
       maxY = 19
     }
     for i := minY; i <= maxY; i++ {
+      if board.CurrentGrid[i][p.X-1] == Wall {
+        continue
+      }
       sprite := &FreezeSprite{
         X: p.X - 1,
         Y: i,
+        lifeCycle: 17,
         Facing: Left,
       }
       board.Sprite = append(board.Sprite, sprite)
@@ -267,14 +279,20 @@ func (p *Player) MakeFreeze(board *Board) {
       maxY = 19
     }
     for i := minY; i <= maxY; i++ {
+      if board.CurrentGrid[i][p.X+1] == Wall {
+        continue
+      }
       sprite := &FreezeSprite{
         X: p.X + 1,
         Y: i,
+        lifeCycle: 17,
         Facing: Right,
       }
       board.Sprite = append(board.Sprite, sprite)
     }
   }
+  p.Freeze.LastUsed = time.Now()
+  p.Action = NoAction
 }
 
 
