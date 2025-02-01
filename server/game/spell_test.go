@@ -203,6 +203,73 @@ func TestMakeFreeze(t *testing.T) {
 	}
 }
 
+func TestFreezeSpriteUpdate(t *testing.T) {
+	tests := []struct {
+		name        string
+		sprite      FreezeSprite
+		expectedX   int
+		expectedY   int
+		expectedLife int
+	}{
+		{
+			name:        "Initial state does not move (lifecycle 17)",
+			sprite:      FreezeSprite{X: 10, Y: 10, lifeCycle: 17, Facing: Up},
+			expectedX:   10,
+			expectedY:   10,
+			expectedLife: 16,
+		},
+		{
+			name:        "First movement (lifecycle 14)",
+			sprite:      FreezeSprite{X: 10, Y: 10, lifeCycle: 14, Facing: Up},
+			expectedX:   10,
+			expectedY:   9,
+			expectedLife: 13,
+		},
+		{
+			name:        "Another movement (lifecycle 11)",
+			sprite:      FreezeSprite{X: 10, Y: 9, lifeCycle: 11, Facing: Up},
+			expectedX:   10,
+			expectedY:   8,
+			expectedLife: 10,
+		},
+		{
+			name:        "Hits the top boundary",
+			sprite:      FreezeSprite{X: 10, Y: 1, lifeCycle: 2, Facing: Up},
+			expectedX:   10,
+			expectedY:   0,
+			expectedLife: 0,
+		},
+		{
+			name:        "Hits the right boundary",
+			sprite:      FreezeSprite{X: 49, Y: 10, lifeCycle: 3, Facing: Right},
+			expectedX:   49,
+			expectedY:   10,
+			expectedLife: 0,
+		},
+		{
+			name:        "Moves left until boundary",
+			sprite:      FreezeSprite{X: 1, Y: 10, lifeCycle: 2, Facing: Left},
+			expectedX:   0,
+			expectedY:   10,
+			expectedLife: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			x, y, _ := tt.sprite.Update()
+
+			if x != tt.expectedX || y != tt.expectedY {
+				t.Errorf("Unexpected position: got (%d, %d), want (%d, %d)", x, y, tt.expectedX, tt.expectedY)
+			}
+
+			if tt.sprite.lifeCycle != tt.expectedLife {
+				t.Errorf("Unexpected lifecycle: got %d, want %d", tt.sprite.lifeCycle, tt.expectedLife)
+			}
+		})
+	}
+}
+
 
 func createPlayer(x, y int, direction Direction) *Player {
 	return &Player{

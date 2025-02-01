@@ -23,6 +23,7 @@ const (
   Dash2
   Dash3
   Dash4
+  Frozen
 )
 
 type Board struct {
