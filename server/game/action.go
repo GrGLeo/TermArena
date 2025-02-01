@@ -15,6 +15,16 @@ const (
   spellTwo
 )
 
+// TakeAction processes the player's current action on the given board.
+//
+// It handles different types of actions:
+//  - NoAction: Does nothing and returns false.
+//  - moveUp, moveDown, moveLeft, moveRight: Calls Move and returns true if the player captures the flag, false otherwise.
+//  - spellOne: Calls MakeDash but does not return a capture result.
+//  - spellTwo: Calls MakeFreeze but does not return a capture result.
+// Returns:
+//  - true if the player's movement results in capturing the flag.
+//  - false otherwise.
 func (p *Player) TakeAction(board *Board) bool {
   switch p.Action {
   case NoAction:
@@ -23,6 +33,9 @@ func (p *Player) TakeAction(board *Board) bool {
     return p.Move(board)
   case spellOne:
     p.MakeDash(board)
+    return false
+  case spellTwo:
+    p.MakeFreeze(board)
     return false
   default:
     return false
