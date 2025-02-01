@@ -128,14 +128,18 @@ func (m GameModel) View() string {
   redPoints := strconv.Itoa(m.points[1])
   blueStr := BluePointStyle.Render(bluePoints)
   redStr := RedPointStyle.Render(redPoints)
-  hud := HudStyle.Render(blueStr + " | " + redStr)
-  hud = lipgloss.Place(
+  splitStr := HudStyle.Render(" | ")
+  scoreText := HudStyle.Render(blueStr + splitStr + redStr)
+  hud := lipgloss.Place(
     50,
     1,
     lipgloss.Center,
     lipgloss.Center,
-    hud,
+    scoreText,
+    lipgloss.WithWhitespaceChars(" "),
+    lipgloss.WithWhitespaceBackground(HudStyle.GetBackground()),
   )
+
   hud += "\n"
   builder.WriteString(hud)
 
