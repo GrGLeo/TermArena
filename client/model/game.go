@@ -1,7 +1,9 @@
 package model
 
 import (
+	"log"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +18,7 @@ type GameModel struct {
 	conn          *net.TCPConn
 	height, width int
 	progress      progress.Model
+	points        [2]int
 	dashed        bool
 	dashcooldown  time.Duration
 	dashStart     time.Time
@@ -23,10 +26,10 @@ type GameModel struct {
 }
 
 func NewGameModel(conn *net.TCPConn) GameModel {
-  yellowGradient := progress.WithGradient(
-    "#FFFF00", // Bright yellow
-    "#FFD700", // Gold
-  )
+	yellowGradient := progress.WithGradient(
+		"#FFFF00", // Bright yellow
+		"#FFD700", // Gold
+	)
 	return GameModel{
 		conn:         conn,
 		progress:     progress.New(yellowGradient),
@@ -51,8 +54,12 @@ func (m *GameModel) SetConnection(conn *net.TCPConn) {
 func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case communication.BoardMsg:
+    points := msg.Points
+    m.points = points
 		m.currentBoard = msg.Board
 	case communication.DeltaMsg:
+    points := msg.Points
+    m.points = points
 		ApplyDeltas(msg.Deltas, &m.currentBoard)
 		return m, nil
 	case tea.KeyMsg:
@@ -98,6 +105,7 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m GameModel) View() string {
+  log.Println(m.points)
 	// Define styles
 	bgStyle := lipgloss.NewStyle().Background(lipgloss.Color("0"))
 	p1Style := lipgloss.NewStyle().Background(lipgloss.Color("21"))
@@ -108,7 +116,32 @@ func (m GameModel) View() string {
 	Flag1Style := lipgloss.NewStyle().Background(lipgloss.Color("201"))
 	Flag2Style := lipgloss.NewStyle().Background(lipgloss.Color("94"))
 
+  BluePointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("21"))
+  RedPointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("34"))
+  HudStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("0"))
+
+
 	var builder strings.Builder
+
+  // Construct score board
+  bluePoints := strconv.Itoa(m.points[0])
+  redPoints := strconv.Itoa(m.points[1])
+  blueStr := BluePointStyle.Render(bluePoints)
+  redStr := RedPointStyle.Render(redPoints)
+  splitStr := HudStyle.Render(" | ")
+  scoreText := HudStyle.Render(blueStr + splitStr + redStr)
+  hud := lipgloss.Place(
+    50,
+    1,
+    lipgloss.Center,
+    lipgloss.Center,
+    scoreText,
+    lipgloss.WithWhitespaceChars(" "),
+    lipgloss.WithWhitespaceBackground(HudStyle.GetBackground()),
+  )
+
+  hud += "\n"
+  builder.WriteString(hud)
 
 	// Iterate through the board and apply styles
 	for _, row := range m.currentBoard {
@@ -131,31 +164,33 @@ func (m GameModel) View() string {
 			case 7:
 				builder.WriteString(Flag2Style.Render(" ")) // Render for flag2
 			case 8:
-				builder.WriteString("⣿") // Render for flag2
+				builder.WriteString(bgStyle.Render("⣿")) // Render for flag2
 			case 9:
-				builder.WriteString("⣶") // Render for flag2
+				builder.WriteString(bgStyle.Render("⣶")) // Render for flag2
 			case 10:
-				builder.WriteString("⣤") // Render for flag2
+				builder.WriteString(bgStyle.Render("⣤")) // Render for flag2
 			case 11:
-				builder.WriteString("⣀") // Render for flag2
+				builder.WriteString(bgStyle.Render("⣀")) // Render for flag2
 			}
 		}
 		builder.WriteString("\n") // New line at the end of each row
 	}
 
-  var progressBar string
-  if m.percent != 0.0 {
-	  progressBar = m.progress.ViewAs(m.percent)
-  }
+	var progressBar string
+	if m.percent != 0.0 {
+		progressBar = m.progress.ViewAs(m.percent)
+	}
 	builder.WriteString(progressBar)
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		builder.String(),
-	)
+
+  return lipgloss.Place(
+    m.width,
+    m.height,
+    lipgloss.Center,
+    lipgloss.Center,
+    builder.String(),
+  )
 }
+
 func doTick() tea.Cmd {
 	return tea.Tick(50*time.Millisecond, func(time.Time) tea.Msg {
 		return communication.CooldownTickMsg{}

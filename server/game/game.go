@@ -20,6 +20,7 @@ type GameRoom struct {
   board *Board
   tickID atomic.Int32
   actions []actionType
+  points [2]int
   playerConnection []*net.TCPConn
   playerChar map[string]*Player
   logger *zap.SugaredLogger
@@ -79,12 +80,26 @@ func (gr *GameRoom) StartGame() {
     for {
       select {
       case <- ticker.C:
+        // Game is won
+        if gr.points[0] == 3 || gr.points[1] == 3 {
+          gr.CloseGame(1)
+          return
+        }
+        // Else we keep the game loop
         gr.tickID.Add(1)
         gr.board.ReplaceHiddenFlag()
         gr.board.UpdateSprite()
         for _, player := range gr.playerChar {
           // process each player action
-          player.TakeAction(gr.board)
+          flagWon := player.TakeAction(gr.board)
+          if flagWon {
+            switch player.TeamID {
+            case 6:
+              gr.points[0]++
+            case 7:
+              gr.points[1]++
+            } 
+          }
         }
         gr.board.Update()
         if err := gr.broadcastState(); err != nil {
@@ -114,7 +129,7 @@ func (gr *GameRoom) CloseGame(success int) {
 func (gr *GameRoom) sendInitGrid() {
   grid := gr.board.GetCurrentGrid()
   encodedBoard := RunLengthEncode(grid)
-  packet := shared.NewBoardPacket(encodedBoard)
+  packet := shared.NewBoardPacket(gr.points, encodedBoard)
   data := packet.Serialize()
   for _, conn := range gr.playerConnection {
     _, err := conn.Write(data)
@@ -136,11 +151,11 @@ func (gr *GameRoom) broadcastState() error {
   if len(deltas) > totalCells / 2 {
     gr.logger.Infow("Sending back full board", "roomID", gr.GameID)
     encodedBoard := RunLengthEncode(grid)
-    packet := shared.NewBoardPacket(encodedBoard)
+    packet := shared.NewBoardPacket(gr.points, encodedBoard)
     data = packet.Serialize()
   } else {
     tickID := uint32(gr.tickID.Load())
-    packet := shared.NewDeltaPacket(tickID, deltas)
+    packet := shared.NewDeltaPacket(tickID, gr.points, deltas)
     data = packet.Serialize()
   }
   for _, conn := range gr.playerConnection {

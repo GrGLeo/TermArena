@@ -15,20 +15,21 @@ const (
   spellTwo
 )
 
-func (p *Player) TakeAction(board *Board) {
+func (p *Player) TakeAction(board *Board) bool {
   switch p.Action {
   case NoAction:
-    return
+    return false
   case moveUp, moveDown, moveLeft, moveRight:
-    p.Move(board)
+    return p.Move(board)
   case spellOne:
     p.MakeDash(board)
+    return false
   default:
-    return
+    return false
   }
 }
 
-func (p *Player) Move(board *Board) {
+func (p *Player) Move(board *Board) bool {
   posX := p.X
   posY := p.Y
   newX := p.X
@@ -65,21 +66,22 @@ func (p *Player) Move(board *Board) {
       p.HasFlag = false
       p.Flag = nil
       p.Action = NoAction 
+      return true
     } else if p.X != posX || p.Y != posY {
       p.Flag.Move(posX, posY, board)
       p.Action = NoAction 
     }
-    return
+    return false
   }
   // Check if player catch flag
   if flag := board.CheckFlagCaptured(p.TeamID, p.Y, p.X); flag != nil  {
     p.HasFlag = true
     p.Flag = flag
     p.Action = NoAction 
-    return
+    return false
   }
   p.Action = NoAction 
-  return
+  return false
 }
 
 func (p *Player) MakeDash(board *Board){
