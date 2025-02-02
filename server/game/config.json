@@ -36,6 +36,10 @@
       "dash": {
         "range": 4,
         "cooldown": 5
+      },
+      "freeze": {
+        "range": 10,
+        "cooldown": 3
       }
     },
     {
@@ -46,6 +50,10 @@
       "dash": {
         "range": 4,
         "cooldown": 5
+      },
+      "freeze": {
+        "range": 10,
+        "cooldown": 3
       }
     },
     {
@@ -56,6 +64,10 @@
       "dash": {
         "range": 4,
         "cooldown": 5
+      },
+      "freeze": {
+        "range": 10,
+        "cooldown": 3
       }
     },
     {
@@ -66,6 +78,10 @@
       "dash": {
         "range": 4,
         "cooldown": 5
+      },
+      "freeze": {
+        "range": 10,
+        "cooldown": 3
       }
     }
   ]

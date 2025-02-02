@@ -23,6 +23,7 @@ const (
   Dash2
   Dash3
   Dash4
+  Frozen
 )
 
 type Board struct {
@@ -100,8 +101,27 @@ func (b *Board) Update() {
 
 func (b *Board) UpdateSprite() {
   for i := 0; i < len(b.Sprite); i++ {
-    x, y, cell := b.Sprite[i].Update()
-    b.Tracker.SaveDelta(x, y, cell)
+    switch sprite :=b.Sprite[i].(type) {
+    case *DashSprite:
+      x, y, cell := sprite.Update()
+      b.Tracker.SaveDelta(x, y, cell)
+    case *FreezeSprite:
+      b.Tracker.SaveDelta(sprite.X, sprite.Y, Empty)
+      x, y, cell := sprite.Update()
+      switch b.PastGrid[y][x] {
+      case Wall:
+        sprite.lifeCycle = -1
+      case Player1, Player2, Player3, Player4:
+        for _, p := range b.Players {
+          if p.Number == b.PastGrid[y][x] && p.TeamID != sprite.TeamID {
+            p.IsFrozen = 20
+            sprite.lifeCycle = -1
+          }
+        }
+      default:
+        b.Tracker.SaveDelta(x, y, cell)
+      }
+    }
     if b.Sprite[i].Clear() {
       b.Sprite = append(b.Sprite[:i], b.Sprite[i+1:]...)
       i-- // Adjust index

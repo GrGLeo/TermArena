@@ -87,6 +87,9 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.dashStart = time.Now()
 				return m, doTick()
 			}
+    case "j":
+      communication.SendAction(m.conn, 6)
+      return m, nil
 		}
 	case communication.CooldownTickMsg:
 		var percent float64
@@ -115,6 +118,7 @@ func (m GameModel) View() string {
 	grayStyle := lipgloss.NewStyle().Background(lipgloss.Color("240"))
 	Flag1Style := lipgloss.NewStyle().Background(lipgloss.Color("201"))
 	Flag2Style := lipgloss.NewStyle().Background(lipgloss.Color("94"))
+	FreezeStyle := lipgloss.NewStyle().Background(lipgloss.Color("105"))
 
   BluePointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("21"))
   RedPointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("34"))
@@ -164,13 +168,15 @@ func (m GameModel) View() string {
 			case 7:
 				builder.WriteString(Flag2Style.Render(" ")) // Render for flag2
 			case 8:
-				builder.WriteString(bgStyle.Render("⣿")) // Render for flag2
+				builder.WriteString(bgStyle.Render("⣿")) // Render for dash
 			case 9:
-				builder.WriteString(bgStyle.Render("⣶")) // Render for flag2
+				builder.WriteString(bgStyle.Render("⣶")) // Render for dash
 			case 10:
-				builder.WriteString(bgStyle.Render("⣤")) // Render for flag2
+				builder.WriteString(bgStyle.Render("⣤")) // Render for dash
 			case 11:
-				builder.WriteString(bgStyle.Render("⣀")) // Render for flag2
+				builder.WriteString(bgStyle.Render("⣀")) // Render for dash
+      case 12:
+        builder.WriteString(FreezeStyle.Render("x")) // Render for freezing spell
 			}
 		}
 		builder.WriteString("\n") // New line at the end of each row

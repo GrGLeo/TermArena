@@ -15,7 +15,21 @@ const (
   spellTwo
 )
 
+// TakeAction processes the player's current action on the given board.
+//
+// It handles different types of actions:
+//  - NoAction: Does nothing and returns false.
+//  - moveUp, moveDown, moveLeft, moveRight: Calls Move and returns true if the player captures the flag, false otherwise.
+//  - spellOne: Calls MakeDash but does not return a capture result.
+//  - spellTwo: Calls MakeFreeze but does not return a capture result.
+// Returns:
+//  - true if the player's movement results in capturing the flag.
+//  - false otherwise.
 func (p *Player) TakeAction(board *Board) bool {
+  if p.IsFrozen > 0 {
+    p.Action = NoAction
+    p.IsFrozen--
+  }
   switch p.Action {
   case NoAction:
     return false
@@ -23,6 +37,9 @@ func (p *Player) TakeAction(board *Board) bool {
     return p.Move(board)
   case spellOne:
     p.MakeDash(board)
+    return false
+  case spellTwo:
+    p.MakeFreeze(board)
     return false
   default:
     return false
@@ -167,6 +184,122 @@ func (p *Player) MakeDash(board *Board){
   board.Tracker.SaveDelta(posX, posY, Empty)
   board.Tracker.SaveDelta(newX, newY, p.Number)
   p.Dash.LastUsed = time.Now()
+  p.Action = NoAction
+}
+
+
+func (p *Player) MakeFreeze(board *Board) {
+  // Verify player is allowed to cast freeze
+  lastUsed := p.Freeze.LastUsed
+  cooldown := time.Duration(p.Freeze.Cooldown) * time.Second
+  EndCd := lastUsed.Add(cooldown)
+  if time.Now().Before(EndCd) {
+    p.Action = NoAction
+    return
+  }
+  switch p.Facing {
+  case Up:
+    if p.Y == 0 {
+      return
+    }
+    minX := p.X - 1
+    if minX < 0 {
+      minX = 0
+    }
+    maxX := p.X + 1
+    if maxX > 49 {
+      maxX = 49
+    }
+    for i := minX; i <= maxX; i++ {
+      if board.CurrentGrid[p.Y-1][i] == Wall {
+        continue
+      }
+      sprite := &FreezeSprite{
+        X: i,
+        Y: p.Y - 1,
+        lifeCycle: 17,
+        Facing: Up,
+        TeamID: p.TeamID,
+      }
+      board.Sprite = append(board.Sprite, sprite)
+    }
+  case Down:
+    if p.Y == 19 {
+      return
+    }
+    minX := p.X - 1
+    if minX < 0 {
+      minX = 0
+    }
+    maxX := p.X + 1
+    if maxX > 49 {
+      maxX = 49
+    }
+    for i := minX; i <= maxX; i++ {
+      if board.CurrentGrid[p.Y+1][i] == Wall {
+        continue
+      }
+      sprite := &FreezeSprite{
+        X: i,
+        Y: p.Y + 1,
+        lifeCycle: 17,
+        Facing: Down,
+        TeamID: p.TeamID,
+      }
+      board.Sprite = append(board.Sprite, sprite)
+    }
+  case Left:
+    if p.X == 0 {
+      return
+    }
+    minY := p.Y - 1
+    if minY < 0 {
+      minY = 0
+    }
+    maxY := p.Y + 1
+    if maxY > 19 {
+      maxY = 19
+    }
+    for i := minY; i <= maxY; i++ {
+      if board.CurrentGrid[i][p.X-1] == Wall {
+        continue
+      }
+      sprite := &FreezeSprite{
+        X: p.X - 1,
+        Y: i,
+        lifeCycle: 17,
+        Facing: Left,
+        TeamID: p.TeamID,
+      }
+      board.Sprite = append(board.Sprite, sprite)
+    }
+  case Right:
+    if p.X == 49 {
+      return
+    }
+    minY := p.Y - 1
+    if minY < 0 {
+      minY = 0
+    }
+    maxY := p.Y + 1
+    if maxY > 19 {
+      maxY = 19
+    }
+    for i := minY; i <= maxY; i++ {
+      if board.CurrentGrid[i][p.X+1] == Wall {
+        continue
+      }
+      sprite := &FreezeSprite{
+        X: p.X + 1,
+        Y: i,
+        lifeCycle: 17,
+        Facing: Right,
+        TeamID: p.TeamID,
+      }
+      board.Sprite = append(board.Sprite, sprite)
+    }
+  }
+  p.Freeze.LastUsed = time.Now()
   p.Action = NoAction
 }
 

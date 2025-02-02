@@ -16,7 +16,7 @@ import (
 
 type GameRoom struct {
   GameID string
-  PlayerNumber int
+  RoomSize int
   board *Board
   tickID atomic.Int32
   actions []actionType
@@ -31,7 +31,7 @@ type GameRoom struct {
 func NewGameRoom(number int, logger *zap.SugaredLogger) *GameRoom {
   gr := GameRoom{
     GameID: GenerateGameID(),
-    PlayerNumber: number,
+    RoomSize: number,
     logger: logger,
     actionChan: make(chan *ActionMsg),
     playerChar: make(map[string]*Player),
@@ -67,7 +67,7 @@ func (gr *GameRoom) AddPlayer(conn *net.TCPConn) {
 
 
 func (gr *GameRoom) StartGame() {
-  if len(gr.playerConnection) == gr.PlayerNumber {
+  if len(gr.playerConnection) == gr.RoomSize {
     // Game init
     gr.logger.Infow("Game starting", "roomID", gr.GameID)
     gr.SendGameStart()
