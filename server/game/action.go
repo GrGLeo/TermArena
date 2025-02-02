@@ -187,7 +187,7 @@ func (p *Player) MakeDash(board *Board){
 func (p *Player) MakeFreeze(board *Board) {
   // Verify player is allowed to cast freeze
   lastUsed := p.Freeze.LastUsed
-  cooldown := time.Duration(p.Dash.Cooldown) * time.Second
+  cooldown := time.Duration(p.Freeze.Cooldown) * time.Second
   EndCd := lastUsed.Add(cooldown)
   if time.Now().Before(EndCd) {
     p.Action = NoAction
