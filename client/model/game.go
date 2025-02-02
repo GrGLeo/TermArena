@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"strconv"
@@ -16,6 +17,7 @@ import (
 type GameModel struct {
 	currentBoard  [20][50]int
 	conn          *net.TCPConn
+	gameClock     time.Duration
 	height, width int
 	progress      progress.Model
 	points        [2]int
@@ -52,14 +54,15 @@ func (m *GameModel) SetConnection(conn *net.TCPConn) {
 }
 
 func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+  m.gameClock += 50 * time.Millisecond
 	switch msg := msg.(type) {
 	case communication.BoardMsg:
-    points := msg.Points
-    m.points = points
+		points := msg.Points
+		m.points = points
 		m.currentBoard = msg.Board
 	case communication.DeltaMsg:
-    points := msg.Points
-    m.points = points
+		points := msg.Points
+		m.points = points
 		ApplyDeltas(msg.Deltas, &m.currentBoard)
 		return m, nil
 	case tea.KeyMsg:
@@ -87,9 +90,9 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.dashStart = time.Now()
 				return m, doTick()
 			}
-    case "j":
-      communication.SendAction(m.conn, 6)
-      return m, nil
+		case "j":
+			communication.SendAction(m.conn, 6)
+			return m, nil
 		}
 	case communication.CooldownTickMsg:
 		var percent float64
@@ -108,7 +111,7 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m GameModel) View() string {
-  log.Println(m.points)
+	log.Println(m.points)
 	// Define styles
 	bgStyle := lipgloss.NewStyle().Background(lipgloss.Color("0"))
 	p1Style := lipgloss.NewStyle().Background(lipgloss.Color("21"))
@@ -120,32 +123,38 @@ func (m GameModel) View() string {
 	Flag2Style := lipgloss.NewStyle().Background(lipgloss.Color("94"))
 	FreezeStyle := lipgloss.NewStyle().Background(lipgloss.Color("105"))
 
-  BluePointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("21"))
-  RedPointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("34"))
-  HudStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("0"))
-
+	BluePointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("21"))
+	RedPointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("34"))
+	HudStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("0"))
 
 	var builder strings.Builder
 
-  // Construct score board
-  bluePoints := strconv.Itoa(m.points[0])
-  redPoints := strconv.Itoa(m.points[1])
-  blueStr := BluePointStyle.Render(bluePoints)
-  redStr := RedPointStyle.Render(redPoints)
-  splitStr := HudStyle.Render(" | ")
-  scoreText := HudStyle.Render(blueStr + splitStr + redStr)
-  hud := lipgloss.Place(
-    50,
-    1,
-    lipgloss.Center,
-    lipgloss.Center,
-    scoreText,
-    lipgloss.WithWhitespaceChars(" "),
-    lipgloss.WithWhitespaceBackground(HudStyle.GetBackground()),
-  )
+	// Construct score board
+	bluePoints := strconv.Itoa(m.points[0])
+	redPoints := strconv.Itoa(m.points[1])
+	blueStr := BluePointStyle.Render(bluePoints)
+	redStr := RedPointStyle.Render(redPoints)
+	splitStr := HudStyle.Render(" | ")
+	scoreText := HudStyle.Render(blueStr + splitStr + redStr)
 
-  hud += "\n"
-  builder.WriteString(hud)
+  minutes := int(m.gameClock.Minutes())
+  seconds := int(m.gameClock.Seconds()) % 60
+  clockStr := HudStyle.Render(fmt.Sprintf("%02d:%02d", minutes, seconds))
+
+
+	hud := lipgloss.Place(
+		45,
+		1,
+		lipgloss.Center,
+		lipgloss.Center,
+		scoreText,
+		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceBackground(HudStyle.GetBackground()),
+	)
+
+  hudContent := lipgloss.JoinHorizontal(lipgloss.Right, hud, clockStr)
+	hudContent += "\n"
+	builder.WriteString(hudContent)
 
 	// Iterate through the board and apply styles
 	for _, row := range m.currentBoard {
@@ -175,8 +184,8 @@ func (m GameModel) View() string {
 				builder.WriteString(bgStyle.Render("⣤")) // Render for dash
 			case 11:
 				builder.WriteString(bgStyle.Render("⣀")) // Render for dash
-      case 12:
-        builder.WriteString(FreezeStyle.Render("x")) // Render for freezing spell
+			case 12:
+				builder.WriteString(FreezeStyle.Render("x")) // Render for freezing spell
 			}
 		}
 		builder.WriteString("\n") // New line at the end of each row
@@ -188,13 +197,13 @@ func (m GameModel) View() string {
 	}
 	builder.WriteString(progressBar)
 
-  return lipgloss.Place(
-    m.width,
-    m.height,
-    lipgloss.Center,
-    lipgloss.Center,
-    builder.String(),
-  )
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		builder.String(),
+	)
 }
 
 func doTick() tea.Cmd {
