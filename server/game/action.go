@@ -215,6 +215,7 @@ func (p *Player) MakeFreeze(board *Board) {
         Y: p.Y - 1,
         lifeCycle: 17,
         Facing: Up,
+        TeamID: p.TeamID,
       }
       board.Sprite = append(board.Sprite, sprite)
     }
@@ -239,6 +240,7 @@ func (p *Player) MakeFreeze(board *Board) {
         Y: p.Y + 1,
         lifeCycle: 17,
         Facing: Down,
+        TeamID: p.TeamID,
       }
       board.Sprite = append(board.Sprite, sprite)
     }
@@ -263,6 +265,7 @@ func (p *Player) MakeFreeze(board *Board) {
         Y: i,
         lifeCycle: 17,
         Facing: Left,
+        TeamID: p.TeamID,
       }
       board.Sprite = append(board.Sprite, sprite)
     }
@@ -287,6 +290,7 @@ func (p *Player) MakeFreeze(board *Board) {
         Y: i,
         lifeCycle: 17,
         Facing: Right,
+        TeamID: p.TeamID,
       }
       board.Sprite = append(board.Sprite, sprite)
     }

@@ -70,7 +70,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 			rm.logger.Infoln("Adding player to an existing room")
 			oldestRoom := room[0]
 			oldestRoom.AddPlayer(conn)
-			if oldestRoom.PlayerNumber == oldestRoom.PlayersIn() {
+			if oldestRoom.RoomSize == oldestRoom.PlayersIn() {
 				rm.RoomStarted = append(rm.RoomStarted, oldestRoom)
 				// we remove the room that is starting
 				rm.RoomQueues[roomType] = room[1:]
