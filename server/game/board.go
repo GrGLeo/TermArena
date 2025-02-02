@@ -108,9 +108,17 @@ func (b *Board) UpdateSprite() {
     case *FreezeSprite:
       b.Tracker.SaveDelta(sprite.X, sprite.Y, Empty)
       x, y, cell := sprite.Update()
-      if b.CurrentGrid[y][x] == Wall {
+      switch b.PastGrid[y][x] {
+      case Wall:
         sprite.lifeCycle = -1
-      } else {
+      case Player1, Player2, Player3, Player4:
+        for _, p := range b.Players {
+          if p.Number == b.PastGrid[y][x] && p.TeamID != sprite.TeamID {
+            p.IsFrozen = 20
+            sprite.lifeCycle = -1
+          }
+        }
+      default:
         b.Tracker.SaveDelta(x, y, cell)
       }
     }

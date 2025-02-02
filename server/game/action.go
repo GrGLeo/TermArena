@@ -26,6 +26,10 @@ const (
 //  - true if the player's movement results in capturing the flag.
 //  - false otherwise.
 func (p *Player) TakeAction(board *Board) bool {
+  if p.IsFrozen > 0 {
+    p.Action = NoAction
+    p.IsFrozen--
+  }
   switch p.Action {
   case NoAction:
     return false

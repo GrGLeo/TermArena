@@ -12,16 +12,17 @@ const (
 )
 
 type Player struct {
-	Number  Cell      `json:"number"`
-	TeamID  int       `json:"teamID"`
-	X       int       `json:"X"`
-	Y       int       `json:"Y"`
-	Facing  Direction //Facing direction
-	Action  actionType
-	HasFlag bool
-	Flag    *Flag
-	Dash    Dash   `json:"dash"`
-	Freeze  Freeze `json:"freeze"`
+	Number   Cell      `json:"number"`
+	TeamID   int       `json:"teamID"`
+	X        int       `json:"X"`
+	Y        int       `json:"Y"`
+	Facing   Direction //Facing direction
+	Action   actionType
+	HasFlag  bool
+	Flag     *Flag
+	Dash     Dash   `json:"dash"`
+	Freeze   Freeze `json:"freeze"`
+	IsFrozen int // Number tick player is frozen
 }
 
 type Dash struct {
