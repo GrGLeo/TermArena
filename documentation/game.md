@@ -1,6 +1,6 @@
 # Full Technical Overhaul: Game Logic and Code Implementation
 
-This document outlines a comprehensive technical review and redesign of the game logic and its implementation. It is intended for senior developers or architects planning to overhaul the system. Every major subsystem is explained in detail—from low-level data structures and control flows to high-level concurrency, networking, and state management.
+This document outlines a comprehensive technical review and redesign of the game logic and its implementation. It is intended for developers planning to overhaul the system. Every major subsystem is explained in detail—from low-level data structures and control flows to high-level concurrency, networking, and state management.
 
 ---
 
