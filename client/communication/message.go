@@ -54,6 +54,7 @@ type BoardMsg struct {
 type DeltaMsg struct {
 	Points [2]int
 	Deltas [][3]int
+  TickID uint32
 }
 
 // ConnectionMsg to pass the connection to meta model

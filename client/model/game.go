@@ -54,13 +54,13 @@ func (m *GameModel) SetConnection(conn *net.TCPConn) {
 }
 
 func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-  m.gameClock += 50 * time.Millisecond
 	switch msg := msg.(type) {
 	case communication.BoardMsg:
 		points := msg.Points
 		m.points = points
 		m.currentBoard = msg.Board
 	case communication.DeltaMsg:
+    m.gameClock = time.Duration(50 * int(msg.TickID)) * time.Millisecond
 		points := msg.Points
 		m.points = points
 		ApplyDeltas(msg.Deltas, &m.currentBoard)

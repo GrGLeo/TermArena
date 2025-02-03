@@ -321,7 +321,7 @@ func (bp *BoardPacket) Serialize() []byte {
 
 type DeltaPacket struct {
 	version, code int
-	tickID        uint32
+	TickID        uint32
 	Points        [2]int
 	Deltas        [][3]byte
 }
@@ -331,7 +331,7 @@ func NewDeltaPacket(tickID uint32, points [2]int, deltas [][3]byte) *DeltaPacket
 		version: 1,
 		code:    7,
 		Points:  points,
-		tickID:  tickID,
+		TickID:  tickID,
 		Deltas:  deltas,
 	}
 }
@@ -350,7 +350,7 @@ func (dp *DeltaPacket) Serialize() []byte {
 	buf.WriteByte(byte(dp.code))
 	// Write the tickID on 4 byte
 	TickIDBytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(TickIDBytes, dp.tickID)
+	binary.BigEndian.PutUint32(TickIDBytes, dp.TickID)
 	buf.Write(TickIDBytes)
 	// Write the teams points
 	buf.WriteByte(byte(dp.Points[0]))
@@ -509,7 +509,7 @@ func DeSerialize(data []byte) (Packet, error) {
 			version: version,
 			code:    code,
 			Points:  points,
-			tickID:  tickID,
+			TickID:  tickID,
 			Deltas:  deltas,
 		}, nil
 
