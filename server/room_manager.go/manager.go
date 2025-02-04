@@ -8,11 +8,17 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+  SOLO = iota
+  DUO
+  QUAD
+)
+
 type RoomManager struct {
 	RoomQueues  map[int][]*game.GameRoom
 	RoomStarted []*game.GameRoom
 	logger      *zap.SugaredLogger
-	mu          sync.Mutex
+	mu          sync.RWMutex
 }
 
 func NewRoomManager(logger *zap.SugaredLogger) *RoomManager {
@@ -44,11 +50,11 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 	var maxPlayer int
 	roomType := roomRequest.RoomType
 	switch roomType {
-	case 0:
+	case SOLO:
 		maxPlayer = 1
-	case 1:
+	case DUO:
 		maxPlayer = 2
-	case 2:
+	case QUAD:
 		maxPlayer = 4
 	}
   conn := roomRequest.Conn
