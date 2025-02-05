@@ -45,8 +45,6 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 		return nil
 	}
 
-	rm.mu.Lock()
-	defer rm.mu.Unlock()
 	var maxPlayer int
 	roomType := roomRequest.RoomType
 	switch roomType {
@@ -68,36 +66,45 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 		rm.logger.Infoln("Initializing a new room queue and creating a room")
 		newRoom := game.NewGameRoom(maxPlayer, rm.logger)
 		newRoom.AddPlayer(conn)
+
+    rm.mu.Lock()
     rm.RoomStarted = append(rm.RoomStarted, newRoom)
+    rm.mu.Unlock()
+
     go newRoom.StartGame()
-  } else if room, ok := rm.RoomQueues[roomType]; ok {
-    // We check if there is already a room in a waiting statew
-		if len(room) > 0 {
+  } else {
+		// Use RLock to check if a room is available
+		rm.mu.RLock()
+		room, exists := rm.RoomQueues[roomType]
+		rm.mu.RUnlock()
+
+		if exists && len(room) > 0 {
 			rm.logger.Infoln("Adding player to an existing room")
-			oldestRoom := room[0]
+
+			rm.mu.Lock()
+			oldestRoom := rm.RoomQueues[roomType][0]
 			oldestRoom.AddPlayer(conn)
+
 			if oldestRoom.RoomSize == oldestRoom.PlayersIn() {
 				rm.RoomStarted = append(rm.RoomStarted, oldestRoom)
-				// we remove the room that is starting
-				rm.RoomQueues[roomType] = room[1:]
+				rm.RoomQueues[roomType] = rm.RoomQueues[roomType][1:] // Remove the room that is starting
 				go oldestRoom.StartGame()
 			}
+			rm.mu.Unlock()
 		} else {
-			// In case all room are started we create a new one
 			rm.logger.Infoln("Creating new room")
+
 			newRoom := game.NewGameRoom(maxPlayer, rm.logger)
 			newRoom.AddPlayer(conn)
-		rm.RoomQueues[roomType] = append(rm.RoomQueues[roomType], newRoom)
+
+			rm.mu.Lock()
+			rm.RoomQueues[roomType] = append(rm.RoomQueues[roomType], newRoom)
+			rm.mu.Unlock()
 		}
-	} else {
-		// If the server just started the map is not yet initialize
-		rm.logger.Infoln("Initializing a new room queue and creating a room")
-		newRoom := game.NewGameRoom(maxPlayer, rm.logger)
-		newRoom.AddPlayer(conn)
-		rm.RoomQueues[roomType] = append(rm.RoomQueues[roomType], newRoom)
 	}
+
 	response := event.RoomSearchMessage{
 		Success: 0,
 	}
 	return response
-}
+} 
