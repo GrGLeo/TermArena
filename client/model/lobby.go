@@ -12,6 +12,8 @@ import (
 )
 
 type LobbyModel struct {
+	tab           []string
+	tabSelected   int
 	options       []string
 	selected      int
 	width, height int
@@ -21,24 +23,26 @@ type LobbyModel struct {
 }
 
 func NewLobbyModel(conn *net.TCPConn) LobbyModel {
-  sp := spinner.New()
-  sp.Spinner = spinner.Dot
-  sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
 	return LobbyModel{
+    tab: []string{"Queue Game", "Join/Create Game"},
+    tabSelected: 0,
 		options:  []string{"Solo (1 player 1 bot vs 2 bots)", "2 players vs 2 bots", "2 players vs 2 players"},
 		selected: 0,
 		conn:     conn,
-    spinner: sp,
+		spinner:  sp,
 	}
 }
 
 func (m *LobbyModel) SetConn(conn *net.TCPConn) {
-  m.conn = conn
+	m.conn = conn
 }
 
 func (m *LobbyModel) SetLooking(search bool) {
-  m.looking = search
+	m.looking = search
 }
 
 func (m *LobbyModel) SetDimension(height, width int) {
@@ -58,11 +62,15 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 	case communication.LookRoomMsg:
 		m.looking = true
-    return m, m.spinner.Tick
+		return m, m.spinner.Tick
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEsc, tea.KeyCtrlC:
 			return m, tea.Quit
+    case tea.KeyTab:
+      m.tabSelected = (m.tabSelected+1) % 2
+      return m, nil
+
 		case tea.KeyEnter:
 			selectedOption := m.options[m.selected]
 			communication.SendRoomRequestPacket(m.conn, m.selected)
@@ -88,15 +96,71 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-  if m.looking {
-    m.spinner, cmd = m.spinner.Update(msg)
-  }
+	if m.looking {
+		m.spinner, cmd = m.spinner.Update(msg)
+	}
 	return m, cmd
 }
 
 func (m LobbyModel) View() string {
+  // Build the tab selection
+  var leftTab string
+  var rightTab string
+
+  if m.tabSelected == 0 {
+    leftTab = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render(m.tab[0])
+  } else {
+    leftTab = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render(m.tab[0])
+  }
+  if m.tabSelected == 1 {
+    rightTab = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render(m.tab[1])
+  } else {
+    rightTab = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render(m.tab[1])
+  }
+  leftStyle := lipgloss.NewStyle().
+  Width(50).
+  Align(lipgloss.Left).
+  Border(lipgloss.NormalBorder(), true, false)
+
+  rightStyle := lipgloss.NewStyle().
+  Width(50).
+  Align(lipgloss.Left).
+  Border(lipgloss.NormalBorder(), true, false)
+
+	tabSelection := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		leftStyle.Render(leftTab),
+		rightStyle.Render(rightTab),
+	)
+
 	// Build the options list
-	var optionsBuilder strings.Builder
+  var layout string
+  if m.tabSelected == 0 {
+  layout = m.RenderLobby()
+  } else {
+    layout = m.RenderCreate()
+  }
+
+  lobby := lipgloss.JoinVertical(
+  lipgloss.Top,
+  tabSelection,
+  layout,
+  )
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		lipgloss.NewStyle().
+			Padding(2, 4).
+			Render(lobby),
+	)
+}
+
+
+func (m LobbyModel) RenderLobby() string {
+  var optionsBuilder strings.Builder
 	selectedChar := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("205")).
 		Render("> ")
@@ -136,15 +200,15 @@ func (m LobbyModel) View() string {
 		Width(50).
 		Align(lipgloss.Left).
 		Border(lipgloss.NormalBorder(), true, false, false, false).
-		Padding(1, 2)
+		Padding(1, 0)
 
 	instructionsStyle := lipgloss.NewStyle().
 		Width(50).
 		Align(lipgloss.Left).
 		Border(lipgloss.NormalBorder(), true, false, false, true).
-		Padding(1, 2)
-    
-    if m.looking {
+		Padding(1, 0)
+
+	if m.looking {
 		optionsBuilder.WriteString("\n\n")
 		optionsBuilder.WriteString(
 			lipgloss.NewStyle().
@@ -158,14 +222,36 @@ func (m LobbyModel) View() string {
 		optionsStyle.Render(optionsBuilder.String()),
 		instructionsStyle.Render(gameInstruction),
 	)
+  return layout
+}
 
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		lipgloss.NewStyle().
-			Padding(2, 4).
-			Render(layout),
-	)
+func (m LobbyModel) RenderCreate() string {
+  var optionsBuilder strings.Builder
+	selectedChar := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("205")).
+		Render("> ")
+
+	for i, opt := range m.options {
+		if m.selected == i {
+			optionsBuilder.WriteString(selectedChar)
+			optionsBuilder.WriteString(
+				lipgloss.NewStyle().
+					Foreground(lipgloss.Color("205")).
+					Bold(true).
+					Render(opt),
+			)
+		} else {
+			optionsBuilder.WriteString("  ")
+			optionsBuilder.WriteString(
+				lipgloss.NewStyle().
+					Foreground(lipgloss.Color("240")).
+					Render(opt),
+			)
+		}
+		optionsBuilder.WriteString("\n")
+	}
+
+
+
+  return optionsBuilder.String()
 }
