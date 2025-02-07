@@ -8,21 +8,47 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	SOLO = iota
+	DUO
+	QUAD
+)
+
+// RoomManager handles the queueing and starting of game rooms.
 type RoomManager struct {
-	RoomQueues  map[int][]*game.GameRoom
+	// RoomQueues holds rooms waiting for players to join, keyed by room type.
+	RoomQueues map[int][]*game.GameRoom
+	// RoomStarted holds rooms that have started.
 	RoomStarted []*game.GameRoom
 	logger      *zap.SugaredLogger
 	mu          sync.Mutex
 }
 
+// NewRoomManager initializes a new RoomManager.
 func NewRoomManager(logger *zap.SugaredLogger) *RoomManager {
 	return &RoomManager{
 		RoomQueues: make(map[int][]*game.GameRoom),
-    logger: logger,
+		logger:     logger,
 	}
 }
 
+// getMaxPlayers returns the maximum players for a given room type.
+func getMaxPlayers(roomType int) int {
+	switch roomType {
+	case SOLO:
+		return 1
+	case DUO:
+		return 2
+	case QUAD:
+		return 4
+	default:
+		return 0
+	}
+}
+
+// FindRoom processes a room search request and assigns the connecting player to a room.
 func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
+	// Validate message type.
 	if msg.Type() != "find-room" {
 		rm.logger.Error("Invalid message type for FindRoom")
 		return nil
@@ -39,59 +65,46 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 		return nil
 	}
 
-	rm.mu.Lock()
-	defer rm.mu.Unlock()
-	var maxPlayer int
 	roomType := roomRequest.RoomType
-	switch roomType {
-	case 0:
-		maxPlayer = 1
-	case 1:
-		maxPlayer = 2
-	case 2:
-		maxPlayer = 4
-	}
-  conn := roomRequest.Conn
+	maxPlayers := getMaxPlayers(roomType)
+	conn := roomRequest.Conn
 
 	rm.logger.Infow("Finding room", "roomType", roomType)
-  rm.logger.Infof("RoomStates: %+v\n", rm.RoomQueues)
+	rm.logger.Infof("RoomQueues: %+v", rm.RoomQueues)
 
-  // We check for game type
-  if  maxPlayer ==  1 {
-    // We start the game instantly as the player is solo
-		rm.logger.Infoln("Initializing a new room queue and creating a room")
-		newRoom := game.NewGameRoom(maxPlayer, rm.logger)
+	// Solo rooms can be started immediately.
+	if maxPlayers == 1 {
+		newRoom := game.NewGameRoom(maxPlayers, rm.logger)
 		newRoom.AddPlayer(conn)
-    rm.RoomStarted = append(rm.RoomStarted, newRoom)
-    go newRoom.StartGame()
-  } else if room, ok := rm.RoomQueues[roomType]; ok {
-    // We check if there is already a room in a waiting statew
-		if len(room) > 0 {
-			rm.logger.Infoln("Adding player to an existing room")
-			oldestRoom := room[0]
-			oldestRoom.AddPlayer(conn)
-			if oldestRoom.RoomSize == oldestRoom.PlayersIn() {
-				rm.RoomStarted = append(rm.RoomStarted, oldestRoom)
-				// we remove the room that is starting
-				rm.RoomQueues[roomType] = room[1:]
-				go oldestRoom.StartGame()
+		rm.mu.Lock()
+		rm.RoomStarted = append(rm.RoomStarted, newRoom)
+		rm.mu.Unlock()
+		go newRoom.StartGame()
+	} else {
+		// For DUO and QUAD, lock for the entire process to avoid race conditions.
+		rm.mu.Lock()
+		queue := rm.RoomQueues[roomType]
+		if len(queue) > 0 {
+			// Add player to the existing room.
+			room := queue[0]
+			room.AddPlayer(conn)
+			// Check if the room is full.
+			if room.RoomSize == room.PlayersIn() {
+				rm.RoomStarted = append(rm.RoomStarted, room)
+				// Remove the room from the queue.
+				rm.RoomQueues[roomType] = queue[1:]
+				go room.StartGame()
 			}
 		} else {
-			// In case all room are started we create a new one
-			rm.logger.Infoln("Creating new room")
-			newRoom := game.NewGameRoom(maxPlayer, rm.logger)
+			// No waiting room exists; create a new one.
+			newRoom := game.NewGameRoom(maxPlayers, rm.logger)
 			newRoom.AddPlayer(conn)
-		rm.RoomQueues[roomType] = append(rm.RoomQueues[roomType], newRoom)
+			rm.RoomQueues[roomType] = append(queue, newRoom)
 		}
-	} else {
-		// If the server just started the map is not yet initialize
-		rm.logger.Infoln("Initializing a new room queue and creating a room")
-		newRoom := game.NewGameRoom(maxPlayer, rm.logger)
-		newRoom.AddPlayer(conn)
-		rm.RoomQueues[roomType] = append(rm.RoomQueues[roomType], newRoom)
+		rm.mu.Unlock()
 	}
-	response := event.RoomSearchMessage{
+
+	return event.RoomSearchMessage{
 		Success: 0,
 	}
-	return response
 }
