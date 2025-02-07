@@ -7,6 +7,7 @@ import (
 
 	"github.com/GrGLeo/ctf/client/communication"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -16,6 +17,8 @@ type LobbyModel struct {
 	tabSelected   int
 	options       []string
 	selected      int
+  paneSelected int
+	roomIDInput   textinput.Model
 	width, height int
 	looking       bool
 	conn          *net.TCPConn
@@ -27,13 +30,20 @@ func NewLobbyModel(conn *net.TCPConn) LobbyModel {
 	sp.Spinner = spinner.Dot
 	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
+	ti := textinput.New()
+	ti.Placeholder = "Enter Room ID"
+	ti.Width = 20
+	ti.Prompt = "RoomID" // Or a custom prompt if needed
+	ti.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+
 	return LobbyModel{
-    tab: []string{"Queue Game", "Join/Create Game"},
-    tabSelected: 0,
-		options:  []string{"Solo (1 player 1 bot vs 2 bots)", "2 players vs 2 bots", "2 players vs 2 players"},
-		selected: 0,
-		conn:     conn,
-		spinner:  sp,
+		tab:         []string{"Queue Game", "Join/Create Game"},
+		tabSelected: 0,
+		options:     []string{"Solo (1 player 1 bot vs 2 bots)", "2 players vs 2 bots", "2 players vs 2 players"},
+		selected:    0,
+		conn:        conn,
+		spinner:     sp,
+		roomIDInput: ti,
 	}
 }
 
@@ -67,9 +77,14 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyEsc, tea.KeyCtrlC:
 			return m, tea.Quit
-    case tea.KeyTab:
-      m.tabSelected = (m.tabSelected+1) % 2
-      return m, nil
+		case tea.KeyTab:
+      if m.tabSelected == 0 {
+        m.roomIDInput.Blur()
+        m.roomIDInput.SetValue("")
+      } else {
+        m.roomIDInput.Focus()
+      }
+			return m, nil
 
 		case tea.KeyEnter:
 			selectedOption := m.options[m.selected]
@@ -93,6 +108,10 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selected++
 			}
 			return m, nil
+    case "l":
+      m.tabSelected = (m.tabSelected + 1) % 2
+    case "h":
+      m.tabSelected = (m.tabSelected + 1) % 2
 		}
 	}
 
@@ -103,29 +122,29 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m LobbyModel) View() string {
-  // Build the tab selection
-  var leftTab string
-  var rightTab string
+	// Build the tab selection
+	var leftTab string
+	var rightTab string
 
-  if m.tabSelected == 0 {
-    leftTab = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render(m.tab[0])
-  } else {
-    leftTab = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render(m.tab[0])
-  }
-  if m.tabSelected == 1 {
-    rightTab = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render(m.tab[1])
-  } else {
-    rightTab = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render(m.tab[1])
-  }
-  leftStyle := lipgloss.NewStyle().
-  Width(50).
-  Align(lipgloss.Left).
-  Border(lipgloss.NormalBorder(), true, false)
+	if m.tabSelected == 0 {
+		leftTab = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render(m.tab[0])
+	} else {
+		leftTab = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render(m.tab[0])
+	}
+	if m.tabSelected == 1 {
+		rightTab = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render(m.tab[1])
+	} else {
+		rightTab = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render(m.tab[1])
+	}
+	leftStyle := lipgloss.NewStyle().
+		Width(50).
+		Align(lipgloss.Left).
+		Border(lipgloss.NormalBorder(), true, false)
 
-  rightStyle := lipgloss.NewStyle().
-  Width(50).
-  Align(lipgloss.Left).
-  Border(lipgloss.NormalBorder(), true, false)
+	rightStyle := lipgloss.NewStyle().
+		Width(50).
+		Align(lipgloss.Left).
+		Border(lipgloss.NormalBorder(), true, false)
 
 	tabSelection := lipgloss.JoinHorizontal(
 		lipgloss.Top,
@@ -134,18 +153,18 @@ func (m LobbyModel) View() string {
 	)
 
 	// Build the options list
-  var layout string
-  if m.tabSelected == 0 {
-  layout = m.RenderLobby()
-  } else {
-    layout = m.RenderCreate()
-  }
+	var layout string
+	if m.tabSelected == 0 {
+		layout = m.RenderLobby()
+	} else {
+		layout = m.RenderCreate()
+	}
 
-  lobby := lipgloss.JoinVertical(
-  lipgloss.Top,
-  tabSelection,
-  layout,
-  )
+	lobby := lipgloss.JoinVertical(
+		lipgloss.Top,
+		tabSelection,
+		layout,
+	)
 
 	return lipgloss.Place(
 		m.width,
@@ -158,9 +177,8 @@ func (m LobbyModel) View() string {
 	)
 }
 
-
 func (m LobbyModel) RenderLobby() string {
-  var optionsBuilder strings.Builder
+	var optionsBuilder strings.Builder
 	selectedChar := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("205")).
 		Render("> ")
@@ -222,11 +240,11 @@ func (m LobbyModel) RenderLobby() string {
 		optionsStyle.Render(optionsBuilder.String()),
 		instructionsStyle.Render(gameInstruction),
 	)
-  return layout
+	return layout
 }
 
 func (m LobbyModel) RenderCreate() string {
-  var optionsBuilder strings.Builder
+	var optionsBuilder strings.Builder
 	selectedChar := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("205")).
 		Render("> ")
@@ -250,8 +268,7 @@ func (m LobbyModel) RenderCreate() string {
 		}
 		optionsBuilder.WriteString("\n")
 	}
+  optionsBuilder.WriteString(m.roomIDInput.View())
 
-
-
-  return optionsBuilder.String()
+	return optionsBuilder.String()
 }
