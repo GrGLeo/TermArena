@@ -358,10 +358,11 @@ func (m CreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Handle room ID input submission
 				roomID := m.roomIDInput.Value()
 				log.Println("Room ID entered:", roomID)
-				// Add your logic to handle the room ID submission
+        communication.SendRoomJoinPacket(m.conn, roomID)
 			} else {
 				selectedOption := m.options[m.selected]
-				communication.SendRoomRequestPacket(m.conn, m.selected)
+        // Since we dont show 1player we need to increment the selected by one to have the right room
+        communication.SendRoomCreatePacket(m.conn, m.selected + 1)
 				log.Println("Selected option:", selectedOption)
 			}
 			return m, nil

@@ -34,6 +34,22 @@ func SendRoomRequestPacket(conn *net.TCPConn, roomType int) error {
   return err
 }
 
+func SendRoomJoinPacket(conn *net.TCPConn, roomID string) error {
+  log.Println("sending room join")
+  roomJoinPakcet := shared.NewRoomJoinPacket(roomID)
+  data := roomJoinPakcet.Serialize()
+  _, err := conn.Write(data)
+  return err
+}
+
+func SendRoomCreatePacket(conn *net.TCPConn, roomType int) error {
+  log.Println("sending room creation")
+  roomCreatePacket := shared.NewRoomCreatePacket(roomType)
+  data := roomCreatePacket.Serialize()
+  _, err := conn.Write(data)
+  return err
+}
+
 func SendAction(conn *net.TCPConn, action int) error {
   actionPacket := shared.NewActionPacket(action)
   data := actionPacket.Serialize()

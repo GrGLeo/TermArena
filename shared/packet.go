@@ -41,6 +41,16 @@ func CreateMessage(packet Packet, conn *net.TCPConn) (event.Message, error) {
 			RoomType: pkt.RoomType,
 			Conn:     conn,
 		}, nil
+  case *RoomCreatePacket:
+    return event.RoomCreateMessage{
+      RoomType: pkt.RoomType,
+      Conn: conn,
+    }, nil
+  case *RoomJoinPacket:
+    return event.RoomJoinMessage{
+      RoomID: pkt.RoomID,
+      Conn: conn,
+    }, nil
 	default:
 		return nil, errors.New("No message to create from packet")
 	}
