@@ -305,6 +305,7 @@ type CreateModel struct {
 	looking       bool
 	conn          *net.TCPConn
 	spinner       spinner.Model
+	inputFocused  bool
 }
 
 func NewCreateModel(conn *net.TCPConn) CreateModel {
@@ -353,20 +354,44 @@ func (m CreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEsc, tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyEnter:
-			selectedOption := m.options[m.selected]
-			communication.SendRoomRequestPacket(m.conn, m.selected)
-			log.Println("Selected option:", selectedOption)
+			if m.inputFocused {
+				// Handle room ID input submission
+				roomID := m.roomIDInput.Value()
+				log.Println("Room ID entered:", roomID)
+				// Add your logic to handle the room ID submission
+			} else {
+				selectedOption := m.options[m.selected]
+				communication.SendRoomRequestPacket(m.conn, m.selected)
+				log.Println("Selected option:", selectedOption)
+			}
+			return m, nil
+		case tea.KeyTab:
+      if m.inputFocused {
+        m.roomIDInput.Blur()
+        m.inputFocused = !m.inputFocused
+      } else {
+        m.roomIDInput.Focus()
+        m.inputFocused = !m.inputFocused
+      }
 			return m, nil
 		}
 
 		switch msg.String() {
 		case "k":
-			m.selected = (m.selected - 1 + len(m.options)) % len(m.options)
+			if !m.inputFocused {
+				m.selected = (m.selected - 1 + len(m.options)) % len(m.options)
+			}
 			return m, nil
 		case "j":
-			m.selected = (m.selected + 1) % len(m.options)
+			if !m.inputFocused {
+				m.selected = (m.selected + 1) % len(m.options)
+			}
 			return m, nil
 		}
+	}
+
+	if m.inputFocused {
+		m.roomIDInput, cmd = m.roomIDInput.Update(msg)
 	}
 
 	if m.looking {
@@ -376,27 +401,27 @@ func (m CreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m CreateModel) View() string {
-  // Build the tab selection
-  var leftTab string
-  var rightTab string
+	// Build the tab selection
+	var leftTab string
+	var rightTab string
 
-  leftTab = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render("Queue up for a game")
-  rightTab = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Create or Join Room")
-  leftStyle := lipgloss.NewStyle().
-  Width(50).
-  Align(lipgloss.Left).
-  Border(lipgloss.NormalBorder(), true, false)
+	leftTab = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Queue up for a game")
+	rightTab = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render("Create or Join Room")
+	leftStyle := lipgloss.NewStyle().
+		Width(50).
+		Align(lipgloss.Left).
+		Border(lipgloss.NormalBorder(), true, false)
 
-  rightStyle := lipgloss.NewStyle().
-  Width(50).
-  Align(lipgloss.Left).
-  Border(lipgloss.NormalBorder(), true, false)
+	rightStyle := lipgloss.NewStyle().
+		Width(50).
+		Align(lipgloss.Left).
+		Border(lipgloss.NormalBorder(), true, false)
 
-  tabSelection := lipgloss.JoinHorizontal(
-    lipgloss.Top,
-    leftStyle.Render(leftTab),
-    rightStyle.Render(rightTab),
-  )
+	tabSelection := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		leftStyle.Render(leftTab),
+		rightStyle.Render(rightTab),
+	)
 
 	var optionsBuilder strings.Builder
 	selectedChar := lipgloss.NewStyle().
@@ -422,48 +447,51 @@ func (m CreateModel) View() string {
 		}
 		optionsBuilder.WriteString("\n")
 	}
-	optionsBuilder.WriteString(m.roomIDInput.View())
 
-  optionsStyle := lipgloss.NewStyle().
-  Width(50).
-  Align(lipgloss.Left).
-  Border(lipgloss.NormalBorder(), true, false, false, false).
-  Padding(1, 0)
+	optionsStyle := lipgloss.NewStyle().
+		Width(50).
+		Align(lipgloss.Left).
+		Border(lipgloss.NormalBorder(), true, false, false, false).
+		Padding(1, 0)
 
-  instructionsStyle := lipgloss.NewStyle().
-  Width(50).
-  Align(lipgloss.Left).
-  Border(lipgloss.NormalBorder(), true, false, false, true).
-  Padding(1, 0)
+	instructionsStyle := lipgloss.NewStyle().
+		Width(50).
+		Align(lipgloss.Left).
+		Border(lipgloss.NormalBorder(), true, false, false, true).
+		Padding(1, 0)
 
-  if m.looking {
-    optionsBuilder.WriteString("\n\n")
-    optionsBuilder.WriteString(
-      lipgloss.NewStyle().
-      Foreground(lipgloss.Color("205")).
-      Render("Looking for a room... " + m.spinner.View()),
-    )
-  }
+	if m.looking {
+		optionsBuilder.WriteString("\n\n")
+		optionsBuilder.WriteString(
+			lipgloss.NewStyle().
+				Foreground(lipgloss.Color("205")).
+				Render("Looking for a room... " + m.spinner.View()),
+		)
+	}
 
-  layout := lipgloss.JoinHorizontal(
-    lipgloss.Top,
-    optionsStyle.Render(optionsBuilder.String()),
-    instructionsStyle.Render(m.roomIDInput.View()),
-  )
+  var createBuilder strings.Builder
+  createBuilder.WriteString("Enter the roomID to join an existing room.\n")
+  createBuilder.WriteString(m.roomIDInput.View())
 
-  lobby := lipgloss.JoinVertical(
-    lipgloss.Top,
-    tabSelection,
-    layout,
-  )
+	layout := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		optionsStyle.Render(optionsBuilder.String()),
+		instructionsStyle.Render(createBuilder.String()),
+	)
 
-  return lipgloss.Place(
-    m.width,
-    m.height,
-    lipgloss.Center,
-    lipgloss.Center,
-    lipgloss.NewStyle().
-    Padding(2, 4).
-    Render(lobby),
-  )
+	lobby := lipgloss.JoinVertical(
+		lipgloss.Top,
+		tabSelection,
+		layout,
+	)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		lipgloss.NewStyle().
+			Padding(2, 4).
+			Render(lobby),
+	)
 }
