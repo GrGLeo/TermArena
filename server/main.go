@@ -89,22 +89,22 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 			broker.Publish(msg)
 			response := <-broker.ResponseChannel(msg.Type())
 			data, err := shared.CreatePacketFromMessage(response)
-      // We need to check message and act accordingly
-      switch response.(type) {
-      case event.AuthMessage:
-        n, err := conn.Write(data)
-        if err != nil {
-          log.Errorw("Error writting login resp", n, "ip", conn.RemoteAddr())
-        }
-        log.Infow("Login response", "byte", n, "ip", conn.RemoteAddr())
-      case event.RoomSearchMessage:
-        n, err := conn.Write(data)
-        if err != nil {
-          log.Errorw("Error writting login resp", n, "ip", conn.RemoteAddr())
-        }
-        log.Infow("RoomSearch response", "byte", n, "ip", conn.RemoteAddr())
-        return // GameRoom take ownership of the conn
-      }
+			// We need to check message and act accordingly
+			switch response.(type) {
+			case event.AuthMessage:
+				n, err := conn.Write(data)
+				if err != nil {
+					log.Errorw("Error writting login resp", n, "ip", conn.RemoteAddr())
+				}
+				log.Infow("Login response", "byte", n, "ip", conn.RemoteAddr())
+			case event.RoomSearchMessage:
+				n, err := conn.Write(data)
+				if err != nil {
+					log.Errorw("Error writting login resp", n, "ip", conn.RemoteAddr())
+				}
+				log.Infow("RoomSearch response", "byte", n, "ip", conn.RemoteAddr())
+				return // GameRoom take ownership of the conn
+			}
 		}
 	}
 }
@@ -112,7 +112,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 func main() {
 	log := NewLogger(env)
 	log.Info("Starting server...")
-  serverAddr, err := net.ResolveTCPAddr("tcp", ":8082")
+	serverAddr, err := net.ResolveTCPAddr("tcp", ":8082")
 	if err != nil {
 		log.Fatalln("Failed to resolve TCP Addr", err.Error())
 	}
@@ -133,6 +133,8 @@ func main() {
 	log.Info("Broker ready to process message")
 	broker.Subscribe("login", auth.Authentificate)
 	broker.Subscribe("find-room", roomManager.FindRoom)
+	broker.Subscribe("create-room", roomManager.CreateRoom)
+	broker.Subscribe("join-room", roomManager.JoinRoom)
 	go HandleClient(ctx, server, connChannel)
 	for conn := range connChannel {
 		go ProcessClient(conn, log, broker)

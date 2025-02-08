@@ -138,6 +138,7 @@ func (rm *RoomManager) JoinRoom(msg event.Message) event.Message {
 
   for _, roomMap := range rm.RoomQueues {
     if room, ok := roomMap[roomID]; ok {
+      rm.logger.Infow("Player join room", "roomID", roomID)
       room.AddPlayer(conn)
       // Check if the room is full.
       if room.RoomSize == room.PlayersIn() {
@@ -176,6 +177,7 @@ func (rm *RoomManager) CreateRoom(msg event.Message) event.Message {
   maxPlayers := getMaxPlayers(roomType)
   newRoom := game.NewGameRoom(maxPlayers, rm.logger)
   newRoom.AddPlayer(roomCreate.Conn)
+  rm.logger.Infow("Room created", "RoomType", roomType, "RoomID", newRoom.GameID)
 
   rm.mu.Lock()
   defer rm.mu.Unlock()
