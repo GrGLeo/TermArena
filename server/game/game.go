@@ -242,7 +242,7 @@ func (gr *GameRoom) ListenToConnection(conn *net.TCPConn) {
 
 func GenerateGameID() string {
   var gameId string
-  char := "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890"
+  char := "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfgjkzxcvbnm1234567890"
   for i := 0; i < 5; i++ {
     id := rand.Intn(len(char)-1)
     gameId += string(char[id])
