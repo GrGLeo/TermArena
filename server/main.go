@@ -94,13 +94,13 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 			case event.AuthMessage:
 				n, err := conn.Write(data)
 				if err != nil {
-					log.Errorw("Error writting login resp", n, "ip", conn.RemoteAddr())
+					log.Errorw("Error writting login resp", "byte", n, "ip", conn.RemoteAddr())
 				}
 				log.Infow("Login response", "byte", n, "ip", conn.RemoteAddr())
 			case event.RoomSearchMessage:
 				n, err := conn.Write(data)
 				if err != nil {
-					log.Errorw("Error writting login resp", n, "ip", conn.RemoteAddr())
+					log.Errorw("Error writting login resp", "byte", n, "ip", conn.RemoteAddr())
 				}
 				log.Infow("RoomSearch response", "byte", n, "ip", conn.RemoteAddr())
 				return // GameRoom take ownership of the conn
