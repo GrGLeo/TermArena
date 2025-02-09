@@ -19,11 +19,11 @@ const (
 	Player4
 	Flag1
 	Flag2
-  Dash1
-  Dash2
-  Dash3
-  Dash4
-  Frozen
+	Dash1
+	Dash2
+	Dash3
+	Dash4
+	Frozen
 )
 
 type Board struct {
@@ -32,17 +32,19 @@ type Board struct {
 	Tracker     ChangeTracker
 	Flags       []*Flag
 	Players     []*Player
-  Sprite      []Sprite
+	Bots        []*Bot
+	Sprite      []Sprite
 	mu          sync.RWMutex
 }
 
-func InitBoard(walls []WallPosition, flags []*Flag, players []*Player) *Board {
-  board := Board{}
-  board.PlaceAllWalls(walls)
-  board.PlaceAllFlags(flags)
-  board.PlaceAllPlayers(players)
-  board.CurrentGrid = board.GetPastGrid()
-  return &board
+func InitBoard(walls []WallPosition, flags []*Flag, players []*Player, bots []*Bot) *Board {
+	board := Board{}
+	board.PlaceAllWalls(walls)
+	board.PlaceAllFlags(flags)
+	board.PlaceAllPlayers(players)
+  board.PlaceAllBots(bots)
+	board.CurrentGrid = board.GetPastGrid()
+	return &board
 }
 
 /*
@@ -78,8 +80,8 @@ func (b *Board) CheckFlagWon(team, y, x int) bool {
 		if int(flag.TeamId) == team && posX == x && posY == y {
 			// I need to replace the other enemy flag
 			enemyFalgIdx := (i + 1) % 2
-      enemyFalg := b.Flags[enemyFalgIdx]
-      b.Tracker.SaveDelta(enemyFalg.baseX, enemyFalg.baseY, enemyFalg.TeamId)
+			enemyFalg := b.Flags[enemyFalgIdx]
+			b.Tracker.SaveDelta(enemyFalg.baseX, enemyFalg.baseY, enemyFalg.TeamId)
 			return true
 		}
 	}
@@ -91,8 +93,8 @@ UPDATE AND RETURN BOARDS
 */
 
 func (b *Board) Update() {
-  b.mu.Lock()
-  defer b.mu.Unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	for _, delta := range b.Tracker.GetDeltas() {
 		b.CurrentGrid[delta.Y][delta.X] = delta.Value
 	}
@@ -100,47 +102,47 @@ func (b *Board) Update() {
 }
 
 func (b *Board) UpdateSprite() {
-  for i := 0; i < len(b.Sprite); i++ {
-    switch sprite :=b.Sprite[i].(type) {
-    case *DashSprite:
-      x, y, cell := sprite.Update()
-      b.Tracker.SaveDelta(x, y, cell)
-    case *FreezeSprite:
-      b.Tracker.SaveDelta(sprite.X, sprite.Y, Empty)
-      x, y, cell := sprite.Update()
-      switch b.PastGrid[y][x] {
-      case Wall:
-        sprite.lifeCycle = -1
-      case Player1, Player2, Player3, Player4:
-        for _, p := range b.Players {
-          if p.Number == b.PastGrid[y][x] && p.TeamID != sprite.TeamID {
-            p.IsFrozen = 20
-            sprite.lifeCycle = -1
-          }
-        }
-      default:
-        b.Tracker.SaveDelta(x, y, cell)
-      }
-    }
-    if b.Sprite[i].Clear() {
-      b.Sprite = append(b.Sprite[:i], b.Sprite[i+1:]...)
-      i-- // Adjust index
-    }
-  }
+	for i := 0; i < len(b.Sprite); i++ {
+		switch sprite := b.Sprite[i].(type) {
+		case *DashSprite:
+			x, y, cell := sprite.Update()
+			b.Tracker.SaveDelta(x, y, cell)
+		case *FreezeSprite:
+			b.Tracker.SaveDelta(sprite.X, sprite.Y, Empty)
+			x, y, cell := sprite.Update()
+			switch b.PastGrid[y][x] {
+			case Wall:
+				sprite.lifeCycle = -1
+			case Player1, Player2, Player3, Player4:
+				for _, p := range b.Players {
+					if p.Number == b.PastGrid[y][x] && p.TeamID != sprite.TeamID {
+						p.IsFrozen = 20
+						sprite.lifeCycle = -1
+					}
+				}
+			default:
+				b.Tracker.SaveDelta(x, y, cell)
+			}
+		}
+		if b.Sprite[i].Clear() {
+			b.Sprite = append(b.Sprite[:i], b.Sprite[i+1:]...)
+			i-- // Adjust index
+		}
+	}
 }
 
 func (b *Board) GetCurrentGrid() [20][50]Cell {
-  b.mu.RLock()
-  defer b.mu.RUnlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 
-  return b.CurrentGrid
+	return b.CurrentGrid
 }
 
 func (b *Board) GetPastGrid() [20][50]Cell {
-  b.mu.RLock()
-  defer b.mu.RUnlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 
-  return b.PastGrid
+	return b.PastGrid
 }
 
 /*
@@ -149,17 +151,17 @@ MANAGE ALL CELLS PLACEMENT
 
 // Inital Player placement
 func (b *Board) PlacePlayer(player *Player) {
-  b.mu.Lock()
-  defer b.mu.Unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
 	switch player.Number {
-	case 0:
-		b.PastGrid[player.Y][player.X] = Player1
-	case 1:
-		b.PastGrid[player.Y][player.X] = Player2
 	case 2:
-		b.PastGrid[player.Y][player.X] = Player3
+		b.PastGrid[player.Y][player.X] = Player1
 	case 3:
+		b.PastGrid[player.Y][player.X] = Player2
+	case 4:
+		b.PastGrid[player.Y][player.X] = Player3
+	case 5:
 		b.PastGrid[player.Y][player.X] = Player4
 	}
 }
@@ -171,11 +173,33 @@ func (b *Board) PlaceAllPlayers(players []*Player) {
 	b.Players = players
 }
 
+// Inital Bot placement
+func (b *Board) PlaceBot(bot *Bot) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	switch bot.Number {
+	case 3:
+		b.PastGrid[bot.Y][bot.X] = Player2
+	case 4:
+		b.PastGrid[bot.Y][bot.X] = Player3
+	case 5:
+		b.PastGrid[bot.Y][bot.X] = Player4
+	}
+}
+
+func (b *Board) PlaceAllBots(bots []*Bot) {
+	for _, bot := range bots {
+		b.PlaceBot(bot)
+	}
+	b.Bots = bots
+}
+
 // Initial wall placement
 func (b *Board) PlaceWall(wall WallPosition) {
-  b.mu.Lock()
-  defer b.mu.Unlock()
-  
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	ys, xs := wall.GetStartPos()
 	ye, xe := wall.GetEndPos()
 	for i := ys; i <= ye; i++ {
@@ -194,8 +218,8 @@ func (b *Board) PlaceAllWalls(walls []WallPosition) {
 
 // Initial placement of flag
 func (b *Board) PlaceFlag(flag *Flag) {
-  b.mu.Lock()
-  defer b.mu.Unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
 	posY, posX := flag.GetBase()
 	if flag.TeamId == 6 {
@@ -216,11 +240,11 @@ func (b *Board) PlaceAllFlags(flags []*Flag) {
 
 // Check if flag needs to be replace
 func (b *Board) ReplaceHiddenFlag() {
-  for _, flag := range b.Flags {
-    if flag.IsSafe() && b.PastGrid[flag.PosY][flag.PosX] == Empty {
-      b.Tracker.SaveDelta(flag.PosX, flag.PosY, flag.TeamId)
-    }
-  }
+	for _, flag := range b.Flags {
+		if flag.IsSafe() && b.PastGrid[flag.PosY][flag.PosX] == Empty {
+			b.Tracker.SaveDelta(flag.PosX, flag.PosY, flag.TeamId)
+		}
+	}
 }
 
 func RunLengthEncode(grid [20][50]Cell) []byte {
@@ -261,19 +285,20 @@ type ConfigJSON struct {
 	Walls  []WallPosition `json:"walls"`
 	Flag   []Flag         `json:"flags"`
 	Player []Player       `json:"players"`
+	Bot    []Bot          `json:"bot,omitempty"`
 }
 
 // Read from a config file to get all walls placement
-func LoadConfig(filename string) ([]WallPosition, []*Flag, []*Player, error) {
+func LoadConfig(filename string) ([]WallPosition, []*Flag, []*Player, []*Bot, error) {
 	var configJSON ConfigJSON
 	file, err := os.ReadFile(filename)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	err = json.Unmarshal(file, &configJSON)
 	if err != nil {
-    fmt.Println(err.Error())
-		return nil, nil, nil, err
+		fmt.Println(err.Error())
+		return nil, nil, nil, nil, err
 	}
 
 	flagPtrs := make([]*Flag, len(configJSON.Flag))
@@ -285,5 +310,11 @@ func LoadConfig(filename string) ([]WallPosition, []*Flag, []*Player, error) {
 	for i := range configJSON.Player {
 		playerPtrs[i] = &configJSON.Player[i]
 	}
-	return configJSON.Walls, flagPtrs, playerPtrs, nil
+
+	botPtrs := make([]*Bot, len(configJSON.Bot))
+	for i := range configJSON.Bot {
+		botPtrs[i] = &configJSON.Bot[i]
+	}
+  fmt.Println(botPtrs)
+	return configJSON.Walls, flagPtrs, playerPtrs, botPtrs, nil
 }

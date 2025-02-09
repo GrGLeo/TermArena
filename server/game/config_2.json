@@ -1,0 +1,112 @@
+{
+  "walls": [
+    {
+      "StartPos": [0, 0],
+      "EndPos": [0, 0]
+    },
+    {
+      "StartPos": [5, 5],
+      "EndPos": [5, 10]
+    },
+    {
+      "StartPos": [14, 10],
+      "EndPos": [19, 10]
+    },
+    {
+      "StartPos": [15, 13],
+      "EndPos": [15, 19]
+    },
+    {
+      "StartPos": [8, 19],
+      "EndPos": [13, 19]
+    },
+    {
+      "StartPos": [3, 27],
+      "EndPos": [9, 27]
+    },
+    {
+      "StartPos": [2, 28],
+      "EndPos": [2, 30]
+    },
+    {
+      "StartPos": [2, 31],
+      "EndPos": [2, 33]
+    },
+    {
+      "StartPos": [16, 36],
+      "EndPos": [16, 41]
+    }
+  ],
+  "flags": [
+    {
+      "teamID":6,
+      "posX": 0,
+      "posY": 10,
+      "is_captured": false
+    },
+    {
+      "teamID":7,
+      "posX": 49,
+      "posY": 10,
+      "is_captured": false
+    }
+  ],
+  "players": [
+    {
+      "number": 2,
+      "teamID":6,
+      "X": 1,
+      "Y": 6,
+      "dash": {
+        "range": 4,
+        "cooldown": 5
+      },
+      "freeze": {
+        "range": 10,
+        "cooldown": 3
+      }
+    },
+    {
+      "number": 3,
+      "teamID":6,
+      "X": 1,
+      "Y": 14,
+      "dash": {
+        "range": 4,
+        "cooldown": 5
+      },
+      "freeze": {
+        "range": 10,
+        "cooldown": 3
+      }
+    },
+    {
+      "number": 4,
+      "teamID":7,
+      "X": 48,
+      "Y": 6,
+      "dash": {
+        "range": 4,
+        "cooldown": 5
+      },
+      "freeze": {
+        "range": 10,
+        "cooldown": 3
+      }
+    },
+    {
+      "number": 5,
+      "teamID":7,
+      "X": 48,
+      "Y": 14,
+      "dash": {
+        "range": 4,
+        "cooldown": 5
+      },
+      "freeze": {
+        "range": 10,
+        "cooldown": 3
+      }
+    }
+  ]
+}

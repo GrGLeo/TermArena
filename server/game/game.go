@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 	"net"
 	"os"
@@ -37,12 +38,13 @@ func NewGameRoom(number int, logger *zap.SugaredLogger) *GameRoom {
 	}
 	// Place walls on map
 	// if any error occur we skip the walls placement
-	walls, flags, players, err := LoadConfig("server/game/config.json")
+  config := fmt.Sprintf("server/game/config_%d.json", number)
+	walls, flags, players, bots, err := LoadConfig(config)
 	logger.Infow("Opening new game room", "roomID", gr.GameID, "type", number)
 	if err != nil {
 		gr.logger.Warnw("Error while reading the config", "roomID", gr.GameID, "error", err.Error())
 	} else {
-		board := InitBoard(walls, flags, players)
+		board := InitBoard(walls, flags, players, bots)
 		gr.board = board
 	}
 	return &gr
@@ -92,6 +94,18 @@ func (gr *GameRoom) StartGame() {
 					flagWon := player.TakeAction(gr.board)
 					if flagWon {
 						switch player.TeamID {
+						case 6:
+							gr.points[0]++
+						case 7:
+							gr.points[1]++
+						}
+					}
+				}
+				for _, bot := range gr.board.Bots {
+					// process each player action
+					flagWon := bot.RandomAction(gr.board)
+					if flagWon {
+						switch bot.TeamID {
 						case 6:
 							gr.points[0]++
 						case 7:

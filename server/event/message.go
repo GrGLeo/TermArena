@@ -51,7 +51,7 @@ func (fm RoomRequestMessage) Type() string {
 }
 
 func (fm RoomRequestMessage) Validate() error {
-	if fm.RoomType < 1 || fm.RoomType >= 3 {
+	if fm.RoomType < 0 || fm.RoomType >= 3 {
 		return errors.New("Invalid room type")
 	}
 
@@ -91,7 +91,7 @@ func (rc RoomCreateMessage) Type() string {
 }
 
 func (rc RoomCreateMessage) Validate() error {
-	if rc.RoomType < 0 || rc.RoomType >= 3 {
+	if rc.RoomType < 1 || rc.RoomType >= 3 {
 		return errors.New("Invalid room type")
 	}
 

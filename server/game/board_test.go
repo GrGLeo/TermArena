@@ -182,7 +182,7 @@ func TestPlaceAllWall(t *testing.T) {
     {StartPos: [2]int{0, 0}, EndPos: [2]int{0, 0}}, // Single cell
     {StartPos: [2]int{5, 5}, EndPos: [2]int{5, 10}}, // Horizontal wall
   }
-  b := game.InitBoard(walls, []*game.Flag{},[]*game.Player{})
+  b := game.InitBoard(walls, []*game.Flag{},[]*game.Player{}, []*game.Bot{})
 
   // Check single-cell wall
   if b.CurrentGrid[0][0] != game.Wall {
