@@ -51,7 +51,7 @@ func (fm RoomRequestMessage) Type() string {
 }
 
 func (fm RoomRequestMessage) Validate() error {
-	if fm.RoomType < 0 || fm.RoomType >= 3 {
+	if fm.RoomType < 1 || fm.RoomType >= 3 {
 		return errors.New("Invalid room type")
 	}
 

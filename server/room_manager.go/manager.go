@@ -70,7 +70,6 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 	conn := roomRequest.Conn
 
 	rm.logger.Infow("Finding room", "roomType", roomType)
-	rm.logger.Infof("RoomQueues: %+v", rm.RoomQueues)
 
 	// Solo rooms can be started immediately.
 	if maxPlayers == 1 {

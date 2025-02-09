@@ -81,14 +81,19 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 			message, err := shared.DeSerialize(buffer[:n])
 			if err != nil {
 				log.Infow("Error deserializing packet", "ip", conn.RemoteAddr(), "error", err)
+				continue
 			}
 			msg, err := shared.CreateMessage(message, conn)
 			if err != nil {
 				log.Infow("Error creating message from packet", "ip", conn.RemoteAddr(), "error", err)
+				continue
 			}
 			broker.Publish(msg)
 			response := <-broker.ResponseChannel(msg.Type())
 			data, err := shared.CreatePacketFromMessage(response)
+			if err != nil {
+				log.Errorw("Error creating packet from message", "error", err.Error())
+			}
 			// We need to check message and act accordingly
 			switch response.(type) {
 			case event.AuthMessage:
@@ -102,7 +107,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 				if err != nil {
 					log.Errorw("Error writting login resp", "byte", n, "ip", conn.RemoteAddr())
 				}
-				log.Infow("RoomSearch response", "byte", n, "ip", conn.RemoteAddr())
+				log.Infow("Send RoomSearchMessage", "byte", n, "ip", conn.RemoteAddr())
 				return // GameRoom take ownership of the conn
 			}
 		}
