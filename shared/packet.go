@@ -13,12 +13,14 @@ import (
 code 0: send login
 code 1: receive login response
 code 2: send a find room
-code 3: looking for a room response
-code 4: game start  response
-code 5: send action
-code 6: receive RLEboard
-code 7: receive Delta
-code 8: game close
+code 3: send a create room
+code 4: send a join room
+code 5: looking for a room response
+code 6: game start  response
+code 7: send action
+code 8: receive RLEboard
+code 9: receive Delta
+code 10: game close
 */
 
 type Packet interface {
@@ -39,6 +41,16 @@ func CreateMessage(packet Packet, conn *net.TCPConn) (event.Message, error) {
 			RoomType: pkt.RoomType,
 			Conn:     conn,
 		}, nil
+	case *RoomCreatePacket:
+		return event.RoomCreateMessage{
+			RoomType: pkt.RoomType,
+			Conn:     conn,
+		}, nil
+	case *RoomJoinPacket:
+		return event.RoomJoinMessage{
+			RoomID: pkt.RoomID,
+			Conn:   conn,
+		}, nil
 	default:
 		return nil, errors.New("No message to create from packet")
 	}
@@ -54,7 +66,7 @@ func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
 		packet := NewRespPacket()
 		return packet.Serialize(), nil
 	case event.RoomSearchMessage:
-		packet := NewLookRoomPacket(m.Success)
+		packet := NewLookRoomPacket(m.Success, m.RoomID)
 		return packet.Serialize(), nil
 	default:
 		return nil, errors.New("Failed to create packet from message")
@@ -164,15 +176,75 @@ func (fp *RoomRequestPacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
-type LookRoomPacket struct {
-	version, code, Success int
+// TODO: implement private or not
+type RoomCreatePacket struct {
+	version, code, RoomType int
 }
 
-func NewLookRoomPacket(success int) *LookRoomPacket {
+func NewRoomCreatePacket(RoomType int) *RoomCreatePacket {
+	return &RoomCreatePacket{
+		version:  1,
+		code:     3,
+		RoomType: RoomType,
+	}
+}
+
+func (cp RoomCreatePacket) Version() int {
+	return cp.version
+}
+
+func (cp RoomCreatePacket) Code() int {
+	return cp.code
+}
+
+func (cp *RoomCreatePacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(cp.version))
+	buf.WriteByte(byte(cp.code))
+	buf.WriteByte(byte(cp.RoomType))
+	return buf.Bytes()
+}
+
+type RoomJoinPacket struct {
+	version, code int
+	RoomID        string
+}
+
+func NewRoomJoinPacket(roomID string) *RoomJoinPacket {
+	return &RoomJoinPacket{
+		version: 1,
+		code:    4,
+		RoomID:  roomID,
+	}
+}
+
+func (cp RoomJoinPacket) Version() int {
+	return cp.version
+}
+
+func (cp RoomJoinPacket) Code() int {
+	return cp.code
+}
+
+func (cp *RoomJoinPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(cp.version))
+	buf.WriteByte(byte(cp.code))
+	buf.WriteString(cp.RoomID)
+	return buf.Bytes()
+}
+
+type LookRoomPacket struct {
+	version, code, Success int
+	RoomID                 string
+}
+
+func NewLookRoomPacket(success int, roomID string) *LookRoomPacket {
 	return &LookRoomPacket{
 		version: 1,
-		code:    3,
+		code:    5,
 		Success: success,
+		RoomID:  roomID,
 	}
 }
 
@@ -189,6 +261,7 @@ func (lp *LookRoomPacket) Serialize() []byte {
 	buf.WriteByte(byte(lp.version))
 	buf.WriteByte(byte(lp.code))
 	buf.WriteByte(byte(lp.Success))
+  buf.WriteString(lp.RoomID)
 	return buf.Bytes()
 }
 
@@ -199,7 +272,7 @@ type GameStartPacket struct {
 func NewGameStartPacket(success int) *GameStartPacket {
 	return &GameStartPacket{
 		version: 1,
-		code:    4,
+		code:    6,
 		Success: success,
 	}
 }
@@ -227,7 +300,7 @@ type GameClosePacket struct {
 func NewGameClosePacket(success int) *GameStartPacket {
 	return &GameStartPacket{
 		version: 1,
-		code:    8,
+		code:    10,
 		Success: success,
 	}
 }
@@ -260,7 +333,7 @@ type ActionPacket struct {
 func NewActionPacket(action int) *ActionPacket {
 	return &ActionPacket{
 		version: 1,
-		code:    5,
+		code:    7,
 		action:  action,
 	}
 }
@@ -295,7 +368,7 @@ type BoardPacket struct {
 func NewBoardPacket(points [2]int, encodedBoard []byte) *BoardPacket {
 	return &BoardPacket{
 		version:      1,
-		code:         6,
+		code:         8,
 		Points:       points,
 		EncodedBoard: encodedBoard,
 	}
@@ -329,7 +402,7 @@ type DeltaPacket struct {
 func NewDeltaPacket(tickID uint32, points [2]int, deltas [][3]byte) *DeltaPacket {
 	return &DeltaPacket{
 		version: 1,
-		code:    7,
+		code:    9,
 		Points:  points,
 		TickID:  tickID,
 		Deltas:  deltas,
@@ -449,20 +522,36 @@ func DeSerialize(data []byte) (Packet, error) {
 		}, nil
 
 	case 3:
+		return &RoomCreatePacket{
+			version:  version,
+			code:     code,
+			RoomType: int(data[2]),
+		}, nil
+
+	case 4:
+		roomID := string(data[2:])
+		return &RoomJoinPacket{
+			version: version,
+			code:    code,
+			RoomID:  roomID,
+		}, nil
+
+	case 5:
 		return &LookRoomPacket{
 			version: version,
 			code:    code,
 			Success: int(data[2]),
+      RoomID: string(data[2:]),
 		}, nil
 
-	case 4:
+	case 6:
 		return &GameStartPacket{
 			version: version,
 			code:    code,
 			Success: int(data[2]),
 		}, nil
 
-	case 5: // ActionPacket
+	case 7: // ActionPacket
 		action := int(data[2])
 		return &ActionPacket{
 			version: version,
@@ -470,7 +559,7 @@ func DeSerialize(data []byte) (Packet, error) {
 			action:  action,
 		}, nil
 
-	case 6: // BoardPacket
+	case 8: // BoardPacket
 		// First two bytes are points
 		points := [2]int{}
 		points[0] = int(data[2])
@@ -485,7 +574,7 @@ func DeSerialize(data []byte) (Packet, error) {
 			EncodedBoard: encodedBoard,
 		}, nil
 
-	case 7: // DeltasPacket
+	case 9: // DeltasPacket
 		if len(data) < 6 {
 			return nil, errors.New("invalid deltas packet length")
 		}
@@ -513,7 +602,7 @@ func DeSerialize(data []byte) (Packet, error) {
 			Deltas:  deltas,
 		}, nil
 
-	case 8: // GameClosePacket
+	case 10: // GameClosePacket
 		// Success 0: won 1: loose 2: error
 		return &GameClosePacket{
 			version: version,
