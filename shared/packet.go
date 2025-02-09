@@ -41,16 +41,16 @@ func CreateMessage(packet Packet, conn *net.TCPConn) (event.Message, error) {
 			RoomType: pkt.RoomType,
 			Conn:     conn,
 		}, nil
-  case *RoomCreatePacket:
-    return event.RoomCreateMessage{
-      RoomType: pkt.RoomType,
-      Conn: conn,
-    }, nil
-  case *RoomJoinPacket:
-    return event.RoomJoinMessage{
-      RoomID: pkt.RoomID,
-      Conn: conn,
-    }, nil
+	case *RoomCreatePacket:
+		return event.RoomCreateMessage{
+			RoomType: pkt.RoomType,
+			Conn:     conn,
+		}, nil
+	case *RoomJoinPacket:
+		return event.RoomJoinMessage{
+			RoomID: pkt.RoomID,
+			Conn:   conn,
+		}, nil
 	default:
 		return nil, errors.New("No message to create from packet")
 	}
@@ -66,7 +66,7 @@ func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
 		packet := NewRespPacket()
 		return packet.Serialize(), nil
 	case event.RoomSearchMessage:
-		packet := NewLookRoomPacket(m.Success)
+		packet := NewLookRoomPacket(m.Success, m.RoomID)
 		return packet.Serialize(), nil
 	default:
 		return nil, errors.New("Failed to create packet from message")
@@ -236,13 +236,15 @@ func (cp *RoomJoinPacket) Serialize() []byte {
 
 type LookRoomPacket struct {
 	version, code, Success int
+	RoomID                 string
 }
 
-func NewLookRoomPacket(success int) *LookRoomPacket {
+func NewLookRoomPacket(success int, roomID string) *LookRoomPacket {
 	return &LookRoomPacket{
 		version: 1,
 		code:    5,
 		Success: success,
+		RoomID:  roomID,
 	}
 }
 
@@ -259,6 +261,7 @@ func (lp *LookRoomPacket) Serialize() []byte {
 	buf.WriteByte(byte(lp.version))
 	buf.WriteByte(byte(lp.code))
 	buf.WriteByte(byte(lp.Success))
+  buf.WriteString(lp.RoomID)
 	return buf.Bytes()
 }
 
@@ -525,19 +528,20 @@ func DeSerialize(data []byte) (Packet, error) {
 			RoomType: int(data[2]),
 		}, nil
 
-  case 4:
-    roomID := string(data[2:])
-    return &RoomJoinPacket{
-      version: version,
-      code: code,
-      RoomID: roomID,
-    }, nil
+	case 4:
+		roomID := string(data[2:])
+		return &RoomJoinPacket{
+			version: version,
+			code:    code,
+			RoomID:  roomID,
+		}, nil
 
 	case 5:
 		return &LookRoomPacket{
 			version: version,
 			code:    code,
 			Success: int(data[2]),
+      RoomID: string(data[2:]),
 		}, nil
 
 	case 6:

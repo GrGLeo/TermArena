@@ -187,5 +187,6 @@ func (rm *RoomManager) CreateRoom(msg event.Message) event.Message {
   rm.RoomQueues[roomType][newRoom.GameID] = newRoom 
   return event.RoomSearchMessage{
     Success: 0,
+    RoomID: newRoom.GameID,
   }
 }

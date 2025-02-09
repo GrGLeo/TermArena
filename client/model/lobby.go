@@ -105,14 +105,13 @@ func (m LobbyModel) View() string {
 		content = m.createModel.View()
 	}
 
-  lobby := lipgloss.JoinVertical(
+	lobby := lipgloss.JoinVertical(
 		lipgloss.Top,
 		tabSelection,
 		content,
 	)
 
-
-  return lipgloss.Place(
+	return lipgloss.Place(
 		m.width,
 		m.height,
 		lipgloss.Center,
@@ -195,12 +194,12 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m QueueModel) View() string {
-  // Build the tab selection
+	// Build the tab selection
 	var leftTab string
 	var rightTab string
 
-  leftTab = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render("Queue up for a game")
-  rightTab = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Create or Join Room")
+	leftTab = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render("Queue up for a game")
+	rightTab = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Create or Join Room")
 	leftStyle := lipgloss.NewStyle().
 		Width(50).
 		Align(lipgloss.Left).
@@ -216,7 +215,6 @@ func (m QueueModel) View() string {
 		leftStyle.Render(leftTab),
 		rightStyle.Render(rightTab),
 	)
-
 
 	var optionsBuilder strings.Builder
 	selectedChar := lipgloss.NewStyle().
@@ -280,21 +278,21 @@ func (m QueueModel) View() string {
 		instructionsStyle.Render(gameInstruction),
 	)
 
-  lobby := lipgloss.JoinVertical(
-    lipgloss.Top,
-    tabSelection,
-    layout,
-  )
+	lobby := lipgloss.JoinVertical(
+		lipgloss.Top,
+		tabSelection,
+		layout,
+	)
 
-  return lipgloss.Place(
-    m.width,
-    m.height,
-    lipgloss.Center,
-    lipgloss.Center,
-    lipgloss.NewStyle().
-    Padding(2, 4).
-    Render(lobby),
-  )
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		lipgloss.NewStyle().
+			Padding(2, 4).
+			Render(lobby),
+	)
 }
 
 type CreateModel struct {
@@ -303,6 +301,7 @@ type CreateModel struct {
 	roomIDInput   textinput.Model
 	width, height int
 	looking       bool
+	roomID        string
 	conn          *net.TCPConn
 	spinner       spinner.Model
 	inputFocused  bool
@@ -348,6 +347,7 @@ func (m CreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 	case communication.LookRoomMsg:
 		m.looking = true
+    m.roomID = msg.RoomID
 		return m, m.spinner.Tick
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -358,22 +358,22 @@ func (m CreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Handle room ID input submission
 				roomID := m.roomIDInput.Value()
 				log.Println("Room ID entered:", roomID)
-        communication.SendRoomJoinPacket(m.conn, roomID)
+				communication.SendRoomJoinPacket(m.conn, roomID)
 			} else {
 				selectedOption := m.options[m.selected]
-        // Since we dont show 1player we need to increment the selected by one to have the right room
-        communication.SendRoomCreatePacket(m.conn, m.selected + 1)
+				// Since we dont show 1player we need to increment the selected by one to have the right room
+				communication.SendRoomCreatePacket(m.conn, m.selected+1)
 				log.Println("Selected option:", selectedOption)
 			}
 			return m, nil
 		case tea.KeyTab:
-      if m.inputFocused {
-        m.roomIDInput.Blur()
-        m.inputFocused = !m.inputFocused
-      } else {
-        m.roomIDInput.Focus()
-        m.inputFocused = !m.inputFocused
-      }
+			if m.inputFocused {
+				m.roomIDInput.Blur()
+				m.inputFocused = !m.inputFocused
+			} else {
+				m.roomIDInput.Focus()
+				m.inputFocused = !m.inputFocused
+			}
 			return m, nil
 		}
 
@@ -466,13 +466,13 @@ func (m CreateModel) View() string {
 		optionsBuilder.WriteString(
 			lipgloss.NewStyle().
 				Foreground(lipgloss.Color("205")).
-				Render("Looking for a room... " + m.spinner.View()),
+				Render("Joining room " + m.roomID + " " + m.spinner.View()),
 		)
 	}
 
-  var createBuilder strings.Builder
-  createBuilder.WriteString("Enter the roomID to join an existing room.\n")
-  createBuilder.WriteString(m.roomIDInput.View())
+	var createBuilder strings.Builder
+	createBuilder.WriteString("Enter the roomID to join an existing room.\n")
+	createBuilder.WriteString(m.roomIDInput.View())
 
 	layout := lipgloss.JoinHorizontal(
 		lipgloss.Top,

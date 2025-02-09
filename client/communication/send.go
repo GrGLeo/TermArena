@@ -74,7 +74,7 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
     case *shared.RespPacket:
       msgs <- ResponseMsg{Code: msg.Code()}
     case *shared.LookRoomPacket:
-      msgs <- LookRoomMsg{Code: msg.Success}
+      msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID}
     case *shared.GameStartPacket:
       msgs <- GameStartMsg{Code: msg.Success}
     case *shared.GameClosePacket:

@@ -103,6 +103,7 @@ func (rc RoomCreateMessage) Validate() error {
 
 type RoomSearchMessage struct {
 	Success int
+	RoomID  string
 }
 
 func (rs RoomSearchMessage) Type() string {
