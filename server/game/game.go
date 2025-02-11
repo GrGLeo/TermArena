@@ -103,7 +103,7 @@ func (gr *GameRoom) StartGame() {
 				}
 				for _, bot := range gr.board.Bots {
 					// process each player action
-					flagWon := bot.RandomAction(gr.board)
+					flagWon := bot.RandomAction(int(gr.tickID.Load()), gr.board)
 					if flagWon {
 						switch bot.TeamID {
 						case 6:
