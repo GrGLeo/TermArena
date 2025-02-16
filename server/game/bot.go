@@ -2,7 +2,6 @@ package game
 
 import (
 	"fmt"
-	"time"
 )
 
 type State int
@@ -30,26 +29,26 @@ func (b *Bot) BotTurn(tick int, board *Board) bool {
 
 func (b *Bot) CalculatePath(board *Board) actionType {
 	var action string
-  var fx, fy int
+	var fx, fy int
 	minCost := 68
-  
-  if !b.HasFlag{
-    if b.TeamID == 6 {
-	flag := board.Flags[1]
-	fx, fy = flag.PosX, flag.PosY
-    } else {
-	flag := board.Flags[0]
-	fx, fy = flag.PosX, flag.PosY
-    }
-  } else {
-    if b.TeamID == 6 {
-	flag := board.Flags[0]
-	fx, fy = flag.baseX, flag.baseY
-    } else {
-	flag := board.Flags[1]
-	fx, fy = flag.baseX, flag.baseY
-    }
-  }
+
+	if !b.HasFlag {
+		if b.TeamID == 6 {
+			flag := board.Flags[1]
+			fx, fy = flag.PosX, flag.PosY
+		} else {
+			flag := board.Flags[0]
+			fx, fy = flag.PosX, flag.PosY
+		}
+	} else {
+		if b.TeamID == 6 {
+			flag := board.Flags[0]
+			fx, fy = flag.baseX, flag.baseY
+		} else {
+			flag := board.Flags[1]
+			fx, fy = flag.baseX, flag.baseY
+		}
+	}
 
 	neighbors := map[string][2]int{
 		"down":  {0, 1},
@@ -71,7 +70,7 @@ func (b *Bot) CalculatePath(board *Board) actionType {
 			action = key
 		}
 	}
-  fmt.Printf("Action: %q | Cost: %d | bot: %d\n", action, minCost, b.TeamID)
+	fmt.Printf("Action: %q | Cost: %d | bot: %d\n", action, minCost, b.TeamID)
 	switch action {
 	case "down":
 		return moveDown
@@ -87,19 +86,15 @@ func (b *Bot) CalculatePath(board *Board) actionType {
 }
 
 func (b *Bot) RandomAction(tick int, board *Board) bool {
-  lastUsed := b.Dash.LastUsed
-  cooldown := time.Duration(b.Dash.Cooldown) * time.Second
-  EndCd := lastUsed.Add(cooldown)
-  if time.Now().Before(EndCd) {
-    if tick%3 == 0 {
-      action := b.CalculatePath(board)
-      b.Action = action
+		if tick%3 == 0 {
+			action := b.CalculatePath(board)
+			b.Action = action
+			return b.TakeAction(board)
+		} else if tick%100 == 0 {
+      b.Action = spellOne
       return b.TakeAction(board)
-    }
-    b.Action = NoAction
-    return b.TakeAction(board)
-  } else {
-    b.Action = spellOne
-    return b.TakeAction(board)
-  }
+    } else {
+      b.Action = NoAction
+      return b.TakeAction(board)
+	}
 }
