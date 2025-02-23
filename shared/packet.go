@@ -399,7 +399,6 @@ type DeltaPacket struct {
 	version, code int
 	TickID        uint32
 	Points        [2]int
-	Length        int
 	Deltas        [][3]byte
 }
 
@@ -409,7 +408,6 @@ func NewDeltaPacket(tickID uint32, points [2]int, deltas [][3]byte) *DeltaPacket
 		code:    9,
 		Points:  points,
 		TickID:  tickID,
-		Length:  len(deltas),
 		Deltas:  deltas,
 	}
 }
