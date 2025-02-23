@@ -127,7 +127,8 @@ func (gr *GameRoom) CloseGame(success int) {
 func (gr *GameRoom) sendInitGrid() {
 	grid := gr.board.GetCurrentGrid()
 	encodedBoard := RunLengthEncode(grid)
-	packet := shared.NewBoardPacket(gr.points, encodedBoard)
+  length := len(encodedBoard)
+	packet := shared.NewBoardPacket(gr.points, length, encodedBoard)
 	data := packet.Serialize()
 	for _, conn := range gr.playerConnection {
 		_, err := conn.Write(data)
@@ -149,7 +150,8 @@ func (gr *GameRoom) broadcastState() error {
 	if len(deltas) > totalCells/2 {
 		gr.logger.Infow("Sending back full board", "roomID", gr.GameID)
 		encodedBoard := RunLengthEncode(grid)
-		packet := shared.NewBoardPacket(gr.points, encodedBoard)
+    length := len(encodedBoard)
+		packet := shared.NewBoardPacket(gr.points, length, encodedBoard)
 		data = packet.Serialize()
 	} else {
 		tickID := uint32(gr.tickID.Load())
