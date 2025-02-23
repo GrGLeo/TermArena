@@ -261,7 +261,7 @@ func (lp *LookRoomPacket) Serialize() []byte {
 	buf.WriteByte(byte(lp.version))
 	buf.WriteByte(byte(lp.code))
 	buf.WriteByte(byte(lp.Success))
-  buf.WriteString(lp.RoomID)
+	buf.WriteString(lp.RoomID)
 	return buf.Bytes()
 }
 
@@ -362,14 +362,16 @@ func (ap ActionPacket) Serialize() []byte {
 type BoardPacket struct {
 	version, code int
 	Points        [2]int
+	Length        int
 	EncodedBoard  []byte
 }
 
-func NewBoardPacket(points [2]int, encodedBoard []byte) *BoardPacket {
+func NewBoardPacket(points [2]int, length int, encodedBoard []byte) *BoardPacket {
 	return &BoardPacket{
 		version:      1,
 		code:         8,
 		Points:       points,
+		Length:       length,
 		EncodedBoard: encodedBoard,
 	}
 }
@@ -388,6 +390,7 @@ func (bp *BoardPacket) Serialize() []byte {
 	buf.WriteByte(byte(bp.code))
 	buf.WriteByte(byte(bp.Points[0]))
 	buf.WriteByte(byte(bp.Points[1]))
+	buf.WriteByte(byte(bp.Length))
 	buf.Write(bp.EncodedBoard)
 	return buf.Bytes()
 }
@@ -541,7 +544,7 @@ func DeSerialize(data []byte) (Packet, error) {
 			version: version,
 			code:    code,
 			Success: int(data[2]),
-      RoomID: string(data[2:]),
+			RoomID:  string(data[2:]),
 		}, nil
 
 	case 6:
@@ -564,13 +567,15 @@ func DeSerialize(data []byte) (Packet, error) {
 		points := [2]int{}
 		points[0] = int(data[2])
 		points[1] = int(data[3])
+		length := int(data[4])
 
 		// Rest of data is the encodedBoard
-		encodedBoard := data[4:]
+		encodedBoard := data[5:]
 		return &BoardPacket{
 			version:      version,
 			code:         code,
 			Points:       points,
+			Length:       length,
 			EncodedBoard: encodedBoard,
 		}, nil
 
