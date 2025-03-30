@@ -21,7 +21,7 @@ const (
 type MetaModel struct {
 	WaitingModel   model.WaitingModel
 	AnimationModel model.AnimationModel
-	LoginModel     model.LoginModel
+	AuthModel      model.AuthModel
 	LobbyModel     model.LobbyModel
 	GameModel      model.GameModel
 	state          string
@@ -50,7 +50,7 @@ func (m MetaModel) Init() tea.Cmd {
 	case Intro:
 		return m.AnimationModel.Init()
 	case Login:
-		return m.LoginModel.Init()
+		return m.AuthModel.Init()
 	}
 	return communication.AttemptReconnect()
 }
@@ -89,9 +89,9 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			if msg.Type == tea.KeyEnter {
 				m.state = Login
-				m.LoginModel = model.NewLoginModel(m.Connection)
-				m.LoginModel.SetDimension(m.height, m.width)
-				return m, m.LoginModel.Init()
+				m.AuthModel = model.NewAuthModel(m.Connection)
+				m.AuthModel.SetDimension(m.height, m.width)
+				return m, m.AuthModel.Init()
 			}
 			return m, cmd
 		case tea.WindowSizeMsg:
@@ -99,21 +99,21 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.height = msg.Height
 			m.WaitingModel.SetDimension(m.height, m.width)
 			m.AnimationModel.SetDimension(m.height, m.width)
-			m.LoginModel.SetDimension(m.height, m.width)
+			m.AuthModel.SetDimension(m.height, m.width)
 			m.GameModel.SetDimension(m.height, m.width)
 		}
 
 	case Login:
-		newmodel, cmd = m.LoginModel.Update(msg)
-		m.LoginModel = newmodel.(model.LoginModel)
+		newmodel, cmd = m.AuthModel.Update(msg)
+		m.AuthModel = newmodel.(model.AuthModel)
 		switch msg.(type) {
 		case communication.ResponseMsg:
 			m.state = Lobby
 			m.LobbyModel = model.NewLobbyModel(m.Connection)
 			m.LobbyModel.SetDimension(m.height, m.width)
 			return m, m.LobbyModel.Init()
-    default:
-      return m, cmd
+		default:
+			return m, cmd
 		}
 
 	case Lobby:
@@ -125,27 +125,27 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.GameModel = model.NewGameModel(m.Connection)
 			m.GameModel.SetDimension(m.height, m.width)
 			return m, m.GameModel.Init()
-    default:
-      return m, cmd
+		default:
+			return m, cmd
 		}
 
 	case Game:
-    switch msg.(type) {
-    case communication.GameCloseMsg:
-        conn, err := communication.MakeConnection()
-        if err != nil {
-          log.Println("Failed to make connection after game close: ", err.Error())
-        }
-        m.Connection = conn
-        m.state = Lobby
-        m.LobbyModel.SetConn(conn)
-        m.LobbyModel.SetLooking(false)
-			  go communication.ListenForPackets(m.Connection, m.msgs)
-    default:
-      newmodel, cmd = m.GameModel.Update(msg)
-      m.GameModel = newmodel.(model.GameModel)
-	  	return m, cmd
-    }
+		switch msg.(type) {
+		case communication.GameCloseMsg:
+			conn, err := communication.MakeConnection()
+			if err != nil {
+				log.Println("Failed to make connection after game close: ", err.Error())
+			}
+			m.Connection = conn
+			m.state = Lobby
+			m.LobbyModel.SetConn(conn)
+			m.LobbyModel.SetLooking(false)
+			go communication.ListenForPackets(m.Connection, m.msgs)
+		default:
+			newmodel, cmd = m.GameModel.Update(msg)
+			m.GameModel = newmodel.(model.GameModel)
+			return m, cmd
+		}
 	}
 	return m, nil
 }
@@ -157,7 +157,7 @@ func (m MetaModel) View() string {
 	case Intro:
 		return m.AnimationModel.View()
 	case Login:
-		return m.LoginModel.View()
+		return m.AuthModel.View()
 	case Lobby:
 		return m.LobbyModel.View()
 	case Game:
