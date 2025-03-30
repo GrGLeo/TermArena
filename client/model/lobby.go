@@ -13,6 +13,7 @@ import (
 )
 
 type LobbyModel struct {
+	styles         *Styles
 	tabSelected   int
 	queueModel    QueueModel
 	createModel   CreateModel
@@ -24,8 +25,10 @@ type LobbyModel struct {
 func NewLobbyModel(conn *net.TCPConn) LobbyModel {
 	queueModel := NewQueueModel(conn)
 	createModel := NewCreateModel(conn)
+	s := DefaultStyles()
 
 	return LobbyModel{
+		styles:       s,
 		tabSelected: 0,
 		queueModel:  queueModel,
 		createModel: createModel,
@@ -63,9 +66,9 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "h":
+		case "left":
 			m.tabSelected = (m.tabSelected - 1 + 2) % 2
-		case "l":
+		case "right":
 			m.tabSelected = (m.tabSelected + 1) % 2
 		case "q", "esc", "ctrl+c":
 			return m, tea.Quit
@@ -86,39 +89,47 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m LobbyModel) View() string {
-	var tabSelection string
+	var renderedTabs []string
 	var content string
 
+	// Render Tabs based on selection
+	loginTabStr := "Join a game"
+	createTabStr := "Create a game"
 	if m.tabSelected == 0 {
-		tabSelection = lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render("Queue Game"),
-			lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Join/Create Game"),
-		)
-		content = m.queueModel.View()
+		renderedTabs = append(renderedTabs, m.styles.ActiveTab.Render(loginTabStr))
+		renderedTabs = append(renderedTabs, m.styles.InactiveTab.Render(createTabStr))
+		content = m.queueModel.View() // Get content from the active model
 	} else {
-		tabSelection = lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Queue Game"),
-			lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render("Join/Create Game"),
-		)
-		content = m.createModel.View()
+		renderedTabs = append(renderedTabs, m.styles.InactiveTab.Render(loginTabStr))
+		renderedTabs = append(renderedTabs, m.styles.ActiveTab.Render(createTabStr))
+		content = m.createModel.View() // Get content from the active model
 	}
 
-	lobby := lipgloss.JoinVertical(
-		lipgloss.Top,
-		tabSelection,
+	// Join the individual tab strings horizontally
+	tabRow := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
+
+	// Create the tab bar container with a bottom border to act as the underline
+	// The border will automatically be the width of the tabRow
+	tabBar := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder(), false, false, true, false).
+		BorderForeground(m.styles.BorderColor).
+		Render(tabRow)
+
+	// Combine the tab bar and the content vertically
+	ui := lipgloss.JoinVertical(lipgloss.Center,
+		tabBar,
 		content,
 	)
+
+	// Place the entire UI block in the center of the available space
+	finalView := lipgloss.NewStyle().Render(ui)
 
 	return lipgloss.Place(
 		m.width,
 		m.height,
 		lipgloss.Center,
 		lipgloss.Center,
-		lipgloss.NewStyle().
-			Padding(2, 4).
-			Render(lobby),
+		finalView,
 	)
 }
 
@@ -194,28 +205,6 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m QueueModel) View() string {
-	// Build the tab selection
-	var leftTab string
-	var rightTab string
-
-	leftTab = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render("Queue up for a game")
-	rightTab = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Create or Join Room")
-	leftStyle := lipgloss.NewStyle().
-		Width(50).
-		Align(lipgloss.Left).
-		Border(lipgloss.NormalBorder(), true, false)
-
-	rightStyle := lipgloss.NewStyle().
-		Width(50).
-		Align(lipgloss.Left).
-		Border(lipgloss.NormalBorder(), true, false)
-
-	tabSelection := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		leftStyle.Render(leftTab),
-		rightStyle.Render(rightTab),
-	)
-
 	var optionsBuilder strings.Builder
 	selectedChar := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("205")).
@@ -254,13 +243,12 @@ func (m QueueModel) View() string {
 	optionsStyle := lipgloss.NewStyle().
 		Width(50).
 		Align(lipgloss.Left).
-		Border(lipgloss.NormalBorder(), true, false, false, false).
 		Padding(1, 0)
 
 	instructionsStyle := lipgloss.NewStyle().
 		Width(50).
 		Align(lipgloss.Left).
-		Border(lipgloss.NormalBorder(), true, false, false, true).
+		Border(lipgloss.NormalBorder(), false, false, false, true).
 		Padding(1, 0)
 
 	if m.looking {
@@ -278,21 +266,11 @@ func (m QueueModel) View() string {
 		instructionsStyle.Render(gameInstruction),
 	)
 
-	lobby := lipgloss.JoinVertical(
+	return lipgloss.JoinVertical(
 		lipgloss.Top,
-		tabSelection,
 		layout,
 	)
 
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		lipgloss.NewStyle().
-			Padding(2, 4).
-			Render(lobby),
-	)
 }
 
 type CreateModel struct {
@@ -347,7 +325,7 @@ func (m CreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 	case communication.LookRoomMsg:
 		m.looking = true
-    m.roomID = msg.RoomID
+		m.roomID = msg.RoomID
 		return m, m.spinner.Tick
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -402,28 +380,6 @@ func (m CreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m CreateModel) View() string {
-	// Build the tab selection
-	var leftTab string
-	var rightTab string
-
-	leftTab = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Queue up for a game")
-	rightTab = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render("Create or Join Room")
-	leftStyle := lipgloss.NewStyle().
-		Width(50).
-		Align(lipgloss.Left).
-		Border(lipgloss.NormalBorder(), true, false)
-
-	rightStyle := lipgloss.NewStyle().
-		Width(50).
-		Align(lipgloss.Left).
-		Border(lipgloss.NormalBorder(), true, false)
-
-	tabSelection := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		leftStyle.Render(leftTab),
-		rightStyle.Render(rightTab),
-	)
-
 	var optionsBuilder strings.Builder
 	selectedChar := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("205")).
@@ -452,13 +408,12 @@ func (m CreateModel) View() string {
 	optionsStyle := lipgloss.NewStyle().
 		Width(50).
 		Align(lipgloss.Left).
-		Border(lipgloss.NormalBorder(), true, false, false, false).
 		Padding(1, 0)
 
 	instructionsStyle := lipgloss.NewStyle().
 		Width(50).
 		Align(lipgloss.Left).
-		Border(lipgloss.NormalBorder(), true, false, false, true).
+		Border(lipgloss.NormalBorder(), false, false, false, true).
 		Padding(1, 0)
 
 	if m.looking {
@@ -474,25 +429,9 @@ func (m CreateModel) View() string {
 	createBuilder.WriteString("Enter the roomID to join an existing room.\n")
 	createBuilder.WriteString(m.roomIDInput.View())
 
-	layout := lipgloss.JoinHorizontal(
+	return lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		optionsStyle.Render(optionsBuilder.String()),
 		instructionsStyle.Render(createBuilder.String()),
-	)
-
-	lobby := lipgloss.JoinVertical(
-		lipgloss.Top,
-		tabSelection,
-		layout,
-	)
-
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		lipgloss.NewStyle().
-			Padding(2, 4).
-			Render(lobby),
 	)
 }

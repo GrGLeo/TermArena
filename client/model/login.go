@@ -15,33 +15,33 @@ type Styles struct {
 	InputField     lipgloss.Style
 	Button         lipgloss.Style
 	SelectedButton lipgloss.Style
-	// Added for Tabs
+	// Tabs
 	ActiveTabBorder lipgloss.Border
 	ActiveTab       lipgloss.Style
 	InactiveTab     lipgloss.Style
-	TabGap          lipgloss.Style // To create space between tabs
+	TabGap          lipgloss.Style
 }
 
 func DefaultStyles() *Styles {
 	s := new(Styles)
-	s.BorderColor = lipgloss.Color("69") // Nice purple
+	s.BorderColor = lipgloss.Color("69")
 
 	s.InputField = lipgloss.NewStyle().
 		BorderForeground(s.BorderColor).
 		BorderStyle(lipgloss.RoundedBorder()).
-		Padding(0, 1). // Add some padding inside the input
-		Width(20)      // Ensure width includes padding
+		Padding(0, 1).
+		Width(20)
 
 	s.Button = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("255")). // White text
-		Background(lipgloss.Color("57")).  // Darker purple bg
+		Foreground(lipgloss.Color("255")).
+		Background(lipgloss.Color("57")).
 		Padding(0, 3).
 		MarginTop(1).
-		MarginRight(1) // Add margin between buttons
+		MarginRight(1)
 
 	s.SelectedButton = s.Button.
 		Foreground(lipgloss.Color("255")).
-		Background(lipgloss.Color("105")). // Brighter purple bg
+		Background(lipgloss.Color("105")).
 		Underline(true)
 
 	// --- Tab Styles ---
@@ -56,32 +56,31 @@ func DefaultStyles() *Styles {
 		BottomRight: "└",
 	}
 	activeTabBorder := inactiveTabBorder
-	activeTabBorder.Bottom = " " // Remove bottom border for active tab
+	activeTabBorder.Bottom = " "
 
 	s.ActiveTab = lipgloss.NewStyle().
 		Bold(true).
-		Padding(0, 3). // Padding inside tab
+		Padding(0, 3).
 		Foreground(lipgloss.Color("205")).
 		Border(activeTabBorder, true).
 		BorderForeground(s.BorderColor)
 
 	s.InactiveTab = lipgloss.NewStyle().
 		Padding(0, 3).
-		Foreground(lipgloss.Color("240")). // Dimmed text
+		Foreground(lipgloss.Color("240")).
 		Border(inactiveTabBorder, true).
 		BorderForeground(s.BorderColor)
 
 	// Gap style to put between tabs
 	s.TabGap = lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder(), false, false, true, false). // Render only bottom border
+		Border(lipgloss.NormalBorder(), false, false, true, false).
 		BorderForeground(s.BorderColor).
-		PaddingRight(1) // Space after the gap
+		PaddingRight(1)
 
 	return s
 }
 
 // --- AuthModel (MetaModel) ---
-
 type AuthModel struct {
 	styles       *Styles
 	tabSelected  int // 0 for Login, 1 for Create Account
@@ -89,8 +88,6 @@ type AuthModel struct {
 	accountModel AccountModel
 	conn         *net.TCPConn
 	width, height int
-	// Could add an error message field here if needed
-	// errMsg string
 }
 
 func NewAuthModel(conn *net.TCPConn) AuthModel {
@@ -103,7 +100,7 @@ func NewAuthModel(conn *net.TCPConn) AuthModel {
 
 	return AuthModel{
 		styles:       styles,
-		tabSelected:  0, // Start with Login tab
+		tabSelected:  0,
 		loginModel:   loginModel,
 		accountModel: accountModel,
 		conn:         conn,
@@ -124,7 +121,6 @@ func (m *AuthModel) SetDimension(height, width int) {
 }
 
 func (m AuthModel) Init() tea.Cmd {
-	// Initialize the currently selected model
 	if m.tabSelected == 0 {
 		return m.loginModel.Init()
 	}
@@ -133,13 +129,11 @@ func (m AuthModel) Init() tea.Cmd {
 
 func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	var cmds []tea.Cmd // Collect commands
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.SetDimension(msg.Width, msg.Height)
-		// No need to return a command here usually, but bubbletea examples often do
-		// return m, nil
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -147,20 +141,20 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		// Tab Navigation (use h/l like LobbyModel or Tab)
-		// Using 'h' and 'l' for consistency with LobbyModel
+		// Using 'left' and 'right' for consistency with LobbyModel
 		case "left":
 			if m.tabSelected > 0 {
 				m.tabSelected--
-				m.accountModel.BlurAll() // Blur the old tab's inputs
-				m.loginModel.Focus()     // Focus the new tab's first input
-				cmds = append(cmds, m.loginModel.Init()) // Re-trigger blink etc.
+				m.accountModel.BlurAll()
+				m.loginModel.Focus()
+				cmds = append(cmds, m.loginModel.Init())
 			}
 		case "right":
-			if m.tabSelected < 1 { // Only 2 tabs (0 and 1)
+			if m.tabSelected < 1 {
 				m.tabSelected++
-				m.loginModel.BlurAll()   // Blur the old tab's inputs
-				m.accountModel.Focus()   // Focus the new tab's first input
-				cmds = append(cmds, m.accountModel.Init()) // Re-trigger blink etc.
+				m.loginModel.BlurAll()
+				m.accountModel.Focus()
+				cmds = append(cmds, m.accountModel.Init())
 			}
 
 		// --- Pass other keys down to the active model ---
@@ -168,17 +162,16 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.tabSelected == 0 {
 				var updatedLoginModel tea.Model
 				updatedLoginModel, cmd = m.loginModel.Update(msg)
-				m.loginModel = updatedLoginModel.(LoginModel) // Type assertion
+				m.loginModel = updatedLoginModel.(LoginModel)
 				cmds = append(cmds, cmd)
 			} else {
 				var updatedAccountModel tea.Model
 				updatedAccountModel, cmd = m.accountModel.Update(msg)
-				m.accountModel = updatedAccountModel.(AccountModel) // Type assertion
+				m.accountModel = updatedAccountModel.(AccountModel)
 				cmds = append(cmds, cmd)
 			}
 		}
 	// --- Pass non-key messages down ---
-	// Allows spinner ticks etc. if sub-models use them
 	default:
 		if m.tabSelected == 0 {
 			var updatedLoginModel tea.Model
@@ -193,7 +186,7 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	return m, tea.Batch(cmds...) // Batch commands from tab switching and sub-models
+	return m, tea.Batch(cmds...)
 }
 
 func (m AuthModel) View() string {
@@ -219,41 +212,35 @@ func (m AuthModel) View() string {
 	// Create the tab bar container with a bottom border to act as the underline
 	// The border will automatically be the width of the tabRow
 	tabBar := lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder(), false, false, true, false). // Bottom border only
+		Border(lipgloss.NormalBorder(), false, false, true, false).
 		BorderForeground(m.styles.BorderColor).
-		// Optional: Add some padding below the tabs if needed
-		// PaddingBottom(1).
-		Render(tabRow) // Render the joined tabs inside this styled block
+		Render(tabRow)
 
 	// Combine the tab bar and the content vertically
-	// Use lipgloss.Left alignment for the vertical join by default
-	ui := lipgloss.JoinVertical(lipgloss.Center, // Center alignment for the vertical stack
+	ui := lipgloss.JoinVertical(lipgloss.Center,
 		tabBar,
-		// Add potential vertical gap here if needed: lipgloss.NewStyle().MarginTop(1).Render(""),
-		content, // The content from LoginModel or AccountModel View
+		content,
 	)
 
 	// Place the entire UI block in the center of the available space
-	// Add some padding around the final block if desired
-	finalView := lipgloss.NewStyle().Padding(1, 2).Render(ui) // Example padding
+	finalView := lipgloss.NewStyle().Padding(1, 2).Render(ui)
 
 	return lipgloss.Place(
 		m.width,
 		m.height,
 		lipgloss.Center,
 		lipgloss.Center,
-		finalView, // Place the padded UI block
+		finalView,
 	)
 }
 
 // --- AccountModel (SubModel) ---
-
 type AccountModel struct {
-	styles        *Styles // Use shared styles
+	styles        *Styles
 	username      textinput.Model
 	password      textinput.Model
 	passwordConf  textinput.Model
-	focusIndex    int // Renamed from 'selected' for clarity
+	focusIndex    int
 	buttons       []string
 	width, height int
 	conn          *net.TCPConn
@@ -264,7 +251,7 @@ func NewAccountModel(conn *net.TCPConn, styles *Styles) AccountModel {
 	tiUser := textinput.New()
 	tiUser.Placeholder = "Username"
 	tiUser.CharLimit = 32
-	tiUser.Width = 20 // Match style width if needed, style sets effective width
+	tiUser.Width = 20
 
 	tiPass := textinput.New()
 	tiPass.Placeholder = "Password"
@@ -281,11 +268,11 @@ func NewAccountModel(conn *net.TCPConn, styles *Styles) AccountModel {
 	tiPassConf.Width = 20
 
 	return AccountModel{
-		styles:       styles, // Store shared styles
+		styles:       styles,
 		username:     tiUser,
 		password:     tiPass,
 		passwordConf: tiPassConf,
-		focusIndex:   0, // Start focus on username
+		focusIndex:   0,
 		buttons:      []string{"Create Account", "Quit"},
 		conn:         conn,
 	}
@@ -296,7 +283,6 @@ func (m *AccountModel) SetConn(conn *net.TCPConn) {
 }
 
 func (m *AccountModel) SetDimension(width, height int) {
-	// Use dimensions for layout, maybe adjust input widths if dynamic
 	m.width = width
 	m.height = height
 }
@@ -325,16 +311,12 @@ func (m AccountModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-	// We no longer handle WindowSizeMsg or global quit keys here.
-	// The parent AuthModel handles them.
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		// --- Navigation within the form ---
 		case tea.KeyTab, tea.KeyDown: // Cycle focus forward
-			m.focusIndex = (m.focusIndex + 1) % (3 + len(m.buttons)) // 3 inputs + N buttons
-			// Update focus on text inputs
+			m.focusIndex = (m.focusIndex + 1) % (3 + len(m.buttons))
 			m.username.Blur()
 			m.password.Blur()
 			m.passwordConf.Blur()
@@ -345,12 +327,11 @@ func (m AccountModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.focusIndex == 2 {
 				m.passwordConf.Focus()
 			}
-			// If focus is on an input, activate blink
 			if m.focusIndex < 3 {
 				cmds = append(cmds, textinput.Blink)
 			}
 
-		case tea.KeyUp: // Cycle focus backward
+		case tea.KeyUp:
 			m.focusIndex--
 			if m.focusIndex < 0 {
 				m.focusIndex = (3 + len(m.buttons)) - 1
@@ -378,25 +359,17 @@ func (m AccountModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				buttonIndex := m.focusIndex - 3
 				switch m.buttons[buttonIndex] {
 				case "Create Account":
-					// Add validation if desired (e.g., password match)
 					if m.password.Value() == m.passwordConf.Value() {
 						// TODO: Add real packet for account creation
 						communication.SendLoginPacket(m.conn, m.username.Value(), m.password.Value()) // Placeholder, use correct packet
-						// Maybe return a message indicating success/failure attempt?
 					} else {
 						// TODO: Display error message (e.g., set errMsg in AuthModel)
 					}
-					return m, cmd // Return potentially nil cmd
+					return m, cmd
 				case "Quit":
-					return m, tea.Quit // Quit the whole app
+					return m, tea.Quit
 				}
 			}
-			// If Enter is pressed while on an input, maybe move to the next? (Optional)
-			// else {
-			// 	// Simulate Tab press
-			// 	keyMsg := tea.KeyMsg{Type: tea.KeyTab}
-			// 	return m.Update(keyMsg)
-			// }
 
 		// --- Input Handling ---
 		// Let the focused input handle the key press
@@ -414,14 +387,12 @@ func (m AccountModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Batch any collected commands (e.g., Blink)
 	return m, tea.Batch(cmds...)
 }
 
-// View renders the AccountModel UI
 func (m AccountModel) View() string {
 	var buttonsView []string
-	buttonOffset := 3 // Number of input fields before buttons
+	buttonOffset := 3
 
 	for i, btn := range m.buttons {
 		style := m.styles.Button
@@ -431,14 +402,12 @@ func (m AccountModel) View() string {
 		buttonsView = append(buttonsView, style.Render(btn))
 	}
 
-	// Use shared styles
 	inputUserStyle := m.styles.InputField
 	inputPassStyle := m.styles.InputField
 	inputConfStyle := m.styles.InputField
 
-	// Optionally highlight focused input border
 	if m.username.Focused() {
-		inputUserStyle = inputUserStyle.BorderForeground(lipgloss.Color("205")) // Highlight color
+		inputUserStyle = inputUserStyle.BorderForeground(lipgloss.Color("205"))
 	}
 	if m.password.Focused() {
 		inputPassStyle = inputPassStyle.BorderForeground(lipgloss.Color("205"))
@@ -447,7 +416,6 @@ func (m AccountModel) View() string {
 		inputConfStyle = inputConfStyle.BorderForeground(lipgloss.Color("205"))
 	}
 
-	// Use JoinVertical/Horizontal for better control than Place
 	inputs := lipgloss.JoinVertical(lipgloss.Left,
 		inputUserStyle.Render(m.username.View()),
 		inputPassStyle.Render(m.password.View()),
@@ -457,7 +425,6 @@ func (m AccountModel) View() string {
 	buttons := lipgloss.JoinHorizontal(lipgloss.Top, buttonsView...)
 
 	// Combine inputs and buttons vertically, centered
-	// Add padding/margin as needed
 	content := lipgloss.NewStyle().MarginTop(1).Render(
 		lipgloss.JoinVertical(lipgloss.Center,
 			inputs,
@@ -465,23 +432,20 @@ func (m AccountModel) View() string {
 		),
 	)
 
-	// Return just the content, AuthModel will place it
 	return content
 }
 
 // --- LoginModel (SubModel) ---
-
 type LoginModel struct {
-	styles        *Styles // Use shared styles
+	styles        *Styles
 	username      textinput.Model
 	password      textinput.Model
-	focusIndex    int // Renamed from 'selected'
+	focusIndex    int
 	buttons       []string
 	width, height int
 	conn          *net.TCPConn
 }
 
-// Modified NewLoginModel to accept styles
 func NewLoginModel(conn *net.TCPConn, styles *Styles) LoginModel {
 	tiUser := textinput.New()
 	tiUser.Placeholder = "Username"
@@ -496,10 +460,10 @@ func NewLoginModel(conn *net.TCPConn, styles *Styles) LoginModel {
 	tiPass.CharLimit = 32
 
 	return LoginModel{
-		styles:     styles, // Store shared styles
+		styles:     styles,
 		username:   tiUser,
 		password:   tiPass,
-		focusIndex: 0, // Start focus on username
+		focusIndex: 0,
 		buttons:    []string{"Login", "Quit"},
 		conn:       conn,
 	}
@@ -540,8 +504,8 @@ func (m LoginModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		// --- Navigation within the form ---
-		case tea.KeyTab, tea.KeyDown: // Cycle focus forward
-			m.focusIndex = (m.focusIndex + 1) % (2 + len(m.buttons)) // 2 inputs + N buttons
+		case tea.KeyTab, tea.KeyDown:
+			m.focusIndex = (m.focusIndex + 1) % (2 + len(m.buttons))
 			m.username.Blur()
 			m.password.Blur()
 			if m.focusIndex == 0 {
@@ -553,7 +517,7 @@ func (m LoginModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, textinput.Blink)
 			}
 
-		case tea.KeyUp: // Cycle focus backward
+		case tea.KeyUp:
 			m.focusIndex--
 			if m.focusIndex < 0 {
 				m.focusIndex = (2 + len(m.buttons)) - 1
@@ -571,14 +535,13 @@ func (m LoginModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// --- Action ---
 		case tea.KeyEnter:
-			if m.focusIndex >= 2 { // Focus is on a button
+			if m.focusIndex >= 2 {
 				buttonIndex := m.focusIndex - 2
 				switch m.buttons[buttonIndex] {
 				case "Login":
 					communication.SendLoginPacket(m.conn, m.username.Value(), m.password.Value())
-					// Maybe return a message indicating attempt?
 				case "Quit":
-					return m, tea.Quit // Quit the whole app
+					return m, tea.Quit
 				}
 			}
 
@@ -600,7 +563,7 @@ func (m LoginModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the LoginModel UI
 func (m LoginModel) View() string {
 	var buttonsView []string
-	buttonOffset := 2 // Number of input fields
+	buttonOffset := 2
 
 	for i, btn := range m.buttons {
 		style := m.styles.Button
@@ -614,9 +577,8 @@ func (m LoginModel) View() string {
 	inputUserStyle := m.styles.InputField
 	inputPassStyle := m.styles.InputField
 
-	// Optionally highlight focused input border
 	if m.username.Focused() {
-		inputUserStyle = inputUserStyle.BorderForeground(lipgloss.Color("205")) // Highlight color
+		inputUserStyle = inputUserStyle.BorderForeground(lipgloss.Color("205"))
 	}
 	if m.password.Focused() {
 		inputPassStyle = inputPassStyle.BorderForeground(lipgloss.Color("205"))
@@ -635,6 +597,5 @@ func (m LoginModel) View() string {
 			buttons,
 		),
 	)
-	// Return just the content, AuthModel will place it
 	return content
 }
