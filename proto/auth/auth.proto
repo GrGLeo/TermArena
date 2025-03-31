@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "";
+
+service LoginService {
+  rpc Authentificate (AuthentificationRequest) returns (AuthentificationResponse) {}
+}
+
+message AuthentificationRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message AuthentificationResponse {
+  bool succes = 1;
+  string userId = 2;
+  string message = 3;
+}
+
+service CreateService {
+  rpc Signin (SigninRequest) returns (SigninResponse) {}
+}
+
+message SigninRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message SigninResponse {
+  bool success = 1;
+  message = 2;
+}

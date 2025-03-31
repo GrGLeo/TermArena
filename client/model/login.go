@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-
 type Styles struct {
 	BorderColor    lipgloss.Color
 	InputField     lipgloss.Style
@@ -82,11 +81,11 @@ func DefaultStyles() *Styles {
 
 // --- AuthModel (MetaModel) ---
 type AuthModel struct {
-	styles       *Styles
-	tabSelected  int // 0 for Login, 1 for Create Account
-	loginModel   LoginModel
-	accountModel AccountModel
-	conn         *net.TCPConn
+	styles        *Styles
+	tabSelected   int // 0 for Login, 1 for Create Account
+	loginModel    LoginModel
+	accountModel  AccountModel
+	conn          *net.TCPConn
 	width, height int
 }
 
