@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package auth;
 
-option go_package = "";
+option go_package = "github.com/GrGLeo/ctf/server/proto/auth";
 
 service LoginService {
   rpc Authentificate (AuthentificationRequest) returns (AuthentificationResponse) {}
@@ -14,7 +14,7 @@ message AuthentificationRequest {
 }
 
 message AuthentificationResponse {
-  bool succes = 1;
+  bool success = 1;
   string userId = 2;
   string message = 3;
 }
@@ -30,5 +30,5 @@ message SigninRequest {
 
 message SigninResponse {
   bool success = 1;
-  message = 2;
+  string message = 2;
 }
