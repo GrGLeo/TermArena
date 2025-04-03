@@ -2,3 +2,4 @@
 test/
 debug.log
 /bin
+auth/target
