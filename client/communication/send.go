@@ -26,6 +26,14 @@ func SendLoginPacket(conn *net.TCPConn, username, password string) error {
   return err
 }
 
+func SendSignInPacket(conn *net.TCPConn, username, password string) error {
+  log.Print("sending message")
+  createPacket := shared.NewSignInPacket(username, password)
+  data := createPacket.Serialize()
+  _, err := conn.Write(data)
+  return err
+}
+
 func SendRoomRequestPacket(conn *net.TCPConn, roomType int) error {
   log.Println("sending room request")
   roomRequestPacket := shared.NewRoomRequestPacket(roomType)

@@ -26,6 +26,22 @@ func (lm LoginMessage) Validate() error {
 	return nil
 }
 
+type SignInMessage struct {
+	Username string
+	Password string
+}
+
+func (sm SignInMessage) Type() string {
+	return "signin"
+}
+
+func (sm SignInMessage) Validate() error {
+	if sm.Username == "" || sm.Password == "" {
+		return errors.New("Username and Password are required")
+	}
+	return nil
+}
+
 type AuthMessage struct {
 	Success int
 }

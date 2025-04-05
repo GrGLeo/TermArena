@@ -70,7 +70,9 @@ func (eb *EventBroker) ProcessMessage() {
 		if callbacks, ok := eb.subscribers[eventType]; ok {
 			for _, callback := range callbacks {
 				respMsg = callback(msg)
-				eb.logger.Infow("Response message", "message", respMsg.Type())
+        if respMsg != nil {
+				  eb.logger.Infow("Response message", "message", respMsg.Type())
+        }
 			}
 		}
 		eb.mu.Unlock()

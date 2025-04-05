@@ -359,8 +359,7 @@ func (m AccountModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switch m.buttons[buttonIndex] {
 				case "Create Account":
 					if m.password.Value() == m.passwordConf.Value() {
-						// TODO: Add real packet for account creation
-						communication.SendLoginPacket(m.conn, m.username.Value(), m.password.Value()) // Placeholder, use correct packet
+						communication.SendSignInPacket(m.conn, m.username.Value(), m.password.Value())
 					} else {
 						// TODO: Display error message (e.g., set errMsg in AuthModel)
 					}

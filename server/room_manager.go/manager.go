@@ -79,6 +79,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 		rm.RoomStarted = append(rm.RoomStarted, newRoom)
 		rm.mu.Unlock()
 		go newRoom.StartGame()
+    return nil
 	} else {
 		// For DUO and QUAD, lock for the entire process to avoid race conditions.
 		rm.mu.Lock()

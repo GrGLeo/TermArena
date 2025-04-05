@@ -137,6 +137,7 @@ func main() {
 	go broker.ProcessMessage()
 	log.Info("Broker ready to process message")
 	broker.Subscribe("login", auth.Authentificate)
+	broker.Subscribe("signin", auth.SignIn)
 	broker.Subscribe("find-room", roomManager.FindRoom)
 	broker.Subscribe("create-room", roomManager.CreateRoom)
 	broker.Subscribe("join-room", roomManager.JoinRoom)
