@@ -108,7 +108,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.AuthModel = newmodel.(model.AuthModel)
     switch msg := msg.(type) {
 		case communication.ResponseMsg:
-      if msg.Code == 0 {
+      if !msg.Code {
         log.Println("Failed to log in")
       } else {
         log.Println("Manage to log in")

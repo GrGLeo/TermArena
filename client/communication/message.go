@@ -22,7 +22,7 @@ code 0: login succes
 code 1: invalid credential
 */
 type ResponseMsg struct {
-	Code int
+	Code bool
 }
 
 /*

@@ -80,7 +80,7 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
     }
     switch msg := message.(type) {
     case *shared.RespPacket:
-      msgs <- ResponseMsg{Code: msg.Code()}
+      msgs <- ResponseMsg{Code: msg.Success}
     case *shared.LookRoomPacket:
       msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID}
     case *shared.GameStartPacket:

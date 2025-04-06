@@ -19,7 +19,7 @@ func Authentificate(msg event.Message) event.Message {
 
 	loginRequest, ok := msg.(event.LoginMessage)
 	if !ok {
-		fmt.Println("Failed to cast message to RoomRequestMessage")
+		fmt.Println("Failed to cast message to LoginMessage")
 		return nil
 	}
 
@@ -44,7 +44,6 @@ func Authentificate(msg event.Message) event.Message {
 		fmt.Printf("Error on sending message: %q", err.Error())
 		return event.AuthMessage{Success: 0}
 	}
-
 	if resp.Success {
 		return event.AuthMessage{Success: 1}
 	} else {
@@ -88,6 +87,7 @@ func SignIn(msg event.Message) event.Message {
 	if resp.Success {
 		return event.AuthMessage{Success: 1}
 	} else {
+    fmt.Printf("Error Signing in the user: %q\n", resp.Message)
 		return event.AuthMessage{Success: 0}
 	}
 }

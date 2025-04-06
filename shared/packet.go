@@ -66,10 +66,10 @@ func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
 	switch m := msg.(type) {
 	case event.AuthMessage:
 		if err := msg.Validate(); err != nil {
-			packet := NewRespPacket()
+			packet := NewRespPacket(true)
 			return packet.Serialize(), nil
 		}
-		packet := NewRespPacket()
+		packet := NewRespPacket(false)
 		return packet.Serialize(), nil
 	case event.RoomSearchMessage:
 		packet := NewLookRoomPacket(m.Success, m.RoomID)
@@ -169,12 +169,14 @@ func (cp *SignInPacket) Serialize() []byte {
 
 type RespPacket struct {
 	version, code int
+  Success bool
 }
 
-func NewRespPacket() *RespPacket {
+func NewRespPacket(success bool) *RespPacket {
 	return &RespPacket{
 		version: 1,
 		code:    2,
+    Success: success,
 	}
 }
 
@@ -190,6 +192,11 @@ func (rp *RespPacket) Serialize() []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(byte(rp.version))
 	buf.WriteByte(byte(rp.code))
+  if rp.Success {
+	  buf.WriteByte(1)
+  } else {
+	  buf.WriteByte(0)
+  }
 	return buf.Bytes()
 }
 
@@ -589,12 +596,20 @@ func DeSerialize(data []byte) (Packet, error) {
 			Password: password,
 		}, nil
 
-
 	case 2: // RespPacket
+  if data[2] == 0 {
 		return &RespPacket{
 			version: version,
 			code:    code,
+      Success: false,
 		}, nil
+  } else {
+		return &RespPacket{
+			version: version,
+			code:    code,
+      Success: true,
+		}, nil
+  }
 
 	case 3:
 		return &RoomRequestPacket{
