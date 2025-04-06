@@ -106,12 +106,17 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case Login:
 		newmodel, cmd = m.AuthModel.Update(msg)
 		m.AuthModel = newmodel.(model.AuthModel)
-		switch msg.(type) {
+    switch msg := msg.(type) {
 		case communication.ResponseMsg:
-			m.state = Lobby
-			m.LobbyModel = model.NewLobbyModel(m.Connection)
-			m.LobbyModel.SetDimension(m.height, m.width)
+      if msg.Code == 0 {
+        log.Println("Failed to log in")
+      } else {
+        log.Println("Manage to log in")
+        m.state = Lobby
+        m.LobbyModel = model.NewLobbyModel(m.Connection)
+        m.LobbyModel.SetDimension(m.height, m.width)
 			return m, m.LobbyModel.Init()
+    }
 		default:
 			return m, cmd
 		}

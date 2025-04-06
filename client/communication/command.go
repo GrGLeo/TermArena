@@ -23,6 +23,6 @@ func AttemptReconnect() tea.Cmd {
 func LoginCommand(code int) tea.Cmd {
   log.Println("Enter LoginCommand")
     return func() tea.Msg {
-      return ResponseMsg{Code: 1}
+      return ResponseMsg{Code: code}
     }
 }
