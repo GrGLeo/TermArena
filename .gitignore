@@ -3,4 +3,5 @@ test/
 debug.log
 /bin
 auth/target
+game/target
 *.jsonl
