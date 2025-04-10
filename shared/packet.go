@@ -687,7 +687,7 @@ func DeSerialize(data []byte) (Packet, error) {
 			return nil, errors.New("invalid deltas packet length")
 		}
 		deltas := make([][3]byte, deltaCount)
-		for i := 0; i < deltaCount; i++ {
+    for i := range deltaCount {
 			start := 10 + i*3
 			end := start + 3
 			copy(deltas[i][:], data[start:end])

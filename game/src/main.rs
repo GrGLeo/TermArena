@@ -1,3 +1,7 @@
+mod cell;
+mod entities;
+mod board;
+mod config;
 use clap::Parser;
 
 
@@ -10,6 +14,7 @@ struct CliArgs {
     #[arg(long = "map", value_name = "MAP_ID", value_parser = clap::value_parser!(u8))]
     map_id: u8,
 }
+ 
 fn main() {
     let args = CliArgs::parse();
 
