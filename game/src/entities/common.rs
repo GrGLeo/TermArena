@@ -44,6 +44,29 @@ impl Position {
 #[derive(Debug)]
 pub struct Stats {
     pub health: u8,
+    attack_damage: u8,
     attack_speed: f32,
     armor: u8,
 }
+
+impl Stats {
+    pub fn default_player() -> Self {
+        Stats{
+            health: 8,
+            attack_damage: 2,
+            attack_speed: 0.4,
+            armor: 0
+        }
+    }
+
+    pub fn default_minion() -> Self {
+        Stats{
+            health: 4,
+            attack_damage: 1,
+            attack_speed: 0.3,
+            armor: 0
+        }
+    }
+}
+
+

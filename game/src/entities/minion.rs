@@ -1,8 +1,8 @@
 use crate::entities::common::Stats;
-pub type PlayerId = String;
+pub type MinionId = String;
 
-struct Player {
-    player_id: PlayerId,
+struct Minion {
+    minion_id: MinionId,
     position: super::common::Position,
     stats: Stats,
 }

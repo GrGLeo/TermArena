@@ -37,8 +37,4 @@ impl Cell {
             BaseTerrain::Bush => self.content.is_none(),
         }
     }
-    
-    pub fn display(self) -> char {
-        todo!()
-    }
 }
