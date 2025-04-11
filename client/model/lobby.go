@@ -176,6 +176,7 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 	case communication.LookRoomMsg:
 		m.looking = true
+    communication.MakeConnection(msg.RoomIP)
 		return m, m.spinner.Tick
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -326,6 +327,7 @@ func (m CreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case communication.LookRoomMsg:
 		m.looking = true
 		m.roomID = msg.RoomID
+    log.Println(msg.RoomIP)
 		return m, m.spinner.Tick
 	case tea.KeyMsg:
 		switch msg.Type {

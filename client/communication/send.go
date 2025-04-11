@@ -1,6 +1,7 @@
 package communication
 
 import (
+	"fmt"
 	"log"
 	"net"
 
@@ -8,11 +9,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func MakeConnection() (*net.TCPConn, error) {
+func MakeConnection(port string) (*net.TCPConn, error) {
   log.Println("Connection Attempt")
-	tcpAddr, err := net.ResolveTCPAddr("tcp", "localhost:8082")
+	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%s", port))
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	if err != nil {
+    log.Printf("Failed to make connection: %q\n", err)
 		return nil, NewConnectionError(500, "Failed to dial server")
 	}
 	return conn, nil
@@ -82,7 +84,7 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
     case *shared.RespPacket:
       msgs <- ResponseMsg{Code: msg.Success}
     case *shared.LookRoomPacket:
-      msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID}
+      msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID, RoomIP: msg.RoomIP}
     case *shared.GameStartPacket:
       msgs <- GameStartMsg{Code: msg.Success}
     case *shared.GameClosePacket:

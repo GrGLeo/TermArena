@@ -1,4 +1,5 @@
 use crate::entities::common::Stats;
+
 pub type PlayerId = String;
 
 struct Player {

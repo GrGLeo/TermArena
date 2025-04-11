@@ -137,7 +137,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case Game:
 		switch msg.(type) {
 		case communication.GameCloseMsg:
-			conn, err := communication.MakeConnection()
+			conn, err := communication.MakeConnection("8082")
 			if err != nil {
 				log.Println("Failed to make connection after game close: ", err.Error())
 			}

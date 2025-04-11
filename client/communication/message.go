@@ -33,6 +33,7 @@ code 1: error putting player in queue
 type LookRoomMsg struct {
 	Code int
   RoomID string
+  RoomIP string
 }
 
 // GameStart is sent by the server once the number of player are matched

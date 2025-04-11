@@ -1,4 +1,9 @@
 use crate::entities::player::PlayerId;
+use crate::entities::minion::MinionId;
+
+type FlagId = String;
+type TowerId = String;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BaseTerrain {
     Wall,
@@ -7,7 +12,7 @@ pub enum BaseTerrain {
     TowerDestroyed,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CellContent {
     Player(PlayerId),
     Minion(MinionId),
@@ -15,7 +20,7 @@ pub enum CellContent {
     Tower(TowerId),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Cell {
     pub base: BaseTerrain,
     pub content: Option<CellContent>,
