@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::super::config;
 
 #[derive(Debug, Copy, Clone)]
@@ -44,27 +46,27 @@ impl Position {
 #[derive(Debug)]
 pub struct Stats {
     pub health: u8,
-    attack_damage: u8,
-    attack_speed: f32,
-    armor: u8,
+    pub attack_damage: u8,
+    pub attack_speed: Duration,
+    pub armor: u8,
 }
 
 impl Stats {
     pub fn default_player() -> Self {
         Stats{
-            health: 8,
-            attack_damage: 2,
-            attack_speed: 0.4,
-            armor: 0
+            health: 80,
+            attack_damage: 5,
+            attack_speed: Duration::from_secs_f32(2.5),
+            armor: 3
         }
     }
 
     pub fn default_minion() -> Self {
         Stats{
-            health: 4,
-            attack_damage: 1,
-            attack_speed: 0.3,
-            armor: 0
+            health: 20,
+            attack_damage: 4,
+            attack_speed: Duration::from_secs_f32(3.),
+            armor: 1
         }
     }
 }

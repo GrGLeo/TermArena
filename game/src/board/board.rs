@@ -6,7 +6,7 @@ use crate::config;
 
 
 #[derive(Debug)]
-struct Board {
+pub struct Board {
     grid: Vec<Vec<Cell>>,
 }
 

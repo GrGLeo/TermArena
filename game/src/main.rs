@@ -1,13 +1,14 @@
 mod cell;
 mod entities;
 mod board;
+mod manager;
 mod config;
 use clap::Parser;
+use manager::game::GameManager;
 use std::io::{self, Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::thread;
 use std::fs::File;
 use std::error::Error;
+use tokio::net::TcpListener;
 
 
 fn log_to_file(message: &str) -> Result<(), Box<dyn Error>> {
@@ -29,44 +30,24 @@ struct CliArgs {
     map_id: u8,
 }
 
-fn handle_client(mut stream: TcpStream) -> io::Result<()> {
-    if let Err(e) = log_to_file("client connected") {
-        println!("Failed to write log: {}", e);
-    }
-    let mut buffer = [0; 1024];
-
-    loop {
-        let bytes_read = stream.read(&mut buffer)?;
-        if bytes_read == 0 {
-            println!("Client disconnected");
-            break;
-        }
-        let data = &buffer[0..bytes_read];
-        println!("Data received {:?}", data);
-        stream.flush()?;
-    }
-    Ok(())
-}
  
-fn main() -> io::Result<()> {
-
+#[tokio::main]
+async fn main() -> Result<(), std::io::Error> {
     let args = CliArgs::parse();
     println!("Starting server...");
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", args.port))?;
-    println!("Port: {}", args.port);
-    for stream in listener.incoming() {
+    let game = GameManager::new();
+    let listener = TcpListener::bind(format!("127.1.0.0:{}", args.port)).await.unwrap();
+    let mut incoming = listener.incoming();
+    while let Some(stream) = incoming.next() {
         match stream {
             Ok(stream) => {
-                thread::spawn(move || {
-                    if let Err(e) = handle_client(stream) {
-                        eprintln!("Error accepting new client {}", e);
-                    }
-                });
+            todo!()
             }
             Err(e) => {
-                eprintln!("Error accepting new connection {}", e);
+                log_to_file("Failed to read stream");
             }
         }
     }
     Ok(())
+
 }
