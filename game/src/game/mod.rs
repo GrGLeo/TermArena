@@ -77,7 +77,7 @@ impl GameManager {
         self.player_action.clear();
     }
 
-    pub async fn add_player(&mut self) -> Option<PlayerId> {
+    pub fn add_player(&mut self) -> Option<PlayerId> {
         if self.players_count < self.max_players {
             self.players_count += 1;
             let player_id = self.players_count;
@@ -93,13 +93,6 @@ impl GameManager {
             // We check if we can start the game and send a Start to each player
             if self.players_count == self.max_players {
                 self.game_started = true;
-
-                // Send the start_packet to all player.
-                for player_id in self.champions.keys() {
-                    let notify_packet = start_packet::StartPacket::new(0).serialize();
-                    self.send_to_player(*player_id, notify_packet).await;
-                }
-
             }
             Some(player_id)
         } else {

@@ -4,7 +4,7 @@ use clap::Parser;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use packet::start_packet;
+use packet::start_packet::{self, StartPacket};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader, split};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::spawn;
@@ -34,8 +34,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
     let (tx, mut rx) = mpsc::channel::<ClientMessage>(32);
     {
         let mut manager = game_manager.lock().await;
-        if let Some(id) = manager.add_player().await {
-            println!("Here we have Some(id)");
+        if let Some(id) = manager.add_player() {
             player_id_option = Some(id);
             manager.client_channel.insert(id, tx);
             println!("Player {} ({:?}) joined", id, addr);
@@ -91,6 +90,21 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
             eprintln!("Error shutting down writer for player {}: {}", player_id, e);
         }
     });
+
+    // -- Verify if we can start game --
+    // Scope to release the lock
+    {
+        let manager = game_manager.lock().await;
+        if manager.game_started {
+            println!("Sending StartPacket to all client");
+            for player_id in manager.client_channel.keys() {
+                let message = StartPacket::new(0).serialize();
+                manager.send_to_player(*player_id, message).await;
+            }
+        }
+    }
+
+    
 
     // -- Read Client Action loop --
     println!("Listening for Player {} ({:?}) actions...", player_id, addr);

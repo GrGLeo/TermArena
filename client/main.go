@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net"
-	"time"
 
 	"github.com/GrGLeo/ctf/client/communication"
 	"github.com/GrGLeo/ctf/client/model"
@@ -128,10 +127,14 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LobbyModel = newmodel.(model.LobbyModel)
     switch msg := msg.(type) {
     case communication.LookRoomMsg:
-      time.Sleep(1 * time.Second)
-      conn, _ := communication.MakeConnection(msg.RoomIP)
-      m.GameConnection = conn
-			go communication.ListenForPackets(conn, m.msgs)
+      for {
+        conn, err := communication.MakeConnection(msg.RoomIP)
+        if err == nil {
+          m.GameConnection = conn
+          break
+        }
+      }
+			go communication.ListenForPackets(m.GameConnection, m.msgs)
 		case communication.GameStartMsg:
 			m.state = Game
 			m.GameModel = model.NewGameModel(m.GameConnection)
