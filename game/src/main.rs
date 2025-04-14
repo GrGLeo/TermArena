@@ -1,10 +1,10 @@
 use crate::game::{ClientMessage, GameManager, PlayerId};
-use crate::packet::action_packet::ActionPacket;
+use packet::action_packet::ActionPacket;
+use packet::start_packet::StartPacket;
 use clap::Parser;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use packet::start_packet::{self, StartPacket};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader, split};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::spawn;

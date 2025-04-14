@@ -2,11 +2,12 @@ package communication
 
 import (
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 )
 
-// DecodeRLE decodes a Run-Length Encoded (RLE) byte slice into a 20x50 grid of integers.
+// DecodeRLE decodes a Run-Length Encoded (RLE) byte slice into a 21x51 grid of integers.
 //
 // The RLE format consists of pairs of "value:count" separated by "|". Each pair represents
 // a value repeated 'count' times in the grid.
@@ -15,38 +16,43 @@ import (
 //   - rle: A byte slice containing the RLE-encoded data.
 //
 // Returns:
-//   - A 20x50 grid of integers representing the decoded data.
+//   - A 21x51 grid of integers representing the decoded data.
 //   - An error if the RLE data is malformed or cannot be decoded.
-func DecodeRLE(rle []byte) ([20][50]int, error) {
-  parts := strings.Split(string(rle), "|") 
-  var decoded []int
+func DecodeRLE(rle []byte) ([21][51]int, error) {
+	parts := strings.Split(string(rle), "|")
+	log.Println(parts)
+	var decoded []int
 
-  for _, part := range parts {
-    subParts := strings.SplitN(string(part), ":", 2)
-    if len(subParts) != 2 {
-      return [20][50]int{}, errors.New("Failed to decode RLE")
-    }
-     value, err := strconv.Atoi(subParts[0])
-    if err != nil {
-      return [20][50]int{}, err
-    }
-    count, err := strconv.Atoi(subParts[1])
-    if err != nil {
-      return [20][50]int{}, err
-    }
+	for _, part := range parts {
+		subParts := strings.SplitN(string(part), ":", 2)
+		if len(subParts) != 2 {
+			return [21][51]int{}, errors.New("Failed to decode RLE")
+		}
+    log.Println(subParts)
+		value, err := strconv.Atoi(subParts[0])
+		if err != nil {
+			return [21][51]int{}, err
+		}
+    log.Println("value", value)
+		count, err := strconv.Atoi(subParts[1])
+		if err != nil {
+			return [21][51]int{}, err
+		}
+    log.Println("count ", count)
 
-    for range count {
-      decoded = append(decoded, value)
-    }
-  }
-  var grid [20][50]int
-  for i := range 20 {
-    copy(grid[i][:], decoded[i*50:(i+1)*50])
-  }
+		for range count {
+			decoded = append(decoded, value)
+		}
+	}
+	var grid [21][51]int
+	for i := range 21 {
+    log.Println("error occurs here: ", i)
+		copy(grid[i][:], decoded[i*51:(i+1)*51])
+	}
+	log.Println(grid)
 
-  return grid, nil
+	return grid, nil
 }
-
 
 // DecodeDeltas converts a slice of 3-byte arrays into a slice of 3-integer arrays.
 // Each 3-byte array represents a delta with the following format:
@@ -60,10 +66,10 @@ func DecodeRLE(rle []byte) ([20][50]int, error) {
 // Returns:
 //   - A slice of 3-integer arrays, where each array contains the decoded X, Y, and Value.
 func DecodeDeltas(deltas [][3]byte) [][3]int {
-  var decodedDeltas [][3]int 
-  for _, delta := range deltas {
-    decodedDelta := [3]int{int(delta[0]), int(delta[1]), int(delta[2])}
-    decodedDeltas = append(decodedDeltas, decodedDelta)
-  }
-  return decodedDeltas
+	var decodedDeltas [][3]int
+	for _, delta := range deltas {
+		decodedDelta := [3]int{int(delta[0]), int(delta[1]), int(delta[2])}
+		decodedDeltas = append(decodedDeltas, decodedDelta)
+	}
+	return decodedDeltas
 }

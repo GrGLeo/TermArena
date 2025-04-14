@@ -7,7 +7,7 @@ pub struct BoardPacket {
     pub version: u8,
     pub code: u8,
     pub points: u16,
-    pub length: u16,
+    pub length: u8,
     pub encoded_board: Vec<u8>,
 }
 
@@ -28,7 +28,7 @@ impl BoardPacket {
         buffer.put_u8(self.version);
         buffer.put_u8(self.code);
         buffer.put_u16(self.points);
-        buffer.put_u16(self.length);
+        buffer.put_u8(self.length);
         buffer.extend_from_slice(&self.encoded_board);
         buffer
     }

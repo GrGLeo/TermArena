@@ -15,7 +15,7 @@ import (
 )
 
 type GameModel struct {
-	currentBoard  [20][50]int
+	currentBoard  [21][51]int
 	conn          *net.TCPConn
 	gameClock     time.Duration
 	height, width int
@@ -161,9 +161,9 @@ func (m GameModel) View() string {
 		for _, cell := range row {
 			switch cell {
 			case 0:
-				builder.WriteString(bgStyle.Render(" ")) // Render empty space for 0
+        builder.WriteString(grayStyle.Render(" ")) // Render gray for walls
 			case 1:
-				builder.WriteString(grayStyle.Render(" ")) // Render gray for walls
+        builder.WriteString(bgStyle.Render(" ")) // Render empty space for 0
 			case 2:
 				builder.WriteString(p1Style.Render(" ")) // Render blue for player1
 			case 3:
@@ -212,7 +212,7 @@ func doTick() tea.Cmd {
 	})
 }
 
-func ApplyDeltas(deltas [][3]int, currentBoard *[20][50]int) {
+func ApplyDeltas(deltas [][3]int, currentBoard *[21][51]int) {
 	for _, delta := range deltas {
 		x := delta[0]
 		y := delta[1]

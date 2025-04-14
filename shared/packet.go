@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"log"
 	"net"
 
 	"github.com/GrGLeo/ctf/server/event"
@@ -652,7 +651,6 @@ func DeSerialize(data []byte) (Packet, error) {
 		}, nil
 
 	case 7:
-    log.Println("This is my game start")
 		return &GameStartPacket{
 			version: version,
 			code:    code,

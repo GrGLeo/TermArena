@@ -33,23 +33,23 @@ func TestDecodeRLE(t *testing.T) {
 	checkGridsMatch(t, gridVaried, decodedGridVaried)
 }
 
-// Helper function to generate a 20x50 grid filled with 0s
-func generateZeroGrid() ([20][50]int, []byte) {
-	var grid [20][50]int
+// Helper function to generate a 21x51 grid filled with 0s
+func generateZeroGrid() ([21][51]int, []byte) {
+	var grid [21][51]int
   var rleString []string
-  for i := 0; i < 20; i++ {
-    rleString = append(rleString, "0:50")
+  for i := 0; i < 21; i++ {
+    rleString = append(rleString, "0:51")
   }
   rleByte := []byte(strings.Join(rleString, "|"))
 	return grid, rleByte
 }
 
-// Helper function to generate a 20x50 grid alternating between 0 and 1
-func generateAltGrid() ([20][50]int, []byte) {
-	var grid [20][50]int
+// Helper function to generate a 21x51 grid alternating between 0 and 1
+func generateAltGrid() ([21][51]int, []byte) {
+	var grid [21][51]int
 	var rleString []string
-	for i := 0; i < 20; i++ {
-		for j := 0; j < 50; j++ {
+	for i := 0; i < 21; i++ {
+		for j := 0; j < 51; j++ {
       if j % 2 == 0 {
         grid[i][j] = 0
         rleString = append(rleString, "0:1")
@@ -63,13 +63,13 @@ func generateAltGrid() ([20][50]int, []byte) {
 	return grid, rleByte
 }
 
-// Helper function to generate a 20x50 grid with more varied patterns
-func generateVariedGrid() ([20][50]int, []byte) {
-	var grid [20][50]int
+// Helper function to generate a 21x51 grid with more varied patterns
+func generateVariedGrid() ([21][51]int, []byte) {
+	var grid [21][51]int
 	var rleString []string
 
-	for i := 0; i < 20; i++ {
-		for j := 0; j < 50; j++ {
+	for i := 0; i < 21; i++ {
+		for j := 0; j < 51; j++ {
 			grid[i][j] = (i*j + j) % 3
       if j % 3 == 0 {
 			  grid[i][j] = 0
@@ -89,9 +89,9 @@ func generateVariedGrid() ([20][50]int, []byte) {
 }
 
 // Helper function to check if two grids match
-func checkGridsMatch(t *testing.T, grid1, grid2 [20][50]int) {
-	for i := 0; i < 20; i++ {
-		for j := 0; j < 50; j++ {
+func checkGridsMatch(t *testing.T, grid1, grid2 [21][51]int) {
+	for i := 0; i < 21; i++ {
+		for j := 0; j < 51; j++ {
 			if grid1[i][j] != grid2[i][j] {
 				t.Errorf("Mismatch at [%d][%d]: expected %d, got %d", i, j, grid1[i][j], grid2[i][j])
         return
