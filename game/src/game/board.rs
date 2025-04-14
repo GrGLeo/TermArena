@@ -36,18 +36,23 @@ impl Board {
         let grid_height = self.grid.len() as u16;
         let grid_width = self.grid.get(0).map_or(0, |r| r.len() as u16);
 
-        let min_row = (player_row as i16 - (view_height / 2) as i16).max(0) as u16;
-        let max_row = (player_row + (view_height / 2)).min(grid_height);
+        let half_height = view_height / 2;
+        let half_width = view_width / 2;
 
-        let min_col = (player_col as i16 - (view_width / 2) as i16).max(0) as u16;
-        let max_col = (player_col + (view_width / 2)).min(grid_width);
+        let potential_min_row = player_row.saturating_sub(half_height);
+        let potential_min_col = player_col.saturating_sub(half_width);
 
-        let player_grid: Vec<Vec<&Cell>> = self.grid[min_row as usize..=max_row as usize]
+        let min_row = potential_min_row.min(grid_height.saturating_sub(1));
+        let min_col = potential_min_col.min(grid_width.saturating_sub(1));
+
+        let actual_max_row = (min_row + view_height - 1).min(grid_height.saturating_sub(1));
+        let actual_max_col = (min_col + view_width - 1).min(grid_width.saturating_sub(1));
+
+        self.grid[min_row as usize..=actual_max_row as usize]
             .iter()
-            .map(|row| &row[min_col as usize..=max_col as usize])
+            .map(|row| &row[min_col as usize..=actual_max_col as usize])
             .map(|slice| slice.iter().collect())
-            .collect();
-        player_grid
+            .collect()
     }
 
     pub fn run_length_encode(&self, player_row: u16, player_col: u16) -> Vec<u8> {
