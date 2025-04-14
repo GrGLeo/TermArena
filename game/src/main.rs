@@ -5,10 +5,12 @@ mod manager;
 mod config;
 use clap::Parser;
 use manager::game::GameManager;
-use std::io::{self, Read, Write};
+use std::io::Write;
 use std::fs::File;
 use std::error::Error;
+use std::sync::Arc;
 use tokio::net::TcpListener;
+use tokio::sync::{Mutex, broadcast, Notify};
 
 
 fn log_to_file(message: &str) -> Result<(), Box<dyn Error>> {
@@ -33,21 +35,5 @@ struct CliArgs {
  
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
-    let args = CliArgs::parse();
-    println!("Starting server...");
-    let game = GameManager::new();
-    let listener = TcpListener::bind(format!("127.1.0.0:{}", args.port)).await.unwrap();
-    let mut incoming = listener.incoming();
-    while let Some(stream) = incoming.next() {
-        match stream {
-            Ok(stream) => {
-            todo!()
-            }
-            Err(e) => {
-                log_to_file("Failed to read stream");
-            }
-        }
-    }
-    Ok(())
-
+    let game_manager = Arc<Mutex<GameManager::new()>>;
 }

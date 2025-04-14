@@ -1,9 +1,7 @@
 use std::usize;
 
-use crate::cell::{Cell, BaseTerrain};
+use crate::cell::{BaseTerrain, Cell};
 use crate::config;
-
-
 
 #[derive(Debug)]
 pub struct Board {
@@ -16,13 +14,9 @@ impl Board {
         let col = config::WIDTH as usize;
 
         let grid = (0..row)
-            .map(|_| {
-                (0..col)
-                    .map(|_| Cell::new(BaseTerrain::Floor))
-                    .collect()
-            })
-        .collect();
-        Board{grid}
+            .map(|_| (0..col).map(|_| Cell::new(BaseTerrain::Floor)).collect())
+            .collect();
+        Board { grid }
     }
 
     pub fn center_around_player(&self, player_row: u16, player_col: u16) -> Vec<Vec<&Cell>> {
