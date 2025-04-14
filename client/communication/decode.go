@@ -35,12 +35,12 @@ func DecodeRLE(rle []byte) ([20][50]int, error) {
       return [20][50]int{}, err
     }
 
-    for i := 0; i < count; i++ {
+    for range count {
       decoded = append(decoded, value)
     }
   }
   var grid [20][50]int
-  for i := 0; i < 20; i++ {
+  for i := range 20 {
     copy(grid[i][:], decoded[i*50:(i+1)*50])
   }
 

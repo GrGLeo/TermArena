@@ -10,7 +10,7 @@ import (
 )
 
 func MakeConnection(port string) (*net.TCPConn, error) {
-  log.Println("Connection Attempt")
+  log.Printf("Connection Attempt: %q\n", port)
 	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%s", port))
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	if err != nil {
@@ -86,6 +86,7 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
     case *shared.LookRoomPacket:
       msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID, RoomIP: msg.RoomIP}
     case *shared.GameStartPacket:
+      log.Println("Game started packet found")
       msgs <- GameStartMsg{Code: msg.Success}
     case *shared.GameClosePacket:
       msgs <- GameCloseMsg{Code: msg.Success}

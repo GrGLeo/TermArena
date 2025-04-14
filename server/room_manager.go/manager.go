@@ -73,129 +73,130 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 
 	// Solo rooms can be started immediately.
 	if maxPlayers == 1 {
-		go StartGame("50052", "1")
-		return event.RoomSearchMessage{
-			Success: 0,
-			RoomIP:  "50052",
-		}
+    StartGame("50052", "1")
+    return event.RoomSearchMessage{
+      Success: 0,
+      RoomIP: "50052",
+	}
 
-		/*
-			    LEGACY
-					newRoom := game.NewGameRoom(maxPlayers, rm.logger)
-					newRoom.AddPlayer(conn)
-					rm.mu.Lock()
-					rm.RoomStarted = append(rm.RoomStarted, newRoom)
-					rm.mu.Unlock()
-					go newRoom.StartGame()
-			    return nil
-		*/
+    /*
+    LEGACY
+		newRoom := game.NewGameRoom(maxPlayers, rm.logger)
+		newRoom.AddPlayer(conn)
+		rm.mu.Lock()
+		rm.RoomStarted = append(rm.RoomStarted, newRoom)
+		rm.mu.Unlock()
+		go newRoom.StartGame()
+    return nil
+    */
 	} else {
 		// For DUO and QUAD, lock for the entire process to avoid race conditions.
 		rm.mu.Lock()
 		queue := rm.RoomQueues[roomType]
 		if len(queue) > 0 {
 			// Add player to the existing room.
-			for roomID, room := range queue {
-				room.AddPlayer(conn)
-				// Check if the room is full.
-				if room.RoomSize == room.PlayersIn() {
-					rm.RoomStarted = append(rm.RoomStarted, room)
-					// Remove the room from the queue.
-					delete(queue, roomID)
-					go room.StartGame()
-					break
-				}
-			}
+      for roomID, room :=  range queue {
+        room.AddPlayer(conn)
+        // Check if the room is full.
+        if room.RoomSize == room.PlayersIn() {
+          rm.RoomStarted = append(rm.RoomStarted, room)
+          // Remove the room from the queue.
+          delete (queue, roomID)
+          go room.StartGame()
+          break
+        }
+      }
 		} else {
 			// No waiting room exists; create a new one.
 			newRoom := game.NewGameRoom(maxPlayers, rm.logger)
 			newRoom.AddPlayer(conn)
-			if rm.RoomQueues[roomType] == nil {
-				rm.RoomQueues[roomType] = make(map[string]*game.GameRoom)
-			}
-			rm.RoomQueues[roomType][newRoom.GameID] = newRoom
+      if rm.RoomQueues[roomType] == nil {
+        rm.RoomQueues[roomType] = make(map[string]*game.GameRoom)
+      }
+			rm.RoomQueues[roomType][newRoom.GameID] = newRoom 
 		}
 		rm.mu.Unlock()
 	}
 
 	return event.RoomSearchMessage{
 		Success: 0,
-		RoomIP:  "50052",
+    RoomIP: "50052",
 	}
 }
 
 // FindRoom processes a room search request and assigns the connecting player to a room.
 func (rm *RoomManager) JoinRoom(msg event.Message) event.Message {
-	// Validate message type.
-	if msg.Type() != "join-room" {
-		rm.logger.Error("Invalid message type for FindRoom")
-		return nil
-	}
+  // Validate message type.
+  if msg.Type() != "join-room" {
+    rm.logger.Error("Invalid message type for FindRoom")
+    return nil
+  }
 
-	roomJoin, ok := msg.(event.RoomJoinMessage)
-	if !ok {
-		rm.logger.Error("Failed to cast message to RoomJoinMessage")
-		return nil
-	}
+  roomJoin, ok := msg.(event.RoomJoinMessage)
+  if !ok {
+    rm.logger.Error("Failed to cast message to RoomJoinMessage")
+    return nil
+  }
 
-	if err := roomJoin.Validate(); err != nil {
-		rm.logger.Errorw("Invalid RoomJoinMessage", "error", err)
-		return nil
-	}
+  if err := roomJoin.Validate(); err != nil {
+    rm.logger.Errorw("Invalid RoomJoinMessage", "error", err)
+    return nil
+  }
 
-	roomID := roomJoin.RoomID
-	conn := roomJoin.Conn
+  roomID := roomJoin.RoomID
+  conn := roomJoin.Conn
 
-	for _, roomMap := range rm.RoomQueues {
-		if room, ok := roomMap[roomID]; ok {
-			rm.logger.Infow("Player join room", "roomID", roomID)
-			room.AddPlayer(conn)
-			// Check if the room is full.
-			if room.RoomSize == room.PlayersIn() {
-				rm.RoomStarted = append(rm.RoomStarted, room)
-				// Remove the room from the queue.
-				delete(roomMap, roomID)
-				go room.StartGame()
-			}
-		}
-	}
-	return event.RoomSearchMessage{
-		Success: 0,
-	}
+  for _, roomMap := range rm.RoomQueues {
+    if room, ok := roomMap[roomID]; ok {
+      rm.logger.Infow("Player join room", "roomID", roomID)
+      room.AddPlayer(conn)
+      // Check if the room is full.
+      if room.RoomSize == room.PlayersIn() {
+        rm.RoomStarted = append(rm.RoomStarted, room)
+        // Remove the room from the queue.
+        delete(roomMap, roomID)
+        go room.StartGame()
+      }
+    }
+  }
+  return event.RoomSearchMessage{
+    Success: 0,
+  }
 }
 
+
 func (rm *RoomManager) CreateRoom(msg event.Message) event.Message {
-	// Validate message type.
-	if msg.Type() != "create-room" {
-		rm.logger.Error("Invalid message type for CreateRoom")
-		return nil
-	}
+  // Validate message type.
+  if msg.Type() != "create-room" {
+    rm.logger.Error("Invalid message type for CreateRoom")
+    return nil
+  }
 
-	roomCreate, ok := msg.(event.RoomCreateMessage)
-	if !ok {
-		rm.logger.Error("Failed to cast message to RoomCreateMessage")
-		return nil
-	}
+  roomCreate, ok := msg.(event.RoomCreateMessage)
+  if !ok {
+    rm.logger.Error("Failed to cast message to RoomCreateMessage")
+    return nil
+  }
 
-	if err := roomCreate.Validate(); err != nil {
-		rm.logger.Errorw("Invalid RoomCreateMessage", "error", err)
-		return nil
-	}
+  if err := roomCreate.Validate(); err != nil {
+    rm.logger.Errorw("Invalid RoomCreateMessage", "error", err)
+    return nil
+  }
 
-	roomType := roomCreate.RoomType
-	maxPlayers := getMaxPlayers(roomType)
-	newRoom := game.NewGameRoom(maxPlayers, rm.logger)
-	newRoom.AddPlayer(roomCreate.Conn)
-	rm.logger.Infow("Room created", "RoomType", roomType, "RoomID", newRoom.GameID)
+  roomType := roomCreate.RoomType
+  maxPlayers := getMaxPlayers(roomType)
+  newRoom := game.NewGameRoom(maxPlayers, rm.logger)
+  newRoom.AddPlayer(roomCreate.Conn)
+  rm.logger.Infow("Room created", "RoomType", roomType, "RoomID", newRoom.GameID)
 
-	rm.mu.Lock()
-	defer rm.mu.Unlock()
-	if rm.RoomQueues[roomType] == nil {
-		rm.RoomQueues[roomType] = make(map[string]*game.GameRoom)
-	}
-	rm.RoomQueues[roomType][newRoom.GameID] = newRoom
-	return event.RoomSearchMessage{
-		Success: 0,
-		RoomID:  newRoom.GameID,
-	}
+  rm.mu.Lock()
+  defer rm.mu.Unlock()
+  if rm.RoomQueues[roomType] == nil {
+    rm.RoomQueues[roomType] = make(map[string]*game.GameRoom)
+  }
+  rm.RoomQueues[roomType][newRoom.GameID] = newRoom 
+  return event.RoomSearchMessage{
+    Success: 0,
+    RoomID: newRoom.GameID,
+  }
 }

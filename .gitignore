@@ -1,7 +1,6 @@
 .env
 test/
-debug.log
-game.log
+*.log
 /bin
 auth/target
 game/target

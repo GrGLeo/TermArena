@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"time"
 
 	"github.com/GrGLeo/ctf/client/communication"
 	"github.com/GrGLeo/ctf/client/model"
@@ -27,6 +28,7 @@ type MetaModel struct {
 	state          string
 	Username       string
 	Connection     *net.TCPConn
+	GameConnection *net.TCPConn
 	msgs           chan tea.Msg
 	width          int
 	height         int
@@ -106,17 +108,17 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case Login:
 		newmodel, cmd = m.AuthModel.Update(msg)
 		m.AuthModel = newmodel.(model.AuthModel)
-    switch msg := msg.(type) {
+		switch msg := msg.(type) {
 		case communication.ResponseMsg:
-      if !msg.Code {
-        log.Println("Failed to log in")
-      } else {
-        log.Println("Manage to log in")
-        m.state = Lobby
-        m.LobbyModel = model.NewLobbyModel(m.Connection)
-        m.LobbyModel.SetDimension(m.height, m.width)
-			return m, m.LobbyModel.Init()
-    }
+			if !msg.Code {
+				log.Println("Failed to log in")
+			} else {
+				log.Println("Manage to log in")
+				m.state = Lobby
+				m.LobbyModel = model.NewLobbyModel(m.Connection)
+				m.LobbyModel.SetDimension(m.height, m.width)
+				return m, m.LobbyModel.Init()
+			}
 		default:
 			return m, cmd
 		}
@@ -124,10 +126,15 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case Lobby:
 		newmodel, cmd = m.LobbyModel.Update(msg)
 		m.LobbyModel = newmodel.(model.LobbyModel)
-		switch msg.(type) {
+    switch msg := msg.(type) {
+    case communication.LookRoomMsg:
+      time.Sleep(1 * time.Second)
+      conn, _ := communication.MakeConnection(msg.RoomIP)
+      m.GameConnection = conn
+			go communication.ListenForPackets(conn, m.msgs)
 		case communication.GameStartMsg:
 			m.state = Game
-			m.GameModel = model.NewGameModel(m.Connection)
+			m.GameModel = model.NewGameModel(m.GameConnection)
 			m.GameModel.SetDimension(m.height, m.width)
 			return m, m.GameModel.Init()
 		default:
