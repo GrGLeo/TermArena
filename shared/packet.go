@@ -670,10 +670,10 @@ func DeSerialize(data []byte) (Packet, error) {
 		points := [2]int{}
 		points[0] = int(data[2])
 		points[1] = int(data[3])
-		length := int(data[4])
+    length := int(binary.BigEndian.Uint16(data[4:6]))
 
 		// Rest of data is the encodedBoard
-		encodedBoard := data[5:]
+		encodedBoard := data[6:]
 		return &BoardPacket{
 			version:      version,
 			code:         code,

@@ -61,6 +61,7 @@ func SendRoomCreatePacket(conn *net.TCPConn, roomType int) error {
 }
 
 func SendAction(conn *net.TCPConn, action int) error {
+  log.Println("Sent action")
   actionPacket := shared.NewActionPacket(action)
   data := actionPacket.Serialize()
   _, err := conn.Write(data)

@@ -33,7 +33,7 @@ impl Cell {
         }
     }
 
-    pub fn is_passable(self) -> bool {
+    pub fn is_passable(&self) -> bool {
         match self.base {
             BaseTerrain::Wall => false,
             BaseTerrain::TowerDestroyed => false,

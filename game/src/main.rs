@@ -14,6 +14,7 @@ use tokio::time::{Duration, sleep};
 
 mod game;
 mod packet;
+mod errors;
 
 // Cli Parser
 #[derive(Parser, Debug)]
@@ -116,6 +117,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
                     if packet.version == 1 && packet.code == 8 {
                         let mut manager = game_manager.lock().await;
                         manager.store_player_action(player_id, packet.action);
+                        println!("Received action from: {} ({:?})", player_id, addr);
                         drop(manager);
                     } else {
                         eprintln!(
@@ -186,7 +188,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 game_started = manager.game_started;
             }
             if game_started {
-                sleep(Duration::from_millis(1000)).await;
+                sleep(Duration::from_millis(20)).await;
 
                 let updates: HashMap<PlayerId, ClientMessage>;
                 {

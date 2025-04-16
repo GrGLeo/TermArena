@@ -13,12 +13,13 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Action {
+    MoveUp,
+    MoveDown,
+    MoveLeft,
+    MoveRight,
     Action1,
     Action2,
-    Action3,
-    Action4,
-    Action5,
-    InvalidAction(u8),
+    InvalidAction,
 }
 
 pub type ClientMessage = BytesMut;
@@ -32,14 +33,25 @@ pub struct GameManager {
     champions: HashMap<PlayerId, Champion>,
     pub client_channel: HashMap<PlayerId, mpsc::Sender<ClientMessage>>,
     board: Board,
+    pub tick: u64
 }
 
 impl GameManager {
     pub fn new() -> Self {
         println!("Initializing GameManager...");
+        /*
         let rows = 200;
         let cols = 500;
         let board = Board::new(rows, cols);
+        */
+        let file_path = "game/assets/map.json";
+        let board = match Board::from_json(file_path) {
+            Ok(board) => board,
+            Err(e) => {
+                eprintln!("Failed to initialize the board from {}: {}", file_path, e);
+                std::process::exit(1);
+            }
+        };
 
         GameManager {
             players_count: 0,
@@ -49,11 +61,11 @@ impl GameManager {
             champions: HashMap::new(),
             client_channel: HashMap::new(),
             board,
+            tick: 20,
         }
     }
 
     pub fn print_game_state(&self) {
-        println!("------GAME STATE-----");
         println!(
             "Player connected: {}/{}",
             self.players_count, self.max_players
@@ -65,12 +77,7 @@ impl GameManager {
                 println!("Player: {} / Action: {:?}", player_id, action);
             }
         }
-        println!("Board dims: {}*{}", self.board.rows, self.board.cols);
-        for (_, champion) in &self.champions {
-            let player_board = self.board.run_length_encode(champion.row, champion.col);
-            println!("Player board:\n{:?}", player_board);
-        }
-        println!("---------------------")
+        println!("Board size: {}.{}", self.board.rows, self.board.cols);
     }
 
     pub fn clear_action(&mut self) {
@@ -84,7 +91,7 @@ impl GameManager {
             // Assign Champion to player, and place it on the board
             {
                 let row = 199;
-                let col = 499;
+                let col = 0;
                 let champion = Champion::new(player_id, row, col);
                 self.champions.insert(player_id, champion);
                 self.board.place_cell(cell::CellContent::Champion(player_id), row as usize, col as usize);
@@ -119,12 +126,13 @@ impl GameManager {
 
     pub fn store_player_action(&mut self, player_id: PlayerId, action_value: u8) {
         let action = match action_value {
-            1 => Action::Action1,
-            2 => Action::Action2,
-            3 => Action::Action3,
-            4 => Action::Action4,
-            5 => Action::Action5,
-            other => Action::InvalidAction(other),
+            1 => Action::MoveUp,
+            2 => Action::MoveDown,
+            3 => Action::MoveLeft,
+            4 => Action::MoveRight,
+            5 => Action::Action1,
+            6 => Action::Action2,
+            _other => Action::InvalidAction,
         };
         self.player_action.insert(player_id, action);
     }
@@ -146,14 +154,23 @@ impl GameManager {
         }
     }
 
-    pub fn game_tick(&self) -> HashMap<PlayerId, ClientMessage> {
+    pub fn game_tick(&mut self) -> HashMap<PlayerId, ClientMessage> {
         println!("---- Game Tick -----");
         self.print_game_state();
 
         let mut updates = HashMap::new();
 
-        // -- Game Logic will go here --
+        // --- Game Logic ---
+        // Iterate through player action
+        for (player_id, action) in &self.player_action {
+            if let Some(player_champ) = self.champions.get_mut(&player_id) {
+                if let Err(e) = player_champ.take_action(action, &mut self.board) {
+                    println!("Error on player action: {}", e);
+                }
+            }
+        }
 
+        // --- Send per player there board view ---
         for (player_id, champion) in &self.champions {
             // 1. Get player-specific board view
             let board_rle_vec = self.board.run_length_encode(champion.row, champion.col);
@@ -166,13 +183,5 @@ impl GameManager {
         }
         println!("--------------------");
         updates
-    }
-
-    pub fn get_board(&self) -> &Board {
-        &self.board
-    }
-
-    pub fn get_champion(&self, player_id: &PlayerId) -> Option<&Champion> {
-        self.champions.get(player_id)
     }
 }

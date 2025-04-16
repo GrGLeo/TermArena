@@ -1,4 +1,14 @@
 use super::cell::{EncodedCellValue, BaseTerrain, CellContent, Cell};
+use serde::Deserialize;
+use std::fs::File;
+use std::io::{self, Read};
+
+#[derive(Deserialize)]
+struct BoardLayout {
+    rows: usize,
+    cols: usize,
+    layout: Vec<Vec<String>>,
+}
 
 #[derive(Debug)]
 pub struct Board {
@@ -8,6 +18,34 @@ pub struct Board {
 }
 
 impl Board {
+    pub fn from_json(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut file = File::open(file_path)?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)?;
+        
+        let board_layout: BoardLayout = serde_json::from_str(&contents)?;
+        let mut grid = Vec::with_capacity(board_layout.rows);
+        for row in board_layout.layout {
+            let mut grid_row = Vec::with_capacity(board_layout.cols);
+            for cell in row {
+                let base = match cell.as_str() {
+                    "wall" => BaseTerrain::Wall,
+                    "floor" => BaseTerrain::Floor,
+                    "bush" => BaseTerrain::Bush,
+                    _ => BaseTerrain::Floor, // Default case
+                };
+                grid_row.push(Cell::new(base));
+            }
+            grid.push(grid_row);
+        }
+
+        Ok(Board {
+            grid,
+            rows: board_layout.rows,
+            cols: board_layout.cols,
+        })
+    }
+
     pub fn new(rows: usize, cols: usize) -> Self {
         let mut grid = Vec::with_capacity(rows);
         for _ in 0..rows {
@@ -18,6 +56,10 @@ impl Board {
             grid.push(row)
         }
         Board { grid, rows, cols }
+    }
+
+    pub fn get_cell(&mut self, row: usize, col: usize) -> Option<&mut Cell> {
+        self.grid.get_mut(row).and_then(|r| r.get_mut(col))
     }
 
     pub fn place_cell(&mut self, content: CellContent, champ_row: usize, champ_col: usize) {
@@ -39,18 +81,34 @@ impl Board {
         let half_height = view_height / 2;
         let half_width = view_width / 2;
 
-        let potential_min_row = player_row.saturating_sub(half_height);
-        let potential_min_col = player_col.saturating_sub(half_width);
+        // Calculate  potential min and max row
+        let mut min_row = (player_row as i16 - half_height as i16).max(0) as u16;
+        let mut max_row = (player_row + half_height).min(grid_height - 1);
 
-        let min_row = potential_min_row.min(grid_height.saturating_sub(1));
-        let min_col = potential_min_col.min(grid_width.saturating_sub(1));
+        // Adjust if view hit the top
+        if min_row == 0 {
+            max_row = (view_height - 1).min(grid_height -1);
+        }
+        // Adjust if view hit the bottom
+        if max_row == grid_height - 1 {
+            min_row = (grid_height - view_height).max(0);
+        }
 
-        let actual_max_row = (min_row + view_height - 1).min(grid_height.saturating_sub(1));
-        let actual_max_col = (min_col + view_width - 1).min(grid_width.saturating_sub(1));
+        // Calculate potential min and max col
+        let mut min_col = (player_col as i16 - half_width as i16).max(0) as u16;
+        let mut max_col = (player_col + half_width).min(grid_width - 1);
+        // Adjust if with hit the left
+        if min_col == 0 {
+            max_col = (view_width - 1).min(grid_width - 1);
+        }
+        // Adjust if view hit the right
+        if max_col == grid_width - 1 {
+            min_col = (grid_width - view_width).max(0);
+        }
 
-        self.grid[min_row as usize..=actual_max_row as usize]
+        self.grid[min_row as usize..= max_row as usize]
             .iter()
-            .map(|row| &row[min_col as usize..=actual_max_col as usize])
+            .map(|row| &row[min_col as usize..= max_col as usize])
             .map(|slice| slice.iter().collect())
             .collect()
     }
