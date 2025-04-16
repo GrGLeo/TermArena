@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::game::cell::{TowerId, Cell, CellContent};
 use crate::game::board::Board;
@@ -9,6 +9,7 @@ use super::{Fighter, Stats};
 pub struct Tower {
     pub tower_id: TowerId,
     pub stats: Stats,
+    last_attacked: Instant,
     pub team_id: u8,
     pub row: u16,
     pub col: u16,
@@ -20,12 +21,13 @@ impl Tower {
             attack_damage: 40,
             attack_speed: Duration::from_secs(3),
             health: 400,
-            armor: 10,
+            armor: 8,
         };
 
         Tower{
             tower_id,
             stats,
+            last_attacked: Instant::now(),
             team_id,
             row,
             col,
@@ -46,8 +48,14 @@ impl Fighter for Tower {
         self.stats.health -= reduced_damage as u16;
     }
 
-    fn attack(&self, target: &mut dyn Fighter) {
-        target.take_damage(self.stats.attack_damage);
+    fn can_attack(&mut self) -> Option<u8> {
+        if self.last_attacked + self.stats.attack_speed < Instant::now() {
+            self.last_attacked = Instant::now();
+            Some(self.stats.attack_damage)
+        }
+        else {
+            None
+        }
     }
 
     fn scan_range<'a>(&self, board: &'a Board) -> Vec<&'a Cell> {

@@ -5,13 +5,12 @@ pub mod entities;
 use crate::packet::{board_packet::BoardPacket, start_packet};
 pub use board::Board;
 use bytes::BytesMut;
-use cell::TowerId;
-pub use cell::{BaseTerrain, Cell, PlayerId};
+pub use cell::{BaseTerrain, Cell, CellContent, PlayerId, TowerId, MinionId};
 pub use entities::champion::Champion;
-use entities::{tower::Tower, Fighter};
+use entities::{tower::Tower, Fighter, Target};
 use tokio::sync::mpsc;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, usize};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Action {
@@ -36,7 +35,7 @@ pub struct GameManager {
     towers: HashMap<TowerId, Tower>,
     pub client_channel: HashMap<PlayerId, mpsc::Sender<ClientMessage>>,
     board: Board,
-    pub tick: u64
+    pub tick: u64,
 }
 
 impl GameManager {
@@ -58,10 +57,10 @@ impl GameManager {
         let mut towers: HashMap<TowerId, Tower> = HashMap::new();
         // Tower placement
         {
-            let tower_1 = Tower::new(1, 1, 196, 150);  
+            let tower_1 = Tower::new(1, 1, 196, 150);
             tower_1.place_tower(&mut board);
             towers.insert(tower_1.tower_id, tower_1);
-            let tower_2 = Tower::new(2, 2, 150, 196);  
+            let tower_2 = Tower::new(2, 2, 150, 196);
             tower_2.place_tower(&mut board);
             towers.insert(tower_2.tower_id, tower_2);
         }
@@ -108,7 +107,11 @@ impl GameManager {
                 let col = 0;
                 let champion = Champion::new(player_id, 1, row, col);
                 self.champions.insert(player_id, champion);
-                self.board.place_cell(cell::CellContent::Champion(player_id, 1), row as usize, col as usize);
+                self.board.place_cell(
+                    cell::CellContent::Champion(player_id, 1),
+                    row as usize,
+                    col as usize,
+                );
             }
 
             // We check if we can start the game and send a Start to each player
@@ -177,14 +180,65 @@ impl GameManager {
         // --- Game Logic ---
         // Player turn
         // 1. Iterate through player action
-        // TODO: 2. auto_attack
-        for (player_id, action) in &self.player_action {
-            if let Some(player_champ) = self.champions.get_mut(&player_id) {
-                if let Err(e) = player_champ.take_action(action, &mut self.board) {
-                    println!("Error on player action: {}", e);
+        for player_id in self.champions.keys().copied().collect::<Vec<_>>() {
+            if let Some(action) = self.player_action.get(&player_id) {
+                if let Some(champ) = self.champions.get_mut(&player_id) {
+                    if let Err(e) = champ.take_action(action, &mut self.board) {
+                        println!("Error on player action: {}", e);
+                    }
                 }
             }
         }
+        // 2. auto_attack
+        // TODO: there should be a cleaner way to do this
+        // select  closest enemy
+        let mut pending_damages: Vec<(Target, u8)> = Vec::new();
+        for player_id in self.champions.keys().copied().collect::<Vec<_>>() {
+            if let Some(champ) = self.champions.get_mut(&player_id) {
+                let enemies = champ.scan_range(&self.board);
+                for enemy in enemies {
+                    match &enemy.content {
+                        Some(content) => {
+                            match content {
+                                CellContent::Tower(id, _) => {
+                                    if let Some(damage) = champ.can_attack() {
+                                        pending_damages.push((Target::Tower(*id), damage))
+                                    }
+                                }
+                                CellContent::Minion(_, _) => {
+                                    todo!()
+                                }
+                                CellContent::Champion(id, _) => {
+                                    if let Some(damage) = champ.can_attack() {
+                                        pending_damages.push((Target::Champion(*id), damage))
+                                    }
+                                }
+                                _ => break,
+                            }
+                        }
+                        None => break,
+                    }
+                }
+            }
+        }
+        for (target, damage) in pending_damages {
+            match target {
+                Target::Tower(id) => {
+                    if let Some(tower) = self.towers.get_mut(&id) {
+                        tower.take_damage(damage);
+                    }
+                }
+                Target::Minion(_) => {
+                    todo!()
+                }
+                Target::Champion(id) => {
+                    if let Some(champ) = self.champions.get_mut(&id) {
+                        champ.take_damage(damage);
+                    }
+                }
+            }
+        }
+
         // Tower turn
         // 1. Scan range
         // TODO: 2. attack closest enemy

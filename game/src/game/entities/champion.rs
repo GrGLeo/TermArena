@@ -1,5 +1,6 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::usize;
+
 
 use crate::errors::GameError;
 use crate::game::Cell;
@@ -13,6 +14,7 @@ pub struct Champion {
     pub player_id: PlayerId,
     pub team_id: u8,
     pub stats: Stats,
+    pub last_attacked: Instant,
     pub row: u16,
     pub col: u16,
 }
@@ -29,6 +31,7 @@ impl Champion {
         Champion {
             player_id,
             stats,
+            last_attacked: Instant::now(),
             team_id,
             row,
             col,
@@ -99,8 +102,14 @@ impl Fighter for Champion {
         self.stats.health -= reduced_damage as u16;
     }
 
-    fn attack(&self, target: &mut dyn Fighter) {
-        target.take_damage(self.stats.attack_damage);
+    fn can_attack(&mut self) -> Option<u8> {
+        if self.last_attacked + self.stats.attack_speed < Instant::now() {
+            self.last_attacked = Instant::now();
+            Some(self.stats.attack_damage)
+        }
+        else {
+            None
+        }
     }
 
     fn scan_range<'a>(&self, board: &'a Board) -> Vec<&'a Cell> {

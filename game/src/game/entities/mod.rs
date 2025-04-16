@@ -1,9 +1,16 @@
 use std::time::Duration;
 
-use super::{Board, Cell};
+use super::{Board, Cell, MinionId, PlayerId, TowerId};
 
 pub mod champion;
 pub mod tower;
+
+pub enum Target {
+    Tower(TowerId),
+    Minion(MinionId),
+    Champion(PlayerId),
+}
+
 
 #[derive(Debug)]
 pub struct Stats {
@@ -15,6 +22,6 @@ pub struct Stats {
 
 pub trait Fighter {
     fn take_damage(&mut self, damage: u8);
-    fn attack(&self, target: &mut dyn Fighter);
+    fn can_attack(&mut self) -> Option<u8>;
     fn scan_range<'a>(&self, board: &'a Board) -> Vec<&'a Cell>;
 }
