@@ -8,7 +8,7 @@ use bytes::BytesMut;
 use cell::TowerId;
 pub use cell::{BaseTerrain, Cell, PlayerId};
 pub use entities::champion::Champion;
-use entities::tower::Tower;
+use entities::{tower::Tower, Fighter};
 use tokio::sync::mpsc;
 
 use std::collections::HashMap;
