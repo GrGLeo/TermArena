@@ -7,17 +7,18 @@ use crate::errors::GameError;
 #[derive(Debug)]
 pub struct Champion {
     pub player_id: PlayerId,
+    pub team_id: u8,
     pub row: u16,
     pub col: u16,
 }
 
 impl Champion {
-    pub fn new(player_id: PlayerId, row: u16, col: u16) -> Self {
-        Champion { player_id, row, col }
+    pub fn new(player_id: PlayerId, team_id: u8, row: u16, col: u16) -> Self {
+        Champion { player_id, team_id, row, col }
     }
 
     pub fn take_action(&mut self, action: &Action, board: &mut Board) -> Result<(), GameError> {
-        match action {
+        let _ = match action {
             Action::MoveUp => self.move_champion(board, -1, 0),
             Action::MoveDown => self.move_champion(board, 1, 0),
             Action::MoveLeft => self.move_champion(board, 0, -1),
@@ -49,7 +50,7 @@ impl Champion {
 
         if let Some(new_cell) = board.get_cell(new_row as usize, new_col as usize) {
             if new_cell.is_passable() {
-                new_cell.content = Some(CellContent::Champion(self.player_id));
+                new_cell.content = Some(CellContent::Champion(self.player_id, self.team_id));
                 if let Some(old_cell) = board.get_cell(self.row as usize, self.col as usize) {
                     self.row = new_row;
                     self.col = new_col;

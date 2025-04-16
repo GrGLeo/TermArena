@@ -1,3 +1,4 @@
+pub type TeamId = u8;
 pub type PlayerId = usize;
 pub type MinionId = usize;
 pub type FlagId = usize;
@@ -13,10 +14,10 @@ pub enum BaseTerrain {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CellContent {
-    Champion(PlayerId),
-    Minion(MinionId),
-    Flag(FlagId),
-    Tower(TowerId),
+    Champion(PlayerId, TeamId),
+    Minion(MinionId, TeamId),
+    Flag(FlagId, TeamId),
+    Tower(TowerId, TeamId),
 }
 
 #[derive(Debug, Clone)]
@@ -60,10 +61,10 @@ impl From<&Cell> for EncodedCellValue {
     fn from(cell: &Cell) -> Self {
         if let Some(content) = &cell.content {
             match content {
-                CellContent::Champion(_) => EncodedCellValue::Champion,
-                CellContent::Minion(_) => EncodedCellValue::Minion,
-                CellContent::Flag(_) => EncodedCellValue::Flag,
-                CellContent::Tower(_) => EncodedCellValue::Tower,
+                CellContent::Champion(_, _) => EncodedCellValue::Champion,
+                CellContent::Minion(_, _) => EncodedCellValue::Minion,
+                CellContent::Flag(_, _) => EncodedCellValue::Flag,
+                CellContent::Tower(_, _) => EncodedCellValue::Tower,
             }
         } else {
             match cell.base {

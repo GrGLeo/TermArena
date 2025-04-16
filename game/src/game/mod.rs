@@ -5,8 +5,10 @@ pub mod entities;
 use crate::packet::{board_packet::BoardPacket, start_packet};
 pub use board::Board;
 use bytes::BytesMut;
+use cell::TowerId;
 pub use cell::{BaseTerrain, Cell, PlayerId};
 pub use entities::champion::Champion;
+use entities::tower::Tower;
 use tokio::sync::mpsc;
 
 use std::collections::HashMap;
@@ -31,6 +33,7 @@ pub struct GameManager {
     pub game_started: bool,
     player_action: HashMap<PlayerId, Action>,
     champions: HashMap<PlayerId, Champion>,
+    towers: HashMap<TowerId, Tower>,
     pub client_channel: HashMap<PlayerId, mpsc::Sender<ClientMessage>>,
     board: Board,
     pub tick: u64
@@ -45,13 +48,23 @@ impl GameManager {
         let board = Board::new(rows, cols);
         */
         let file_path = "game/assets/map.json";
-        let board = match Board::from_json(file_path) {
+        let mut board = match Board::from_json(file_path) {
             Ok(board) => board,
             Err(e) => {
                 eprintln!("Failed to initialize the board from {}: {}", file_path, e);
                 std::process::exit(1);
             }
         };
+        let mut towers: HashMap<TowerId, Tower> = HashMap::new();
+        // Tower placement
+        {
+            let tower_1 = Tower::new(1, 1, 196, 150);  
+            tower_1.place_tower(&mut board);
+            towers.insert(tower_1.tower_id, tower_1);
+            let tower_2 = Tower::new(2, 2, 150, 196);  
+            tower_2.place_tower(&mut board);
+            towers.insert(tower_2.tower_id, tower_2);
+        }
 
         GameManager {
             players_count: 0,
@@ -59,6 +72,7 @@ impl GameManager {
             game_started: false,
             player_action: HashMap::new(),
             champions: HashMap::new(),
+            towers,
             client_channel: HashMap::new(),
             board,
             tick: 20,
@@ -92,9 +106,9 @@ impl GameManager {
             {
                 let row = 199;
                 let col = 0;
-                let champion = Champion::new(player_id, row, col);
+                let champion = Champion::new(player_id, 1, row, col);
                 self.champions.insert(player_id, champion);
-                self.board.place_cell(cell::CellContent::Champion(player_id), row as usize, col as usize);
+                self.board.place_cell(cell::CellContent::Champion(player_id, 1), row as usize, col as usize);
             }
 
             // We check if we can start the game and send a Start to each player
@@ -161,7 +175,9 @@ impl GameManager {
         let mut updates = HashMap::new();
 
         // --- Game Logic ---
-        // Iterate through player action
+        // Player turn
+        // 1. Iterate through player action
+        // TODO: 2. auto_attack
         for (player_id, action) in &self.player_action {
             if let Some(player_champ) = self.champions.get_mut(&player_id) {
                 if let Err(e) = player_champ.take_action(action, &mut self.board) {
@@ -169,6 +185,10 @@ impl GameManager {
                 }
             }
         }
+        // Tower turn
+        // 1. Scan range
+        // TODO: 2. attack closest enemy
+        self.tower_turn();
 
         // --- Send per player there board view ---
         for (player_id, champion) in &self.champions {
@@ -183,5 +203,12 @@ impl GameManager {
         }
         println!("--------------------");
         updates
+    }
+
+    fn tower_turn(&mut self) {
+        for (_, tower) in &self.towers {
+            let enemy_units = tower.scan_range(&self.board);
+            println!("enemy in range: {}", enemy_units.len())
+        }
     }
 }

@@ -5,3 +5,4 @@ test/
 auth/target
 game/target
 *.jsonl
+*.json

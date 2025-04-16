@@ -1,7 +1,8 @@
-use super::cell::{EncodedCellValue, BaseTerrain, CellContent, Cell};
+use super::cell::{BaseTerrain, Cell, CellContent, EncodedCellValue, TowerId};
+use super::entities::tower::Tower;
 use serde::Deserialize;
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::Read;
 
 #[derive(Deserialize)]
 struct BoardLayout {
@@ -38,12 +39,19 @@ impl Board {
             }
             grid.push(grid_row);
         }
-
-        Ok(Board {
+        let mut board = Board {
             grid,
             rows: board_layout.rows,
             cols: board_layout.cols,
-        })
+        };
+        
+        // For now we place the tower here
+        Tower::new(1, 1, 196, 150).place_tower(&mut board);  
+        Tower::new(2, 2, 150, 196).place_tower(&mut board);  
+        println!("Tower: {:?}", board.grid[196][150]);
+        println!("Tower: {:?}", board.grid[196][196]);
+
+        Ok(board)
     }
 
     pub fn new(rows: usize, cols: usize) -> Self {
@@ -71,7 +79,7 @@ impl Board {
                 
     }
 
-    fn center_around_player(&self, player_row: u16, player_col: u16) -> Vec<Vec<&Cell>> {
+    pub fn center_view(&self, player_row: u16, player_col: u16, view_height: u16, view_width: u16) -> Vec<Vec<&Cell>> {
         let view_height = 21;
         let view_width = 51;
 
@@ -114,7 +122,7 @@ impl Board {
     }
 
     pub fn run_length_encode(&self, player_row: u16, player_col: u16) -> Vec<u8> {
-        let flattened_grid: Vec<&Cell> = self.center_around_player(player_row, player_col)
+        let flattened_grid: Vec<&Cell> = self.center_view(player_row, player_col, 21, 51)
             .into_iter()
             .flat_map(|row| row.into_iter())
             .collect();
