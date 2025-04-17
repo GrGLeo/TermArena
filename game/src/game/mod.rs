@@ -197,6 +197,7 @@ impl GameManager {
             if let Some(enemy) = champ.scan_range(&self.board) {
                 match &enemy.content {
                     Some(content) => {
+                        println!("Got content: {:?}", content);
                         match content {
                             CellContent::Tower(id, _) => {
                                 if let Some(damage) = champ.can_attack() {
@@ -225,6 +226,10 @@ impl GameManager {
                 Target::Tower(id) => {
                     if let Some(tower) = self.towers.get_mut(&id) {
                         tower.take_damage(damage);
+                        if tower.is_destroyed() {
+                            tower.destroy_tower(&mut self.board);
+                            self.towers.remove(&id);
+                        }
                     }
                 }
                 Target::Minion(_) => {
@@ -242,9 +247,6 @@ impl GameManager {
         // 1. Scan range
         // 2. attack closest enemy
         self.tower_turn();
-        self.champions.iter().for_each(|(_, champ)| {
-            println!("Champ health: {}", champ.stats.health);
-        });
 
         // --- Send per player there board view ---
         for (player_id, champion) in &self.champions {

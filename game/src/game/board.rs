@@ -3,6 +3,7 @@ use super::entities::tower::Tower;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::Read;
+use std::usize;
 
 #[derive(Deserialize)]
 struct BoardLayout {
@@ -66,8 +67,13 @@ impl Board {
         Board { grid, rows, cols }
     }
 
-    pub fn get_cell(&mut self, row: usize, col: usize) -> Option<&mut Cell> {
-        self.grid.get_mut(row).and_then(|r| r.get_mut(col))
+    pub fn get_cell(&mut self, row: usize, col: usize) -> Option<&Cell> {
+        self.grid.get(row).and_then(|r| r.get(col))
+    }
+
+    pub fn change_base(&mut self, new_base: BaseTerrain, row: usize, col: usize) {
+        let cell = &mut self.grid[row][col];
+        cell.base = new_base
     }
 
     pub fn move_cell(&mut self, old_row: usize, old_col: usize, new_row: usize, new_col: usize) {
@@ -87,13 +93,13 @@ impl Board {
                 cell.content = Some(content);
             }
         }
-                
+    }
+
+    pub fn clear_cell(&mut self, row: usize, col: usize) {
+        self.grid[row][col].content = None;
     }
 
     pub fn center_view(&self, player_row: u16, player_col: u16, view_height: u16, view_width: u16) -> Vec<Vec<&Cell>> {
-        let view_height = 21;
-        let view_width = 51;
-
         let grid_height = self.grid.len() as u16;
         let grid_width = self.grid.get(0).map_or(0, |r| r.len() as u16);
 

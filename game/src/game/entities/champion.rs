@@ -12,10 +12,10 @@ use super::{Fighter, Stats};
 pub struct Champion {
     pub player_id: PlayerId,
     pub team_id: u8,
-    pub stats: Stats,
+    stats: Stats,
     death_counter: u8,
     death_timer: Instant,
-    pub last_attacked: Instant,
+    last_attacked: Instant,
     pub row: u16,
     pub col: u16,
 }
@@ -23,10 +23,10 @@ pub struct Champion {
 impl Champion {
     pub fn new(player_id: PlayerId, team_id: u8, row: u16, col: u16) -> Self {
         let stats = Stats {
-            attack_damage: 10,
+            attack_damage: 250,
             attack_speed: Duration::from_millis(2500),
             health: 200,
-            armor: 5,
+            armor: 205,
         };
 
         Champion {
@@ -145,8 +145,8 @@ impl Fighter for Champion {
 
 
     fn scan_range<'a>(&self, board: &'a Board) -> Option<&'a Cell> {
-        // range is implied here with: 6, 8
-        let target_area = board.center_view(self.row, self.col, 7, 9);
+        // range is implied here with: 3*3 square
+        let target_area = board.center_view(self.row, self.col, 3, 3);
         let center_row = target_area.len() / 2;
         let center_col = target_area[0].len() / 2;
 

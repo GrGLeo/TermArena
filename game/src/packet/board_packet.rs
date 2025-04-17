@@ -13,7 +13,6 @@ pub struct BoardPacket {
 
 impl BoardPacket {
     pub fn new(encoded_board: Vec<u8>) -> Self {
-        println!("{:?}", encoded_board);
         let length = encoded_board.len().try_into().unwrap();
         BoardPacket {
             version: 1,

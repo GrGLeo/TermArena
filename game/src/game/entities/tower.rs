@@ -2,17 +2,19 @@ use std::time::{Duration, Instant};
 
 use crate::game::cell::{TowerId, Cell, CellContent};
 use crate::game::board::Board;
+use crate::game::BaseTerrain;
 
 use super::{Fighter, Stats};
 
 #[derive(Debug)]
 pub struct Tower {
     pub tower_id: TowerId,
-    pub stats: Stats,
-    last_attacked: Instant,
     pub team_id: u8,
-    pub row: u16,
-    pub col: u16,
+    stats: Stats,
+    destroyed: bool,
+    last_attacked: Instant,
+    row: u16,
+    col: u16,
 }
 
 impl Tower {
@@ -26,9 +28,10 @@ impl Tower {
 
         Tower{
             tower_id,
-            stats,
-            last_attacked: Instant::now(),
             team_id,
+            stats,
+            destroyed: false,
+            last_attacked: Instant::now(),
             row,
             col,
         }
@@ -41,7 +44,19 @@ impl Tower {
         board.place_cell(CellContent::Tower(self.tower_id, self.team_id), self.row as usize - 1, self.col as usize + 1);
     }
 
+    pub fn is_destroyed(&self) -> bool {
+        self.destroyed
+    }
+
     pub fn destroy_tower(&self, board: &mut Board) {
+        // Clear cell
+        board.clear_cell(self.row as usize, self.col as usize);
+        board.clear_cell(self.row as usize - 1, self.col as usize);
+        board.clear_cell(self.row as usize, self.col as usize + 1);
+        board.clear_cell(self.row as usize - 1, self.col as usize + 1);
+
+        board.change_base(BaseTerrain::TowerDestroyed, self.row as usize, self.col as usize);
+        board.change_base(BaseTerrain::TowerDestroyed, self.row as usize, self.col as usize + 1);
     }
 }
 
@@ -49,6 +64,11 @@ impl Fighter for Tower {
     fn take_damage(&mut self, damage: u8) {
         let reduced_damage = damage.saturating_sub(self.stats.armor);
         self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+        println!("Tower health: {}", self.stats.health);
+        if self.stats.health == 0 {
+            println!("Tower got 0 health");
+            self.destroyed = true;
+        }
     }
 
     fn can_attack(&mut self) -> Option<u8> {
