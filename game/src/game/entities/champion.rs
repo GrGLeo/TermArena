@@ -13,7 +13,7 @@ pub struct Champion {
     pub player_id: PlayerId,
     pub team_id: u8,
     pub stats: Stats,
-    dead_counter: u8,
+    death_counter: u8,
     death_timer: Instant,
     pub last_attacked: Instant,
     pub row: u16,
@@ -32,7 +32,7 @@ impl Champion {
         Champion {
             player_id,
             stats,
-            dead_counter: 0,
+            death_counter: 0,
             death_timer: Instant::now(),
             last_attacked: Instant::now(),
             team_id,
@@ -81,6 +81,11 @@ impl Champion {
 
         if let Some(new_cell) = board.get_cell(new_row as usize, new_col as usize) {
             if new_cell.is_passable() {
+                board.move_cell(self.row as usize, self.col as usize, new_row as usize, new_col as usize);
+                self.row = new_row;
+                self.col = new_col;
+                Ok(())
+                /* legacy
                 new_cell.content = Some(CellContent::Champion(self.player_id, self.team_id));
                 if let Some(old_cell) = board.get_cell(self.row as usize, self.col as usize) {
                     self.row = new_row;
@@ -90,12 +95,21 @@ impl Champion {
                 } else {
                     return Err(GameError::CannotMoveHere(self.player_id));
                 }
+                */ 
             } else {
                 return Err(GameError::NotFoundCell);
             }
         } else {
             return Err(GameError::NotFoundCell);
         }
+    }
+    
+    pub fn place_at_base(&mut self, board: &mut Board) {
+        let old_row = self.row;
+        let old_col = self.col;
+        self.row = 197;
+        self.col = 2;
+        board.move_cell(old_row as usize, old_col as usize, self.row as usize, self.col as usize);
     }
 
     pub fn is_dead(&self) -> bool {
@@ -113,11 +127,9 @@ impl Fighter for Champion {
         self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
         // Check if champion get killed
         if self.stats.health == 0 {
-            let timer = ((self.dead_counter as f32).sqrt() * 10.) as u64;
+            self.death_counter += 1;
+            let timer = ((self.death_counter as f32).sqrt() * 10.) as u64;
             self.death_timer = Instant::now() + Duration::from_secs(timer);
-            // TODO: Make this team dependent
-            self.row = 3;
-            self.col = 3;
         }
     }
 

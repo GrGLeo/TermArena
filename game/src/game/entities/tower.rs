@@ -40,6 +40,9 @@ impl Tower {
         board.place_cell(CellContent::Tower(self.tower_id, self.team_id), self.row as usize, self.col as usize + 1);
         board.place_cell(CellContent::Tower(self.tower_id, self.team_id), self.row as usize - 1, self.col as usize + 1);
     }
+
+    pub fn destroy_tower(&self, board: &mut Board) {
+    }
 }
 
 impl Fighter for Tower {

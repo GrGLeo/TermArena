@@ -10,7 +10,7 @@ pub use entities::champion::Champion;
 use entities::{tower::Tower, Fighter, Target};
 use tokio::sync::mpsc;
 
-use std::{collections::HashMap, future::Pending, usize};
+use std::{collections::HashMap, usize};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Action {
@@ -179,45 +179,47 @@ impl GameManager {
 
         // --- Game Logic ---
         // Player turn
-        // TODO: there should be a cleaner way to do this
         let mut pending_damages: Vec<(Target, u8)> = Vec::new();
-        for player_id in self.champions.keys().copied().collect::<Vec<_>>() {
+        for (player_id, champ) in &mut self.champions {
+            // 0. Check death and replace
+            // BUG: Champ dead can still move but is replace each tick
+            if champ.is_dead() {
+                champ.place_at_base(&mut self.board)
+            }
             // 1. Iterate through player action
             if let Some(action) = self.player_action.get(&player_id) {
-                if let Some(champ) = self.champions.get_mut(&player_id) {
-                    if let Err(e) = champ.take_action(action, &mut self.board) {
-                        println!("Error on player action: {}", e);
-                    }
+                if let Err(e) = champ.take_action(action, &mut self.board) {
+                    println!("Error on player action: {}", e);
                 }
             }
 
             // 2. auto_attack
-            if let Some(champ) = self.champions.get_mut(&player_id) {
-                if let Some(enemy) = champ.scan_range(&self.board) {
-                    match &enemy.content {
-                        Some(content) => {
-                            match content {
-                                CellContent::Tower(id, _) => {
-                                    if let Some(damage) = champ.can_attack() {
-                                        pending_damages.push((Target::Tower(*id), damage))
-                                    }
+            if let Some(enemy) = champ.scan_range(&self.board) {
+                match &enemy.content {
+                    Some(content) => {
+                        match content {
+                            CellContent::Tower(id, _) => {
+                                if let Some(damage) = champ.can_attack() {
+                                    pending_damages.push((Target::Tower(*id), damage))
                                 }
-                                CellContent::Minion(_, _) => {
-                                    todo!()
-                                }
-                                CellContent::Champion(id, _) => {
-                                    if let Some(damage) = champ.can_attack() {
-                                        pending_damages.push((Target::Champion(*id), damage))
-                                    }
-                                }
-                                _ => break,
                             }
+                            CellContent::Minion(_, _) => {
+                                todo!()
+                            }
+                            CellContent::Champion(id, _) => {
+                                if let Some(damage) = champ.can_attack() {
+                                    pending_damages.push((Target::Champion(*id), damage))
+                                }
+                            }
+                            _ => break,
                         }
-                        None => break,
                     }
+                    None => break,
                 }
             }
         }
+        
+        // 3. Apply dealt damages
         pending_damages.into_iter().for_each(|(target, damage)| {
             match target {
                 Target::Tower(id) => {

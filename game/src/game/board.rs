@@ -70,6 +70,17 @@ impl Board {
         self.grid.get_mut(row).and_then(|r| r.get_mut(col))
     }
 
+    pub fn move_cell(&mut self, old_row: usize, old_col: usize, new_row: usize, new_col: usize) {
+        let content: Option<CellContent>;
+        {
+            let old_cell = &mut self.grid[old_row][old_col];
+            content = old_cell.content.clone();
+            old_cell.content = None;
+        }
+        let new_cell = &mut self.grid[new_row][new_col];
+        new_cell.content = content;
+    }
+
     pub fn place_cell(&mut self, content: CellContent, champ_row: usize, champ_col: usize) {
         if let Some(row) = self.grid.get_mut(champ_row) {
             if let Some(cell) = row.get_mut(champ_col) {
