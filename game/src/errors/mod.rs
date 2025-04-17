@@ -10,4 +10,6 @@ pub enum GameError {
     NotFoundCell,
     #[error("Invalid input: {0}")]
     InvalidInput(String),
+    #[error("Player is dead")]
+    PlayerIsDead,
 }

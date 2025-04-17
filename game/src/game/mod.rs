@@ -179,8 +179,10 @@ impl GameManager {
 
         // --- Game Logic ---
         // Player turn
-        // 1. Iterate through player action
+        // TODO: there should be a cleaner way to do this
+        let mut pending_damages: Vec<(Target, u8)> = Vec::new();
         for player_id in self.champions.keys().copied().collect::<Vec<_>>() {
+            // 1. Iterate through player action
             if let Some(action) = self.player_action.get(&player_id) {
                 if let Some(champ) = self.champions.get_mut(&player_id) {
                     if let Err(e) = champ.take_action(action, &mut self.board) {
@@ -188,11 +190,8 @@ impl GameManager {
                     }
                 }
             }
-        }
-        // 2. auto_attack
-        // TODO: there should be a cleaner way to do this
-        let mut pending_damages: Vec<(Target, u8)> = Vec::new();
-        for player_id in self.champions.keys().copied().collect::<Vec<_>>() {
+
+            // 2. auto_attack
             if let Some(champ) = self.champions.get_mut(&player_id) {
                 if let Some(enemy) = champ.scan_range(&self.board) {
                     match &enemy.content {

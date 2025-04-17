@@ -1,7 +1,6 @@
 use std::time::{Duration, Instant};
 use std::usize;
 
-
 use crate::errors::GameError;
 use crate::game::Cell;
 use crate::game::cell::CellContent;
@@ -14,6 +13,8 @@ pub struct Champion {
     pub player_id: PlayerId,
     pub team_id: u8,
     pub stats: Stats,
+    dead_counter: u8,
+    death_timer: Instant,
     pub last_attacked: Instant,
     pub row: u16,
     pub col: u16,
@@ -31,6 +32,8 @@ impl Champion {
         Champion {
             player_id,
             stats,
+            dead_counter: 0,
+            death_timer: Instant::now(),
             last_attacked: Instant::now(),
             team_id,
             row,
@@ -94,12 +97,28 @@ impl Champion {
             return Err(GameError::NotFoundCell);
         }
     }
+
+    pub fn is_dead(&self) -> bool {
+        if Instant::now() > self.death_timer {
+            return false
+        } else {
+            true
+        }
+    }
 }
 
 impl Fighter for Champion {
     fn take_damage(&mut self, damage: u8) {
         let reduced_damage = damage.saturating_sub(self.stats.armor);
         self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+        // Check if champion get killed
+        if self.stats.health == 0 {
+            let timer = ((self.dead_counter as f32).sqrt() * 10.) as u64;
+            self.death_timer = Instant::now() + Duration::from_secs(timer);
+            // TODO: Make this team dependent
+            self.row = 3;
+            self.col = 3;
+        }
     }
 
     fn can_attack(&mut self) -> Option<u8> {
