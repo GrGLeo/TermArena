@@ -16,12 +16,12 @@ pub enum Target {
 pub struct Stats {
     attack_damage: u8,
     attack_speed: Duration,
-    health: u16,
+    pub health: u16,
     armor: u8,
 }
 
 pub trait Fighter {
     fn take_damage(&mut self, damage: u8);
     fn can_attack(&mut self) -> Option<u8>;
-    fn scan_range<'a>(&self, board: &'a Board) -> Vec<&'a Cell>;
+    fn scan_range<'a>(&self, board: &'a Board) -> Option<&'a Cell>;
 }

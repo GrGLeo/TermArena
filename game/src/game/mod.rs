@@ -10,7 +10,7 @@ pub use entities::champion::Champion;
 use entities::{tower::Tower, Fighter, Target};
 use tokio::sync::mpsc;
 
-use std::{collections::HashMap, usize};
+use std::{collections::HashMap, future::Pending, usize};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Action {
@@ -191,12 +191,10 @@ impl GameManager {
         }
         // 2. auto_attack
         // TODO: there should be a cleaner way to do this
-        // select  closest enemy
         let mut pending_damages: Vec<(Target, u8)> = Vec::new();
         for player_id in self.champions.keys().copied().collect::<Vec<_>>() {
             if let Some(champ) = self.champions.get_mut(&player_id) {
-                let enemies = champ.scan_range(&self.board);
-                for enemy in enemies {
+                if let Some(enemy) = champ.scan_range(&self.board) {
                     match &enemy.content {
                         Some(content) => {
                             match content {
@@ -221,7 +219,7 @@ impl GameManager {
                 }
             }
         }
-        for (target, damage) in pending_damages {
+        pending_damages.into_iter().for_each(|(target, damage)| {
             match target {
                 Target::Tower(id) => {
                     if let Some(tower) = self.towers.get_mut(&id) {
@@ -237,12 +235,15 @@ impl GameManager {
                     }
                 }
             }
-        }
+        });
 
         // Tower turn
         // 1. Scan range
-        // TODO: 2. attack closest enemy
+        // 2. attack closest enemy
         self.tower_turn();
+        self.champions.iter().for_each(|(_, champ)| {
+            println!("Champ health: {}", champ.stats.health);
+        });
 
         // --- Send per player there board view ---
         for (player_id, champion) in &self.champions {
@@ -251,7 +252,6 @@ impl GameManager {
             // 2. Create the board packet
             let board_packet = BoardPacket::new(board_rle_vec);
             let serialized_packet = board_packet.serialize();
-
             // 3. Store the serialized packet to be sent later
             updates.insert(*player_id, serialized_packet);
         }
@@ -260,9 +260,51 @@ impl GameManager {
     }
 
     fn tower_turn(&mut self) {
-        for (_, tower) in &self.towers {
-            let enemy_units = tower.scan_range(&self.board);
-            println!("enemy in range: {}", enemy_units.len())
-        }
+        let pending_damages = self.towers
+            .iter_mut()
+            .map(|(_, tower)| {
+                if let Some(enemy) = tower.scan_range(&self.board) {
+                    match &enemy.content {
+                        Some(content) => {
+                            match content {
+                                CellContent::Minion(_, _) => {
+                                    todo!()
+                                }
+                                CellContent::Champion(id, _) => {
+                                    if let Some(damage) = tower.can_attack() {
+                                        Some((Target::Champion(*id), damage))
+                                    } else {
+                                        None
+                                    }
+                                }
+                                _ => None,
+                            }
+                        }
+                        None => None,
+                    }
+                } else {
+                    None
+                }
+            })
+            .filter_map(|option| option)
+            .collect::<Vec<(Target, u8)>>();
+
+        pending_damages.into_iter().for_each(|(target, damage)| {
+            match target {
+                Target::Tower(id) => {
+                    if let Some(tower) = self.towers.get_mut(&id) {
+                        tower.take_damage(damage);
+                    }
+                }
+                Target::Minion(_) => {
+                    todo!()
+                }
+                Target::Champion(id) => {
+                    if let Some(champ) = self.champions.get_mut(&id) {
+                        champ.take_damage(damage);
+                    }
+                }
+            }
+        });
     }
 }

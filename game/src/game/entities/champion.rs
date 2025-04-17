@@ -99,7 +99,7 @@ impl Champion {
 impl Fighter for Champion {
     fn take_damage(&mut self, damage: u8) {
         let reduced_damage = damage.saturating_sub(self.stats.armor);
-        self.stats.health -= reduced_damage as u16;
+        self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
     }
 
     fn can_attack(&mut self) -> Option<u8> {
@@ -112,25 +112,40 @@ impl Fighter for Champion {
         }
     }
 
-    fn scan_range<'a>(&self, board: &'a Board) -> Vec<&'a Cell> {
+
+    fn scan_range<'a>(&self, board: &'a Board) -> Option<&'a Cell> {
         // range is implied here with: 6, 8
-        let target_area = board.center_view(self.row, self.col, 1, 1);
+        let target_area = board.center_view(self.row, self.col, 7, 9);
+        let center_row = target_area.len() / 2;
+        let center_col = target_area[0].len() / 2;
+
         target_area
             .iter()
-            .flat_map(|row| row.iter())
-            .filter(|&&cell| {
-                if let Some(content) = &cell.content {
-                    match content {
-                        CellContent::Champion(_, team_id)
-                        | CellContent::Minion(_, team_id)
-                        | CellContent::Tower(_, team_id) => *team_id != self.team_id,
-                        _ => false,
-                    }
-                } else {
-                    false
-                }
+            .enumerate()
+            .flat_map(|(row_index, row)| {
+                row.iter().enumerate().map(move |(col_index, cell)| (row_index, col_index, cell))
             })
-            .map(|&cell| cell)
-            .collect()
+        .filter_map(|(row, col, cell)| {
+            if let Some(content) = &cell.content {
+                match content {
+                    CellContent::Champion(_, team_id ) | CellContent::Tower(_, team_id) | CellContent::Minion(_, team_id) => {
+                        if *team_id != self.team_id {
+                            Some((row, col, cell))
+                        } else {
+                            None
+                        }
+                    } 
+                    _ => None
+                }
+            } else {
+                None
+            }
+        })
+        .min_by(|(r1, c1, _), (r2, c2, _)| {
+            let dist1 = r1.abs_diff(center_row) + c1.abs_diff(center_col);
+            let dist2 = r2.abs_diff(center_row) + c2.abs_diff(center_col);
+            dist1.cmp(&dist2)
+        })
+        .map(|(_, _, &cell)| cell)
     }
 }
