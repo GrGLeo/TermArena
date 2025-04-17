@@ -73,10 +73,10 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 
 	// Solo rooms can be started immediately.
 	if maxPlayers == 1 {
-    StartGame("50052", "1")
+    StartGame("50053", "1")
     return event.RoomSearchMessage{
       Success: 0,
-      RoomIP: "50052",
+      RoomIP: "50053",
 	}
 
     /*

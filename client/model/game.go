@@ -46,7 +46,7 @@ func (m GameModel) Init() tea.Cmd {
 func (m *GameModel) SetDimension(height, width int) {
 	m.height = height
 	m.width = width
-	m.progress.Width = 50
+	m.progress.Width = 51
 }
 
 func (m *GameModel) SetConnection(conn *net.TCPConn) {
@@ -143,7 +143,7 @@ func (m GameModel) View() string {
 
 
 	hud := lipgloss.Place(
-		45,
+		46,
 		1,
 		lipgloss.Center,
 		lipgloss.Center,
