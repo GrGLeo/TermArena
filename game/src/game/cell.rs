@@ -3,6 +3,7 @@ pub type PlayerId = usize;
 pub type MinionId = usize;
 pub type FlagId = usize;
 pub type TowerId = usize;
+pub type AnimationId = usize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BaseTerrain {
@@ -20,10 +21,17 @@ pub enum CellContent {
     Tower(TowerId, TeamId),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CellAnimation {
+    MeleeHit,
+    TowerHit,
+}
+
 #[derive(Debug, Clone)]
 pub struct Cell {
     pub base: BaseTerrain,
     pub content: Option<CellContent>,
+    pub animation: Option<CellAnimation>
 }
 
 impl Cell {
@@ -31,6 +39,7 @@ impl Cell {
         Cell {
             base,
             content: None,
+            animation: None,
         }
     }
 

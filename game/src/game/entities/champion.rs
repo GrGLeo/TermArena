@@ -2,6 +2,8 @@ use std::time::{Duration, Instant};
 use std::usize;
 
 use crate::errors::GameError;
+use crate::game::animation::melee::MeleeAnimation;
+use crate::game::animation::Animation;
 use crate::game::Cell;
 use crate::game::cell::CellContent;
 use crate::game::{Action, Board, cell::PlayerId};
@@ -133,10 +135,11 @@ impl Fighter for Champion {
         }
     }
 
-    fn can_attack(&mut self) -> Option<u8> {
+    fn can_attack(&mut self) -> Option<(u8, Box<dyn Animation>)> {
         if self.last_attacked + self.stats.attack_speed < Instant::now() {
             self.last_attacked = Instant::now();
-            Some(self.stats.attack_damage)
+            let animation = Box::new(MeleeAnimation::new(self.player_id));
+            Some((self.stats.attack_damage, animation))
         }
         else {
             None

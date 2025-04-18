@@ -1,5 +1,7 @@
 use std::time::{Duration, Instant};
 
+use crate::game::animation::melee::MeleeAnimation;
+use crate::game::animation::Animation;
 use crate::game::cell::{TowerId, Cell, CellContent};
 use crate::game::board::Board;
 use crate::game::BaseTerrain;
@@ -71,18 +73,23 @@ impl Fighter for Tower {
         }
     }
 
-    fn can_attack(&mut self) -> Option<u8> {
+    fn can_attack(&mut self) -> Option<(u8, Box<dyn Animation + '_>)> {
+        // TODO: redone with the TowerAnimation
+        todo!()
+        /*
         if self.last_attacked + self.stats.attack_speed < Instant::now() {
             self.last_attacked = Instant::now();
-            Some(self.stats.attack_damage)
+            let animation = Box::new(MeleeAnimation::new(self));
+            Some((self.stats.attack_damage, animation))
         }
         else {
             None
         }
+        */
     }
 
     fn scan_range<'a>(&self, board: &'a Board) -> Option<&'a Cell> {
-        // range is implied here with: 6, 8
+        // range is implied here with: 7, 9
         let target_area = board.center_view(self.row, self.col, 7, 9);
         let center_row = target_area.len() / 2;
         let center_col = target_area[0].len() / 2;

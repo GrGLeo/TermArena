@@ -1,4 +1,4 @@
-use super::cell::{BaseTerrain, Cell, CellContent, EncodedCellValue, TowerId};
+use super::cell::{BaseTerrain, Cell, CellAnimation, CellContent, EncodedCellValue, TowerId};
 use super::entities::tower::Tower;
 use serde::Deserialize;
 use std::fs::File;
@@ -97,6 +97,18 @@ impl Board {
 
     pub fn clear_cell(&mut self, row: usize, col: usize) {
         self.grid[row][col].content = None;
+    }
+
+    pub fn place_animation(&mut self, animation: CellAnimation, animation_row: usize, animation_col: usize) {
+        if let Some(row) = self.grid.get_mut(animation_row) {
+            if let Some(cell) = row.get_mut(animation_col) {
+                cell.animation = Some(animation);
+            }
+        }
+    }
+
+    pub fn clean_animation(&mut self, row: usize, col: usize) {
+        self.grid[row][col].animation = None;
     }
 
     pub fn center_view(&self, player_row: u16, player_col: u16, view_height: u16, view_width: u16) -> Vec<Vec<&Cell>> {

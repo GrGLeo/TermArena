@@ -12,4 +12,6 @@ pub enum GameError {
     InvalidInput(String),
     #[error("Player is dead")]
     PlayerIsDead,
+    #[error("Invalid Animation")]
+    InvalidAnimation,
 }
