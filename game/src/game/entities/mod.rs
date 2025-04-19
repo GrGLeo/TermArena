@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use super::{animation::melee::MeleeAnimation, Board, Cell, MinionId, PlayerId, TowerId};
+use super::{animation::{melee::MeleeAnimation, AnimationTrait}, Board, Cell, MinionId, PlayerId, TowerId};
 
 pub mod champion;
 pub mod tower;
@@ -22,6 +22,6 @@ pub struct Stats {
 
 pub trait Fighter {
     fn take_damage(&mut self, damage: u8);
-    fn can_attack(&mut self) -> Option<(u8, MeleeAnimation)>;
+    fn can_attack(&mut self) -> Option<(u8, Box<dyn AnimationTrait>)>;
     fn scan_range<'a>(&self, board: &'a Board) -> Option<&'a Cell>;
 }

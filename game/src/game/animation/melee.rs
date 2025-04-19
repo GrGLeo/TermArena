@@ -1,16 +1,15 @@
-use crate::{
-    errors::GameError,
-    game::{Board, Champion, PlayerId, cell::CellAnimation},
-};
+// In animation/melee.rs
+use crate::{errors::GameError, game::{cell::CellAnimation, Board, Champion, PlayerId}};
+use super::{ AnimationTrait, AnimationCommand };
 
 #[derive(Debug)]
 pub struct MeleeAnimation {
     pub player_id: PlayerId,
     cycle: u8,
     counter: u8,
-    row: Option<u16>,
-    col: Option<u16>,
-    animation: CellAnimation,
+    last_drawn_row: Option<u16>,
+    last_drawn_col: Option<u16>,
+    animation_type: CellAnimation,
 }
 
 impl MeleeAnimation {
@@ -19,80 +18,65 @@ impl MeleeAnimation {
             player_id,
             cycle: 8,
             counter: 0,
-            row: None,
-            col: None,
-            animation: CellAnimation::MeleeHit,
+            last_drawn_row: None,
+            last_drawn_col: None,
+            animation_type: CellAnimation::MeleeHit,
         }
     }
 
-    pub fn get_id(&self) -> &usize {
-        &self.player_id
-    }
-
-    pub fn next(&mut self, row: u16, col: u16) -> Result<(u16, u16), GameError> {
-        self.counter = self.counter.saturating_add(1);
-        if self.counter > self.cycle {
-            return Err(GameError::InvalidAnimation);
-        }
+    // This logic might need adjustment based on attack direction,
+    // but let's stick to the 8 points for now.
+    fn calculate_next_pos(&self, owner_row: u16, owner_col: u16) -> Option<(u16, u16)> {
         match self.counter {
-            1 => {
-                let new_row = row;
-                let new_col = col + 1;
-                Ok((new_row, new_col))
-            }
-            2 => {
-                let new_row = row + 1;
-                let new_col = col + 1;
-                Ok((new_row, new_col))
-            }
-            3 => {
-                let new_row = row + 1;
-                let new_col = col;
-                Ok((new_row, new_col))
-            }
-            4 => {
-                let new_row = row + 1;
-                let new_col = col - 1;
-                Ok((new_row, new_col))
-            }
-            5 => {
-                let new_row = row;
-                let new_col = col - 1;
-                Ok((new_row, new_col))
-            }
-            6 => {
-                let new_row = row - 1;
-                let new_col = col - 1;
-                Ok((new_row, new_col))
-            }
-            7 => {
-                let new_row = row - 1;
-                let new_col = col;
-                Ok((new_row, new_col))
-            }
-            8 => {
-                let new_row = row - 1;
-                let new_col = col + 1;
-                Ok((new_row, new_col))
-            }
-            _ => return Err(GameError::InvalidAnimation),
+            1 => Some((owner_row, owner_col.saturating_add(1))),
+            2 => Some((owner_row.saturating_add(1), owner_col.saturating_add(1))),
+            3 => Some((owner_row.saturating_add(1), owner_col)),
+            4 => Some((owner_row.saturating_add(1), owner_col.saturating_sub(1))),
+            5 => Some((owner_row, owner_col.saturating_sub(1))),
+            6 => Some((owner_row.saturating_sub(1), owner_col.saturating_sub(1))),
+            7 => Some((owner_row.saturating_sub(1), owner_col)),
+            8 => Some((owner_row.saturating_sub(1), owner_col.saturating_add(1))),
+            _ => None, // Animation finished
+        }
+    }
+}
+
+impl AnimationTrait for MeleeAnimation {
+    fn get_owner_id(&self) -> usize { self.player_id }
+    fn get_animation_type(&self) -> CellAnimation { self.animation_type.clone() }
+    fn get_last_drawn_pos(&self) -> Option<(u16, u16)> {
+        match (self.last_drawn_row, self.last_drawn_col) {
+            (Some(r), Some(c)) => Some((r, c)),
+            _ => None,
         }
     }
 
-    pub fn clean(&mut self, board: &mut Board) {
-        match (self.row, self.col) {
-            (None, None) => {}
-            (Some(row), Some(col)) => {
-                board.clean_animation(row as usize, col as usize);
-            }
-            (_, _) => {}
-        }
-    }
+    fn next_frame(&mut self, owner_row: u16, owner_col: u16) -> AnimationCommand {
+        self.counter = self.counter.saturating_add(1);
 
-    pub fn draw(&mut self, row: u16, col: u16, board: &mut Board) -> Result<(), GameError> {
-        board.place_animation(CellAnimation::MeleeHit, row as usize, col as usize);
-        self.row = Some(row);
-        self.col = Some(col);
-        Ok(())
+        if self.counter > self.cycle {
+            // Animation is done
+            self.last_drawn_row = None;
+            self.last_drawn_col = None;
+            AnimationCommand::Done
+        } else {
+            // Calculate the position for the current frame
+            if let Some((next_row, next_col)) = self.calculate_next_pos(owner_row, owner_col) {
+                // Update internal state to remember where we are drawing this frame
+                self.last_drawn_row = Some(next_row);
+                self.last_drawn_col = Some(next_col);
+                // Return the Draw command
+                AnimationCommand::Draw {
+                    row: next_row,
+                    col: next_col,
+                    animation_type: self.animation_type.clone(),
+                }
+            } else {
+                 // Should not happen if counter <= cycle, but handle defensively
+                 self.last_drawn_row = None;
+                 self.last_drawn_col = None;
+                 AnimationCommand::Done
+            }
+        }
     }
 }

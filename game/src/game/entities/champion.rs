@@ -3,6 +3,7 @@ use std::usize;
 
 use crate::errors::GameError;
 use crate::game::animation::melee::MeleeAnimation;
+use crate::game::animation::AnimationTrait;
 use crate::game::Cell;
 use crate::game::cell::CellContent;
 use crate::game::{Action, Board, cell::PlayerId};
@@ -27,7 +28,7 @@ impl Champion {
             attack_damage: 10,
             attack_speed: Duration::from_millis(2500),
             health: 200,
-            armor: 205,
+            armor: 5,
         };
 
         Champion {
@@ -134,11 +135,11 @@ impl Fighter for Champion {
         }
     }
 
-    fn can_attack(&mut self) -> Option<(u8, MeleeAnimation)> {
+    fn can_attack(&mut self) -> Option<(u8, Box<dyn AnimationTrait>)> {
         if self.last_attacked + self.stats.attack_speed < Instant::now() {
             self.last_attacked = Instant::now();
             let animation = MeleeAnimation::new(self.player_id);
-            Some((self.stats.attack_damage, animation))
+            Some((self.stats.attack_damage, Box::new(animation)))
         }
         else {
             None

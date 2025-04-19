@@ -4,7 +4,7 @@ pub mod entities;
 pub mod animation;
 
 use crate::packet::board_packet::BoardPacket;
-use animation::melee::MeleeAnimation;
+use animation::{AnimationCommand, AnimationTrait};
 pub use board::Board;
 use bytes::BytesMut;
 pub use cell::{BaseTerrain, Cell, CellContent, PlayerId, TowerId, MinionId};
@@ -27,7 +27,6 @@ pub enum Action {
 
 pub type ClientMessage = BytesMut;
 
-#[derive(Debug)]
 pub struct GameManager {
     players_count: usize,
     max_players: usize,
@@ -35,7 +34,7 @@ pub struct GameManager {
     player_action: HashMap<PlayerId, Action>,
     champions: HashMap<PlayerId, Champion>,
     towers: HashMap<TowerId, Tower>,
-    animations: Vec<MeleeAnimation>,
+    animations: Vec<Box<dyn AnimationTrait>>,
     pub client_channel: HashMap<PlayerId, mpsc::Sender<ClientMessage>>,
     board: Board,
     pub tick: u64,
@@ -175,10 +174,11 @@ impl GameManager {
         self.print_game_state();
 
         let mut updates = HashMap::new();
+        let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
+        let mut pending_damages: Vec<(Target, u8)> = Vec::new();
 
         // --- Game Logic ---
         // Player turn
-        let mut pending_damages: Vec<(Target, u8)> = Vec::new();
         for (player_id, champ) in &mut self.champions {
             // 0. Check death and replace
             // BUG: Champ dead can still move but is replace each tick
@@ -200,7 +200,7 @@ impl GameManager {
                         match content {
                             CellContent::Tower(id, _) => {
                                 if let Some((damage, animation)) = champ.can_attack() {
-                                    self.animations.push(animation);
+                                    new_animations.push(animation);
                                     pending_damages.push((Target::Tower(*id), damage))
                                 }
                             }
@@ -250,23 +250,68 @@ impl GameManager {
         self.tower_turn();
 
         // Render animation
-        println!("Animation: {:?}", self.animations);
-        let mut kept_animations: Vec<MeleeAnimation> = Vec::new();
+        let mut kept_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
+        let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
+
+        // 1. clear past frame animation
+        for anim in &self.animations {
+            if let Some((row, col)) = anim.get_last_drawn_pos() {
+                animation_commands_executable.push(AnimationCommand::Clear { row, col })
+            }
+        }
+        // 2. Process next frame animations
         for mut anim in self.animations.drain(..) {
-            if let Some(champ) = self.champions.get(anim.get_id()) {
-                match anim.next(champ.row, champ.col) {
-                    Ok((row, col)) => {
-                        anim.clean(&mut self.board);
-                        anim.draw(row, col, &mut self.board);
-                        kept_animations.push(anim)
+            let owner_pos = if let Some(champ) = self.champions.get(&anim.get_owner_id()) {
+                Some((champ.row, champ.col))
+            } else if let Some(tower) = self.towers.get(&anim.get_owner_id()) {
+                Some((tower.row, tower.col))
+            } else {
+                None // Owner might have been removed
+            };
+
+            if let Some((owner_row, owner_col)) = owner_pos {
+                let command = anim.next_frame(owner_row, owner_col);
+                match command {
+                    AnimationCommand::Done => {
                     }
-                    Err(_) => {
-                        anim.clean(&mut self.board);
+                    AnimationCommand::Draw { .. } => {
+                        animation_commands_executable.push(command);
+                        kept_animations.push(anim);
+                    }
+                    AnimationCommand::Clear { .. } => {
+                        // This command should be handle before
+                    }
+                } 
+            } else {
+                // Owner is gone, animation should finish and clear in its last frame
+            }
+        }
+        kept_animations.extend(new_animations);
+        self.animations = kept_animations;
+
+        // 3. Execute animation command
+        for command in animation_commands_executable {
+            match command {
+                AnimationCommand::Draw { row, col, animation_type } => {
+                    // Add bounds check
+                    if row < self.board.rows as u16 && col < self.board.cols as u16 {
+                        self.board.place_animation(animation_type, row as usize, col as usize);
+                    } else {
+                         eprintln!("Animation draw position ({}, {}) out of bounds!", row, col);
                     }
                 }
+                AnimationCommand::Clear { row, col } => {
+                    if row < self.board.rows as u16 && col < self.board.cols as u16 {
+                        self.board.clean_animation(row as usize, col as usize);
+                    } else {
+                        eprintln!("Animation clear position ({}, {}) out of bounds!", row, col);
+                    }
+                }
+                AnimationCommand::Done => {
+                    // This command should be handled in the loop above, not executed on the board
+                }
             }
-        };
-        self.animations = kept_animations;
+        }
 
         // --- Send per player there board view ---
         for (player_id, champion) in &self.champions {
@@ -283,7 +328,6 @@ impl GameManager {
     }
 
     fn tower_turn(&mut self) {
-        /*
         let pending_damages = self.towers
             .iter_mut()
             .map(|(_, tower)| {
@@ -295,8 +339,8 @@ impl GameManager {
                                     todo!()
                                 }
                                 CellContent::Champion(id, _) => {
-                                    if let Some(damage) = tower.can_attack() {
-                                        Some((Target::Champion(*id), damage))
+                                    if let Some((damage, animation)) = tower.can_attack() {
+                                        Some((Target::Champion(*id), damage, animation))
                                     } else {
                                         None
                                     }
@@ -330,6 +374,5 @@ impl GameManager {
                 }
             }
         });
-        */
     }
 }

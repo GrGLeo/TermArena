@@ -1,6 +1,8 @@
 use std::time::{Duration, Instant};
 
 use crate::game::animation::melee::MeleeAnimation;
+use crate::game::animation::tower::TowerHitAnimation;
+use crate::game::animation::AnimationTrait;
 use crate::game::cell::{TowerId, Cell, CellContent};
 use crate::game::board::Board;
 use crate::game::BaseTerrain;
@@ -14,8 +16,8 @@ pub struct Tower {
     stats: Stats,
     destroyed: bool,
     last_attacked: Instant,
-    row: u16,
-    col: u16,
+    pub row: u16,
+    pub col: u16,
 }
 
 impl Tower {
@@ -72,11 +74,10 @@ impl Fighter for Tower {
         }
     }
 
-    fn can_attack(&mut self) -> Option<(u8, MeleeAnimation)> {
+    fn can_attack(&mut self) -> Option<(u8, Box<dyn AnimationTrait>)> {
         if self.last_attacked + self.stats.attack_speed < Instant::now() {
             self.last_attacked = Instant::now();
-            Some((self.stats.attack_damage, MeleeAnimation::new(1)))
-        }
+            Some((self.stats.attack_damage, Box::new(TowerHitAnimation::new(self.row, self.col)))) }
         else {
             None
         }
