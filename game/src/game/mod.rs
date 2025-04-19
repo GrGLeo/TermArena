@@ -1,8 +1,10 @@
 pub mod board;
 pub mod cell;
 pub mod entities;
+pub mod animation;
 
-use crate::packet::{board_packet::BoardPacket, start_packet};
+use crate::packet::board_packet::BoardPacket;
+use animation::melee::MeleeAnimation;
 pub use board::Board;
 use bytes::BytesMut;
 pub use cell::{BaseTerrain, Cell, CellContent, PlayerId, TowerId, MinionId};
@@ -33,6 +35,7 @@ pub struct GameManager {
     player_action: HashMap<PlayerId, Action>,
     champions: HashMap<PlayerId, Champion>,
     towers: HashMap<TowerId, Tower>,
+    animations: Vec<MeleeAnimation>,
     pub client_channel: HashMap<PlayerId, mpsc::Sender<ClientMessage>>,
     board: Board,
     pub tick: u64,
@@ -41,11 +44,6 @@ pub struct GameManager {
 impl GameManager {
     pub fn new() -> Self {
         println!("Initializing GameManager...");
-        /*
-        let rows = 200;
-        let cols = 500;
-        let board = Board::new(rows, cols);
-        */
         let file_path = "game/assets/map.json";
         let mut board = match Board::from_json(file_path) {
             Ok(board) => board,
@@ -72,6 +70,7 @@ impl GameManager {
             player_action: HashMap::new(),
             champions: HashMap::new(),
             towers,
+            animations: Vec::new(),
             client_channel: HashMap::new(),
             board,
             tick: 20,
@@ -200,7 +199,8 @@ impl GameManager {
                         println!("Got content: {:?}", content);
                         match content {
                             CellContent::Tower(id, _) => {
-                                if let Some(damage) = champ.can_attack() {
+                                if let Some((damage, animation)) = champ.can_attack() {
+                                    self.animations.push(animation);
                                     pending_damages.push((Target::Tower(*id), damage))
                                 }
                             }
@@ -208,7 +208,8 @@ impl GameManager {
                                 todo!()
                             }
                             CellContent::Champion(id, _) => {
-                                if let Some(damage) = champ.can_attack() {
+                                if let Some((damage, animation)) = champ.can_attack() {
+                                    self.animations.push(animation);
                                     pending_damages.push((Target::Champion(*id), damage))
                                 }
                             }
@@ -248,6 +249,25 @@ impl GameManager {
         // 2. attack closest enemy
         self.tower_turn();
 
+        // Render animation
+        println!("Animation: {:?}", self.animations);
+        let mut kept_animations: Vec<MeleeAnimation> = Vec::new();
+        for mut anim in self.animations.drain(..) {
+            if let Some(champ) = self.champions.get(anim.get_id()) {
+                match anim.next(champ.row, champ.col) {
+                    Ok((row, col)) => {
+                        anim.clean(&mut self.board);
+                        anim.draw(row, col, &mut self.board);
+                        kept_animations.push(anim)
+                    }
+                    Err(_) => {
+                        anim.clean(&mut self.board);
+                    }
+                }
+            }
+        };
+        self.animations = kept_animations;
+
         // --- Send per player there board view ---
         for (player_id, champion) in &self.champions {
             // 1. Get player-specific board view
@@ -263,6 +283,7 @@ impl GameManager {
     }
 
     fn tower_turn(&mut self) {
+        /*
         let pending_damages = self.towers
             .iter_mut()
             .map(|(_, tower)| {
@@ -309,5 +330,6 @@ impl GameManager {
                 }
             }
         });
+        */
     }
 }

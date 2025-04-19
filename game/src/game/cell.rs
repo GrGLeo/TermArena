@@ -20,10 +20,17 @@ pub enum CellContent {
     Tower(TowerId, TeamId),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CellAnimation {
+    MeleeHit,
+    TowerHit,
+}
+
 #[derive(Debug, Clone)]
 pub struct Cell {
     pub base: BaseTerrain,
     pub content: Option<CellContent>,
+    pub animation: Option<CellAnimation>
 }
 
 impl Cell {
@@ -31,6 +38,7 @@ impl Cell {
         Cell {
             base,
             content: None,
+            animation: None,
         }
     }
 
@@ -55,11 +63,17 @@ pub enum EncodedCellValue {
     Minion = 5,
     Flag = 6,
     Tower = 7,
+    MeleeHitAnimation = 8,
 }
 
 impl From<&Cell> for EncodedCellValue {
     fn from(cell: &Cell) -> Self {
-        if let Some(content) = &cell.content {
+        if let Some(animation) = &cell.animation {
+            match animation {
+                CellAnimation::MeleeHit => EncodedCellValue::MeleeHitAnimation,
+                CellAnimation::TowerHit => EncodedCellValue::MeleeHitAnimation,
+            }
+        } else if let Some(content) = &cell.content {
             match content {
                 CellContent::Champion(_, _) => EncodedCellValue::Champion,
                 CellContent::Minion(_, _) => EncodedCellValue::Minion,

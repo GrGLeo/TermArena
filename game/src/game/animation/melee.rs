@@ -1,7 +1,6 @@
 use crate::{errors::GameError, game::{cell::CellAnimation, Board, Champion, PlayerId}};
 
-use super::Animation;
-
+#[derive(Debug)]
 pub struct MeleeAnimation {
     pub player_id: PlayerId,
     cycle: u8,
@@ -23,11 +22,11 @@ impl MeleeAnimation {
         }
     }
 
-    fn get_id(&self) -> &usize {
+    pub fn get_id(&self) -> &usize {
         &self.player_id
     }
 
-    fn next(&mut self, row: u16, col: u16) -> Result<(u16, u16), GameError> {
+    pub fn next(&mut self, row: u16, col: u16) -> Result<(u16, u16), GameError> {
         self.counter = self.counter.saturating_add(1);
         if self.counter > self.cycle {
             return Err(GameError::InvalidAnimation)
@@ -79,7 +78,7 @@ impl MeleeAnimation {
         }
     }
 
-    fn clean(&mut self, board: &mut Board) {
+    pub fn clean(&mut self, board: &mut Board) {
         match (self.row, self.col) {
             (None, None) => {
             }
@@ -91,7 +90,7 @@ impl MeleeAnimation {
         }
     }
 
-    fn draw(&mut self, row: u16, col: u16, board: &mut Board) -> Result<(), GameError> {
+    pub fn draw(&mut self, row: u16, col: u16, board: &mut Board) -> Result<(), GameError> {
         board.place_animation(CellAnimation::MeleeHit, row as usize, col as usize);
         self.row = Some(row);
         self.col = Some(col);
