@@ -24,7 +24,7 @@ pub struct Champion {
 impl Champion {
     pub fn new(player_id: PlayerId, team_id: u8, row: u16, col: u16) -> Self {
         let stats = Stats {
-            attack_damage: 250,
+            attack_damage: 10,
             attack_speed: Duration::from_millis(2500),
             health: 200,
             armor: 205,
