@@ -73,6 +73,14 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 
 	// Solo rooms can be started immediately.
 	if maxPlayers == 1 {
+    StartGame("50053", "1")
+    return event.RoomSearchMessage{
+      Success: 0,
+      RoomIP: "50053",
+	}
+
+    /*
+    LEGACY
 		newRoom := game.NewGameRoom(maxPlayers, rm.logger)
 		newRoom.AddPlayer(conn)
 		rm.mu.Lock()
@@ -80,6 +88,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 		rm.mu.Unlock()
 		go newRoom.StartGame()
     return nil
+    */
 	} else {
 		// For DUO and QUAD, lock for the entire process to avoid race conditions.
 		rm.mu.Lock()
@@ -111,6 +120,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 
 	return event.RoomSearchMessage{
 		Success: 0,
+    RoomIP: "50052",
 	}
 }
 

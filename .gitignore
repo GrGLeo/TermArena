@@ -1,7 +1,8 @@
 .env
 test/
-debug.log
+*.log
 /bin
 auth/target
 game/target
 *.jsonl
+*.json

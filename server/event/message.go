@@ -120,6 +120,7 @@ func (rc RoomCreateMessage) Validate() error {
 type RoomSearchMessage struct {
 	Success int
 	RoomID  string
+	RoomIP  string
 }
 
 func (rs RoomSearchMessage) Type() string {

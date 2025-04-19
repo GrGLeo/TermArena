@@ -1,6 +1,7 @@
 package communication
 
 import (
+	"fmt"
 	"log"
 	"net"
 
@@ -8,11 +9,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func MakeConnection() (*net.TCPConn, error) {
-  log.Println("Connection Attempt")
-	tcpAddr, err := net.ResolveTCPAddr("tcp", "localhost:8082")
+func MakeConnection(port string) (*net.TCPConn, error) {
+  log.Printf("Connection Attempt: %q\n", port)
+	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%s", port))
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	if err != nil {
+    log.Printf("Failed to make connection: %q\n", err)
 		return nil, NewConnectionError(500, "Failed to dial server")
 	}
 	return conn, nil
@@ -59,6 +61,7 @@ func SendRoomCreatePacket(conn *net.TCPConn, roomType int) error {
 }
 
 func SendAction(conn *net.TCPConn, action int) error {
+  log.Println("Sent action")
   actionPacket := shared.NewActionPacket(action)
   data := actionPacket.Serialize()
   _, err := conn.Write(data)
@@ -82,8 +85,9 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
     case *shared.RespPacket:
       msgs <- ResponseMsg{Code: msg.Success}
     case *shared.LookRoomPacket:
-      msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID}
+      msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID, RoomIP: msg.RoomIP}
     case *shared.GameStartPacket:
+      log.Println("Game started packet found")
       msgs <- GameStartMsg{Code: msg.Success}
     case *shared.GameClosePacket:
       msgs <- GameCloseMsg{Code: msg.Success}

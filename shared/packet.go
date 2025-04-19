@@ -37,11 +37,11 @@ func CreateMessage(packet Packet, conn *net.TCPConn) (event.Message, error) {
 			Username: pkt.Username,
 			Password: pkt.Password,
 		}, nil
-  case *SignInPacket:
-    return event.SignInMessage{
-      Username: pkt.Username,
-      Password: pkt.Password,
-    }, nil
+	case *SignInPacket:
+		return event.SignInMessage{
+			Username: pkt.Username,
+			Password: pkt.Password,
+		}, nil
 	case *RoomRequestPacket:
 		return event.RoomRequestMessage{
 			RoomType: pkt.RoomType,
@@ -72,7 +72,7 @@ func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
 		packet := NewRespPacket(false)
 		return packet.Serialize(), nil
 	case event.RoomSearchMessage:
-		packet := NewLookRoomPacket(m.Success, m.RoomID)
+		packet := NewLookRoomPacket(m.Success, m.RoomID, m.RoomIP)
 		return packet.Serialize(), nil
 	default:
 		return nil, errors.New("Failed to create packet from message")
@@ -169,14 +169,14 @@ func (cp *SignInPacket) Serialize() []byte {
 
 type RespPacket struct {
 	version, code int
-  Success bool
+	Success       bool
 }
 
 func NewRespPacket(success bool) *RespPacket {
 	return &RespPacket{
 		version: 1,
 		code:    2,
-    Success: success,
+		Success: success,
 	}
 }
 
@@ -192,11 +192,11 @@ func (rp *RespPacket) Serialize() []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(byte(rp.version))
 	buf.WriteByte(byte(rp.code))
-  if rp.Success {
-	  buf.WriteByte(1)
-  } else {
-	  buf.WriteByte(0)
-  }
+	if rp.Success {
+		buf.WriteByte(1)
+	} else {
+		buf.WriteByte(0)
+	}
 	return buf.Bytes()
 }
 
@@ -291,15 +291,16 @@ func (cp *RoomJoinPacket) Serialize() []byte {
 
 type LookRoomPacket struct {
 	version, code, Success int
-	RoomID                 string
+	RoomID, RoomIP         string
 }
 
-func NewLookRoomPacket(success int, roomID string) *LookRoomPacket {
+func NewLookRoomPacket(success int, roomID, roomIP string) *LookRoomPacket {
 	return &LookRoomPacket{
 		version: 1,
 		code:    6,
 		Success: success,
 		RoomID:  roomID,
+		RoomIP:  roomIP,
 	}
 }
 
@@ -313,10 +314,17 @@ func (lp LookRoomPacket) Code() int {
 
 func (lp *LookRoomPacket) Serialize() []byte {
 	var buf bytes.Buffer
+  capacity := 3 + len(lp.RoomID) + len(lp.RoomIP)
+  buf.Grow(capacity)
 	buf.WriteByte(byte(lp.version))
 	buf.WriteByte(byte(lp.code))
 	buf.WriteByte(byte(lp.Success))
-	buf.WriteString(lp.RoomID)
+  if lp.RoomID != "" {
+	  buf.WriteString(lp.RoomID)
+  } else {
+    buf.WriteString("     ")
+  }
+	buf.WriteString(lp.RoomIP)
 	return buf.Bytes()
 }
 
@@ -597,19 +605,19 @@ func DeSerialize(data []byte) (Packet, error) {
 		}, nil
 
 	case 2: // RespPacket
-  if data[2] == 0 {
-		return &RespPacket{
-			version: version,
-			code:    code,
-      Success: false,
-		}, nil
-  } else {
-		return &RespPacket{
-			version: version,
-			code:    code,
-      Success: true,
-		}, nil
-  }
+		if data[2] == 0 {
+			return &RespPacket{
+				version: version,
+				code:    code,
+				Success: false,
+			}, nil
+		} else {
+			return &RespPacket{
+				version: version,
+				code:    code,
+				Success: true,
+			}, nil
+		}
 
 	case 3:
 		return &RoomRequestPacket{
@@ -638,7 +646,8 @@ func DeSerialize(data []byte) (Packet, error) {
 			version: version,
 			code:    code,
 			Success: int(data[2]),
-			RoomID:  string(data[2:]),
+			RoomID:  string(data[3:8]),
+			RoomIP:  string(data[8:]),
 		}, nil
 
 	case 7:
@@ -661,10 +670,10 @@ func DeSerialize(data []byte) (Packet, error) {
 		points := [2]int{}
 		points[0] = int(data[2])
 		points[1] = int(data[3])
-		length := int(data[4])
+    length := int(binary.BigEndian.Uint16(data[4:6]))
 
 		// Rest of data is the encodedBoard
-		encodedBoard := data[5:]
+		encodedBoard := data[6:]
 		return &BoardPacket{
 			version:      version,
 			code:         code,
@@ -687,7 +696,7 @@ func DeSerialize(data []byte) (Packet, error) {
 			return nil, errors.New("invalid deltas packet length")
 		}
 		deltas := make([][3]byte, deltaCount)
-		for i := 0; i < deltaCount; i++ {
+		for i := range deltaCount {
 			start := 10 + i*3
 			end := start + 3
 			copy(deltas[i][:], data[start:end])

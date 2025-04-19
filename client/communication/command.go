@@ -11,7 +11,7 @@ import (
 func AttemptReconnect() tea.Cmd {
     return tea.Tick(time.Second, func(time.Time) tea.Msg {
       log.Println("Enter AttemptReconnect")
-        conn, err := MakeConnection()
+        conn, err := MakeConnection("8082")
         if err != nil {
             return ReconnectMsg{}
         }

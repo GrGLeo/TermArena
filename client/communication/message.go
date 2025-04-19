@@ -33,6 +33,7 @@ code 1: error putting player in queue
 type LookRoomMsg struct {
 	Code int
   RoomID string
+  RoomIP string
 }
 
 // GameStart is sent by the server once the number of player are matched
@@ -49,7 +50,7 @@ type GameCloseMsg struct {
 // BoardMsg is used to transfer the board to game model
 type BoardMsg struct {
 	Points [2]int
-	Board  [20][50]int
+	Board  [21][51]int
 }
 
 type DeltaMsg struct {
