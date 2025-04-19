@@ -1,4 +1,7 @@
-use crate::{errors::GameError, game::{cell::CellAnimation, Board, Champion, PlayerId}};
+use crate::{
+    errors::GameError,
+    game::{Board, Champion, PlayerId, cell::CellAnimation},
+};
 
 #[derive(Debug)]
 pub struct MeleeAnimation {
@@ -29,7 +32,7 @@ impl MeleeAnimation {
     pub fn next(&mut self, row: u16, col: u16) -> Result<(u16, u16), GameError> {
         self.counter = self.counter.saturating_add(1);
         if self.counter > self.cycle {
-            return Err(GameError::InvalidAnimation)
+            return Err(GameError::InvalidAnimation);
         }
         match self.counter {
             1 => {
@@ -72,21 +75,17 @@ impl MeleeAnimation {
                 let new_col = col + 1;
                 Ok((new_row, new_col))
             }
-            _ => {
-                return Err(GameError::InvalidAnimation)
-            }
+            _ => return Err(GameError::InvalidAnimation),
         }
     }
 
     pub fn clean(&mut self, board: &mut Board) {
         match (self.row, self.col) {
-            (None, None) => {
-            }
+            (None, None) => {}
             (Some(row), Some(col)) => {
                 board.clean_animation(row as usize, col as usize);
             }
-            (_, _) => {
-            }
+            (_, _) => {}
         }
     }
 
