@@ -1,6 +1,9 @@
 // In animation/melee.rs
-use crate::{errors::GameError, game::{cell::CellAnimation, Board, Champion, PlayerId}};
-use super::{ AnimationTrait, AnimationCommand };
+use super::{AnimationCommand, AnimationTrait};
+use crate::{
+    errors::GameError,
+    game::{Board, Champion, PlayerId, cell::CellAnimation},
+};
 
 #[derive(Debug)]
 pub struct MeleeAnimation {
@@ -42,8 +45,18 @@ impl MeleeAnimation {
 }
 
 impl AnimationTrait for MeleeAnimation {
-    fn get_owner_id(&self) -> usize { self.player_id }
-    fn get_animation_type(&self) -> CellAnimation { self.animation_type.clone() }
+    fn get_owner_id(&self) -> usize {
+        self.player_id
+    }
+
+    fn get_animation_type(&self) -> CellAnimation {
+        self.animation_type.clone()
+    }
+
+    fn attach_target(&mut self, target_id: PlayerId) {
+        self.player_id = target_id
+    }
+
     fn get_last_drawn_pos(&self) -> Option<(u16, u16)> {
         match (self.last_drawn_row, self.last_drawn_col) {
             (Some(r), Some(c)) => Some((r, c)),
@@ -72,10 +85,10 @@ impl AnimationTrait for MeleeAnimation {
                     animation_type: self.animation_type.clone(),
                 }
             } else {
-                 // Should not happen if counter <= cycle, but handle defensively
-                 self.last_drawn_row = None;
-                 self.last_drawn_col = None;
-                 AnimationCommand::Done
+                // Should not happen if counter <= cycle, but handle defensively
+                self.last_drawn_row = None;
+                self.last_drawn_col = None;
+                AnimationCommand::Done
             }
         }
     }

@@ -1,4 +1,6 @@
-use super::cell::CellAnimation;
+use std::fmt::Debug;
+
+use super::{cell::CellAnimation, PlayerId};
 
 pub mod melee;
 pub mod tower;
@@ -10,7 +12,7 @@ pub enum AnimationCommand {
     Done, 
 }
 
-pub trait AnimationTrait: Send + Sync {
+pub trait AnimationTrait: Send + Sync + Debug {
     // Method to get the command for the next frame
     // It should update the animation's internal state (like counter, current position)
     // The owner's current position might be needed to calculate the animation location
@@ -18,6 +20,9 @@ pub trait AnimationTrait: Send + Sync {
 
     // Method to get the ID of the entity that owns/triggered this animation
     fn get_owner_id(&self) -> usize;
+    
+    // Method to attach the target id, for next position calculation
+    fn attach_target(&mut self, target_id: PlayerId);
 
     // Method to get the animation type (MeleeHit, TowerHit, etc.)
     fn get_animation_type(&self) -> CellAnimation;

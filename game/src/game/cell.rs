@@ -64,6 +64,7 @@ pub enum EncodedCellValue {
     Flag = 6,
     Tower = 7,
     MeleeHitAnimation = 8,
+    TowerHitAnimation = 9,
 }
 
 impl From<&Cell> for EncodedCellValue {
@@ -71,7 +72,7 @@ impl From<&Cell> for EncodedCellValue {
         if let Some(animation) = &cell.animation {
             match animation {
                 CellAnimation::MeleeHit => EncodedCellValue::MeleeHitAnimation,
-                CellAnimation::TowerHit => EncodedCellValue::MeleeHitAnimation,
+                CellAnimation::TowerHit => EncodedCellValue::TowerHitAnimation,
             }
         } else if let Some(content) = &cell.content {
             match content {

@@ -18,16 +18,13 @@ impl TowerHitAnimation {
             animation_type: CellAnimation::TowerHit,
         }
     }
-    
-    fn attach_target(&mut self, target_id: PlayerId) {
-        self.target_id = target_id
-    }
 
     fn calculate_next_pos(&mut self, target_row: u16, target_col: u16) -> Option<(u16, u16)> {
         // We calculate the difference between target and last_drawn, and take one step
         // in the target direction
         let row_step = (target_row as i16 - self.last_drawn_row as i16).signum();
         let col_step = (target_col as i16 - self.last_drawn_col as i16).signum();
+        println!("row_step: {} | col_step: {}", row_step, col_step);
         // If both step are at 0, then target is hit.
         if row_step == 0 && col_step == 0 {
             return None;
@@ -44,9 +41,15 @@ impl AnimationTrait for TowerHitAnimation {
     fn get_owner_id(&self) -> usize {
         self.target_id
     }
+
     fn get_animation_type(&self) -> CellAnimation {
         self.animation_type.clone()
     }
+
+    fn attach_target(&mut self, target_id: PlayerId) {
+        self.target_id = target_id
+    }
+
     fn get_last_drawn_pos(&self) -> Option<(u16, u16)> {
         return Some((self.last_drawn_row, self.last_drawn_col));
     }
@@ -55,6 +58,7 @@ impl AnimationTrait for TowerHitAnimation {
         if let Some((next_row, next_col)) = self.calculate_next_pos(row, col) {
             self.last_drawn_row = next_row;
             self.last_drawn_col = next_col;
+            println!("new_row: {} | next_col: {}", next_row, next_col);
 
             AnimationCommand::Draw {
                 row: next_row,

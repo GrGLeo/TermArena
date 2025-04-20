@@ -28,7 +28,7 @@ impl Champion {
             attack_damage: 10,
             attack_speed: Duration::from_millis(2500),
             health: 200,
-            armor: 5,
+            armor: 205,
         };
 
         Champion {

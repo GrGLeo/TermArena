@@ -170,6 +170,7 @@ impl GameManager {
     }
 
     pub fn game_tick(&mut self) -> HashMap<PlayerId, ClientMessage> {
+        self.tick = self.tick.saturating_add(1);
         println!("---- Game Tick -----");
         self.print_game_state();
 
@@ -256,6 +257,7 @@ impl GameManager {
         // 1. clear past frame animation
         for anim in &self.animations {
             if let Some((row, col)) = anim.get_last_drawn_pos() {
+                println!("tick: {} | anim: {:?}", self.tick, anim);
                 animation_commands_executable.push(AnimationCommand::Clear { row, col })
             }
         }
@@ -339,8 +341,11 @@ impl GameManager {
                                     todo!()
                                 }
                                 CellContent::Champion(id, _) => {
-                                    if let Some((damage, animation)) = tower.can_attack() {
-                                        Some((Target::Champion(*id), damage, animation))
+                                    if let Some((damage, mut animation)) = tower.can_attack() {
+                                        animation.attach_target(*id);
+                                        println!("tower anim: {:?}", animation);
+                                        self.animations.push(animation);
+                                        Some((Target::Champion(*id), damage))
                                     } else {
                                         None
                                     }
