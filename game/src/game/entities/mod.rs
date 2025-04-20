@@ -14,14 +14,14 @@ pub enum Target {
 
 #[derive(Debug)]
 pub struct Stats {
-    attack_damage: u8,
+    attack_damage: u16,
     attack_speed: Duration,
     pub health: u16,
-    armor: u8,
+    armor: u16,
 }
 
 pub trait Fighter {
-    fn take_damage(&mut self, damage: u8);
-    fn can_attack(&mut self) -> Option<(u8, Box<dyn AnimationTrait>)>;
+    fn take_damage(&mut self, damage: u16);
+    fn can_attack(&mut self) -> Option<(u16, Box<dyn AnimationTrait>)>;
     fn scan_range<'a>(&self, board: &'a Board) -> Option<&'a Cell>;
 }

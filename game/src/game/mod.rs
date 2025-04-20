@@ -176,7 +176,7 @@ impl GameManager {
 
         let mut updates = HashMap::new();
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
-        let mut pending_damages: Vec<(Target, u8)> = Vec::new();
+        let mut pending_damages: Vec<(Target, u16)> = Vec::new();
 
         // --- Game Logic ---
         // Player turn
@@ -360,7 +360,7 @@ impl GameManager {
                 }
             })
             .filter_map(|option| option)
-            .collect::<Vec<(Target, u8)>>();
+            .collect::<Vec<(Target, u16)>>();
 
         pending_damages.into_iter().for_each(|(target, damage)| {
             match target {

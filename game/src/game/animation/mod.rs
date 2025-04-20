@@ -5,7 +5,7 @@ use super::{cell::CellAnimation, PlayerId};
 pub mod melee;
 pub mod tower;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum AnimationCommand {
     Draw { row: u16, col: u16, animation_type: CellAnimation },
     Clear { row: u16, col: u16 },

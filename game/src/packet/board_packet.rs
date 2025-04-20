@@ -33,3 +33,41 @@ impl BoardPacket {
         buffer
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bytes::BufMut; // Import BufMut for creating expected BytesMut
+
+    #[test]
+    fn test_board_packet_new() {
+        let encoded_board_data = vec![0, 1, 1, 2, 3, 1, 1]; // Sample encoded board data
+        let expected_length = encoded_board_data.len() as u16;
+
+        let packet = BoardPacket::new(encoded_board_data.clone());
+
+        assert_eq!(packet.version, 1);
+        assert_eq!(packet.code, 9);
+        assert_eq!(packet.points, 0); // Points should be 0 as per implementation
+        assert_eq!(packet.length, expected_length);
+        assert_eq!(packet.encoded_board, encoded_board_data);
+    }
+
+    #[test]
+    fn test_board_packet_serialize() {
+        let encoded_board_data = vec![0, 1, 1, 2, 3, 1, 1]; // Sample encoded board data
+        let packet = BoardPacket::new(encoded_board_data.clone());
+
+        let serialized_buffer = packet.serialize();
+
+        // Manually construct the expected byte buffer
+        let mut expected_buffer = BytesMut::new();
+        expected_buffer.put_u8(packet.version); // 1
+        expected_buffer.put_u8(packet.code);    // 9
+        expected_buffer.put_u16(packet.points); // 0 (as BigEndian)
+        expected_buffer.put_u16(packet.length); // encoded_board_data.len() as u16 (as BigEndian)
+        expected_buffer.extend_from_slice(&packet.encoded_board); // [0, 1, 1, 2, 3, 1, 1]
+
+        assert_eq!(serialized_buffer, expected_buffer, "Serialized buffer should match expected format");
+    }
+}

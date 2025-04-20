@@ -91,3 +91,127 @@ impl From<&Cell> for EncodedCellValue {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_cell() {
+        let base = BaseTerrain::Floor;
+        let cell = Cell::new(base);
+
+        assert_eq!(cell.base, base);
+        assert!(cell.content.is_none());
+        assert!(cell.animation.is_none());
+    }
+
+    #[test]
+    fn test_is_passable() {
+        // Floor with no content should be passable
+        let floor_cell = Cell::new(BaseTerrain::Floor);
+        assert!(floor_cell.is_passable(), "Floor with no content should be passable");
+
+        // Floor with content should not be passable
+        let floor_with_content = Cell {
+            base: BaseTerrain::Floor,
+            content: Some(CellContent::Champion(1, 1)),
+            animation: None,
+        };
+        assert!(!floor_with_content.is_passable(), "Floor with content should not be passable");
+
+        // Wall should not be passable (regardless of content)
+        let wall_cell = Cell::new(BaseTerrain::Wall);
+        assert!(!wall_cell.is_passable(), "Wall should not be passable");
+
+        let wall_with_content = Cell {
+            base: BaseTerrain::Wall,
+            content: Some(CellContent::Champion(1, 1)),
+            animation: None,
+        };
+        assert!(!wall_with_content.is_passable(), "Wall with content should not be passable");
+
+
+        // Bush with no content should be passable
+        let bush_cell = Cell::new(BaseTerrain::Bush);
+        assert!(bush_cell.is_passable(), "Bush with no content should be passable");
+
+        // Bush with content should not be passable
+         let bush_with_content = Cell {
+            base: BaseTerrain::Bush,
+            content: Some(CellContent::Champion(1, 1)),
+            animation: None,
+        };
+        assert!(!bush_with_content.is_passable(), "Bush with content should not be passable");
+
+        // TowerDestroyed should not be passable (regardless of content)
+        let tower_destroyed_cell = Cell::new(BaseTerrain::TowerDestroyed);
+        assert!(!tower_destroyed_cell.is_passable(), "TowerDestroyed should not be passable");
+
+         let tower_destroyed_with_content = Cell {
+            base: BaseTerrain::TowerDestroyed,
+            content: Some(CellContent::Champion(1, 1)),
+            animation: None,
+        };
+        assert!(!tower_destroyed_with_content.is_passable(), "TowerDestroyed with content should not be passable");
+    }
+
+    #[test]
+    fn test_encoded_cell_value_from_cell() {
+        // Test cases for different cell states
+        let wall_cell = Cell::new(BaseTerrain::Wall);
+        assert_eq!(EncodedCellValue::from(&wall_cell), EncodedCellValue::Wall);
+
+        let floor_cell = Cell::new(BaseTerrain::Floor);
+        assert_eq!(EncodedCellValue::from(&floor_cell), EncodedCellValue::Floor);
+
+        let bush_cell = Cell::new(BaseTerrain::Bush);
+        assert_eq!(EncodedCellValue::from(&bush_cell), EncodedCellValue::Bush);
+
+        let tower_destroyed_cell = Cell::new(BaseTerrain::TowerDestroyed);
+        assert_eq!(EncodedCellValue::from(&tower_destroyed_cell), EncodedCellValue::TowerDestroyed);
+
+        let champion_cell = Cell {
+            base: BaseTerrain::Floor, // Base shouldn't matter when content is present
+            content: Some(CellContent::Champion(1, 1)),
+            animation: None,
+        };
+        assert_eq!(EncodedCellValue::from(&champion_cell), EncodedCellValue::Champion);
+
+         let minion_cell = Cell {
+            base: BaseTerrain::Wall, // Base shouldn't matter when content is present
+            content: Some(CellContent::Minion(1, 1)),
+            animation: None,
+        };
+        assert_eq!(EncodedCellValue::from(&minion_cell), EncodedCellValue::Minion);
+
+         let flag_cell = Cell {
+            base: BaseTerrain::Bush, // Base shouldn't matter when content is present
+            content: Some(CellContent::Flag(1, 1)),
+            animation: None,
+        };
+        assert_eq!(EncodedCellValue::from(&flag_cell), EncodedCellValue::Flag);
+
+         let tower_cell = Cell {
+            base: BaseTerrain::TowerDestroyed, // Base shouldn't matter when content is present
+            content: Some(CellContent::Tower(1, 1)),
+            animation: None,
+        };
+        assert_eq!(EncodedCellValue::from(&tower_cell), EncodedCellValue::Tower);
+
+
+        let melee_animation_cell = Cell {
+             base: BaseTerrain::Floor, // Base shouldn't matter when animation is present
+             content: Some(CellContent::Champion(1,1)), // Content shouldn't matter when animation is present
+             animation: Some(CellAnimation::MeleeHit),
+        };
+        assert_eq!(EncodedCellValue::from(&melee_animation_cell), EncodedCellValue::MeleeHitAnimation);
+
+         let tower_hit_animation_cell = Cell {
+             base: BaseTerrain::Wall, // Base shouldn't matter when animation is present
+             content: None, // Content shouldn't matter when animation is present
+             animation: Some(CellAnimation::TowerHit),
+        };
+        assert_eq!(EncodedCellValue::from(&tower_hit_animation_cell), EncodedCellValue::TowerHitAnimation);
+    }
+}
