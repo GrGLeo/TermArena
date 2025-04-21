@@ -39,7 +39,7 @@ impl Minion {
             attack_damage: 6,
             attack_speed: Duration::from_millis(2500),
             health: 40,
-            armor: 8,
+            armor: 0,
         };
 
         let (row, col, path) = match team_id {
@@ -100,6 +100,7 @@ impl Minion {
                 Some(content) => match content {
                     CellContent::Tower(id, _) => {
                         if let Some((damage, animation)) = self.can_attack() {
+                            println!("Raw damage: {}", damage);
                             new_animations.push(animation);
                             pending_damages.push((Target::Tower(*id), damage))
                         }
@@ -112,7 +113,7 @@ impl Minion {
                     }
                     CellContent::Champion(id, _) => {
                         if let Some((damage, animation)) = self.can_attack() {
-                            new_animations.push(animation);
+                            println!("Animation: {:?}", animation);
                             pending_damages.push((Target::Champion(*id), damage))
                         }
                     }

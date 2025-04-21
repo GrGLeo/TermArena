@@ -296,6 +296,8 @@ impl GameManager {
                 Some((champ.row, champ.col))
             } else if let Some(tower) = self.towers.get(&anim.get_owner_id()) {
                 Some((tower.row, tower.col))
+            } else if let Some(minion) = self.minion_manager.minions.get(&anim.get_owner_id()) {
+                Some((minion.row, minion.col))
             } else {
                 None // Owner might have been removed
             };
