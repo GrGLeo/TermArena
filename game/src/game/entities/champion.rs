@@ -6,9 +6,21 @@ use crate::game::Cell;
 use crate::game::animation::AnimationTrait;
 use crate::game::animation::melee::MeleeAnimation;
 use crate::game::cell::{CellContent, Team};
-use crate::game::{Action, Board, cell::PlayerId};
+use crate::game::{Board, cell::PlayerId};
 
 use super::{Fighter, Stats};
+
+#[derive(Debug, Clone, Copy)]
+
+pub enum Action {
+    MoveUp,
+    MoveDown,
+    MoveLeft,
+    MoveRight,
+    Action1,
+    Action2,
+    InvalidAction,
+}
 
 #[derive(Debug)]
 pub struct Champion {

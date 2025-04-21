@@ -1,10 +1,10 @@
 use std::time::{Duration, Instant};
 
-use crate::game::{cell::Team, MinionId};
+use crate::{errors::GameError, game::{animation::AnimationTrait, cell::Team, Board, MinionId}};
 
-use super::Stats;
+use super::{Fighter, Stats};
 
-enum Lane {
+pub enum Lane {
     Top,
     Mid,
     Bottom,
@@ -21,7 +21,7 @@ pub struct Minion {
 }
 
 impl Minion {
-    pub fn new(minion_id: MinionId, team_id: Team, lane: Lane, row: u16, col: u16) -> Self {
+    pub fn new(minion_id: MinionId, team_id: Team, lane: Lane) -> Self {
         let stats = Stats {
             attack_damage: 6,
             attack_speed: Duration::from_millis(2500),
@@ -29,7 +29,18 @@ impl Minion {
             armor: 8,
         };
 
-        // TODO: calculate row and bol based on team_id and Lane
+        let (row, col) = match team_id {
+            Team::Blue => match lane {
+                Lane::Top => (182, 4),
+                Lane::Mid => (175, 24),
+                Lane::Bottom => (194, 17),
+            },
+            Team::Red => match lane {
+                Lane::Top => (4, 182),
+                Lane::Mid => (24, 175),
+                Lane::Bottom => (17, 194),
+            },
+        };
 
         Self {
             minion_id,
@@ -40,5 +51,28 @@ impl Minion {
             row,
             col,
         }
+    }
+
+    fn move_minion(
+        &mut self,
+        board: &mut Board,
+        d_row: isize,
+        d_col: isize,
+    ) -> Result<(), GameError> {
+        Ok(())
+    }
+}
+
+impl Fighter for Minion {
+    fn take_damage(&mut self, damage: u16) {
+       todo!() 
+    }
+
+    fn can_attack(&mut self) -> Option<(u16, Box<dyn AnimationTrait>)> {
+        todo!()
+    }
+
+    fn scan_range<'a>(&self, board: &'a crate::game::Board) -> Option<&'a crate::game::Cell> {
+        todo!()
     }
 }

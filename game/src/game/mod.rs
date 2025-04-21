@@ -9,22 +9,12 @@ pub use board::Board;
 use bytes::BytesMut;
 use cell::Team;
 pub use cell::{BaseTerrain, Cell, CellContent, PlayerId, TowerId, MinionId};
-pub use entities::champion::Champion;
+pub use entities::champion::{Champion, Action};
 use entities::{tower::Tower, Fighter, Target};
 use tokio::sync::mpsc;
 
 use std::{collections::HashMap, usize};
 
-#[derive(Debug, Clone, Copy)]
-pub enum Action {
-    MoveUp,
-    MoveDown,
-    MoveLeft,
-    MoveRight,
-    Action1,
-    Action2,
-    InvalidAction,
-}
 
 pub type ClientMessage = BytesMut;
 
