@@ -7,6 +7,7 @@ use crate::packet::board_packet::BoardPacket;
 use animation::{AnimationCommand, AnimationTrait};
 pub use board::Board;
 use bytes::BytesMut;
+use cell::Team;
 pub use cell::{BaseTerrain, Cell, CellContent, PlayerId, TowerId, MinionId};
 pub use entities::champion::Champion;
 use entities::{tower::Tower, Fighter, Target};
@@ -54,10 +55,10 @@ impl GameManager {
         let mut towers: HashMap<TowerId, Tower> = HashMap::new();
         // Tower placement
         {
-            let tower_1 = Tower::new(1, 1, 196, 150);
+            let tower_1 = Tower::new(1, Team::Blue, 196, 150);
             tower_1.place_tower(&mut board);
             towers.insert(tower_1.tower_id, tower_1);
-            let tower_2 = Tower::new(2, 2, 150, 196);
+            let tower_2 = Tower::new(2, Team::Red, 150, 196);
             tower_2.place_tower(&mut board);
             towers.insert(tower_2.tower_id, tower_2);
         }
@@ -103,10 +104,10 @@ impl GameManager {
             {
                 let row = 199;
                 let col = 0;
-                let champion = Champion::new(player_id, 1, row, col);
+                let champion = Champion::new(player_id, Team::Blue, row, col);
                 self.champions.insert(player_id, champion);
                 self.board.place_cell(
-                    cell::CellContent::Champion(player_id, 1),
+                    cell::CellContent::Champion(player_id, Team::Red),
                     row as usize,
                     col as usize,
                 );

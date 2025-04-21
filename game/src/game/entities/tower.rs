@@ -2,17 +2,16 @@ use std::time::{Duration, Instant};
 
 use crate::game::BaseTerrain;
 use crate::game::animation::AnimationTrait;
-use crate::game::animation::melee::MeleeAnimation;
 use crate::game::animation::tower::TowerHitAnimation;
 use crate::game::board::Board;
-use crate::game::cell::{Cell, CellContent, TowerId};
+use crate::game::cell::{Cell, CellContent, Team, TowerId};
 
 use super::{Fighter, Stats};
 
 #[derive(Debug)]
 pub struct Tower {
     pub tower_id: TowerId,
-    pub team_id: u8,
+    pub team_id: Team,
     stats: Stats,
     destroyed: bool,
     last_attacked: Instant,
@@ -21,7 +20,7 @@ pub struct Tower {
 }
 
 impl Tower {
-    pub fn new(tower_id: TowerId, team_id: u8, row: u16, col: u16) -> Self {
+    pub fn new(tower_id: TowerId, team_id: Team, row: u16, col: u16) -> Self {
         let stats = Stats {
             attack_damage: 40,
             attack_speed: Duration::from_secs(3),
@@ -162,7 +161,7 @@ mod tests {
     #[test]
     fn test_new_tower() {
         let tower_id = 1;
-        let team_id = 1;
+        let team_id = Team::Red;
         let row = 10;
         let col = 20;
         let tower = Tower::new(tower_id, team_id, row, col);
@@ -184,10 +183,10 @@ mod tests {
 
     #[test]
     fn test_is_destroyed() {
-        let tower = Tower::new(1, 1, 10, 20);
+        let tower = Tower::new(1, Team::Red, 10, 20);
         assert!(!tower.is_destroyed(), "New tower should not be destroyed");
 
-        let mut destroyed_tower = Tower::new(2, 1, 10, 20);
+        let mut destroyed_tower = Tower::new(2, Team::Red, 10, 20);
         destroyed_tower.destroyed = true;
         assert!(
             destroyed_tower.is_destroyed(),
@@ -197,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_take_damage() {
-        let mut tower = Tower::new(1, 1, 10, 20);
+        let mut tower = Tower::new(1, Team::Red, 10, 20);
         let initial_health = tower.stats.health;
         let damage = 50;
         let armor = tower.stats.armor as u16;
@@ -217,7 +216,7 @@ mod tests {
         );
 
         // Test taking enough damage to be destroyed
-        let mut tower_to_destroy = Tower::new(2, 1, 10, 20);
+        let mut tower_to_destroy = Tower::new(2, Team::Red, 10, 20);
         let lethal_damage = 500; // Damage exceeding health + armor
 
         tower_to_destroy.take_damage(lethal_damage);
@@ -232,7 +231,7 @@ mod tests {
         );
 
         // Test taking damage when already at 0 health (should not go below 0)
-        let mut tower_already_destroyed = Tower::new(3, 1, 10, 20);
+        let mut tower_already_destroyed = Tower::new(3, Team::Red, 10, 20);
         tower_already_destroyed.stats.health = 0;
         tower_already_destroyed.destroyed = true;
         let additional_damage = 10;
@@ -249,7 +248,7 @@ mod tests {
         // Tower::place_tower places content in a 2x2 area starting from (row - 1, col)
         let mut board = create_dummy_board(200, 200); // Board large enough
         let tower_id = 1;
-        let team_id = 1;
+        let team_id = Team::Red;
         let row = 100; // Center row for placing
         let col = 100; // Center col for placing
 
@@ -328,7 +327,7 @@ mod tests {
         // Tower::destroy_tower clears content and changes base in a 2x2 area
         let mut board = create_dummy_board(200, 200); // Board large enough
         let tower_id = 1;
-        let team_id = 1;
+        let team_id = Team::Red;
         let row = 100; // Center row for placing
         let col = 100; // Center col for placing
 
@@ -423,7 +422,7 @@ mod tests {
         let tower_row = 10; // Center row for tower
         let tower_col = 10; // Center col for tower
         let tower_id = 1;
-        let tower_team = 1;
+        let tower_team = Team::Red;
 
         let tower = Tower::new(tower_id, tower_team, tower_row, tower_col);
         // We don't need to place the tower content for scan_range test itself
@@ -457,7 +456,7 @@ mod tests {
 
         // Case 4: Enemy tower in range (towers don't target other towers)
         let enemy_tower_id = 2;
-        let enemy_tower_team = 2;
+        let enemy_tower_team = Team::Blue;
         let enemy_tower_row = tower_row - 1;
         let enemy_tower_col = tower_col + 1;
          board.place_cell(CellContent::Tower(enemy_tower_id, enemy_tower_team), enemy_tower_row as usize, enemy_tower_col as usize);
@@ -472,11 +471,11 @@ mod tests {
         let tower_row = 10; // Center row for tower
         let tower_col = 10; // Center col for tower
         let tower_id = 1;
-        let tower_team = 1;
+        let tower_team = Team::Red;
 
         let tower = Tower::new(tower_id, tower_team, tower_row, tower_col);
 
-        let enemy_team = 2; // Different team
+        let enemy_team = Team::Blue; // Different team
 
         // Case 1: Enemy champion in range
         let enemy_champ_id = 1;
@@ -512,11 +511,11 @@ mod tests {
         let tower_row = 10; // Center row for tower
         let tower_col = 10; // Center col for tower
         let tower_id = 1;
-        let tower_team = 1;
+        let tower_team = Team::Red;
 
         let tower = Tower::new(tower_id, tower_team, tower_row, tower_col);
 
-        let enemy_team = 2; // Different team
+        let enemy_team = Team::Blue; // Different team
 
         // Place multiple enemies at different distances within the 7x9 range
         // Tower's reference point is (tower_row, tower_col).
@@ -556,11 +555,11 @@ mod tests {
         let tower_row = 10; // Center row for tower
         let tower_col = 10; // Center col for tower
         let tower_id = 1;
-        let tower_team = 1;
+        let tower_team = Team::Red;
 
         let tower = Tower::new(tower_id, tower_team, tower_row, tower_col);
 
-        let enemy_team = 2; // Different team
+        let enemy_team = Team::Blue; // Different team
 
         // Place an enemy champion just outside the 7x9 range
         // 7x9 range centered at 10,10 means rows [10-3, 10+3] = [7, 13], cols [10-4, 10+4] = [6, 14]

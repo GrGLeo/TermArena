@@ -1,9 +1,10 @@
 use std::time::Duration;
 
-use super::{animation::{melee::MeleeAnimation, AnimationTrait}, Board, Cell, MinionId, PlayerId, TowerId};
+use super::{animation::AnimationTrait, Board, Cell, MinionId, PlayerId, TowerId};
 
 pub mod champion;
 pub mod tower;
+pub mod minion;
 
 pub enum Target {
     Tower(TowerId),

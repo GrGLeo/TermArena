@@ -1,4 +1,6 @@
-use super::cell::{BaseTerrain, Cell, CellAnimation, CellContent, EncodedCellValue, TowerId};
+use crate::game::cell::Team;
+
+use super::cell::{BaseTerrain, Cell, CellAnimation, CellContent, EncodedCellValue};
 use super::entities::tower::Tower;
 use serde::Deserialize;
 use std::fs::File;
@@ -47,8 +49,8 @@ impl Board {
         };
         
         // For now we place the tower here
-        Tower::new(1, 1, 196, 150).place_tower(&mut board);  
-        Tower::new(2, 2, 150, 196).place_tower(&mut board);  
+        Tower::new(1, Team::Blue, 196, 150).place_tower(&mut board);  
+        Tower::new(2, Team::Red, 150, 196).place_tower(&mut board);  
         println!("Tower: {:?}", board.grid[196][150]);
         println!("Tower: {:?}", board.grid[196][196]);
 
@@ -181,6 +183,8 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
+    use crate::game::cell::Team;
+
     use super::*;
 
     #[test]
@@ -220,7 +224,7 @@ mod tests {
         let mut board = Board::new(5, 5);
         let row = 1;
         let col = 1;
-        let content = CellContent::Champion(1, 1);
+        let content = CellContent::Champion(1, Team::Red);
 
         // Place content
         board.place_cell(content.clone(), row, col);
@@ -279,7 +283,7 @@ mod tests {
         let old_col = 1;
         let new_row = 3;
         let new_col = 3;
-        let content = CellContent::Champion(1, 1);
+        let content = CellContent::Champion(1, Team::Red);
 
         // Place initial content
         board.place_cell(content.clone(), old_row, old_col);
@@ -375,7 +379,7 @@ mod tests {
         let mut board = Board::new(3, 4);
         board.change_base(BaseTerrain::Wall, 0, 0);
         board.change_base(BaseTerrain::Bush, 0, 1);
-        board.place_cell(CellContent::Champion(1, 1), 1, 1);
+        board.place_cell(CellContent::Champion(1, Team::Red), 1, 1);
         board.place_animation(CellAnimation::MeleeHit, 2, 3);
         board.change_base(BaseTerrain::TowerDestroyed, 2, 0);
 

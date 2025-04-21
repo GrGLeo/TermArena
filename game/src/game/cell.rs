@@ -4,6 +4,13 @@ pub type MinionId = usize;
 pub type FlagId = usize;
 pub type TowerId = usize;
 
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Team {
+    Blue,
+    Red,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BaseTerrain {
     Wall,
@@ -14,10 +21,10 @@ pub enum BaseTerrain {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CellContent {
-    Champion(PlayerId, TeamId),
-    Minion(MinionId, TeamId),
-    Flag(FlagId, TeamId),
-    Tower(TowerId, TeamId),
+    Champion(PlayerId, Team),
+    Minion(MinionId, Team),
+    Flag(FlagId, Team),
+    Tower(TowerId, Team),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -115,7 +122,7 @@ mod tests {
         // Floor with content should not be passable
         let floor_with_content = Cell {
             base: BaseTerrain::Floor,
-            content: Some(CellContent::Champion(1, 1)),
+            content: Some(CellContent::Champion(1, Team::Red)),
             animation: None,
         };
         assert!(!floor_with_content.is_passable(), "Floor with content should not be passable");
@@ -126,7 +133,7 @@ mod tests {
 
         let wall_with_content = Cell {
             base: BaseTerrain::Wall,
-            content: Some(CellContent::Champion(1, 1)),
+            content: Some(CellContent::Champion(1, Team::Red)),
             animation: None,
         };
         assert!(!wall_with_content.is_passable(), "Wall with content should not be passable");
@@ -139,7 +146,7 @@ mod tests {
         // Bush with content should not be passable
          let bush_with_content = Cell {
             base: BaseTerrain::Bush,
-            content: Some(CellContent::Champion(1, 1)),
+            content: Some(CellContent::Champion(1, Team::Red)),
             animation: None,
         };
         assert!(!bush_with_content.is_passable(), "Bush with content should not be passable");
@@ -150,7 +157,7 @@ mod tests {
 
          let tower_destroyed_with_content = Cell {
             base: BaseTerrain::TowerDestroyed,
-            content: Some(CellContent::Champion(1, 1)),
+            content: Some(CellContent::Champion(1, Team::Red)),
             animation: None,
         };
         assert!(!tower_destroyed_with_content.is_passable(), "TowerDestroyed with content should not be passable");
@@ -173,28 +180,28 @@ mod tests {
 
         let champion_cell = Cell {
             base: BaseTerrain::Floor, // Base shouldn't matter when content is present
-            content: Some(CellContent::Champion(1, 1)),
+            content: Some(CellContent::Champion(1, Team::Red)),
             animation: None,
         };
         assert_eq!(EncodedCellValue::from(&champion_cell), EncodedCellValue::Champion);
 
          let minion_cell = Cell {
             base: BaseTerrain::Wall, // Base shouldn't matter when content is present
-            content: Some(CellContent::Minion(1, 1)),
+            content: Some(CellContent::Minion(1, Team::Red)),
             animation: None,
         };
         assert_eq!(EncodedCellValue::from(&minion_cell), EncodedCellValue::Minion);
 
          let flag_cell = Cell {
             base: BaseTerrain::Bush, // Base shouldn't matter when content is present
-            content: Some(CellContent::Flag(1, 1)),
+            content: Some(CellContent::Flag(1, Team::Red)),
             animation: None,
         };
         assert_eq!(EncodedCellValue::from(&flag_cell), EncodedCellValue::Flag);
 
          let tower_cell = Cell {
             base: BaseTerrain::TowerDestroyed, // Base shouldn't matter when content is present
-            content: Some(CellContent::Tower(1, 1)),
+            content: Some(CellContent::Tower(1, Team::Red)),
             animation: None,
         };
         assert_eq!(EncodedCellValue::from(&tower_cell), EncodedCellValue::Tower);
@@ -202,7 +209,7 @@ mod tests {
 
         let melee_animation_cell = Cell {
              base: BaseTerrain::Floor, // Base shouldn't matter when animation is present
-             content: Some(CellContent::Champion(1,1)), // Content shouldn't matter when animation is present
+             content: Some(CellContent::Champion(1,Team::Red)), // Content shouldn't matter when animation is present
              animation: Some(CellAnimation::MeleeHit),
         };
         assert_eq!(EncodedCellValue::from(&melee_animation_cell), EncodedCellValue::MeleeHitAnimation);

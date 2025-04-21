@@ -5,7 +5,7 @@ use crate::errors::GameError;
 use crate::game::Cell;
 use crate::game::animation::AnimationTrait;
 use crate::game::animation::melee::MeleeAnimation;
-use crate::game::cell::CellContent;
+use crate::game::cell::{CellContent, Team};
 use crate::game::{Action, Board, cell::PlayerId};
 
 use super::{Fighter, Stats};
@@ -13,7 +13,7 @@ use super::{Fighter, Stats};
 #[derive(Debug)]
 pub struct Champion {
     pub player_id: PlayerId,
-    pub team_id: u8,
+    pub team_id: Team,
     stats: Stats,
     death_counter: u8,
     death_timer: Instant,
@@ -23,7 +23,7 @@ pub struct Champion {
 }
 
 impl Champion {
-    pub fn new(player_id: PlayerId, team_id: u8, row: u16, col: u16) -> Self {
+    pub fn new(player_id: PlayerId, team_id: Team, row: u16, col: u16) -> Self {
         let stats = Stats {
             attack_damage: 10,
             attack_speed: Duration::from_millis(2500),
@@ -189,7 +189,6 @@ mod tests {
     use super::*;
     use crate::game::BaseTerrain; // Assuming BaseTerrain is needed for Board creation
     use crate::game::Board;
-    use crate::game::cell::CellAnimation; // Import Board
 
     // Helper function to create a dummy board for tests that require one
     fn create_dummy_board(rows: usize, cols: usize) -> Board {
@@ -199,7 +198,7 @@ mod tests {
     #[test]
     fn test_new_champion() {
         let player_id = 1;
-        let team_id = 1;
+        let team_id = Team::Red;
         let row = 10;
         let col = 20;
         let champion = Champion::new(player_id, team_id, row, col);
@@ -222,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_take_damage() {
-        let mut champion = Champion::new(1, 1, 10, 20);
+        let mut champion = Champion::new(1, Team::Red, 10, 20);
         let initial_health = champion.stats.health;
         let damage = 30;
         let armor = champion.stats.armor as u16;
@@ -242,7 +241,7 @@ mod tests {
         );
 
         // Test taking enough damage to be defeated
-        let mut champion_to_defeat = Champion::new(2, 1, 10, 20);
+        let mut champion_to_defeat = Champion::new(2, Team::Red, 10, 20);
         let lethal_damage = 250; // Damage exceeding health + armor
 
         // Use a specific instant for death timer check
@@ -272,7 +271,7 @@ mod tests {
         );
 
         // Test taking damage when already at 0 health (should not go below 0)
-        let mut champion_already_defeated = Champion::new(3, 1, 10, 20);
+        let mut champion_already_defeated = Champion::new(3, Team::Red, 10, 20);
         champion_already_defeated.stats.health = 0;
         let additional_damage = 10;
 
@@ -291,9 +290,9 @@ mod tests {
         let player_id = 1;
 
         // Place the champion on the board
-        let mut champion = Champion::new(player_id, 1, initial_row, initial_col);
+        let mut champion = Champion::new(player_id, Team::Red, initial_row, initial_col);
         board.place_cell(
-            CellContent::Champion(player_id, 1),
+            CellContent::Champion(player_id, Team::Red),
             initial_row as usize,
             initial_col as usize,
         );
@@ -324,7 +323,7 @@ mod tests {
             .expect("New cell should exist");
         assert_eq!(
             new_cell_up.content,
-            Some(CellContent::Champion(player_id, 1)),
+            Some(CellContent::Champion(player_id, Team::Red)),
             "New cell should have champion content after moving up"
         );
 
@@ -335,7 +334,7 @@ mod tests {
         champion.row = initial_row;
         champion.col = initial_col;
         board.place_cell(
-            CellContent::Champion(player_id, 1),
+            CellContent::Champion(player_id, Team::Red),
             initial_row as usize,
             initial_col as usize,
         );
@@ -366,7 +365,7 @@ mod tests {
             .expect("New cell should exist");
         assert_eq!(
             new_cell_right.content,
-            Some(CellContent::Champion(player_id, 1)),
+            Some(CellContent::Champion(player_id, Team::Red)),
             "New cell should have champion content after moving right"
         );
 
@@ -378,7 +377,7 @@ mod tests {
         champion.row = initial_row;
         champion.col = initial_col;
         board.place_cell(
-            CellContent::Champion(player_id, 1),
+            CellContent::Champion(player_id, Team::Red),
             initial_row as usize,
             initial_col as usize,
         );
@@ -409,7 +408,7 @@ mod tests {
             .expect("New cell should exist");
         assert_eq!(
             new_cell_down.content,
-            Some(CellContent::Champion(player_id, 1)),
+            Some(CellContent::Champion(player_id, Team::Red)),
             "New cell should have champion content after moving down"
         );
 
@@ -420,7 +419,7 @@ mod tests {
         champion.row = initial_row;
         champion.col = initial_col;
         board.place_cell(
-            CellContent::Champion(player_id, 1),
+            CellContent::Champion(player_id, Team::Red),
             initial_row as usize,
             initial_col as usize,
         );
@@ -451,7 +450,7 @@ mod tests {
             .expect("New cell should exist");
         assert_eq!(
             new_cell_left.content,
-            Some(CellContent::Champion(player_id, 1)),
+            Some(CellContent::Champion(player_id, Team::Red)),
             "New cell should have champion content after moving left"
         );
     }
@@ -464,9 +463,9 @@ mod tests {
         let player_id = 1;
 
         // Place the champion on the board
-        let mut champion = Champion::new(player_id, 1, initial_row, initial_col);
+        let mut champion = Champion::new(player_id, Team::Red, initial_row, initial_col);
         board.place_cell(
-            CellContent::Champion(player_id, 1),
+            CellContent::Champion(player_id, Team::Red),
             initial_row as usize,
             initial_col as usize,
         );
@@ -498,7 +497,7 @@ mod tests {
             .expect("Initial cell should exist");
         assert_eq!(
             initial_cell.content,
-            Some(CellContent::Champion(player_id, 1)),
+            Some(CellContent::Champion(player_id, Team::Red)),
             "Champion should remain in the initial cell"
         );
 
@@ -506,7 +505,7 @@ mod tests {
         let content_row = initial_row;
         let content_col = initial_col + 1;
         board.place_cell(
-            CellContent::Minion(1, 2),
+            CellContent::Minion(1, Team::Blue),
             content_row as usize,
             content_col as usize,
         );
@@ -533,7 +532,7 @@ mod tests {
             .expect("Initial cell should exist");
         assert_eq!(
             initial_cell_after_fail.content,
-            Some(CellContent::Champion(player_id, 1)),
+            Some(CellContent::Champion(player_id, Team::Red)),
             "Champion should remain in the initial cell"
         );
         let target_cell_after_fail = board
@@ -541,7 +540,7 @@ mod tests {
             .expect("Target cell should exist");
         assert_eq!(
             target_cell_after_fail.content,
-            Some(CellContent::Minion(1, 2)),
+            Some(CellContent::Minion(1, Team::Blue)),
             "Content should remain in the target cell"
         );
     }
@@ -549,7 +548,7 @@ mod tests {
     #[test]
     fn test_take_action_other_actions() {
         let mut board = create_dummy_board(5, 5);
-        let mut champion = Champion::new(1, 1, 2, 2);
+        let mut champion = Champion::new(1, Team::Red, 2, 2);
 
         // Test Action1 (currently does nothing, should not error)
         let action1 = Action::Action1;
@@ -565,7 +564,7 @@ mod tests {
     #[test]
     fn test_take_action_invalid_action() {
         let mut board = create_dummy_board(5, 5);
-        let mut champion = Champion::new(1, 1, 2, 2);
+        let mut champion = Champion::new(1, Team::Red, 2, 2);
 
         // Test InvalidAction
         let invalid_action = Action::InvalidAction;
@@ -586,9 +585,9 @@ mod tests {
         let base_col = 2;
 
         // Place champion at initial position
-        let mut champion = Champion::new(player_id, 1, initial_row, initial_col);
+        let mut champion = Champion::new(player_id, Team::Red, initial_row, initial_col);
         board.place_cell(
-            CellContent::Champion(player_id, 1),
+            CellContent::Champion(player_id, Team::Red),
             initial_row as usize,
             initial_col as usize,
         );
@@ -619,7 +618,7 @@ mod tests {
             .expect("Base cell should exist");
         assert_eq!(
             base_cell.content,
-            Some(CellContent::Champion(player_id, 1)),
+            Some(CellContent::Champion(player_id, Team::Red)),
             "Base position should have champion content"
         );
     }
@@ -630,7 +629,7 @@ mod tests {
         let champion_row = 5;
         let champion_col = 5;
         let player_id = 1;
-        let champion_team = 1;
+        let champion_team = Team::Red;
 
         let champion = Champion::new(player_id, champion_team, champion_row, champion_col);
         board.place_cell(
@@ -689,7 +688,7 @@ mod tests {
         let champion_row = 5;
         let champion_col = 5;
         let player_id = 1;
-        let champion_team = 1;
+        let champion_team = Team::Red;
 
         let champion = Champion::new(player_id, champion_team, champion_row, champion_col);
         board.place_cell(
@@ -700,7 +699,7 @@ mod tests {
 
         // Place an enemy champion in range
         let enemy_id = 2;
-        let enemy_team = 2; // Different team
+        let enemy_team = Team::Blue; // Different team
         let enemy_row = champion_row + 1; // Within 3x3 range
         let enemy_col = champion_col + 1; // Within 3x3 range
         let enemy_cell_content = CellContent::Champion(enemy_id, enemy_team);
@@ -725,7 +724,7 @@ mod tests {
 
         // Check another enemy type (Tower)
         let tower_id = 1;
-        let tower_team = 2;
+        let tower_team = Team::Blue;
         let tower_row = champion_row - 1;
         let tower_col = champion_col;
         let tower_cell_content = CellContent::Tower(tower_id, tower_team);
@@ -755,7 +754,7 @@ mod tests {
         let champion_row = 5;
         let champion_col = 5;
         let player_id = 1;
-        let champion_team = 1;
+        let champion_team = Team::Red;
 
         let champion = Champion::new(player_id, champion_team, champion_row, champion_col);
         board.place_cell(
@@ -765,7 +764,7 @@ mod tests {
         );
 
         // Place multiple enemies at different distances within range
-        let enemy_team = 2;
+        let enemy_team = Team::Blue;
 
         // Closest enemy (Manhattan distance 1)
         let closest_enemy_row = champion_row;
@@ -818,7 +817,7 @@ mod tests {
         let champion_row = 5;
         let champion_col = 5;
         let player_id = 1;
-        let champion_team = 1;
+        let champion_team = Team::Red;
 
         let champion = Champion::new(player_id, champion_team, champion_row, champion_col);
         board.place_cell(
@@ -829,7 +828,7 @@ mod tests {
 
         // Place an enemy champion outside the 3x3 range
         let enemy_id = 2;
-        let enemy_team = 2; // Different team
+        let enemy_team = Team::Blue; // Different team
         let enemy_row_outside = champion_row + 2; // Outside 3x3 range (center is 1 tile away, edge is 1 tile away, 2 is outside)
         let enemy_col_outside = champion_col + 2; // Outside 3x3 range
         board.place_cell(
