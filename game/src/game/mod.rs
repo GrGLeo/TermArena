@@ -15,7 +15,7 @@ use entities::{Fighter, Target, tower::Tower};
 use minion_manager::MinionManager;
 use tokio::sync::mpsc;
 
-use std::{collections::HashMap, usize};
+use std::{collections::HashMap, time::{Duration, Instant}, usize};
 
 pub type ClientMessage = BytesMut;
 
@@ -111,6 +111,7 @@ impl GameManager {
             // We check if we can start the game and send a Start to each player
             if self.players_count == self.max_players {
                 self.game_started = true;
+                self.minion_manager.wave_creation_time = Instant::now() + Duration::from_secs(90);
             }
             Some(player_id)
         } else {
@@ -407,8 +408,10 @@ impl GameManager {
                         tower.take_damage(damage);
                     }
                 }
-                Target::Minion(_) => {
-                    todo!()
+                Target::Minion(id) => {
+                    if let Some(minion) = self.minion_manager.minions.get_mut(&id) {
+                        minion.take_damage(damage);
+                    }
                 }
                 Target::Champion(id) => {
                     if let Some(champ) = self.champions.get_mut(&id) {

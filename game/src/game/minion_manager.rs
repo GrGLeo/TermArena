@@ -1,5 +1,5 @@
 use rand::prelude::*;
-use std::collections::HashMap;
+use std::{collections::HashMap, time::{Duration, Instant}};
 use strum::IntoEnumIterator;
 
 use crate::errors::GameError;
@@ -16,31 +16,25 @@ use super::{
 
 #[derive(Debug)]
 pub struct MinionManager {
-    pub wave_creation: bool,
     minions_per_wave: u8,
     pub minions_this_wave: u8,
     pub minions: HashMap<MinionId, Minion>,
-    ticker: u64,
+    pub wave_creation_time: Instant,
 }
 
 impl MinionManager {
     pub fn new() -> Self {
         Self {
-            wave_creation: false,
             minions_per_wave: 6,
             minions_this_wave: 0,
             minions: HashMap::new(),
-            ticker: 0,
+            wave_creation_time: Instant::now(),
         }
     }
 
     pub fn make_wave(&mut self, board: &mut Board) {
-        println!("Cond  1: {}", self.ticker * 20 >= 10000);
-        println!("Cond  2: {}", (self.ticker * 20) % 30000 == 0);
-        if (self.wave_creation && self.ticker % 3 == 0)
-            || (self.ticker * 20 >= 10000 && (self.ticker * 20) % 30000 == 0)
-        {
-            self.wave_creation = true;
+        let now = Instant::now();
+        if now >= self.wave_creation_time  {
             for team in Team::iter() {
                 match team {
                     Team::Blue => {
@@ -115,8 +109,9 @@ impl MinionManager {
             }
             // Stopping wave creation
             self.minions_this_wave += 1;
+            self.wave_creation_time = Instant::now() + Duration::from_millis(40);
             if self.minions_this_wave >= self.minions_per_wave {
-                self.wave_creation = false;
+                self.wave_creation_time = Instant::now() + Duration::from_secs(30);
                 self.minions_this_wave = 0;
             }
         }
@@ -126,7 +121,6 @@ impl MinionManager {
         self.minions.iter_mut().for_each(|(_, minion)| {
             minion.movement_phase(&mut board);
         });
-        self.ticker += 1;
     }
 
     pub fn manage_minions_attack(
@@ -138,7 +132,6 @@ impl MinionManager {
         self.minions.iter_mut().for_each(|(_, minion)| {
             minion.attack_phase(&mut board, new_animations, pending_damages);
         });
-        self.ticker += 1;
     }
 }
 
