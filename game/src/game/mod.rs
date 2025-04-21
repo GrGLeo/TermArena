@@ -111,7 +111,7 @@ impl GameManager {
             // We check if we can start the game and send a Start to each player
             if self.players_count == self.max_players {
                 self.game_started = true;
-                self.minion_manager.wave_creation_time = Instant::now() + Duration::from_secs(90);
+                self.minion_manager.wave_creation_time = Instant::now() + Duration::from_secs(10);
             }
             Some(player_id)
         } else {
@@ -234,6 +234,7 @@ impl GameManager {
 
         // Adding minion damages dealt
         self.minion_manager.manage_minions_attack(&mut self.board, &mut new_animations, &mut pending_damages);
+
 
         // 3. Apply dealt damages
         let mut minion_to_clear: Vec<MinionId> = Vec::new();

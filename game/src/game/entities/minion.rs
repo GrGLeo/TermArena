@@ -94,7 +94,8 @@ impl Minion {
         new_animations: &mut Vec<Box<dyn AnimationTrait>>,
         pending_damages: &mut Vec<(Target, u16)>,
     ) {
-        if let Some(enemy) = self.get_potential_target(board, (1, 1)) {
+        if let Some(enemy) = self.get_potential_target(board, (3, 3)) {
+            println!("Minion found target in melee range: {:?}", enemy);
             match &enemy.content {
                 Some(content) => match content {
                     CellContent::Tower(id, _) => {
