@@ -113,7 +113,7 @@ impl Minion {
                     }
                     CellContent::Champion(id, _) => {
                         if let Some((damage, animation)) = self.can_attack() {
-                            println!("Animation: {:?}", animation);
+                            new_animations.push(animation);
                             pending_damages.push((Target::Champion(*id), damage))
                         }
                     }
