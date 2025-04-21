@@ -2,6 +2,7 @@ pub mod board;
 pub mod cell;
 pub mod entities;
 pub mod animation;
+pub mod minion_manager;
 
 use crate::packet::board_packet::BoardPacket;
 use animation::{AnimationCommand, AnimationTrait};
@@ -11,6 +12,7 @@ use cell::Team;
 pub use cell::{BaseTerrain, Cell, CellContent, PlayerId, TowerId, MinionId};
 pub use entities::champion::{Champion, Action};
 use entities::{tower::Tower, Fighter, Target};
+use minion_manager::MinionManager;
 use tokio::sync::mpsc;
 
 use std::{collections::HashMap, usize};
@@ -25,6 +27,7 @@ pub struct GameManager {
     player_action: HashMap<PlayerId, Action>,
     champions: HashMap<PlayerId, Champion>,
     towers: HashMap<TowerId, Tower>,
+    minions: MinionManager,
     animations: Vec<Box<dyn AnimationTrait>>,
     pub client_channel: HashMap<PlayerId, mpsc::Sender<ClientMessage>>,
     board: Board,
@@ -53,6 +56,8 @@ impl GameManager {
             towers.insert(tower_2.tower_id, tower_2);
         }
 
+        let minions = MinionManager::new();
+
         GameManager {
             players_count: 0,
             max_players: 1,
@@ -60,6 +65,7 @@ impl GameManager {
             player_action: HashMap::new(),
             champions: HashMap::new(),
             towers,
+            minions,
             animations: Vec::new(),
             client_channel: HashMap::new(),
             board,
@@ -185,7 +191,7 @@ impl GameManager {
             }
 
             // 2. auto_attack
-            if let Some(enemy) = champ.scan_range(&self.board) {
+            if let Some(enemy) = champ.get_potential_target(&self.board, (3, 3)) {
                 match &enemy.content {
                     Some(content) => {
                         println!("Got content: {:?}", content);
@@ -240,6 +246,9 @@ impl GameManager {
         // 1. Scan range
         // 2. attack closest enemy
         self.tower_turn();
+
+        self.minions.manage_minions_turn(&mut self.board);
+        self.minions.make_wave(&mut self.board);
 
         // Render animation
         let mut kept_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
@@ -324,7 +333,7 @@ impl GameManager {
         let pending_damages = self.towers
             .iter_mut()
             .map(|(_, tower)| {
-                if let Some(enemy) = tower.scan_range(&self.board) {
+                if let Some(enemy) = tower.get_potential_target(&self.board, (7, 9)) {
                     match &enemy.content {
                         Some(content) => {
                             match content {

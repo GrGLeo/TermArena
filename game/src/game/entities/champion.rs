@@ -155,9 +155,10 @@ impl Fighter for Champion {
         }
     }
 
-    fn scan_range<'a>(&self, board: &'a Board) -> Option<&'a Cell> {
+    fn get_potential_target<'a>(&self, board: &'a Board, range: (u16, u16)) -> Option<&'a Cell> {
         // range is implied here with: 3*3 square
-        let target_area = board.center_view(self.row, self.col, 3, 3);
+        let (row_range, col_range) = range;
+        let target_area = board.center_view(self.row, self.col, row_range, col_range);
         let center_row = target_area.len() / 2;
         let center_col = target_area[0].len() / 2;
 
@@ -241,8 +242,7 @@ mod tests {
         champion.take_damage(damage);
 
         // Calculate expected health after damage reduction by armor
-        let expected_health =
-            initial_health.saturating_sub(damage.saturating_sub(armor));
+        let expected_health = initial_health.saturating_sub(damage.saturating_sub(armor));
         assert_eq!(
             champion.stats.health, expected_health,
             "Health should be reduced after taking damage"
@@ -651,7 +651,7 @@ mod tests {
         );
 
         // Case 1: No other entities on the board
-        let target_none = champion.scan_range(&board);
+        let target_none = champion.get_potential_target(&board, (3, 3));
         assert!(
             target_none.is_none(),
             "scan_range should return None when no other entities are present"
@@ -666,7 +666,7 @@ mod tests {
             ally_row as usize,
             ally_col as usize,
         );
-        let target_ally = champion.scan_range(&board);
+        let target_ally = champion.get_potential_target(&board, (3, 3));
         assert!(
             target_ally.is_none(),
             "scan_range should return None when only allies are in range"
@@ -683,7 +683,7 @@ mod tests {
             flag_row as usize,
             flag_col as usize,
         );
-        let target_flag_ally = champion.scan_range(&board);
+        let target_flag_ally = champion.get_potential_target(&board, (3, 3));
         assert!(
             target_flag_ally.is_none(),
             "scan_range should return None when only allied flags are in range"
@@ -721,7 +721,7 @@ mod tests {
             enemy_col as usize,
         );
 
-        let target = champion.scan_range(&board);
+        let target = champion.get_potential_target(&board, (3, 3));
 
         assert!(
             target.is_some(),
@@ -747,7 +747,7 @@ mod tests {
             tower_col as usize,
         );
 
-        let target_tower = champion.scan_range(&board);
+        let target_tower = champion.get_potential_target(&board, (3, 3));
         assert!(
             target_tower.is_some(),
             "scan_range should return Some when an enemy tower is in range"
@@ -808,7 +808,7 @@ mod tests {
             even_further_enemy_col as usize,
         );
 
-        let target = champion.scan_range(&board);
+        let target = champion.get_potential_target(&board, (3, 3));
 
         assert!(
             target.is_some(),
@@ -849,7 +849,7 @@ mod tests {
             enemy_col_outside as usize,
         );
 
-        let target = champion.scan_range(&board);
+        let target = champion.get_potential_target(&board, (3, 3));
 
         assert!(
             target.is_none(),

@@ -109,9 +109,10 @@ impl Fighter for Tower {
         }
     }
 
-    fn scan_range<'a>(&self, board: &'a Board) -> Option<&'a Cell> {
+    fn get_potential_target<'a>(&self, board: &'a Board, range: (u16, u16)) -> Option<&'a Cell> {
         // range is implied here with: 6, 8
-        let target_area = board.center_view(self.row, self.col, 7, 9);
+        let (row_range, col_range) = range;
+        let target_area = board.center_view(self.row, self.col, row_range, col_range);
         let center_row = target_area.len() / 2;
         let center_col = target_area[0].len() / 2;
 
@@ -429,7 +430,7 @@ mod tests {
 
 
         // Case 1: No other entities on the board
-        let target_none = tower.scan_range(&board);
+        let target_none = tower.get_potential_target(&board, (7, 9));
         assert!(target_none.is_none(), "Tower scan_range should return None when no other entities are present");
 
         // Case 2: Ally champion in range
@@ -438,7 +439,7 @@ mod tests {
         let ally_row = tower_row - 2; // Within 7x9 range
         let ally_col = tower_col - 3; // Within 7x9 range
         board.place_cell(CellContent::Champion(ally_id, ally_team), ally_row as usize, ally_col as usize);
-        let target_ally_champ = tower.scan_range(&board);
+        let target_ally_champ = tower.get_potential_target(&board, (7, 9));
         assert!(target_ally_champ.is_none(), "Tower scan_range should return None when only allied champions are in range");
         board.clear_cell(ally_row as usize, ally_col as usize);
 
@@ -449,7 +450,7 @@ mod tests {
         let ally_minion_row = tower_row + 1; // Within 7x9 range
         let ally_minion_col = tower_col + 2; // Within 7x9 range
          board.place_cell(CellContent::Minion(ally_minion_id, ally_minion_team), ally_minion_row as usize, ally_minion_col as usize);
-        let target_ally_minion = tower.scan_range(&board);
+        let target_ally_minion = tower.get_potential_target(&board, (7, 9));
         assert!(target_ally_minion.is_none(), "Tower scan_range should return None when only allied minions are in range");
          board.clear_cell(ally_minion_row as usize, ally_minion_col as usize);
 
@@ -460,7 +461,7 @@ mod tests {
         let enemy_tower_row = tower_row - 1;
         let enemy_tower_col = tower_col + 1;
          board.place_cell(CellContent::Tower(enemy_tower_id, enemy_tower_team), enemy_tower_row as usize, enemy_tower_col as usize);
-        let target_enemy_tower = tower.scan_range(&board);
+        let target_enemy_tower = tower.get_potential_target(&board, (7, 9));
         assert!(target_enemy_tower.is_none(), "Tower scan_range should return None when only enemy towers are in range");
         board.clear_cell(enemy_tower_row as usize, enemy_tower_col as usize);
     }
@@ -484,7 +485,7 @@ mod tests {
         let enemy_champ_content = CellContent::Champion(enemy_champ_id, enemy_team);
         board.place_cell(enemy_champ_content.clone(), enemy_champ_row as usize, enemy_champ_col as usize);
 
-        let target_champ = tower.scan_range(&board);
+        let target_champ = tower.get_potential_target(&board, (7, 9));
         assert!(target_champ.is_some(), "Tower scan_range should return Some when an enemy champion is in range");
         let target_champ_cell = target_champ.unwrap();
         assert_eq!(target_champ_cell.content, Some(enemy_champ_content), "The returned cell should contain the enemy champion");
@@ -498,7 +499,7 @@ mod tests {
         let enemy_minion_content = CellContent::Minion(enemy_minion_id, enemy_team);
         board.place_cell(enemy_minion_content.clone(), enemy_minion_row as usize, enemy_minion_col as usize);
 
-        let target_minion = tower.scan_range(&board);
+        let target_minion = tower.get_potential_target(&board, (7, 9));
         assert!(target_minion.is_some(), "Tower scan_range should return Some when an enemy minion is in range");
         let target_minion_cell = target_minion.unwrap();
         assert_eq!(target_minion_cell.content, Some(enemy_minion_content), "The returned cell should contain the enemy minion");
@@ -541,7 +542,7 @@ mod tests {
         board.place_cell(further_enemy_content_2.clone(), further_enemy_row_2 as usize, further_enemy_col_2 as usize);
 
 
-        let target = tower.scan_range(&board);
+        let target = tower.get_potential_target(&board, (7, 9));
 
         assert!(target.is_some(), "Tower scan_range should return Some when multiple enemies are in range");
         let target_cell = target.unwrap();
@@ -569,7 +570,7 @@ mod tests {
         board.place_cell(CellContent::Champion(1, enemy_team), enemy_row_outside as usize, enemy_col_outside as usize);
 
 
-        let target = tower.scan_range(&board);
+        let target = tower.get_potential_target(&board, (7, 9));
 
         assert!(target.is_none(), "Tower scan_range should return None when enemies are outside the 7x9 range");
 
@@ -578,7 +579,7 @@ mod tests {
         let enemy_minion_col_outside = tower_col - 5; // col 5, outside range
          board.place_cell(CellContent::Minion(1, enemy_team), enemy_minion_row_outside as usize, enemy_minion_col_outside as usize);
 
-         let target_minion_outside = tower.scan_range(&board);
+         let target_minion_outside = tower.get_potential_target(&board, (7, 9));
          assert!(target_minion_outside.is_none(), "Tower scan_range should return None when enemies are outside the 7x9 range");
     }
 }

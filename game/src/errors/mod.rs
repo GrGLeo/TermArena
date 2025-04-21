@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::game::PlayerId;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum GameError {
     #[error("Player: {0} cannot move there")]
     CannotMoveHere(PlayerId),
@@ -14,4 +14,6 @@ pub enum GameError {
     PlayerIsDead,
     #[error("Invalid Animation was called")]
     InvalidAnimation,
+    #[error("Error generating ID")]
+    GenerateIdError
 }

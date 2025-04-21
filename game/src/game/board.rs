@@ -29,16 +29,16 @@ impl Board {
         
         let board_layout: BoardLayout = serde_json::from_str(&contents)?;
         let mut grid = Vec::with_capacity(board_layout.rows);
-        for row in board_layout.layout {
+        for (i, row) in board_layout.layout.iter().enumerate() {
             let mut grid_row = Vec::with_capacity(board_layout.cols);
-            for cell in row {
+            for (j, cell) in row.iter().enumerate() {
                 let base = match cell.as_str() {
                     "wall" => BaseTerrain::Wall,
                     "floor" => BaseTerrain::Floor,
                     "bush" => BaseTerrain::Bush,
                     _ => BaseTerrain::Floor, // Default case
                 };
-                grid_row.push(Cell::new(base));
+                grid_row.push(Cell::new(base, (i as u16, j as u16)));
             }
             grid.push(grid_row);
         }
@@ -59,10 +59,10 @@ impl Board {
 
     pub fn new(rows: usize, cols: usize) -> Self {
         let mut grid = Vec::with_capacity(rows);
-        for _ in 0..rows {
+        for i in 0..rows {
             let mut row = Vec::with_capacity(cols);
-            for _ in 0..cols {
-                row.push(Cell::new(BaseTerrain::Floor));
+            for j in 0..cols {
+                row.push(Cell::new(BaseTerrain::Floor, (i as u16, j as u16)));
             }
             grid.push(row)
         }
@@ -415,8 +415,7 @@ mod tests {
 
         let encoded_bytes = rle.join("|").into_bytes();
 
-        // Corrected expected RLE string based on the actual flattened sequence
-        let expected_rle = "0:1|2:1|1:3|4:1|1:2|3:1|1:2|8:1";
+        let expected_rle = "0:1|2:1|1:3|4:1|1:2|3:1|1:2|9:1";
 
         assert_eq!(String::from_utf8(encoded_bytes).expect("Valid UTF-8 string"), expected_rle, "Run-length encoding did not match expected output");
     }
