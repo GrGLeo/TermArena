@@ -1,7 +1,7 @@
+pub mod animation;
 pub mod board;
 pub mod cell;
 pub mod entities;
-pub mod animation;
 pub mod minion_manager;
 
 use crate::packet::board_packet::BoardPacket;
@@ -9,14 +9,13 @@ use animation::{AnimationCommand, AnimationTrait};
 pub use board::Board;
 use bytes::BytesMut;
 use cell::Team;
-pub use cell::{BaseTerrain, Cell, CellContent, PlayerId, TowerId, MinionId};
-pub use entities::champion::{Champion, Action};
-use entities::{tower::Tower, Fighter, Target};
+pub use cell::{BaseTerrain, Cell, CellContent, MinionId, PlayerId, TowerId};
+pub use entities::champion::{Action, Champion};
+use entities::{Fighter, Target, tower::Tower};
 use minion_manager::MinionManager;
 use tokio::sync::mpsc;
 
 use std::{collections::HashMap, usize};
-
 
 pub type ClientMessage = BytesMut;
 
@@ -27,7 +26,7 @@ pub struct GameManager {
     player_action: HashMap<PlayerId, Action>,
     champions: HashMap<PlayerId, Champion>,
     towers: HashMap<TowerId, Tower>,
-    minions: MinionManager,
+    minion_manager: MinionManager,
     animations: Vec<Box<dyn AnimationTrait>>,
     pub client_channel: HashMap<PlayerId, mpsc::Sender<ClientMessage>>,
     board: Board,
@@ -56,7 +55,7 @@ impl GameManager {
             towers.insert(tower_2.tower_id, tower_2);
         }
 
-        let minions = MinionManager::new();
+        let minion_manager = MinionManager::new();
 
         GameManager {
             players_count: 0,
@@ -65,7 +64,7 @@ impl GameManager {
             player_action: HashMap::new(),
             champions: HashMap::new(),
             towers,
-            minions,
+            minion_manager,
             animations: Vec::new(),
             client_channel: HashMap::new(),
             board,
@@ -103,7 +102,7 @@ impl GameManager {
                 let champion = Champion::new(player_id, Team::Blue, row, col);
                 self.champions.insert(player_id, champion);
                 self.board.place_cell(
-                    cell::CellContent::Champion(player_id, Team::Red),
+                    cell::CellContent::Champion(player_id, Team::Blue),
                     row as usize,
                     col as usize,
                 );
@@ -202,12 +201,15 @@ impl GameManager {
                                     pending_damages.push((Target::Tower(*id), damage))
                                 }
                             }
-                            CellContent::Minion(_, _) => {
-                                todo!()
+                            CellContent::Minion(id, _) => {
+                                if let Some((damage, animation)) = champ.can_attack() {
+                                    new_animations.push(animation);
+                                    pending_damages.push((Target::Minion(*id), damage))
+                                }
                             }
                             CellContent::Champion(id, _) => {
                                 if let Some((damage, animation)) = champ.can_attack() {
-                                    self.animations.push(animation);
+                                    new_animations.push(animation);
                                     pending_damages.push((Target::Champion(*id), damage))
                                 }
                             }
@@ -218,10 +220,26 @@ impl GameManager {
                 }
             }
         }
-        
+
+        // Minion mouvement turn
+        self.minion_manager.manage_minions_mouvements(&mut self.board);
+        self.minion_manager.make_wave(&mut self.board);
+        println!(
+            "Minions: {} | Minions per wave {} | Tick: {}",
+            self.minion_manager.minions.len(),
+            self.minion_manager.minions_this_wave,
+            self.tick,
+        );
+
+        // Adding minion damages dealt
+        self.minion_manager.manage_minions_attack(&mut self.board, &mut new_animations, &mut pending_damages);
+
         // 3. Apply dealt damages
-        pending_damages.into_iter().for_each(|(target, damage)| {
-            match target {
+        let mut minion_to_clear: Vec<MinionId> = Vec::new();
+
+        pending_damages
+            .into_iter()
+            .for_each(|(target, damage)| match target {
                 Target::Tower(id) => {
                     if let Some(tower) = self.towers.get_mut(&id) {
                         tower.take_damage(damage);
@@ -231,15 +249,26 @@ impl GameManager {
                         }
                     }
                 }
-                Target::Minion(_) => {
-                    todo!()
+                Target::Minion(id) => {
+                    if let Some(minion) = self.minion_manager.minions.get_mut(&id) {
+                        minion.take_damage(damage);
+                        if minion.is_dead() {
+                            minion_to_clear.push(id);
+                            self.board
+                                .clear_cell(minion.row as usize, minion.col as usize);
+                        }
+                    }
                 }
                 Target::Champion(id) => {
                     if let Some(champ) = self.champions.get_mut(&id) {
                         champ.take_damage(damage);
                     }
                 }
-            }
+            });
+
+        // clear dead minion
+        minion_to_clear.iter().for_each(|id| {
+            self.minion_manager.minions.remove(id);
         });
 
         // Tower turn
@@ -247,8 +276,6 @@ impl GameManager {
         // 2. attack closest enemy
         self.tower_turn();
 
-        self.minions.manage_minions_turn(&mut self.board);
-        self.minions.make_wave(&mut self.board);
 
         // Render animation
         let mut kept_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
@@ -274,8 +301,7 @@ impl GameManager {
             if let Some((owner_row, owner_col)) = owner_pos {
                 let command = anim.next_frame(owner_row, owner_col);
                 match command {
-                    AnimationCommand::Done => {
-                    }
+                    AnimationCommand::Done => {}
                     AnimationCommand::Draw { .. } => {
                         animation_commands_executable.push(command);
                         kept_animations.push(anim);
@@ -283,7 +309,7 @@ impl GameManager {
                     AnimationCommand::Clear { .. } => {
                         // This command should be handle before
                     }
-                } 
+                }
             } else {
                 // Owner is gone, animation should finish and clear in its last frame
             }
@@ -294,12 +320,17 @@ impl GameManager {
         // 3. Execute animation command
         for command in animation_commands_executable {
             match command {
-                AnimationCommand::Draw { row, col, animation_type } => {
+                AnimationCommand::Draw {
+                    row,
+                    col,
+                    animation_type,
+                } => {
                     // Add bounds check
                     if row < self.board.rows as u16 && col < self.board.cols as u16 {
-                        self.board.place_animation(animation_type, row as usize, col as usize);
+                        self.board
+                            .place_animation(animation_type, row as usize, col as usize);
                     } else {
-                         eprintln!("Animation draw position ({}, {}) out of bounds!", row, col);
+                        eprintln!("Animation draw position ({}, {}) out of bounds!", row, col);
                     }
                 }
                 AnimationCommand::Clear { row, col } => {
@@ -330,29 +361,35 @@ impl GameManager {
     }
 
     fn tower_turn(&mut self) {
-        let pending_damages = self.towers
+        let pending_damages = self
+            .towers
             .iter_mut()
             .map(|(_, tower)| {
                 if let Some(enemy) = tower.get_potential_target(&self.board, (7, 9)) {
                     match &enemy.content {
-                        Some(content) => {
-                            match content {
-                                CellContent::Minion(_, _) => {
-                                    todo!()
+                        Some(content) => match content {
+                            CellContent::Minion(id, _) => {
+                                if let Some((damage, mut animation)) = tower.can_attack() {
+                                    animation.attach_target(*id);
+                                    println!("tower anim: {:?}", animation);
+                                    self.animations.push(animation);
+                                    Some((Target::Minion(*id), damage))
+                                } else {
+                                    None
                                 }
-                                CellContent::Champion(id, _) => {
-                                    if let Some((damage, mut animation)) = tower.can_attack() {
-                                        animation.attach_target(*id);
-                                        println!("tower anim: {:?}", animation);
-                                        self.animations.push(animation);
-                                        Some((Target::Champion(*id), damage))
-                                    } else {
-                                        None
-                                    }
-                                }
-                                _ => None,
                             }
-                        }
+                            CellContent::Champion(id, _) => {
+                                if let Some((damage, mut animation)) = tower.can_attack() {
+                                    animation.attach_target(*id);
+                                    println!("tower anim: {:?}", animation);
+                                    self.animations.push(animation);
+                                    Some((Target::Champion(*id), damage))
+                                } else {
+                                    None
+                                }
+                            }
+                            _ => None,
+                        },
                         None => None,
                     }
                 } else {
@@ -362,8 +399,9 @@ impl GameManager {
             .filter_map(|option| option)
             .collect::<Vec<(Target, u16)>>();
 
-        pending_damages.into_iter().for_each(|(target, damage)| {
-            match target {
+        pending_damages
+            .into_iter()
+            .for_each(|(target, damage)| match target {
                 Target::Tower(id) => {
                     if let Some(tower) = self.towers.get_mut(&id) {
                         tower.take_damage(damage);
@@ -377,7 +415,6 @@ impl GameManager {
                         champ.take_damage(damage);
                     }
                 }
-            }
-        });
+            });
     }
 }

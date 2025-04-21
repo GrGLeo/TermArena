@@ -3,10 +3,14 @@ use strum_macros::EnumIter;
 
 use crate::{
     errors::GameError,
-    game::{animation::{melee::MeleeAnimation, AnimationTrait}, cell::Team, Board, Cell, CellContent, MinionId},
+    game::{
+        Board, Cell, CellContent, MinionId,
+        animation::{AnimationTrait, melee::MeleeAnimation},
+        cell::Team,
+    },
 };
 
-use super::{Fighter, Stats};
+use super::{Fighter, Stats, Target};
 
 type MinionPath = (u16, u16);
 
@@ -63,21 +67,59 @@ impl Minion {
         }
     }
 
+    pub fn is_dead(&self) -> bool {
+        if self.stats.health <= 0 { true } else { false }
+    }
+
     // TODO: added logic to avoid change path if blocked
     pub fn movement_phase(&mut self, board: &mut Board) -> Result<(), GameError> {
         // scan aggro range 10*10 aggro range for now
         // and move toward closest target
         if let Some(cell) = self.get_potential_target(board, (10, 10)) {
-            let ( row_target, col_target) = cell.position;
+            let (row_target, col_target) = cell.position;
             let row_step = (row_target as i16 - self.row as i16).signum() as isize;
             let col_step = (col_target as i16 - self.col as i16).signum() as isize;
-            return self.move_minion(board, row_step, col_step)
+            return self.move_minion(board, row_step, col_step);
         }
         // else simply move one step toward current goal
         let (row_goal, col_goal) = self.minion_path;
         let row_step = (row_goal as i16 - self.row as i16).signum() as isize;
         let col_step = (col_goal as i16 - self.col as i16).signum() as isize;
-        return self.move_minion(board, row_step, col_step)
+        return self.move_minion(board, row_step, col_step);
+    }
+
+    pub fn attack_phase(
+        &mut self,
+        board: &mut Board,
+        new_animations: &mut Vec<Box<dyn AnimationTrait>>,
+        pending_damages: &mut Vec<(Target, u16)>,
+    ) {
+        if let Some(enemy) = self.get_potential_target(board, (1, 1)) {
+            match &enemy.content {
+                Some(content) => match content {
+                    CellContent::Tower(id, _) => {
+                        if let Some((damage, animation)) = self.can_attack() {
+                            new_animations.push(animation);
+                            pending_damages.push((Target::Tower(*id), damage))
+                        }
+                    }
+                    CellContent::Minion(id, _) => {
+                        if let Some((damage, animation)) = self.can_attack() {
+                            new_animations.push(animation);
+                            pending_damages.push((Target::Minion(*id), damage))
+                        }
+                    }
+                    CellContent::Champion(id, _) => {
+                        if let Some((damage, animation)) = self.can_attack() {
+                            new_animations.push(animation);
+                            pending_damages.push((Target::Champion(*id), damage))
+                        }
+                    }
+                    _ => return,
+                },
+                None => return,
+            }
+        }
     }
 
     fn move_minion(
@@ -870,23 +912,39 @@ mod tests {
 
         // Case 1: Empty board
         let target_none = minion.get_potential_target(&board, scan_range);
-        assert!(target_none.is_none(), "Should return None when board is empty");
+        assert!(
+            target_none.is_none(),
+            "Should return None when board is empty"
+        );
 
         // Case 2: Only allies in range
         let ally_team = minion_team;
         let ally_row = minion_row + 1; // Within 10x10 range
         let ally_col = minion_col + 1;
-        board.place_cell(CellContent::Champion(99, ally_team), ally_row as usize, ally_col as usize);
+        board.place_cell(
+            CellContent::Champion(99, ally_team),
+            ally_row as usize,
+            ally_col as usize,
+        );
         let target_ally = minion.get_potential_target(&board, scan_range);
-        assert!(target_ally.is_none(), "Should return None when only allies are in range");
+        assert!(
+            target_ally.is_none(),
+            "Should return None when only allies are in range"
+        );
 
         // Case 3: Non-entity content or BaseTerrain in range
         board.clear_cell(ally_row as usize, ally_col as usize); // Remove ally
-        board.change_base(BaseTerrain::Wall, (minion_row + 1) as usize, minion_col as usize); // Wall in range
+        board.change_base(
+            BaseTerrain::Wall,
+            (minion_row + 1) as usize,
+            minion_col as usize,
+        ); // Wall in range
         let target_wall = minion.get_potential_target(&board, scan_range);
-        assert!(target_wall.is_none(), "Should return None when only impassable terrain is in range");
+        assert!(
+            target_wall.is_none(),
+            "Should return None when only impassable terrain is in range"
+        );
     }
-
 
     #[test]
     fn test_get_potential_target_single_enemy() {
@@ -906,45 +964,86 @@ mod tests {
         let enemy_row = minion_row + 2; // Within 10x10 range
         let enemy_col = minion_col + 3; // Within 10x10 range
         let enemy_content = CellContent::Champion(99, enemy_team);
-        board.place_cell(enemy_content.clone(), enemy_row as usize, enemy_col as usize);
+        board.place_cell(
+            enemy_content.clone(),
+            enemy_row as usize,
+            enemy_col as usize,
+        );
 
         let target_cell_option = minion.get_potential_target(&board, scan_range);
 
-        assert!(target_cell_option.is_some(), "Should return Some when an enemy is in range");
+        assert!(
+            target_cell_option.is_some(),
+            "Should return Some when an enemy is in range"
+        );
         let target_cell = target_cell_option.unwrap();
-        assert_eq!(target_cell.content, Some(enemy_content), "The returned cell should contain the enemy champion");
-         assert_eq!(target_cell.position, (enemy_row, enemy_col), "The returned cell should be at the enemy's position");
-
+        assert_eq!(
+            target_cell.content,
+            Some(enemy_content),
+            "The returned cell should contain the enemy champion"
+        );
+        assert_eq!(
+            target_cell.position,
+            (enemy_row, enemy_col),
+            "The returned cell should be at the enemy's position"
+        );
 
         // Place an enemy minion in range (clear previous enemy)
         board.clear_cell(enemy_row as usize, enemy_col as usize);
         let enemy_minion_row = minion_row - 4; // Within 10x10 range
         let enemy_minion_col = minion_col - 2; // Within 10x10 range
         let enemy_minion_content = CellContent::Minion(2, enemy_team);
-        board.place_cell(enemy_minion_content.clone(), enemy_minion_row as usize, enemy_minion_col as usize);
+        board.place_cell(
+            enemy_minion_content.clone(),
+            enemy_minion_row as usize,
+            enemy_minion_col as usize,
+        );
 
         let target_minion_cell_option = minion.get_potential_target(&board, scan_range);
-        assert!(target_minion_cell_option.is_some(), "Should return Some when an enemy minion is in range");
+        assert!(
+            target_minion_cell_option.is_some(),
+            "Should return Some when an enemy minion is in range"
+        );
         let target_minion_cell = target_minion_cell_option.unwrap();
-        assert_eq!(target_minion_cell.content, Some(enemy_minion_content), "The returned cell should contain the enemy minion");
-        assert_eq!(target_minion_cell.position, (enemy_minion_row, enemy_minion_col), "The returned cell should be at the enemy minion's position");
+        assert_eq!(
+            target_minion_cell.content,
+            Some(enemy_minion_content),
+            "The returned cell should contain the enemy minion"
+        );
+        assert_eq!(
+            target_minion_cell.position,
+            (enemy_minion_row, enemy_minion_col),
+            "The returned cell should be at the enemy minion's position"
+        );
 
-
-         // Place an enemy tower in range (clear previous enemy)
+        // Place an enemy tower in range (clear previous enemy)
         board.clear_cell(enemy_minion_row as usize, enemy_minion_col as usize);
         let enemy_tower_row = minion_row + 1; // Within 10x10 range
         let enemy_tower_col = minion_col - 3; // Within 10x10 range
         let enemy_tower_content = CellContent::Tower(1, enemy_team);
-        board.place_cell(enemy_tower_content.clone(), enemy_tower_row as usize, enemy_tower_col as usize);
+        board.place_cell(
+            enemy_tower_content.clone(),
+            enemy_tower_row as usize,
+            enemy_tower_col as usize,
+        );
 
         let target_tower_cell_option = minion.get_potential_target(&board, scan_range);
-         assert!(target_tower_cell_option.is_some(), "Should return Some when an enemy tower is in range");
+        assert!(
+            target_tower_cell_option.is_some(),
+            "Should return Some when an enemy tower is in range"
+        );
         let target_tower_cell = target_tower_cell_option.unwrap();
-        assert_eq!(target_tower_cell.content, Some(enemy_tower_content), "The returned cell should contain the enemy tower");
-        assert_eq!(target_tower_cell.position, (enemy_tower_row, enemy_tower_col), "The returned cell should be at the enemy tower's position");
-
+        assert_eq!(
+            target_tower_cell.content,
+            Some(enemy_tower_content),
+            "The returned cell should contain the enemy tower"
+        );
+        assert_eq!(
+            target_tower_cell.position,
+            (enemy_tower_row, enemy_tower_col),
+            "The returned cell should be at the enemy tower's position"
+        );
     }
-
 
     #[test]
     fn test_get_potential_target_multiple_enemies_closest() {
@@ -968,42 +1067,86 @@ mod tests {
         let closest_enemy_row = minion_row;
         let closest_enemy_col = minion_col + 1;
         let closest_enemy_content = CellContent::Champion(1, enemy_team);
-        board.place_cell(closest_enemy_content.clone(), closest_enemy_row as usize, closest_enemy_col as usize);
-        let dist_closest = manhattan_distance(minion_row, minion_col, closest_enemy_row, closest_enemy_col);
-
+        board.place_cell(
+            closest_enemy_content.clone(),
+            closest_enemy_row as usize,
+            closest_enemy_col as usize,
+        );
+        let dist_closest =
+            manhattan_distance(minion_row, minion_col, closest_enemy_row, closest_enemy_col);
 
         // Further enemy (Manhattan distance 3 from 25,25)
         let further_enemy_row_1 = minion_row + 1;
         let further_enemy_col_1 = minion_col + 2;
         let further_enemy_content_1 = CellContent::Minion(1, enemy_team);
-        board.place_cell(further_enemy_content_1.clone(), further_enemy_row_1 as usize, further_enemy_col_1 as usize);
-         let dist_further1 = manhattan_distance(minion_row, minion_col, further_enemy_row_1, further_enemy_col_1);
-
+        board.place_cell(
+            further_enemy_content_1.clone(),
+            further_enemy_row_1 as usize,
+            further_enemy_col_1 as usize,
+        );
+        let dist_further1 = manhattan_distance(
+            minion_row,
+            minion_col,
+            further_enemy_row_1,
+            further_enemy_col_1,
+        );
 
         // Even further enemy (Manhattan distance 4 from 25,25)
         let further_enemy_row_2 = minion_row - 2;
         let further_enemy_col_2 = minion_col - 2;
         let further_enemy_content_2 = CellContent::Tower(1, enemy_team);
-        board.place_cell(further_enemy_content_2.clone(), further_enemy_row_2 as usize, further_enemy_col_2 as usize);
-         let dist_further2 = manhattan_distance(minion_row, minion_col, further_enemy_row_2, further_enemy_col_2);
+        board.place_cell(
+            further_enemy_content_2.clone(),
+            further_enemy_row_2 as usize,
+            further_enemy_col_2 as usize,
+        );
+        let dist_further2 = manhattan_distance(
+            minion_row,
+            minion_col,
+            further_enemy_row_2,
+            further_enemy_col_2,
+        );
 
-        println!("Distances from minion ({},{}): Closest ({},{}) dist {}, Further1 ({},{}) dist {}, Further2 ({},{}) dist {}",
-                 minion_row, minion_col, closest_enemy_row, closest_enemy_col, dist_closest,
-                 further_enemy_row_1, further_enemy_col_1, dist_further1, further_enemy_row_2, further_enemy_col_2, dist_further2);
-        assert!(dist_closest < dist_further1 && dist_closest < dist_further2, "Closest enemy distance calculation error");
-
+        println!(
+            "Distances from minion ({},{}): Closest ({},{}) dist {}, Further1 ({},{}) dist {}, Further2 ({},{}) dist {}",
+            minion_row,
+            minion_col,
+            closest_enemy_row,
+            closest_enemy_col,
+            dist_closest,
+            further_enemy_row_1,
+            further_enemy_col_1,
+            dist_further1,
+            further_enemy_row_2,
+            further_enemy_col_2,
+            dist_further2
+        );
+        assert!(
+            dist_closest < dist_further1 && dist_closest < dist_further2,
+            "Closest enemy distance calculation error"
+        );
 
         let target_cell_option = minion.get_potential_target(&board, scan_range);
 
-        assert!(target_cell_option.is_some(), "Should return Some when multiple enemies are in range");
+        assert!(
+            target_cell_option.is_some(),
+            "Should return Some when multiple enemies are in range"
+        );
         let target_cell = target_cell_option.unwrap();
         // Verify that the returned cell contains the closest enemy
-        assert_eq!(target_cell.content, Some(closest_enemy_content), "Should return the closest enemy champion");
-        assert_eq!(target_cell.position, (closest_enemy_row, closest_enemy_col), "Should return the cell at the closest enemy's position");
+        assert_eq!(
+            target_cell.content,
+            Some(closest_enemy_content),
+            "Should return the closest enemy champion"
+        );
+        assert_eq!(
+            target_cell.position,
+            (closest_enemy_row, closest_enemy_col),
+            "Should return the cell at the closest enemy's position"
+        );
     }
 
-
-     #[test]
+    #[test]
     fn test_get_potential_target_enemy_outside_range() {
         let mut board = create_dummy_board(50, 50);
         let minion_id: MinionId = 1;
@@ -1022,18 +1165,32 @@ mod tests {
         // Place enemy at row 19 or 30, or col 19 or 30.
         let enemy_row_outside = minion_row + 5; // row 30, outside range
         let enemy_col_outside = minion_col + 1; // col 26, within range
-        board.place_cell(CellContent::Champion(99, enemy_team), enemy_row_outside as usize, enemy_col_outside as usize);
+        board.place_cell(
+            CellContent::Champion(99, enemy_team),
+            enemy_row_outside as usize,
+            enemy_col_outside as usize,
+        );
 
         let target_cell_option = minion.get_potential_target(&board, scan_range);
-        assert!(target_cell_option.is_none(), "Should return None when enemies are outside the specified range (row)");
+        assert!(
+            target_cell_option.is_none(),
+            "Should return None when enemies are outside the specified range (row)"
+        );
 
         // Place an enemy minion just outside the range
         board.clear_cell(enemy_row_outside as usize, enemy_col_outside as usize);
         let enemy_minion_row_outside = minion_row + 1; // row 26, within range
         let enemy_minion_col_outside = minion_col - 6; // col 19, outside range
-        board.place_cell(CellContent::Minion(2, enemy_team), enemy_minion_row_outside as usize, enemy_minion_col_outside as usize);
+        board.place_cell(
+            CellContent::Minion(2, enemy_team),
+            enemy_minion_row_outside as usize,
+            enemy_minion_col_outside as usize,
+        );
 
         let target_minion_cell_option = minion.get_potential_target(&board, scan_range);
-        assert!(target_minion_cell_option.is_none(), "Should return None when enemies are outside the specified range (col)");
+        assert!(
+            target_minion_cell_option.is_none(),
+            "Should return None when enemies are outside the specified range (col)"
+        );
     }
 }
