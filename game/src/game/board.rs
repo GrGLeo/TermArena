@@ -69,7 +69,7 @@ impl Board {
         Board { grid, rows, cols }
     }
 
-    pub fn get_cell(&mut self, row: usize, col: usize) -> Option<&Cell> {
+    pub fn get_cell(&self, row: usize, col: usize) -> Option<&Cell> {
         self.grid.get(row).and_then(|r| r.get(col))
     }
 

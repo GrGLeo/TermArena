@@ -3,6 +3,7 @@ pub mod board;
 pub mod cell;
 pub mod entities;
 pub mod minion_manager;
+pub mod pathfinding;
 
 use crate::packet::board_packet::BoardPacket;
 use animation::{AnimationCommand, AnimationTrait};

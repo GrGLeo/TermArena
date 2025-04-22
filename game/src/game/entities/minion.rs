@@ -71,7 +71,7 @@ impl Minion {
         if self.stats.health <= 0 { true } else { false }
     }
 
-    // TODO: added logic to avoid change path if blocked
+    // TODO: added logic to change path if blocked
     pub fn movement_phase(&mut self, board: &mut Board) -> Result<(), GameError> {
         // scan aggro range 10*10 aggro range for now
         // and move toward closest target
