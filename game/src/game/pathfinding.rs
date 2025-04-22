@@ -1,5 +1,5 @@
 use super::Board;
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 
 pub fn get_valid_neighbors(board: &Board, row: u16, col: u16) -> Vec<(u16, u16)> {
     let mut valid_neighbors: Vec<(u16, u16)> = Vec::new();
@@ -24,6 +24,14 @@ pub fn calculate_heuristic(row: u16, col: u16, goal_row: u16, goal_col: u16) -> 
     (row.abs_diff(goal_row)).max(col.abs_diff(goal_col))
 }
 
+pub fn is_adjacent_to_goal(pos: (u16, u16), goal: (u16, u16)) -> bool {
+        let (r1, c1) = pos;
+        let (r2, c2) = goal;
+        let dr = (r1 as i16 - r2 as i16).abs();
+        let dc = (c1 as i16 - c2 as i16).abs();
+        (dr <= 1 && dc <= 1) && (dr > 0 || dc > 0)
+    }
+
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub struct PathNode {
     position: (u16, u16),
@@ -46,11 +54,159 @@ impl PartialOrd for PathNode {
     }
 }
 
-fn find_path_on_board(
+
+
+pub fn find_path_on_board(
     board: &Board,
     start: (u16, u16),
     goal: (u16, u16),
-) -> Option<Vec<(u16, u16)>> {
+) -> Option<VecDeque<(u16, u16)>> {
+    println!("--- find_path_on_board called ---");
+    println!("Start position: ({},{}) Goal position: ({},{})", start.0, start.1, goal.0, goal.1); 
+
+    let mut open_set: BinaryHeap<PathNode> = BinaryHeap::new();
+    let mut closed_set: HashSet<(u16, u16)> = HashSet::new(); // Changed to closed_set for clarity
+    let mut g_costs: HashMap<(u16, u16), u16> = HashMap::new();
+    let mut parents: HashMap<(u16, u16), (u16, u16)> = HashMap::new();
+
+    let start_node_g_cost = 0;
+    let start_node_h_cost = calculate_heuristic(start.0, start.1, goal.0, goal.1);
+    let start_node_f_cost = start_node_g_cost + start_node_h_cost; // Correct f-cost calculation
+
+    let start_node = PathNode {
+        position: start,
+        g_cost: start_node_g_cost,
+        h_cost: start_node_h_cost,
+        f_cost: start_node_f_cost,
+    };
+
+    open_set.push(start_node);
+    g_costs.insert(start, start_node_g_cost);
+
+    let mut counter = 0; // Counter for loop iterations
+
+    while let Some(current_node) = open_set.pop() {
+        counter += 1;
+        println!("Loop Iteration: {}", counter);
+        println!("  Popped node: Pos=({},{}), g={}, h={}, f={}",
+                 current_node.position.0, current_node.position.1,
+                 current_node.g_cost, current_node.h_cost, current_node.f_cost);
+
+
+        // Optional but recommended check: If we already processed a better path to this node, skip this older entry
+        if closed_set.contains(&current_node.position) {
+            println!("  Node is already in closed set. Skipping.");
+             continue;
+         }
+
+
+        // Check if Goal Reached
+        if is_adjacent_to_goal(current_node.position, goal) {
+            println!("  Goal reached!");
+            // --- Path Reconstruction Logic ---
+            let mut path = VecDeque::new();
+            let mut current_pos = current_node.position;
+            while current_pos != start {
+                println!("Current pos: {:?}, Parents: {:?}", current_pos, parents);
+                path.push_front(current_pos);
+                current_pos = *parents.get(&current_pos).expect("Path reconstruction error: missing parent");
+            }
+            path.push_front(start); // Add the start node
+
+
+            println!("--- Path found in {} iterations ---", counter);
+            println!("Path: {:?}", path);
+            return Some(path); // Return the successfully found path
+        }
+
+        // If not Goal, move current node to Closed Set
+        closed_set.insert(current_node.position); // Use insert for HashSet
+
+        // Explore Neighbors
+        let neighbors_pos = get_valid_neighbors(board, current_node.position.0, current_node.position.1);
+
+        println!("  Exploring {} neighbors:", neighbors_pos.len());
+        for neighbor_pos in neighbors_pos {
+            println!("    Processing neighbor: Pos=({},{})", neighbor_pos.0, neighbor_pos.1);
+
+            // If neighbor is in the Closed Set, ignore it
+            if closed_set.contains(&neighbor_pos) {
+                println!("      Neighbor is in closed set. Skipping.");
+                continue;
+            }
+
+            // Calculate tentative g-cost to reach this neighbor through the current node
+            let tentative_g_cost = current_node.g_cost + 1; // Assuming cost of 1 for each step
+
+            // Use entry() to handle both insertion and update efficiently (Alternative to match)
+            // Or continue with your match structure, ensuring correct logic.
+            match g_costs.get(&neighbor_pos) {
+                Some(existing_g_cost) => {
+                     // If a better path is found to an already visited node
+                    println!("      Neighbor already visited. Existing g={}", existing_g_cost);
+                    if tentative_g_cost < *existing_g_cost {
+                        println!("      Found better path. Updating costs and parent.");
+                        println!("      Parents: {:?}", parents);
+                        parents.insert(neighbor_pos, current_node.position);
+                        g_costs.insert(neighbor_pos, tentative_g_cost); // Use tentative_g_cost
+
+                        let neighbor_h_cost = calculate_heuristic(neighbor_pos.0, neighbor_pos.1, goal.0, goal.1);
+                        let neighbor_f_cost = tentative_g_cost + neighbor_h_cost; // Use tentative_g_cost
+                        println!("      New costs: g={}, h={}, f={}", tentative_g_cost, neighbor_h_cost, neighbor_f_cost);
+
+                        let neighbor_node = PathNode {
+                            position: neighbor_pos,
+                            g_cost: tentative_g_cost, // Use tentative_g_cost
+                            h_cost: neighbor_h_cost,
+                            f_cost: neighbor_f_cost
+                        };
+                        open_set.push(neighbor_node);
+                         println!("      Pushed updated node to open set.");
+                    } else {
+                         println!("      Existing path is better or equal. Not updating.");
+                    }
+                }
+                None => {
+                    // If this is the first time we've reached this neighbor
+                    println!("      Neighbor is new. Adding to open set.");
+                    println!("      Parents: {:?}", parents);
+                    parents.insert(neighbor_pos, current_node.position);
+                    g_costs.insert(neighbor_pos, tentative_g_cost);
+
+                    let neighbor_h_cost = calculate_heuristic(neighbor_pos.0, neighbor_pos.1, goal.0, goal.1);
+                    let neighbor_f_cost = tentative_g_cost + neighbor_h_cost;
+                    println!("      New costs: g={}, h={}, f={}", tentative_g_cost, neighbor_h_cost, neighbor_f_cost);
+
+                    let neighbor_node = PathNode {
+                        position: neighbor_pos,
+                        g_cost: tentative_g_cost,
+                        h_cost: neighbor_h_cost,
+                        f_cost: neighbor_f_cost
+                    };
+                    open_set.push(neighbor_node);
+                    println!("      Pushed new node to open set.");
+                }
+            }
+        }
+    }
+
+    // If the loop finishes without returning (open_set is empty), no path was found
+    println!("--- Open set is empty. No path found in {} iterations ---", counter);
+    None // Return None if no path is found
+}
+
+
+
+
+
+/*
+pub fn find_path_on_board(
+    board: &Board,
+    start: (u16, u16),
+    goal: (u16, u16),
+) -> Option<VecDeque<(u16, u16)>> {
+    println!("I got called");
+    println!("Start position: {},{} Goal position: {},{}", start.0, start.1, goal.0, goal.1); 
     let mut open_set: BinaryHeap<PathNode> = BinaryHeap::new();
     let mut close_set: HashSet<(u16, u16)> = HashSet::new();
     let mut g_costs: HashMap<(u16, u16), u16> = HashMap::new();
@@ -69,19 +225,21 @@ fn find_path_on_board(
 
     open_set.push(start_node);
     g_costs.insert(start, start_node_g_cost);
+    let mut counter = 0;
     while let Some(current_node) = open_set.pop() {
+        counter += 1;
+        println!("depth of loop: {}", counter);
         if close_set.contains(&current_node.position) {
             continue;
         }
         if current_node.position == goal {
-            let mut path = Vec::new();
+            let mut path = VecDeque::new();
             let mut current_pos = goal;
             while current_pos != start {
-                path.push(current_pos);
+                path.push_front(current_pos);
                 current_pos = *parents.get(&current_pos).expect("Path reconstruction error: missing parent")
             }
-            path.push(start);
-            path.reverse();
+            path.push_front(start);
             return Some(path)
         } else {
             close_set.insert(current_node.position);
@@ -93,7 +251,6 @@ fn find_path_on_board(
                     match g_costs.get(&neighbor_pos) {
                         Some(existing_g_cost) => {
                             if tentative_g_cost < *existing_g_cost {
-                                println!("    Found better path. Updating costs and parent.");
                                 parents.insert(neighbor_pos, current_node.position);
                                 g_costs.insert(neighbor_pos, tentative_g_cost);
                                 let neighbor_h_cost = calculate_heuristic(neighbor_pos.0, neighbor_pos.1, goal.0, goal.1);
@@ -127,10 +284,12 @@ fn find_path_on_board(
     }
     None
 }
+*/
 
 #[cfg(test)]
 mod pathfinding_tests {
     // You might want to name this module appropriately
+
 
     use super::*;
     use crate::game::board::Board;
@@ -295,16 +454,16 @@ mod pathfinding_tests {
         let goal = (8, 8);
 
         // A direct diagonal path should be found
-        let expected_path = Some(vec![
-            (1, 1),
-            (2, 2),
-            (3, 3),
-            (4, 4),
-            (5, 5),
-            (6, 6),
-            (7, 7),
-            (8, 8),
-        ]);
+        let mut expected_path: VecDeque<(u16, u16)> = VecDeque::new();
+        expected_path.push_back((1, 1));
+        expected_path.push_back((2, 2));
+        expected_path.push_back((3, 3));
+        expected_path.push_back((4, 4));
+        expected_path.push_back((5, 5));
+        expected_path.push_back((6, 6));
+        expected_path.push_back((7, 7));
+        expected_path.push_back((8, 8));
+        let expected_path = Some(expected_path);
 
         let actual_path = find_path_on_board(&board, start, goal);
 
@@ -338,12 +497,12 @@ mod pathfinding_tests {
 
         // Basic validation: check if the path starts and ends correctly and avoids the obstacle.
         assert_eq!(
-            actual_path.first().copied(),
+            actual_path.front().copied(),
             Some(start),
             "Path should start at the start node."
         );
         assert_eq!(
-            actual_path.last().copied(),
+            actual_path.back().copied(),
             Some(goal),
             "Path should end at the goal node."
         );
@@ -382,12 +541,12 @@ mod pathfinding_tests {
 
         // Basic validation: check if the path starts and ends correctly and avoids the entity's cell.
         assert_eq!(
-            actual_path.first().copied(),
+            actual_path.front().copied(),
             Some(start),
             "Path should start at the start node."
         );
         assert_eq!(
-            actual_path.last().copied(),
+            actual_path.back().copied(),
             Some(goal),
             "Path should end at the goal node."
         );
@@ -452,12 +611,12 @@ mod pathfinding_tests {
 
         // Basic validation: check if the path starts and ends correctly and avoids the wall cells
         assert_eq!(
-            actual_path.first().copied(),
+            actual_path.front().copied(),
             Some(start),
             "Path should start at the start node."
         );
         assert_eq!(
-            actual_path.last().copied(),
+            actual_path.back().copied(),
             Some(goal),
             "Path should end at the goal node."
         );

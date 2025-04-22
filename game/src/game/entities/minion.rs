@@ -1,12 +1,10 @@
-use std::time::{Duration, Instant};
+use std::{collections::VecDeque, time::{Duration, Instant}};
 use strum_macros::EnumIter;
 
 use crate::{
     errors::GameError,
     game::{
-        Board, Cell, CellContent, MinionId,
-        animation::{AnimationTrait, melee::MeleeAnimation},
-        cell::Team,
+        animation::{melee::MeleeAnimation, AnimationTrait}, cell::Team, pathfinding::{find_path_on_board, is_adjacent_to_goal}, Board, Cell, CellContent, MinionId
     },
 };
 
@@ -26,6 +24,7 @@ pub struct Minion {
     pub minion_id: MinionId,
     pub team_id: Team,
     lane: Lane,
+    path: Option<VecDeque<(u16, u16)>>,
     stats: Stats,
     minion_path: MinionPath,
     last_attacked: Instant,
@@ -59,6 +58,7 @@ impl Minion {
             minion_id,
             team_id,
             lane,
+            path: None,
             stats,
             minion_path: path,
             last_attacked: Instant::now(),
@@ -71,21 +71,51 @@ impl Minion {
         if self.stats.health <= 0 { true } else { false }
     }
 
-    // TODO: added logic to change path if blocked
     pub fn movement_phase(&mut self, board: &mut Board) -> Result<(), GameError> {
+        if let Some(mut path) = self.path.take() {
+            if let Some(next_step) = path.pop_front() {
+                let row_step = (next_step.0 as i16 - self.row as i16).signum() as isize;
+                let col_step = (next_step.1 as i16 - self.col as i16).signum() as isize;
+                match self.move_minion(board, row_step, col_step) {
+                    Ok(_) => {
+                        if !path.is_empty() {
+                            self.path = Some(path);
+                        }
+                        return Ok(())
+                    }
+                    Err(_) => {
+                        self.path = None
+                    }
+                }
+            } else {
+                self.path = None;
+            }
+        } 
         // scan aggro range 10*10 aggro range for now
         // and move toward closest target
-        if let Some(cell) = self.get_potential_target(board, (10, 10)) {
-            let (row_target, col_target) = cell.position;
-            let row_step = (row_target as i16 - self.row as i16).signum() as isize;
-            let col_step = (col_target as i16 - self.col as i16).signum() as isize;
-            return self.move_minion(board, row_step, col_step);
+        let target_pos = if let Some(cell) = self.get_potential_target(board, (10, 10)) {
+            cell.position
+        } else {
+            self.minion_path
+        };
+        // If already adjacent to the cell we don't need to move
+        if is_adjacent_to_goal((self.row, self.col), target_pos) {
+            return Ok(())
         }
         // else simply move one step toward current goal
-        let (row_goal, col_goal) = self.minion_path;
-        let row_step = (row_goal as i16 - self.row as i16).signum() as isize;
-        let col_step = (col_goal as i16 - self.col as i16).signum() as isize;
-        return self.move_minion(board, row_step, col_step);
+        let row_step = (target_pos.0 as i16 - self.row as i16).signum() as isize;
+        let col_step = (target_pos.1 as i16 - self.col as i16).signum() as isize;
+        match  self.move_minion(board, row_step, col_step) {
+            Ok(_) => return Ok(()),
+            Err(_) => {
+                if let Some(calculated_path) = find_path_on_board(board, (self.row, self.col), target_pos) {
+                    self.path = Some(calculated_path);
+                    return Ok(())
+                } else {
+                    return Err(GameError::CannotMoveHere(self.minion_id))
+                }
+            }
+        }
     }
 
     pub fn attack_phase(
