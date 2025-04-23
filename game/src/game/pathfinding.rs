@@ -25,12 +25,12 @@ pub fn calculate_heuristic(row: u16, col: u16, goal_row: u16, goal_col: u16) -> 
 }
 
 pub fn is_adjacent_to_goal(pos: (u16, u16), goal: (u16, u16)) -> bool {
-        let (r1, c1) = pos;
-        let (r2, c2) = goal;
-        let dr = (r1 as i16 - r2 as i16).abs();
-        let dc = (c1 as i16 - c2 as i16).abs();
-        (dr <= 1 && dc <= 1) && (dr > 0 || dc > 0)
-    }
+    let (r1, c1) = pos;
+    let (r2, c2) = goal;
+    let dr = (r1 as i16 - r2 as i16).abs();
+    let dc = (c1 as i16 - c2 as i16).abs();
+    (dr <= 1 && dc <= 1) && (dr > 0 || dc > 0)
+}
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub struct PathNode {
@@ -42,7 +42,8 @@ pub struct PathNode {
 
 impl Ord for PathNode {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.f_cost
+        other
+            .f_cost
             .cmp(&self.f_cost)
             .then_with(|| self.g_cost.cmp(&other.g_cost))
     }
@@ -54,24 +55,30 @@ impl PartialOrd for PathNode {
     }
 }
 
-
-
 pub fn find_path_on_board(
     board: &Board,
     start: (u16, u16),
     goal: (u16, u16),
 ) -> Option<VecDeque<(u16, u16)>> {
-    println!("--- find_path_on_board called ---");
-    println!("Start position: ({},{}) Goal position: ({},{})", start.0, start.1, goal.0, goal.1); 
+    if start == goal {
+        let mut path = VecDeque::new();
+        path.push_front(start);
+        return Some(path);
+    }
+    if is_adjacent_to_goal(start, goal) {
+        let mut path = VecDeque::new();
+        path.push_front(start);
+        return Some(path);
+    }
 
     let mut open_set: BinaryHeap<PathNode> = BinaryHeap::new();
-    let mut closed_set: HashSet<(u16, u16)> = HashSet::new(); // Changed to closed_set for clarity
+    let mut closed_set: HashSet<(u16, u16)> = HashSet::new();
     let mut g_costs: HashMap<(u16, u16), u16> = HashMap::new();
     let mut parents: HashMap<(u16, u16), (u16, u16)> = HashMap::new();
 
     let start_node_g_cost = 0;
     let start_node_h_cost = calculate_heuristic(start.0, start.1, goal.0, goal.1);
-    let start_node_f_cost = start_node_g_cost + start_node_h_cost; // Correct f-cost calculation
+    let start_node_f_cost = start_node_g_cost + start_node_h_cost;
 
     let start_node = PathNode {
         position: start,
@@ -83,213 +90,85 @@ pub fn find_path_on_board(
     open_set.push(start_node);
     g_costs.insert(start, start_node_g_cost);
 
-    let mut counter = 0; // Counter for loop iterations
 
     while let Some(current_node) = open_set.pop() {
-        counter += 1;
-        println!("Loop Iteration: {}", counter);
-        println!("  Popped node: Pos=({},{}), g={}, h={}, f={}",
-                 current_node.position.0, current_node.position.1,
-                 current_node.g_cost, current_node.h_cost, current_node.f_cost);
 
-
-        // Optional but recommended check: If we already processed a better path to this node, skip this older entry
         if closed_set.contains(&current_node.position) {
-            println!("  Node is already in closed set. Skipping.");
-             continue;
-         }
+            continue;
+        }
 
-
-        // Check if Goal Reached
         if is_adjacent_to_goal(current_node.position, goal) {
-            println!("  Goal reached!");
-            // --- Path Reconstruction Logic ---
             let mut path = VecDeque::new();
             let mut current_pos = current_node.position;
             while current_pos != start {
-                println!("Current pos: {:?}, Parents: {:?}", current_pos, parents);
                 path.push_front(current_pos);
-                current_pos = *parents.get(&current_pos).expect("Path reconstruction error: missing parent");
+                current_pos = *parents
+                    .get(&current_pos)
+                    .expect("Path reconstruction error: missing parent");
             }
-            path.push_front(start); // Add the start node
 
-
-            println!("--- Path found in {} iterations ---", counter);
-            println!("Path: {:?}", path);
-            return Some(path); // Return the successfully found path
+            return Some(path);
         }
 
-        // If not Goal, move current node to Closed Set
-        closed_set.insert(current_node.position); // Use insert for HashSet
+        closed_set.insert(current_node.position);
 
-        // Explore Neighbors
-        let neighbors_pos = get_valid_neighbors(board, current_node.position.0, current_node.position.1);
+        let neighbors_pos =
+            get_valid_neighbors(board, current_node.position.0, current_node.position.1);
 
-        println!("  Exploring {} neighbors:", neighbors_pos.len());
         for neighbor_pos in neighbors_pos {
-            println!("    Processing neighbor: Pos=({},{})", neighbor_pos.0, neighbor_pos.1);
 
-            // If neighbor is in the Closed Set, ignore it
             if closed_set.contains(&neighbor_pos) {
-                println!("      Neighbor is in closed set. Skipping.");
                 continue;
             }
 
-            // Calculate tentative g-cost to reach this neighbor through the current node
-            let tentative_g_cost = current_node.g_cost + 1; // Assuming cost of 1 for each step
+            let tentative_g_cost = current_node.g_cost + 1;
 
-            // Use entry() to handle both insertion and update efficiently (Alternative to match)
-            // Or continue with your match structure, ensuring correct logic.
             match g_costs.get(&neighbor_pos) {
                 Some(existing_g_cost) => {
-                     // If a better path is found to an already visited node
-                    println!("      Neighbor already visited. Existing g={}", existing_g_cost);
                     if tentative_g_cost < *existing_g_cost {
-                        println!("      Found better path. Updating costs and parent.");
-                        println!("      Parents: {:?}", parents);
                         parents.insert(neighbor_pos, current_node.position);
-                        g_costs.insert(neighbor_pos, tentative_g_cost); // Use tentative_g_cost
+                        g_costs.insert(neighbor_pos, tentative_g_cost);
 
-                        let neighbor_h_cost = calculate_heuristic(neighbor_pos.0, neighbor_pos.1, goal.0, goal.1);
-                        let neighbor_f_cost = tentative_g_cost + neighbor_h_cost; // Use tentative_g_cost
-                        println!("      New costs: g={}, h={}, f={}", tentative_g_cost, neighbor_h_cost, neighbor_f_cost);
+                        let neighbor_h_cost =
+                            calculate_heuristic(neighbor_pos.0, neighbor_pos.1, goal.0, goal.1);
+                        let neighbor_f_cost = tentative_g_cost + neighbor_h_cost;
 
                         let neighbor_node = PathNode {
                             position: neighbor_pos,
-                            g_cost: tentative_g_cost, // Use tentative_g_cost
+                            g_cost: tentative_g_cost,
                             h_cost: neighbor_h_cost,
-                            f_cost: neighbor_f_cost
+                            f_cost: neighbor_f_cost,
                         };
                         open_set.push(neighbor_node);
-                         println!("      Pushed updated node to open set.");
                     } else {
-                         println!("      Existing path is better or equal. Not updating.");
                     }
                 }
                 None => {
-                    // If this is the first time we've reached this neighbor
-                    println!("      Neighbor is new. Adding to open set.");
-                    println!("      Parents: {:?}", parents);
                     parents.insert(neighbor_pos, current_node.position);
                     g_costs.insert(neighbor_pos, tentative_g_cost);
 
-                    let neighbor_h_cost = calculate_heuristic(neighbor_pos.0, neighbor_pos.1, goal.0, goal.1);
+                    let neighbor_h_cost =
+                        calculate_heuristic(neighbor_pos.0, neighbor_pos.1, goal.0, goal.1);
                     let neighbor_f_cost = tentative_g_cost + neighbor_h_cost;
-                    println!("      New costs: g={}, h={}, f={}", tentative_g_cost, neighbor_h_cost, neighbor_f_cost);
 
                     let neighbor_node = PathNode {
                         position: neighbor_pos,
                         g_cost: tentative_g_cost,
                         h_cost: neighbor_h_cost,
-                        f_cost: neighbor_f_cost
+                        f_cost: neighbor_f_cost,
                     };
                     open_set.push(neighbor_node);
-                    println!("      Pushed new node to open set.");
                 }
             }
         }
     }
 
-    // If the loop finishes without returning (open_set is empty), no path was found
-    println!("--- Open set is empty. No path found in {} iterations ---", counter);
-    None // Return None if no path is found
-}
-
-
-
-
-
-/*
-pub fn find_path_on_board(
-    board: &Board,
-    start: (u16, u16),
-    goal: (u16, u16),
-) -> Option<VecDeque<(u16, u16)>> {
-    println!("I got called");
-    println!("Start position: {},{} Goal position: {},{}", start.0, start.1, goal.0, goal.1); 
-    let mut open_set: BinaryHeap<PathNode> = BinaryHeap::new();
-    let mut close_set: HashSet<(u16, u16)> = HashSet::new();
-    let mut g_costs: HashMap<(u16, u16), u16> = HashMap::new();
-    let mut parents: HashMap<(u16, u16), (u16, u16)> = HashMap::new();
-
-    let start_node_g_cost = 0;
-    let start_node_h_cost = calculate_heuristic(start.0, start.1, goal.0, goal.1);
-    let start_node_f_cost = start_node_h_cost;
-
-    let start_node = PathNode {
-        position: start,
-        g_cost: start_node_g_cost,
-        h_cost: start_node_h_cost,
-        f_cost: start_node_f_cost,
-    };
-
-    open_set.push(start_node);
-    g_costs.insert(start, start_node_g_cost);
-    let mut counter = 0;
-    while let Some(current_node) = open_set.pop() {
-        counter += 1;
-        println!("depth of loop: {}", counter);
-        if close_set.contains(&current_node.position) {
-            continue;
-        }
-        if current_node.position == goal {
-            let mut path = VecDeque::new();
-            let mut current_pos = goal;
-            while current_pos != start {
-                path.push_front(current_pos);
-                current_pos = *parents.get(&current_pos).expect("Path reconstruction error: missing parent")
-            }
-            path.push_front(start);
-            return Some(path)
-        } else {
-            close_set.insert(current_node.position);
-            let neighbors_pos =
-                get_valid_neighbors(board, current_node.position.0, current_node.position.1);
-            for neighbor_pos in neighbors_pos {
-                if !close_set.contains(&neighbor_pos) {
-                    let tentative_g_cost = current_node.g_cost + 1;
-                    match g_costs.get(&neighbor_pos) {
-                        Some(existing_g_cost) => {
-                            if tentative_g_cost < *existing_g_cost {
-                                parents.insert(neighbor_pos, current_node.position);
-                                g_costs.insert(neighbor_pos, tentative_g_cost);
-                                let neighbor_h_cost = calculate_heuristic(neighbor_pos.0, neighbor_pos.1, goal.0, goal.1);
-                                let neighbor_f_cost = tentative_g_cost + neighbor_h_cost;
-                                let child_node = PathNode {
-                                    position: neighbor_pos,
-                                    g_cost: tentative_g_cost,
-                                    h_cost: neighbor_h_cost,
-                                    f_cost: neighbor_f_cost,
-                                };
-                                open_set.push(child_node);
-                            }
-                        }
-                        None => {
-                            parents.insert(neighbor_pos, current_node.position);
-                            g_costs.insert(neighbor_pos, tentative_g_cost);
-                            let neighbor_h_cost = calculate_heuristic(neighbor_pos.0, neighbor_pos.1, goal.0, goal.1);
-                            let neighbor_f_cost = tentative_g_cost + neighbor_h_cost;
-                            let child_node = PathNode {
-                                position: neighbor_pos,
-                                g_cost: tentative_g_cost,
-                                h_cost: neighbor_h_cost,
-                                f_cost: neighbor_f_cost,
-                            };
-                            open_set.push(child_node);
-                        }
-                    }
-                }
-            }
-        }
-    }
     None
 }
-*/
 
 #[cfg(test)]
 mod pathfinding_tests {
     // You might want to name this module appropriately
-
 
     use super::*;
     use crate::game::board::Board;
@@ -455,14 +334,12 @@ mod pathfinding_tests {
 
         // A direct diagonal path should be found
         let mut expected_path: VecDeque<(u16, u16)> = VecDeque::new();
-        expected_path.push_back((1, 1));
         expected_path.push_back((2, 2));
         expected_path.push_back((3, 3));
         expected_path.push_back((4, 4));
         expected_path.push_back((5, 5));
         expected_path.push_back((6, 6));
         expected_path.push_back((7, 7));
-        expected_path.push_back((8, 8));
         let expected_path = Some(expected_path);
 
         let actual_path = find_path_on_board(&board, start, goal);
@@ -495,15 +372,9 @@ mod pathfinding_tests {
         let actual_path = actual_path_option.unwrap();
         println!("Path found around obstacle: {:?}", actual_path); // Print path to help debugging
 
-        // Basic validation: check if the path starts and ends correctly and avoids the obstacle.
-        assert_eq!(
-            actual_path.front().copied(),
-            Some(start),
-            "Path should start at the start node."
-        );
-        assert_eq!(
-            actual_path.back().copied(),
-            Some(goal),
+        let end_path = actual_path.back().copied().unwrap();
+        assert!(
+            is_adjacent_to_goal(end_path, goal),
             "Path should end at the goal node."
         );
         assert!(
@@ -515,8 +386,8 @@ mod pathfinding_tests {
         // For this specific case with Diagonal Distance heuristic and cost 1, the shortest path is 4 moves (5 nodes).
         assert_eq!(
             actual_path.len(),
-            3,
-            "Path around obstacle should have the optimal length (5 nodes)."
+            1,
+            "Path around obstacle should have the optimal length (2 nodes)."
         );
     }
 
@@ -539,15 +410,9 @@ mod pathfinding_tests {
         let actual_path = actual_path_option.unwrap();
         println!("Path found around entity: {:?}", actual_path); // Print path to help debugging
 
-        // Basic validation: check if the path starts and ends correctly and avoids the entity's cell.
-        assert_eq!(
-            actual_path.front().copied(),
-            Some(start),
-            "Path should start at the start node."
-        );
-        assert_eq!(
-            actual_path.back().copied(),
-            Some(goal),
+        let end_path = actual_path.back().copied().unwrap();
+        assert!(
+            is_adjacent_to_goal(end_path, goal),
             "Path should end at the goal node."
         );
         assert!(
@@ -558,8 +423,8 @@ mod pathfinding_tests {
         // Check optimal path length (should be the same as around a wall in this scenario)
         assert_eq!(
             actual_path.len(),
-            3,
-            "Path around entity should have the optimal length (5 nodes)."
+            1,
+            "Path around entity should have the optimal length (2 nodes)."
         );
     }
 
@@ -609,29 +474,261 @@ mod pathfinding_tests {
         let actual_path = actual_path_option.unwrap();
         println!("Path found around wall (Board): {:?}", actual_path);
 
-        // Basic validation: check if the path starts and ends correctly and avoids the wall cells
-        assert_eq!(
-            actual_path.front().copied(),
-            Some(start),
-            "Path should start at the start node."
-        );
-        assert_eq!(
-            actual_path.back().copied(),
-            Some(goal),
+        let end_path = actual_path.back().copied().unwrap();
+        assert!(
+            is_adjacent_to_goal(end_path, goal),
             "Path should end at the goal node."
         );
         for r in 1..10 {
             assert!(
                 !actual_path.contains(&(r, 5)),
-                "{}", &format!("Path should not include the wall cell ({}, 5).", r)
+                "{}",
+                &format!("Path should not include the wall cell ({}, 5).", r)
             );
         }
 
         // Check if the path length is optimal (11 nodes for 10 moves with Diagonal Distance cost 1)
         assert_eq!(
             actual_path.len(),
-            11,
+            9,
             "Path around wall should have the optimal length (4 nodes)."
         );
+    }
+
+    #[test]
+    fn test_two_minions_pathfinding_to_same_goal() {
+        let board = Board::new(10, 10); // A simple 10x10 board
+
+        let minion1_start = (2, 5);
+        let minion2_start = (1, 5);
+        let goal = (6, 5);
+
+        // Minion 1 pathfinding
+        let path1_option = find_path_on_board(&board, minion1_start, goal);
+
+        // Assert that a path was found for minion 1
+        assert!(
+            path1_option.is_some(),
+            "Minion 1 should find a path to the goal's adjacent cell."
+        );
+        let path1 = path1_option.unwrap();
+
+        // Assert that the path ends adjacent to the goal
+        assert!(
+            path1
+                .back()
+                .copied()
+                .map_or(false, |pos| is_adjacent_to_goal(pos, goal)),
+            "Minion 1 path should end at a cell adjacent to the goal."
+        );
+
+        println!("Minion 1 Path: {:?}", path1); // Print path for debugging
+
+        // Minion 2 pathfinding
+        let path2_option = find_path_on_board(&board, minion2_start, goal);
+
+        // Assert that a path was found for minion 2
+        assert!(
+            path2_option.is_some(),
+            "Minion 2 should find a path to the goal's adjacent cell."
+        );
+        let path2 = path2_option.unwrap();
+
+        // Assert that the path ends adjacent to the goal
+        assert!(
+            path2
+                .back()
+                .copied()
+                .map_or(false, |pos| is_adjacent_to_goal(pos, goal)),
+            "Minion 2 path should end at a cell adjacent to the goal."
+        );
+
+        println!("Minion 2 Path: {:?}", path2); // Print path for debugging
+
+        assert_eq!(
+            path1.len(),
+            3,
+            "Minion 1 path should have the optimal length."
+        );
+        assert_eq!(
+            path2.len(),
+            4,
+            "Minion 2 path should have the optimal length."
+        );
+    }
+
+    #[test]
+    fn test_eight_minions_dynamic_pathfinding_to_same_goal() {
+        let mut board = Board::new(10, 10); // A simple 10x10 board
+
+        // Define minions with their current position and an optional path
+        struct TestMinion {
+            id: u32, // Simple ID for tracking
+            position: (u16, u16),
+            path: Option<VecDeque<(u16, u16)>>,
+            reached_goal_adjacent: bool,
+        }
+
+        let goal = (7, 6); // The common goal position
+
+        // Starting positions for the 8 minions
+        let minion_starts = vec![
+            (0, 5), (1, 4), (1, 5), (1, 6), (2, 5), (3, 4), (3, 5), (3, 6)
+        ];
+
+        // Create the test minions and place them on the board initially
+        let mut minions: Vec<TestMinion> = minion_starts.into_iter().enumerate().map(|(i, pos)| {
+            // Place a dummy minion content on the board for pathfinding to see it as occupied
+            board.place_cell(CellContent::Minion(i, Team::Blue), pos.0 as usize, pos.1 as usize);
+            TestMinion {
+                id: i as u32,
+                position: pos,
+                path: None,
+                reached_goal_adjacent: false,
+            }
+        }).collect();
+
+        let max_ticks = 50; // Prevent infinite loops in case of issues
+        let mut all_reached = false;
+
+        println!("--- Starting Dynamic Pathfinding Simulation ---");
+
+        for tick in 0..max_ticks {
+            println!("--- Tick {} ---", tick);
+            all_reached = true; // Assume all will reach this tick
+
+            // Shuffle minions to avoid favoring those processed first
+            use rand::seq::SliceRandom;
+            use rand::rng;
+            minions.shuffle(&mut rng());
+
+
+            for minion in &mut minions {
+                if minion.reached_goal_adjacent {
+                    continue; // This minion is done
+                }
+
+                all_reached = false; // At least one minion is not done
+
+                // If the minion doesn't have a path, find one
+                if minion.path.is_none() {
+                    println!(" Minion {} at {:?} needs a path.", minion.id, minion.position);
+                    minion.path = find_path_on_board(&board, minion.position, goal);
+
+                    // If pathfinding failed, this minion is stuck for now
+                    if minion.path.is_none() {
+                        println!(" Minion {} at {:?} could not find a path.", minion.id, minion.position);
+                        continue;
+                    }
+                }
+
+                // If the minion has a path, attempt to move along it
+                if let Some(path) = &mut minion.path {
+                    if let Some(next_step) = path.front().copied() { // Peek at the next step
+                         println!(" Minion {} at {:?} attempting to move to {:?}.", minion.id, minion.position, next_step);
+
+                        // Check if the next step is passable *before* attempting the move
+                        if board.get_cell(next_step.0 as usize, next_step.1 as usize).map_or(false, |cell| cell.is_passable()) {
+                            // Attempt to move the minion: Clear old cell, update position, place on new cell
+                            board.clear_cell(minion.position.0 as usize, minion.position.1 as usize);
+                            minion.position = next_step;
+                            // Place dummy minion content on the new cell
+                             board.place_cell(CellContent::Minion(minion.id.try_into().unwrap(), Team::Blue), minion.position.0 as usize, minion.position.1 as usize);
+
+                            path.pop_front(); // Remove the step from the path since move was successful
+                             println!(" Minion {} successfully moved to {:?}. Path steps left: {}", minion.id, minion.position, path.len());
+
+
+                            // Check if the minion has reached a cell adjacent to the goal after moving
+                            if is_adjacent_to_goal(minion.position, goal) {
+                                minion.reached_goal_adjacent = true;
+                                minion.path = None; // Clear path once adjacent
+                                println!(" Minion {} reached goal adjacent position {:?}.", minion.id, minion.position);
+                            } else if path.is_empty() {
+                                // Reached the end of a path but not adjacent to goal (shouldn't happen with correct A*)
+                                println!(" Minion {} reached end of path but not adjacent to goal.", minion.id);
+                                minion.path = None; // Clear path
+                            }
+
+                        } else {
+                            // Next step in path is blocked (dynamic obstacle moved there)
+                            println!(" Minion {}'s next step {:?} is blocked. Clearing path.", minion.id, next_step);
+                            minion.path = None; // Clear path, will recalculate next tick
+                        }
+                    } else {
+                        // Path was empty, clear it (should be handled by initial check, but good fallback)
+                        minion.path = None;
+                         println!(" Minion {}'s path was empty. Clearing path.", minion.id);
+                    }
+                }
+            }
+
+            // If all minions have reached goal adjacent, stop simulation
+            if all_reached {
+                println!("--- All minions reached goal adjacent positions. Simulation complete. ---");
+                break;
+            }
+
+            // Optional: Add a delay here if you were visualizing
+            // std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+
+
+        // --- Assertions after simulation ---
+
+        // Collect all final positions of the minions that reached goal adjacent
+        let mut final_positions = HashSet::new();
+        let mut reached_count = 0;
+
+        for minion in &minions {
+            if minion.reached_goal_adjacent {
+                reached_count += 1;
+                final_positions.insert(minion.position);
+
+                // Assert that the final position is indeed adjacent to the goal
+                 assert!(is_adjacent_to_goal(minion.position, goal),
+                         "Minion {} final position {:?} should be adjacent to the goal {:?}.",
+                         minion.id, minion.position, goal);
+            }
+        }
+
+        println!("Minions reached goal adjacent: {}/{}", reached_count, minions.len());
+        println!("Final adjacent positions: {:?}", final_positions);
+
+        // Assert that all minions reached a goal adjacent cell
+        assert_eq!(
+            reached_count,
+            minions.len(),
+            "All minions should reach a cell adjacent to the goal."
+        );
+
+        // Assert that all final positions are unique (no two minions occupy the same cell)
+        assert_eq!(
+            final_positions.len(),
+            minions.len(),
+            "All minions should occupy unique cells adjacent to the goal."
+        );
+
+        // Optional: Assert that the set of final positions covers all 8 adjacent cells if 8 minions are used
+        // and the goal is not near the board edge.
+         if minions.len() == 8 {
+             let expected_adjacent_cells: HashSet<(u16, u16)> = vec![
+                 (goal.0 - 1, goal.1 - 1), (goal.0 - 1, goal.1), (goal.0 - 1, goal.1 + 1),
+                 (goal.0, goal.1 - 1), /* (goal.0, goal.1), */ (goal.0, goal.1 + 1),
+                 (goal.0 + 1, goal.1 - 1), (goal.0 + 1, goal.1), (goal.0 + 1, goal.1 + 1),
+             ].into_iter().collect();
+
+             // Filter expected cells to be within board bounds if necessary
+             let bounded_expected_adjacent_cells: HashSet<(u16, u16)> = expected_adjacent_cells.into_iter()
+                 .filter(|&(r, c)| usize::from(r) < board.rows && usize::from(c) < board.cols)
+                 .collect();
+
+             assert_eq!(
+                 final_positions,
+                 bounded_expected_adjacent_cells,
+                 "The final positions should cover all valid adjacent cells around the goal."
+             );
+         }
+
     }
 }
