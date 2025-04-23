@@ -8,7 +8,7 @@ use crate::game::animation::melee::MeleeAnimation;
 use crate::game::cell::{CellContent, Team};
 use crate::game::{Board, cell::PlayerId};
 
-use super::{Fighter, Stats};
+use super::{reduced_damage, Fighter, Stats};
 
 #[derive(Debug, Clone, Copy)]
 
@@ -37,7 +37,7 @@ pub struct Champion {
 impl Champion {
     pub fn new(player_id: PlayerId, team_id: Team, row: u16, col: u16) -> Self {
         let stats = Stats {
-            attack_damage: 10,
+            attack_damage: 20,
             attack_speed: Duration::from_millis(2500),
             health: 200,
             armor: 5,
@@ -135,7 +135,7 @@ impl Champion {
 
 impl Fighter for Champion {
     fn take_damage(&mut self, damage: u16) {
-        let reduced_damage = damage.saturating_sub(self.stats.armor);
+        let reduced_damage = reduced_damage(damage, self.stats.armor);
         self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
         // Check if champion get killed
         if self.stats.health == 0 {
@@ -221,7 +221,7 @@ mod tests {
         assert_eq!(champion.row, row);
         assert_eq!(champion.col, col);
         // Check initial stats (assuming default values from new())
-        assert_eq!(champion.stats.attack_damage, 10);
+        assert_eq!(champion.stats.attack_damage, 20);
         assert_eq!(champion.stats.health, 200);
         assert_eq!(champion.stats.armor, 5);
         assert_eq!(champion.death_counter, 0);
@@ -242,7 +242,8 @@ mod tests {
         champion.take_damage(damage);
 
         // Calculate expected health after damage reduction by armor
-        let expected_health = initial_health.saturating_sub(damage.saturating_sub(armor));
+        let reduced_damage = reduced_damage(damage, armor);
+        let expected_health = initial_health.saturating_sub(reduced_damage);
         assert_eq!(
             champion.stats.health, expected_health,
             "Health should be reduced after taking damage"

@@ -26,3 +26,10 @@ pub trait Fighter {
     fn can_attack(&mut self) -> Option<(u16, Box<dyn AnimationTrait>)>;
     fn get_potential_target<'a>(&self, board: &'a Board, range: (u16, u16)) -> Option<&'a Cell>;
 }
+
+pub fn reduced_damage(damage: u16, armor: u16) -> u16 {
+    damage / (1 + (armor / 100))
+}
+
+
+

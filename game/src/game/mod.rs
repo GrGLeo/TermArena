@@ -12,11 +12,11 @@ use bytes::BytesMut;
 use cell::Team;
 pub use cell::{BaseTerrain, Cell, CellContent, MinionId, PlayerId, TowerId};
 pub use entities::champion::{Action, Champion};
-use entities::{Fighter, Target, tower::Tower};
+use entities::{tower::{generate_tower_id, Tower}, Fighter, Target};
 use minion_manager::MinionManager;
 use tokio::sync::mpsc;
 
-use std::{collections::HashMap, time::{Duration, Instant}, usize};
+use std::{collections::HashMap, time::{Duration, Instant}, usize, vec};
 
 pub type ClientMessage = BytesMut;
 
@@ -48,12 +48,23 @@ impl GameManager {
         let mut towers: HashMap<TowerId, Tower> = HashMap::new();
         // Tower placement
         {
+            //                  t1   bot      top      mid     t2 bot        top      mid
+            let placement = vec![(196, 150), (39, 7),(115, 82), (191, 79), (120,8), (148, 67)];
+            // Bottom t1 
+            placement.into_iter().for_each(|place| {
+                let id = generate_tower_id().unwrap();
+                let tower_blue = Tower::new(id, Team::Blue, place.0, place.1);  
+                tower_blue.place_tower(&mut board);
+                let id = generate_tower_id().unwrap();
+                let tower_red = Tower::new(id, Team::Red, place.1, place.0);  
+                tower_red.place_tower(&mut board);
+                towers.insert(tower_blue.tower_id, tower_blue);
+                towers.insert(tower_red.tower_id, tower_red);
+            });
             let tower_1 = Tower::new(1, Team::Blue, 196, 150);
             tower_1.place_tower(&mut board);
-            towers.insert(tower_1.tower_id, tower_1);
             let tower_2 = Tower::new(2, Team::Red, 150, 196);
             tower_2.place_tower(&mut board);
-            towers.insert(tower_2.tower_id, tower_2);
         }
 
         let minion_manager = MinionManager::new();

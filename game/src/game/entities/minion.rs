@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-use super::{Fighter, Stats, Target};
+use super::{reduced_damage, Fighter, Stats, Target};
 
 type MinionPath = (u16, u16);
 
@@ -32,7 +32,9 @@ pub struct Minion {
     lane: Lane,
     path: Option<VecDeque<(u16, u16)>>,
     stats: Stats,
-    minion_path: MinionPath,
+    current_path: MinionPath,
+    minion_path: Vec<MinionPath>,
+    checkpoint: usize,
     last_attacked: Instant,
     pub row: u16,
     pub col: u16,
@@ -47,18 +49,19 @@ impl Minion {
             armor: 0,
         };
 
-        let (row, col, path) = match team_id {
+        let (row, col, paths) = match team_id {
             Team::Blue => match lane {
-                Lane::Top => (184, 10, (10, 10)),
-                Lane::Mid => (184, 17, (100, 100)),
-                Lane::Bottom => (191, 17, (191, 191)),
+                Lane::Top => (184, 10, vec![(120, 8), (39,7), (7, 39), (8, 120), (10, 184)]),
+                Lane::Mid => (184, 17, vec![(148, 67), (115, 82), (82, 115), (67, 148), (17, 184)]),
+                Lane::Bottom => (191, 17, vec![(191, 79), (196, 150), (150, 196), (79, 191), (17, 191)]),
             },
             Team::Red => match lane {
-                Lane::Top => (10, 184, (10, 10)),
-                Lane::Mid => (17, 184, (100, 100)),
-                Lane::Bottom => (17, 191, (191, 191)),
+                Lane::Top => (10, 184, vec![(8, 120), (7, 39), (39, 7), (120, 8), (184, 10)]),
+                Lane::Mid => (17, 184, vec![(67, 148), (82, 115), (115, 82), (148, 67), (184, 17)]),
+                Lane::Bottom => (17, 191, vec![(79, 191), (150, 196), (196, 150), (191, 79), (191, 17)]),
             },
         };
+        let path = paths[0];
 
         Self {
             minion_id,
@@ -66,7 +69,9 @@ impl Minion {
             lane,
             path: None,
             stats,
-            minion_path: path,
+            current_path: path,
+            minion_path: paths,
+            checkpoint: 0,
             last_attacked: Instant::now(),
             row,
             col,
@@ -74,17 +79,10 @@ impl Minion {
     }
 
     fn change_goal(&mut self) {
-        self.minion_path = match self.team_id {
-            Team::Blue => match self.lane {
-                Lane::Top => (10, 184),
-                Lane::Mid =>  (17, 184),
-                Lane::Bottom => (17, 191),
-            },
-            Team::Red => match self.lane {
-                Lane::Top => (184, 10),
-                Lane::Mid => (184, 17),
-                Lane::Bottom => (191, 17),
-            },
+        if !self.checkpoint >= self.minion_path.len() {
+            self.checkpoint += 1;
+            self.current_path = self.minion_path[self.checkpoint as usize];
+
         }
     }
 
@@ -93,7 +91,7 @@ impl Minion {
     }
 
     pub fn movement_phase(&mut self, board: &mut Board) -> Result<(), GameError> {
-        if is_adjacent_to_goal((self.row, self.col), self.minion_path) {
+        if is_adjacent_to_goal((self.row, self.col), self.current_path) {
             self.change_goal();
         }
         if let Some(mut path) = self.path.take() {
@@ -118,7 +116,7 @@ impl Minion {
         let target_pos = if let Some(cell) = self.get_potential_target(board, (10, 10)) {
             cell.position
         } else {
-            self.minion_path
+            self.current_path
         };
         // If already adjacent to the cell we don't need to move
         if is_adjacent_to_goal((self.row, self.col), target_pos) {
@@ -222,7 +220,7 @@ impl Minion {
 
 impl Fighter for Minion {
     fn take_damage(&mut self, damage: u16) {
-        let reduced_damage = damage.saturating_sub(self.stats.armor);
+        let reduced_damage = reduced_damage(damage, self.stats.armor);
         self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
     }
 
@@ -326,7 +324,7 @@ mod tests {
         assert_eq!(blue_top_minion.stats.health, stats.health); // Check a few stats fields
         assert_eq!(blue_top_minion.row, 184);
         assert_eq!(blue_top_minion.col, 10);
-        assert_eq!(blue_top_minion.minion_path, (10, 10));
+        assert_eq!(blue_top_minion.current_path, (120, 8));
 
         // Test Red Team Minions
         let red_top_minion = Minion::new(minion_id, Team::Red, Lane::Top);
@@ -336,7 +334,7 @@ mod tests {
         assert_eq!(red_top_minion.stats.health, stats.health);
         assert_eq!(red_top_minion.row, 10);
         assert_eq!(red_top_minion.col, 184);
-        assert_eq!(red_top_minion.minion_path, (10, 10));
+        assert_eq!(red_top_minion.current_path, (8, 120));
     }
 
     #[test]
@@ -499,18 +497,34 @@ mod tests {
     }
     
     #[test]
-    fn test_minion_change_goal() {
+    fn test_minion_change_first_goal() {
         let minion_id: MinionId = 1;
         let team_id = Team::Blue;
-        let initial_row = 10;
-        let initial_col = 10;
+        let initial_row = 191;
+        let initial_col = 179;
 
         let mut minion = Minion::new(minion_id, team_id, Lane::Bottom);
         minion.row = initial_row;
         minion.col = initial_col;
         minion.change_goal();
-        let expected_minion_path = (17, 191);
-        assert_eq!(minion.minion_path, expected_minion_path, "Incorrect goal was set")
+        let expected_minion_path = (196, 150);
+        assert_eq!(minion.current_path, expected_minion_path, "Incorrect goal was set")
+    }
+
+    #[test]
+    fn test_minion_change_later_goal() {
+        let minion_id: MinionId = 1;
+        let team_id = Team::Red;
+        let initial_row = 39;
+        let initial_col = 7;
+
+        let mut minion = Minion::new(minion_id, team_id, Lane::Top);
+        minion.checkpoint = 2;
+        minion.row = initial_row;
+        minion.col = initial_col;
+        minion.change_goal();
+        let expected_minion_path = (120, 8);
+        assert_eq!(minion.current_path, expected_minion_path, "Incorrect goal was set")
     }
 
     #[test]
@@ -762,7 +776,7 @@ mod tests {
         let mut minion1 = Minion::new(minion_id, team_id, Lane::Mid);
         minion1.row = initial_row1;
         minion1.col = initial_col1;
-        minion1.minion_path = (goal_row1, goal_col1); // Set the goal
+        minion1.current_path = (goal_row1, goal_col1); // Set the goal
         board1.place_cell(
             minion_content.clone(),
             initial_row1 as usize,
@@ -821,7 +835,7 @@ mod tests {
         let mut minion2 = Minion::new(minion_id, team_id, Lane::Mid);
         minion2.row = initial_row2;
         minion2.col = initial_col2;
-        minion2.minion_path = (goal_row2, goal_col2); // Set the goal
+        minion2.current_path = (goal_row2, goal_col2); // Set the goal
         board2.place_cell(
             minion_content.clone(),
             initial_row2 as usize,
@@ -880,7 +894,7 @@ mod tests {
         let mut minion3 = Minion::new(minion_id, team_id, Lane::Mid);
         minion3.row = initial_row3;
         minion3.col = initial_col3;
-        minion3.minion_path = (goal_row3, goal_col3); // Set the goal
+        minion3.current_path = (goal_row3, goal_col3); // Set the goal
         board3.place_cell(
             minion_content.clone(),
             initial_row3 as usize,

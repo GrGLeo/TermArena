@@ -1,5 +1,9 @@
 use std::time::{Duration, Instant};
 
+use rand::seq::IndexedRandom;
+
+use crate::errors::GameError;
+use crate::game::entities::reduced_damage;
 use crate::game::BaseTerrain;
 use crate::game::animation::AnimationTrait;
 use crate::game::animation::tower::TowerHitAnimation;
@@ -88,7 +92,7 @@ impl Tower {
 
 impl Fighter for Tower {
     fn take_damage(&mut self, damage: u16) {
-        let reduced_damage = damage.saturating_sub(self.stats.armor);
+        let reduced_damage = reduced_damage(damage, self.stats.armor);
         self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
         println!("Tower health: {}", self.stats.health);
         if self.stats.health == 0 {
@@ -149,6 +153,16 @@ impl Fighter for Tower {
     }
 }
 
+pub fn generate_tower_id() -> Result<TowerId, GameError> {
+    let mut rng = rand::rng();
+    let nums: Vec<usize> = (1..99999).collect();
+    if let Some(id) = nums.choose(&mut rng) {
+        Ok(*id)
+    } else {
+        Err(GameError::GenerateIdError)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,7 +219,7 @@ mod tests {
         tower.take_damage(damage);
 
         // Calculate expected health after damage reduction by armor
-        let reduced_damage = damage.saturating_sub(armor);
+        let reduced_damage = reduced_damage(damage, armor);
         let expected_health = initial_health.saturating_sub(reduced_damage);
         assert_eq!(
             tower.stats.health, expected_health,
