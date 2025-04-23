@@ -60,6 +60,7 @@ pub fn find_path_on_board(
     start: (u16, u16),
     goal: (u16, u16),
 ) -> Option<VecDeque<(u16, u16)>> {
+    const MAX_DEPTH: usize = 100;
     if start == goal {
         let mut path = VecDeque::new();
         path.push_front(start);
@@ -97,7 +98,7 @@ pub fn find_path_on_board(
             continue;
         }
 
-        if is_adjacent_to_goal(current_node.position, goal) {
+        if is_adjacent_to_goal(current_node.position, goal) || parents.len() >= MAX_DEPTH {
             let mut path = VecDeque::new();
             let mut current_pos = current_node.position;
             while current_pos != start {

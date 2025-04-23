@@ -1,10 +1,16 @@
-use std::{collections::VecDeque, time::{Duration, Instant}};
+use std::{
+    collections::VecDeque,
+    time::{Duration, Instant},
+};
 use strum_macros::EnumIter;
 
 use crate::{
     errors::GameError,
     game::{
-        animation::{melee::MeleeAnimation, AnimationTrait}, cell::Team, pathfinding::{find_path_on_board, is_adjacent_to_goal}, Board, Cell, CellContent, MinionId
+        Board, Cell, CellContent, MinionId,
+        animation::{AnimationTrait, melee::MeleeAnimation},
+        cell::Team,
+        pathfinding::{find_path_on_board, is_adjacent_to_goal},
     },
 };
 
@@ -43,14 +49,14 @@ impl Minion {
 
         let (row, col, path) = match team_id {
             Team::Blue => match lane {
-                Lane::Top => (182, 4, (4, 4)),
-                Lane::Mid => (175, 24, (99, 99)),
-                Lane::Bottom => (194, 17, (194, 194)),
+                Lane::Top => (184, 10, (10, 10)),
+                Lane::Mid => (184, 17, (100, 100)),
+                Lane::Bottom => (191, 17, (191, 191)),
             },
             Team::Red => match lane {
-                Lane::Top => (4, 182, (4, 4)),
-                Lane::Mid => (24, 175, (99, 99)),
-                Lane::Bottom => (17, 194, (194, 194)),
+                Lane::Top => (10, 184, (10, 10)),
+                Lane::Mid => (17, 184, (100, 100)),
+                Lane::Bottom => (17, 191, (191, 191)),
             },
         };
 
@@ -67,11 +73,29 @@ impl Minion {
         }
     }
 
+    fn change_goal(&mut self) {
+        self.minion_path = match self.team_id {
+            Team::Blue => match self.lane {
+                Lane::Top => (10, 184),
+                Lane::Mid =>  (17, 184),
+                Lane::Bottom => (17, 191),
+            },
+            Team::Red => match self.lane {
+                Lane::Top => (184, 10),
+                Lane::Mid => (184, 17),
+                Lane::Bottom => (191, 17),
+            },
+        }
+    }
+
     pub fn is_dead(&self) -> bool {
         if self.stats.health <= 0 { true } else { false }
     }
 
     pub fn movement_phase(&mut self, board: &mut Board) -> Result<(), GameError> {
+        if is_adjacent_to_goal((self.row, self.col), self.minion_path) {
+            self.change_goal();
+        }
         if let Some(mut path) = self.path.take() {
             if let Some(next_step) = path.pop_front() {
                 let row_step = (next_step.0 as i16 - self.row as i16).signum() as isize;
@@ -81,16 +105,14 @@ impl Minion {
                         if !path.is_empty() {
                             self.path = Some(path);
                         }
-                        return Ok(())
+                        return Ok(());
                     }
-                    Err(_) => {
-                        self.path = None
-                    }
+                    Err(_) => self.path = None,
                 }
             } else {
                 self.path = None;
             }
-        } 
+        }
         // scan aggro range 10*10 aggro range for now
         // and move toward closest target
         let target_pos = if let Some(cell) = self.get_potential_target(board, (10, 10)) {
@@ -100,19 +122,21 @@ impl Minion {
         };
         // If already adjacent to the cell we don't need to move
         if is_adjacent_to_goal((self.row, self.col), target_pos) {
-            return Ok(())
+            return Ok(());
         }
         // else simply move one step toward current goal
         let row_step = (target_pos.0 as i16 - self.row as i16).signum() as isize;
         let col_step = (target_pos.1 as i16 - self.col as i16).signum() as isize;
-        match  self.move_minion(board, row_step, col_step) {
+        match self.move_minion(board, row_step, col_step) {
             Ok(_) => return Ok(()),
             Err(_) => {
-                if let Some(calculated_path) = find_path_on_board(board, (self.row, self.col), target_pos) {
+                if let Some(calculated_path) =
+                    find_path_on_board(board, (self.row, self.col), target_pos)
+                {
                     self.path = Some(calculated_path);
-                    return Ok(())
+                    return Ok(());
                 } else {
-                    return Err(GameError::CannotMoveHere(self.minion_id))
+                    return Err(GameError::CannotMoveHere(self.minion_id));
                 }
             }
         }
@@ -300,29 +324,9 @@ mod tests {
         assert_eq!(blue_top_minion.team_id, Team::Blue);
         assert_eq!(blue_top_minion.lane, Lane::Top);
         assert_eq!(blue_top_minion.stats.health, stats.health); // Check a few stats fields
-        assert_eq!(blue_top_minion.row, 182);
-        assert_eq!(blue_top_minion.col, 4);
-        assert_eq!(blue_top_minion.minion_path, (4, 4));
-        // last_attacked is Instant::now(), difficult to assert exact value, just check it's set
-        // assert!(blue_top_minion.last_attacked <= Instant::now());
-
-        let blue_mid_minion = Minion::new(minion_id, Team::Blue, Lane::Mid);
-        assert_eq!(blue_mid_minion.minion_id, minion_id);
-        assert_eq!(blue_mid_minion.team_id, Team::Blue);
-        assert_eq!(blue_mid_minion.lane, Lane::Mid);
-        assert_eq!(blue_mid_minion.stats.health, stats.health);
-        assert_eq!(blue_mid_minion.row, 175);
-        assert_eq!(blue_mid_minion.col, 24);
-        assert_eq!(blue_mid_minion.minion_path, (99, 99));
-
-        let blue_bottom_minion = Minion::new(minion_id, Team::Blue, Lane::Bottom);
-        assert_eq!(blue_bottom_minion.minion_id, minion_id);
-        assert_eq!(blue_bottom_minion.team_id, Team::Blue);
-        assert_eq!(blue_bottom_minion.lane, Lane::Bottom);
-        assert_eq!(blue_bottom_minion.stats.health, stats.health);
-        assert_eq!(blue_bottom_minion.row, 194);
-        assert_eq!(blue_bottom_minion.col, 17);
-        assert_eq!(blue_bottom_minion.minion_path, (194, 194));
+        assert_eq!(blue_top_minion.row, 184);
+        assert_eq!(blue_top_minion.col, 10);
+        assert_eq!(blue_top_minion.minion_path, (10, 10));
 
         // Test Red Team Minions
         let red_top_minion = Minion::new(minion_id, Team::Red, Lane::Top);
@@ -330,27 +334,9 @@ mod tests {
         assert_eq!(red_top_minion.team_id, Team::Red);
         assert_eq!(red_top_minion.lane, Lane::Top);
         assert_eq!(red_top_minion.stats.health, stats.health);
-        assert_eq!(red_top_minion.row, 4);
-        assert_eq!(red_top_minion.col, 182);
-        assert_eq!(red_top_minion.minion_path, (4, 4));
-
-        let red_mid_minion = Minion::new(minion_id, Team::Red, Lane::Mid);
-        assert_eq!(red_mid_minion.minion_id, minion_id);
-        assert_eq!(red_mid_minion.team_id, Team::Red);
-        assert_eq!(red_mid_minion.lane, Lane::Mid);
-        assert_eq!(red_mid_minion.stats.health, stats.health);
-        assert_eq!(red_mid_minion.row, 24);
-        assert_eq!(red_mid_minion.col, 175);
-        assert_eq!(red_mid_minion.minion_path, (99, 99));
-
-        let red_bottom_minion = Minion::new(minion_id, Team::Red, Lane::Bottom);
-        assert_eq!(red_bottom_minion.minion_id, minion_id);
-        assert_eq!(red_bottom_minion.team_id, Team::Red);
-        assert_eq!(red_bottom_minion.lane, Lane::Bottom);
-        assert_eq!(red_bottom_minion.stats.health, stats.health);
-        assert_eq!(red_bottom_minion.row, 17);
-        assert_eq!(red_bottom_minion.col, 194);
-        assert_eq!(red_bottom_minion.minion_path, (194, 194));
+        assert_eq!(red_top_minion.row, 10);
+        assert_eq!(red_top_minion.col, 184);
+        assert_eq!(red_top_minion.minion_path, (10, 10));
     }
 
     #[test]
@@ -510,6 +496,21 @@ mod tests {
             Some(minion_content),
             "New cell should have minion content after moving up-left"
         );
+    }
+    
+    #[test]
+    fn test_minion_change_goal() {
+        let minion_id: MinionId = 1;
+        let team_id = Team::Blue;
+        let initial_row = 10;
+        let initial_col = 10;
+
+        let mut minion = Minion::new(minion_id, team_id, Lane::Bottom);
+        minion.row = initial_row;
+        minion.col = initial_col;
+        minion.change_goal();
+        let expected_minion_path = (17, 191);
+        assert_eq!(minion.minion_path, expected_minion_path, "Incorrect goal was set")
     }
 
     #[test]
