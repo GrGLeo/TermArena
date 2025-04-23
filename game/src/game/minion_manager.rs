@@ -42,7 +42,6 @@ impl MinionManager {
                             let minion_id = generate_minion_id().unwrap();
                             match lane {
                                 Lane::Top => {
-                                    /*
                                     let minion = Minion::new(minion_id, team, lane);
                                     board.place_cell(
                                         CellContent::Minion(minion_id, team),
@@ -50,10 +49,8 @@ impl MinionManager {
                                         minion.col as usize,
                                     );
                                     self.minions.insert(minion_id, minion);
-                                    */
                                 }
                                 Lane::Mid => {
-                                    /*
                                     let minion = Minion::new(minion_id, team, lane);
                                     board.place_cell(
                                         CellContent::Minion(minion_id, team),
@@ -61,7 +58,6 @@ impl MinionManager {
                                         minion.col as usize,
                                     );
                                     self.minions.insert(minion_id, minion);
-                                    */
                                 }
                                 Lane::Bottom => {
                                     let minion = Minion::new(minion_id, team, lane);
@@ -80,7 +76,6 @@ impl MinionManager {
                             let minion_id = generate_minion_id().unwrap();
                             match lane {
                                 Lane::Top => {
-                                    /*
                                     let minion = Minion::new(minion_id, team, lane);
                                     board.place_cell(
                                         CellContent::Minion(minion_id, team),
@@ -88,10 +83,8 @@ impl MinionManager {
                                         minion.col as usize,
                                     );
                                     self.minions.insert(minion_id, minion);
-                                    */
                                 }
                                 Lane::Mid => {
-                                    /*
                                     let minion = Minion::new(minion_id, team, lane);
                                     board.place_cell(
                                         CellContent::Minion(minion_id, team),
@@ -99,7 +92,6 @@ impl MinionManager {
                                         minion.col as usize,
                                     );
                                     self.minions.insert(minion_id, minion);
-                                    */
                                 }
                                 Lane::Bottom => {
                                     let minion = Minion::new(minion_id, team, lane);
