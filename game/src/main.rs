@@ -29,7 +29,7 @@ struct CliArgs {
 
 async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mutex<GameManager>>) {
     println!("Handler task started for connection from: {:?}", addr);
-    let mut player_id_option: Option<PlayerId> = None;
+    let player_id_option: Option<PlayerId>;
 
     // Create the player channel
     let (tx, mut rx) = mpsc::channel::<ClientMessage>(32);
@@ -182,13 +182,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tick_manager = Arc::clone(&arc_gm);
     spawn(async move {
         loop {
-            let mut game_started = false;
+            let game_started: bool;
             {
                 let manager = tick_manager.lock().await;
                 game_started = manager.game_started;
             }
             if game_started {
-                sleep(Duration::from_millis(20)).await;
+                sleep(Duration::from_millis(50)).await;
 
                 let updates: HashMap<PlayerId, ClientMessage>;
                 {

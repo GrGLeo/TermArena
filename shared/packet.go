@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"log"
 	"net"
 
 	"github.com/GrGLeo/ctf/server/event"
@@ -314,16 +315,16 @@ func (lp LookRoomPacket) Code() int {
 
 func (lp *LookRoomPacket) Serialize() []byte {
 	var buf bytes.Buffer
-  capacity := 3 + len(lp.RoomID) + len(lp.RoomIP)
-  buf.Grow(capacity)
+	capacity := 3 + len(lp.RoomID) + len(lp.RoomIP)
+	buf.Grow(capacity)
 	buf.WriteByte(byte(lp.version))
 	buf.WriteByte(byte(lp.code))
 	buf.WriteByte(byte(lp.Success))
-  if lp.RoomID != "" {
-	  buf.WriteString(lp.RoomID)
-  } else {
-    buf.WriteString("     ")
-  }
+	if lp.RoomID != "" {
+		buf.WriteString(lp.RoomID)
+	} else {
+		buf.WriteString("     ")
+	}
 	buf.WriteString(lp.RoomIP)
 	return buf.Bytes()
 }
@@ -425,15 +426,19 @@ func (ap ActionPacket) Serialize() []byte {
 type BoardPacket struct {
 	version, code int
 	Points        [2]int
+	Health        int
+	MaxHealth     int
 	Length        int
 	EncodedBoard  []byte
 }
 
-func NewBoardPacket(points [2]int, length int, encodedBoard []byte) *BoardPacket {
+func NewBoardPacket(health, maxHealth int, points [2]int, length int, encodedBoard []byte) *BoardPacket {
 	return &BoardPacket{
 		version:      1,
 		code:         9,
 		Points:       points,
+		Health:       health,
+		MaxHealth:    maxHealth,
 		Length:       length,
 		EncodedBoard: encodedBoard,
 	}
@@ -453,6 +458,8 @@ func (bp *BoardPacket) Serialize() []byte {
 	buf.WriteByte(byte(bp.code))
 	buf.WriteByte(byte(bp.Points[0]))
 	buf.WriteByte(byte(bp.Points[1]))
+	buf.WriteByte(byte(bp.Health))
+	buf.WriteByte(byte(bp.MaxHealth))
 	buf.WriteByte(byte(bp.Length))
 	buf.Write(bp.EncodedBoard)
 	return buf.Bytes()
@@ -670,14 +677,19 @@ func DeSerialize(data []byte) (Packet, error) {
 		points := [2]int{}
 		points[0] = int(data[2])
 		points[1] = int(data[3])
-    length := int(binary.BigEndian.Uint16(data[4:6]))
+    health := int(binary.BigEndian.Uint16(data[4:6]))
+    maxHealth := int(binary.BigEndian.Uint16(data[6:8]))
+		length := int(binary.BigEndian.Uint16(data[8:10]))
+    log.Printf("Deserialize health: %d | %d", health, maxHealth)
 
 		// Rest of data is the encodedBoard
-		encodedBoard := data[6:]
+		encodedBoard := data[10:]
 		return &BoardPacket{
 			version:      version,
 			code:         code,
 			Points:       points,
+			Health:       health,
+			MaxHealth:    maxHealth,
 			Length:       length,
 			EncodedBoard: encodedBoard,
 		}, nil

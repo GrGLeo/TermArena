@@ -367,7 +367,8 @@ impl GameManager {
             // 1. Get player-specific board view
             let board_rle_vec = self.board.run_length_encode(champion.row, champion.col);
             // 2. Create the board packet
-            let board_packet = BoardPacket::new(board_rle_vec);
+            let health = champion.get_health();
+            let board_packet = BoardPacket::new(health.0, health.1, board_rle_vec);
             let serialized_packet = board_packet.serialize();
             // 3. Store the serialized packet to be sent later
             updates.insert(*player_id, serialized_packet);

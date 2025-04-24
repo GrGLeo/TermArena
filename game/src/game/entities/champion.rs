@@ -40,6 +40,7 @@ impl Champion {
             attack_damage: 20,
             attack_speed: Duration::from_millis(2500),
             health: 200,
+            max_health: 200,
             armor: 5,
         };
 
@@ -130,6 +131,10 @@ impl Champion {
         } else {
             true
         }
+    }
+
+    pub fn get_health(&self) -> (u16, u16) {
+        (self.stats.health, self.stats.max_health)
     }
 }
 

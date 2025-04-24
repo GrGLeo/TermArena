@@ -50,6 +50,7 @@ type GameCloseMsg struct {
 // BoardMsg is used to transfer the board to game model
 type BoardMsg struct {
 	Points [2]int
+  Health [2]int
 	Board  [21][51]int
 }
 

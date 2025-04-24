@@ -29,6 +29,7 @@ impl Tower {
             attack_damage: 40,
             attack_speed: Duration::from_secs(3),
             health: 400,
+            max_health: 400,
             armor: 8,
         };
 

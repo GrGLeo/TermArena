@@ -96,7 +96,8 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
       if err != nil {
         log.Print(err.Error())
       }
-      msgs <- BoardMsg{Points: msg.Points, Board: board}
+      health := [2]int{msg.Health, msg.MaxHealth}
+      msgs <- BoardMsg{Points: msg.Points, Health: health,  Board: board}
     case *shared.DeltaPacket:
       deltas := DecodeDeltas(msg.Deltas)
       msgs <- DeltaMsg{Points: msg.Points, Deltas: deltas, TickID: msg.TickID}

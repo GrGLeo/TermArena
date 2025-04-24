@@ -20,25 +20,25 @@ import (
 //   - An error if the RLE data is malformed or cannot be decoded.
 func DecodeRLE(rle []byte) ([21][51]int, error) {
 	parts := strings.Split(string(rle), "|")
-	log.Println(parts)
 	var decoded []int
 
 	for _, part := range parts {
 		subParts := strings.SplitN(string(part), ":", 2)
 		if len(subParts) != 2 {
+      log.Printf("SubParts len error: %+v", subParts)
 			return [21][51]int{}, errors.New("Failed to decode RLE")
 		}
-    log.Println(subParts)
 		value, err := strconv.Atoi(subParts[0])
 		if err != nil {
+      log.Printf("SubParts 0 causing error: %+v", subParts[0])
 			return [21][51]int{}, err
 		}
     log.Println("value", value)
 		count, err := strconv.Atoi(subParts[1])
 		if err != nil {
+      log.Printf("SubParts 1 causing error: %q", subParts[1])
 			return [21][51]int{}, err
 		}
-    log.Println("count ", count)
 
 		for range count {
 			decoded = append(decoded, value)
@@ -46,10 +46,8 @@ func DecodeRLE(rle []byte) ([21][51]int, error) {
 	}
 	var grid [21][51]int
 	for i := range 21 {
-    log.Println("error occurs here: ", i)
 		copy(grid[i][:], decoded[i*51:(i+1)*51])
 	}
-	log.Println(grid)
 
 	return grid, nil
 }

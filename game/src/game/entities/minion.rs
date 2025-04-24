@@ -46,6 +46,7 @@ impl Minion {
             attack_damage: 6,
             attack_speed: Duration::from_millis(2500),
             health: 40,
+            max_health: 40,
             armor: 0,
         };
 
@@ -313,6 +314,7 @@ mod tests {
             attack_damage: 6,
             attack_speed: Duration::from_millis(2500),
             health: 40,
+            max_health: 40,
             armor: 8,
         };
 
