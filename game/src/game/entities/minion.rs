@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-use super::{reduced_damage, Fighter, Stats, Target};
+use super::{Fighter, Stats, Target, reduced_damage};
 
 type MinionPath = (u16, u16);
 
@@ -52,14 +52,38 @@ impl Minion {
 
         let (row, col, paths) = match team_id {
             Team::Blue => match lane {
-                Lane::Top => (184, 10, vec![(120, 8), (39,7), (7, 39), (8, 120), (10, 184)]),
-                Lane::Mid => (184, 17, vec![(148, 67), (115, 82), (82, 115), (67, 148), (17, 184)]),
-                Lane::Bottom => (191, 17, vec![(191, 79), (196, 150), (150, 196), (79, 191), (17, 191)]),
+                Lane::Top => (
+                    184,
+                    10,
+                    vec![(120, 8), (39, 7), (7, 39), (8, 120), (10, 184)],
+                ),
+                Lane::Mid => (
+                    184,
+                    17,
+                    vec![(148, 67), (115, 82), (82, 115), (67, 148), (17, 184)],
+                ),
+                Lane::Bottom => (
+                    191,
+                    17,
+                    vec![(191, 79), (196, 150), (150, 196), (79, 191), (17, 191)],
+                ),
             },
             Team::Red => match lane {
-                Lane::Top => (10, 184, vec![(8, 120), (7, 39), (39, 7), (120, 8), (184, 10)]),
-                Lane::Mid => (17, 184, vec![(67, 148), (82, 115), (115, 82), (148, 67), (184, 17)]),
-                Lane::Bottom => (17, 191, vec![(79, 191), (150, 196), (196, 150), (191, 79), (191, 17)]),
+                Lane::Top => (
+                    10,
+                    184,
+                    vec![(8, 120), (7, 39), (39, 7), (120, 8), (184, 10)],
+                ),
+                Lane::Mid => (
+                    17,
+                    184,
+                    vec![(67, 148), (82, 115), (115, 82), (148, 67), (184, 17)],
+                ),
+                Lane::Bottom => (
+                    17,
+                    191,
+                    vec![(79, 191), (150, 196), (196, 150), (191, 79), (191, 17)],
+                ),
             },
         };
         let path = paths[0];
@@ -80,10 +104,9 @@ impl Minion {
     }
 
     fn change_goal(&mut self) {
-        if !self.checkpoint >= self.minion_path.len() {
+        if self.checkpoint < self.minion_path.len() {
             self.checkpoint += 1;
             self.current_path = self.minion_path[self.checkpoint as usize];
-
         }
     }
 
@@ -497,7 +520,7 @@ mod tests {
             "New cell should have minion content after moving up-left"
         );
     }
-    
+
     #[test]
     fn test_minion_change_first_goal() {
         let minion_id: MinionId = 1;
@@ -510,7 +533,10 @@ mod tests {
         minion.col = initial_col;
         minion.change_goal();
         let expected_minion_path = (196, 150);
-        assert_eq!(minion.current_path, expected_minion_path, "Incorrect goal was set")
+        assert_eq!(
+            minion.current_path, expected_minion_path,
+            "Incorrect goal was set"
+        )
     }
 
     #[test]
@@ -526,7 +552,10 @@ mod tests {
         minion.col = initial_col;
         minion.change_goal();
         let expected_minion_path = (120, 8);
-        assert_eq!(minion.current_path, expected_minion_path, "Incorrect goal was set")
+        assert_eq!(
+            minion.current_path, expected_minion_path,
+            "Incorrect goal was set"
+        )
     }
 
     #[test]

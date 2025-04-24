@@ -109,7 +109,7 @@ impl MinionManager {
             }
             // Stopping wave creation
             self.minions_this_wave += 1;
-            self.wave_creation_time = Instant::now() + Duration::from_millis(40);
+            self.wave_creation_time = Instant::now() + Duration::from_millis(80);
             if self.minions_this_wave >= self.minions_per_wave {
                 self.wave_creation_time = Instant::now() + Duration::from_secs(30);
                 self.minions_this_wave = 0;

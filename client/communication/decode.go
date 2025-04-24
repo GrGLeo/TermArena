@@ -19,6 +19,7 @@ import (
 //   - A 21x51 grid of integers representing the decoded data.
 //   - An error if the RLE data is malformed or cannot be decoded.
 func DecodeRLE(rle []byte) ([21][51]int, error) {
+  log.Printf("Raw byte: %q\n", string(rle))
 	parts := strings.Split(string(rle), "|")
 	var decoded []int
 

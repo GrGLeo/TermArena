@@ -12,11 +12,18 @@ use bytes::BytesMut;
 use cell::Team;
 pub use cell::{BaseTerrain, Cell, CellContent, MinionId, PlayerId, TowerId};
 pub use entities::champion::{Action, Champion};
-use entities::{tower::{generate_tower_id, Tower}, Fighter, Target};
+use entities::{
+    Fighter, Target,
+    tower::{Tower, generate_tower_id},
+};
 use minion_manager::MinionManager;
 use tokio::sync::mpsc;
 
-use std::{collections::HashMap, time::{Duration, Instant}, usize, vec};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+    usize, vec,
+};
 
 pub type ClientMessage = BytesMut;
 
@@ -49,14 +56,21 @@ impl GameManager {
         // Tower placement
         {
             //                  t1   bot      top      mid     t2 bot        top      mid
-            let placement = vec![(196, 150), (39, 7),(115, 82), (191, 79), (120,8), (148, 67)];
-            // Bottom t1 
+            let placement = vec![
+                (196, 150),
+                (39, 7),
+                (115, 82),
+                (191, 79),
+                (120, 8),
+                (148, 67),
+            ];
+            // Bottom t1
             placement.into_iter().for_each(|place| {
                 let id = generate_tower_id().unwrap();
-                let tower_blue = Tower::new(id, Team::Blue, place.0, place.1);  
+                let tower_blue = Tower::new(id, Team::Blue, place.0, place.1);
                 tower_blue.place_tower(&mut board);
                 let id = generate_tower_id().unwrap();
-                let tower_red = Tower::new(id, Team::Red, place.1, place.0);  
+                let tower_red = Tower::new(id, Team::Red, place.1, place.0);
                 tower_red.place_tower(&mut board);
                 towers.insert(tower_blue.tower_id, tower_blue);
                 towers.insert(tower_red.tower_id, tower_red);
@@ -162,6 +176,7 @@ impl GameManager {
     }
 
     pub async fn send_to_player(&self, player_id: PlayerId, message: ClientMessage) {
+        println!("Send_to_player message lenght: {}", message.len());
         if let Some(sender) = self.client_channel.get(&player_id) {
             let sender_clone = sender.clone();
             // We use spawn to send without blocking the game manager lock
@@ -193,7 +208,9 @@ impl GameManager {
             // 0. Check death and replace
             // BUG: Champ dead can still move but is replace each tick
             if champ.is_dead() {
-                champ.place_at_base(&mut self.board)
+                champ.put_at_max_health();
+                champ.place_at_base(&mut self.board);
+                continue;
             }
             // 1. Iterate through player action
             if let Some(action) = self.player_action.get(&player_id) {
@@ -235,7 +252,8 @@ impl GameManager {
         }
 
         // Minion mouvement turn
-        self.minion_manager.manage_minions_mouvements(&mut self.board);
+        self.minion_manager
+            .manage_minions_mouvements(&mut self.board);
         self.minion_manager.make_wave(&mut self.board);
         println!(
             "Minions: {} | Minions per wave {} | Tick: {}",
@@ -245,8 +263,11 @@ impl GameManager {
         );
 
         // Adding minion damages dealt
-        self.minion_manager.manage_minions_attack(&mut self.board, &mut new_animations, &mut pending_damages);
-
+        self.minion_manager.manage_minions_attack(
+            &mut self.board,
+            &mut new_animations,
+            &mut pending_damages,
+        );
 
         // 3. Apply dealt damages
         let mut minion_to_clear: Vec<MinionId> = Vec::new();
@@ -289,7 +310,6 @@ impl GameManager {
         // 1. Scan range
         // 2. attack closest enemy
         self.tower_turn();
-
 
         // Render animation
         let mut kept_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();

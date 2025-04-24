@@ -188,7 +188,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 game_started = manager.game_started;
             }
             if game_started {
-                sleep(Duration::from_millis(50)).await;
+                sleep(Duration::from_millis(40)).await;
 
                 let updates: HashMap<PlayerId, ClientMessage>;
                 {
@@ -198,6 +198,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 let manager = tick_manager.lock().await;
                 for (player_id, message) in updates {
+                    println!("Message length to be sent: {:?}", message.len());
                     manager.send_to_player(player_id, message).await;
                 }
                 drop(manager);

@@ -136,6 +136,10 @@ impl Champion {
     pub fn get_health(&self) -> (u16, u16) {
         (self.stats.health, self.stats.max_health)
     }
+
+    pub fn put_at_max_health(&mut self) {
+        self.stats.health = self.stats.max_health;
+    }
 }
 
 impl Fighter for Champion {

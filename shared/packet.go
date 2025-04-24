@@ -683,7 +683,7 @@ func DeSerialize(data []byte) (Packet, error) {
     log.Printf("Deserialize health: %d | %d", health, maxHealth)
 
 		// Rest of data is the encodedBoard
-		encodedBoard := data[10:]
+		encodedBoard := data[10:length+10]
 		return &BoardPacket{
 			version:      version,
 			code:         code,

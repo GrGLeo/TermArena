@@ -34,9 +34,10 @@ func NewGameModel(conn *net.TCPConn) GameModel {
 		"#FFFF00", // Bright yellow
 		"#FFD700", // Gold
 	)
+  redSolid := progress.WithSolidFill("#AB2C0F")
 	return GameModel{
 		conn:           conn,
-		healthProgress: progress.New(),
+		healthProgress: progress.New(redSolid),
 		progress:       progress.New(yellowGradient),
 		dashcooldown:   5 * time.Second,
 	}
