@@ -170,9 +170,17 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = CliArgs::parse();
-    let address = format!("127.0.0.1:{}", args.port);
+    let address = format!("0.0.0.0:{}", args.port);
     let listener = TcpListener::bind(&address).await?;
     println!("Server listening  on {}", address);
+
+    // -- Shutdown Task --
+    // This is temporary to fix the game not being able to end
+    spawn(async move {
+        sleep(Duration::from_secs(300)).await;
+        println!("Game duration over 5 minutes, closing the server");
+        std::process::exit(0);
+    });
 
     let game_manager = GameManager::new();
     let arc_gm = Arc::new(Mutex::new(game_manager));

@@ -11,7 +11,7 @@ import (
 
 func MakeConnection(port string) (*net.TCPConn, error) {
   log.Printf("Connection Attempt: %q\n", port)
-	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%s", port))
+	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("endurace.cloud:%s", port))
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	if err != nil {
     log.Printf("Failed to make connection: %q\n", err)

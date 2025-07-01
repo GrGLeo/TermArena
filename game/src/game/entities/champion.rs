@@ -26,6 +26,7 @@ pub enum Action {
 pub struct Champion {
     pub player_id: PlayerId,
     pub team_id: Team,
+    pub xp: u32,
     stats: Stats,
     death_counter: u8,
     death_timer: Instant,
@@ -47,6 +48,7 @@ impl Champion {
         Champion {
             player_id,
             stats,
+            xp: 0,
             death_counter: 0,
             death_timer: Instant::now(),
             last_attacked: Instant::now(),
@@ -54,6 +56,10 @@ impl Champion {
             row,
             col,
         }
+    }
+
+    pub fn add_xp(&mut self, xp: u32) {
+        self.xp += xp;
     }
 
     pub fn take_action(&mut self, action: &Action, board: &mut Board) -> Result<(), GameError> {
