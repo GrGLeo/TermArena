@@ -20,8 +20,11 @@ type GameModel struct {
 	gameClock      time.Duration
 	height, width  int
 	healthProgress progress.Model
+	xpProgress     progress.Model
 	progress       progress.Model
 	health         [2]int
+	level          int
+	xp             [2]int
 	points         [2]int
 	dashed         bool
 	dashcooldown   time.Duration
@@ -35,9 +38,11 @@ func NewGameModel(conn *net.TCPConn) GameModel {
 		"#FFD700", // Gold
 	)
   redSolid := progress.WithSolidFill("#AB2C0F")
+  blueSolid := progress.WithSolidFill("#0000FF")
 	return GameModel{
 		conn:           conn,
 		healthProgress: progress.New(redSolid),
+		xpProgress:     progress.New(blueSolid),
 		progress:       progress.New(yellowGradient),
 		dashcooldown:   5 * time.Second,
 	}
@@ -63,6 +68,8 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		points := msg.Points
 		m.points = points
 		m.health = msg.Health
+		m.level = msg.Level
+		m.xp = msg.Xp
 		m.currentBoard = msg.Board
 	case communication.DeltaMsg:
 		m.gameClock = time.Duration(50*int(msg.TickID)) * time.Millisecond
@@ -208,6 +215,20 @@ func (m GameModel) View() string {
 		healthBar,
 	)
 	builder.WriteString(healthHUD)
+	builder.WriteString("\n")
+
+	var xpBar string
+	if m.xp[1] > 0 {
+		xpPercent := (float32(m.xp[0]) / float32(m.xp[1]))
+		xpBar = m.xpProgress.ViewAs(float64(xpPercent))
+	}
+	xpInfo := fmt.Sprintf("Lvl %d: %d / %d", m.level, m.xp[0], m.xp[1])
+	xpHUD := lipgloss.JoinHorizontal(
+		lipgloss.Right,
+		xpInfo,
+		xpBar,
+	)
+	builder.WriteString(xpHUD)
 	builder.WriteString("\n")
 
 	var progressBar string

@@ -428,17 +428,23 @@ type BoardPacket struct {
 	Points        [2]int
 	Health        int
 	MaxHealth     int
+	Level         int
+	Xp            int
+	XpNeeded      int
 	Length        int
 	EncodedBoard  []byte
 }
 
-func NewBoardPacket(health, maxHealth int, points [2]int, length int, encodedBoard []byte) *BoardPacket {
+func NewBoardPacket(health, maxHealth, level, xp, xpNeeded, length int, points [2]int, encodedBoard []byte) *BoardPacket {
 	return &BoardPacket{
 		version:      1,
 		code:         9,
 		Points:       points,
 		Health:       health,
 		MaxHealth:    maxHealth,
+		Level:        level,
+		Xp:           xp,
+		XpNeeded:     xpNeeded,
 		Length:       length,
 		EncodedBoard: encodedBoard,
 	}
@@ -679,17 +685,23 @@ func DeSerialize(data []byte) (Packet, error) {
 		points[1] = int(data[3])
     health := int(binary.BigEndian.Uint16(data[4:6]))
     maxHealth := int(binary.BigEndian.Uint16(data[6:8]))
-		length := int(binary.BigEndian.Uint16(data[8:10]))
+    level := int(data[8])
+    xp := int(binary.BigEndian.Uint32(data[9:13]))
+    xpNeeded := int(binary.BigEndian.Uint32(data[13:17]))
+		length := int(binary.BigEndian.Uint16(data[17:19]))
     log.Printf("Deserialize health: %d | %d", health, maxHealth)
 
 		// Rest of data is the encodedBoard
-		encodedBoard := data[10:length+10]
+		encodedBoard := data[19:length+19]
 		return &BoardPacket{
 			version:      version,
 			code:         code,
 			Points:       points,
 			Health:       health,
 			MaxHealth:    maxHealth,
+			Level:        level,
+			Xp:           xp,
+			XpNeeded:     xpNeeded,
 			Length:       length,
 			EncodedBoard: encodedBoard,
 		}, nil
