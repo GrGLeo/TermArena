@@ -39,6 +39,7 @@ pub struct GameManager {
     pub client_channel: HashMap<PlayerId, mpsc::Sender<ClientMessage>>,
     board: Board,
     pub tick: u64,
+    dead_minion_positions: Vec<(u16, u16, Team)>,
 }
 
 impl GameManager {
@@ -95,6 +96,7 @@ impl GameManager {
             client_channel: HashMap::new(),
             board,
             tick: 20,
+            dead_minion_positions: Vec::new(),
         }
     }
 
@@ -289,6 +291,7 @@ impl GameManager {
                         minion.take_damage(damage);
                         if minion.is_dead() {
                             minion_to_clear.push(id);
+                            self.dead_minion_positions.push((minion.row, minion.col, minion.team_id));
                             self.board
                                 .clear_cell(minion.row as usize, minion.col as usize);
                         }
@@ -305,6 +308,26 @@ impl GameManager {
         minion_to_clear.iter().for_each(|id| {
             self.minion_manager.minions.remove(id);
         });
+
+        // Distribute XP from dead minions
+        for (minion_row, minion_col, minion_team) in self.dead_minion_positions.drain(..) {
+            let mut champions_in_range = Vec::new();
+            for (_, champion) in self.champions.iter_mut() {
+                // Check if champion is in 5x5 range and is on the opposing team
+                if champion.team_id != minion_team &&
+                   (champion.row as i32 - minion_row as i32).abs() <= 2 &&
+                   (champion.col as i32 - minion_col as i32).abs() <= 2 {
+                    champions_in_range.push(champion);
+                }
+            }
+
+            if !champions_in_range.is_empty() {
+                let xp_per_champion = 5 / champions_in_range.len() as u32;
+                for champion in champions_in_range {
+                    champion.add_xp(xp_per_champion);
+                }
+            }
+        }
 
         // Tower turn
         // 1. Scan range
@@ -388,7 +411,8 @@ impl GameManager {
             let board_rle_vec = self.board.run_length_encode(champion.row, champion.col);
             // 2. Create the board packet
             let health = champion.get_health();
-            let board_packet = BoardPacket::new(health.0, health.1, board_rle_vec);
+            let xp_needed = champion.xp_for_next_level().unwrap_or(0); // Get XP needed, 0 if max level
+            let board_packet = BoardPacket::new(health.0, health.1, champion.level, champion.xp, xp_needed, board_rle_vec);
             let serialized_packet = board_packet.serialize();
             // 3. Store the serialized packet to be sent later
             updates.insert(*player_id, serialized_packet);

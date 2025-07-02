@@ -26,6 +26,8 @@ pub enum Action {
 pub struct Champion {
     pub player_id: PlayerId,
     pub team_id: Team,
+    pub xp: u32,
+    pub level: u8,
     stats: Stats,
     death_counter: u8,
     death_timer: Instant,
@@ -47,6 +49,8 @@ impl Champion {
         Champion {
             player_id,
             stats,
+            xp: 0,
+            level: 1,
             death_counter: 0,
             death_timer: Instant::now(),
             last_attacked: Instant::now(),
@@ -54,6 +58,50 @@ impl Champion {
             row,
             col,
         }
+    }
+
+    pub fn add_xp(&mut self, xp: u32) {
+        self.xp += xp;
+        while let Some(xp_needed) = self.xp_for_next_level() {
+            if self.xp >= xp_needed {
+                self.xp -= xp_needed;
+                self.level_up();
+            } else {
+                break;
+            }
+        }
+    }
+
+    pub fn xp_for_next_level(&self) -> Option<u32> {
+        match self.level {
+            1 => Some(35),
+            2 => Some(40),
+            3 => Some(45),
+            4 => Some(50),
+            5 => Some(55),
+            6 => Some(60),
+            7 => Some(65),
+            8 => Some(70),
+            9 => Some(75),
+            10 => Some(80),
+            11 => Some(85),
+            12 => Some(90),
+            13 => Some(95),
+            14 => Some(100),
+            15 => Some(105),
+            16 => Some(110),
+            17 => Some(115),
+            18 => None, // Max level
+            _ => None, // Should not happen
+        }
+    }
+
+    fn level_up(&mut self) {
+        self.level += 1;
+        self.stats.max_health += 20;
+        self.stats.health += 20;
+        self.stats.attack_damage += 5;
+        self.stats.armor += 2;
     }
 
     pub fn take_action(&mut self, action: &Action, board: &mut Board) -> Result<(), GameError> {
@@ -865,5 +913,28 @@ mod tests {
             target.is_none(),
             "scan_range should return None when enemies are outside the 3x3 range"
         );
+    }
+
+    #[test]
+    fn test_level_up() {
+        let mut champion = Champion::new(1, Team::Red, 0, 0);
+        assert_eq!(champion.level, 1);
+        assert_eq!(champion.stats.max_health, 200);
+        assert_eq!(champion.stats.attack_damage, 20);
+        assert_eq!(champion.stats.armor, 5);
+
+        champion.add_xp(35);
+        assert_eq!(champion.level, 2);
+        assert_eq!(champion.xp, 0);
+        assert_eq!(champion.stats.max_health, 220);
+        assert_eq!(champion.stats.attack_damage, 25);
+        assert_eq!(champion.stats.armor, 7);
+
+        champion.add_xp(40);
+        assert_eq!(champion.level, 3);
+        assert_eq!(champion.xp, 0);
+        assert_eq!(champion.stats.max_health, 240);
+        assert_eq!(champion.stats.attack_damage, 30);
+        assert_eq!(champion.stats.armor, 9);
     }
 }

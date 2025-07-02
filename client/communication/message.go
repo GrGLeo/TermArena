@@ -51,6 +51,8 @@ type GameCloseMsg struct {
 type BoardMsg struct {
 	Points [2]int
   Health [2]int
+  Level int
+  Xp [2]int
 	Board  [21][51]int
 }
 

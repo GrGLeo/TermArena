@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+  "math/rand"
 	"time"
 )
 
@@ -12,7 +13,8 @@ func StartGame(ip, map_id string) error {
 	args := []string{"--port", ip, "--map", map_id}
 	cmd := exec.Command(command, args...)
 
-  logFileName := fmt.Sprintf("rust_game_%s.log", ip)
+  FileId := rand.Intn(9999) + 1
+  logFileName := fmt.Sprintf("rust_game_%d.log", FileId)
   logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 066)
   if err != nil {
     fmt.Printf("Failed to open log file for rust_game_%s.log", ip)

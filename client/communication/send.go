@@ -4,14 +4,20 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	"github.com/GrGLeo/ctf/shared"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 func MakeConnection(port string) (*net.TCPConn, error) {
-  log.Printf("Connection Attempt: %q\n", port)
-	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%s", port))
+  serverIP := os.Getenv("SERVER_IP")
+  if serverIP == "" {
+    serverIP = "localhost" // Default to localhost if not set
+  }
+
+  log.Printf("Connection Attempt: %s:%s\n", serverIP, port)
+	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%s", serverIP, port))
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	if err != nil {
     log.Printf("Failed to make connection: %q\n", err)
@@ -97,7 +103,8 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
         log.Print(err.Error())
       }
       health := [2]int{msg.Health, msg.MaxHealth}
-      msgs <- BoardMsg{Points: msg.Points, Health: health,  Board: board}
+      xp := [2]int{msg.Xp, msg.XpNeeded}
+      msgs <- BoardMsg{Points: msg.Points, Health: health, Level: msg.Level, Xp: xp,  Board: board}
     case *shared.DeltaPacket:
       deltas := DecodeDeltas(msg.Deltas)
       msgs <- DeltaMsg{Points: msg.Points, Deltas: deltas, TickID: msg.TickID}
