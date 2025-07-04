@@ -439,6 +439,7 @@ impl GameManager {
 
         // Check for win condition
         if self.red_base.stats.health <= 0 {
+            println!("Sending EndGamePacket: Red base destroyed, Blue team wins!");
             let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Red);
             let serialized_packet = packet.serialize();
             for (player_id, _) in &self.client_channel {
@@ -446,6 +447,7 @@ impl GameManager {
             }
             std::process::exit(0);
         } else if self.blue_base.stats.health <= 0 {
+            println!("Sending EndGamePacket: Blue base destroyed, Red team wins!");
             let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Blue);
             let serialized_packet = packet.serialize();
             for (player_id, _) in &self.client_channel {
