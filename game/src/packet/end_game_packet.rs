@@ -3,6 +3,8 @@ use crate::game::cell::Team;
 const PACKET_VERSION: u8 = 1;
 const PACKET_CODE: u8 = 12;
 
+
+#[derive(Debug)]
 pub struct EndGamePacket {
     pub winner: Team,
 }

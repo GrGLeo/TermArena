@@ -442,20 +442,20 @@ impl GameManager {
         if self.red_base.stats.health <= 0 {
             println!("Sending EndGamePacket: Red base destroyed, Blue team wins!");
             let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Red);
+            println!("EndGamePacket: {:?}", packet);
             let serialized_packet = packet.serialize();
             for (player_id, _) in &self.client_channel {
                 self.send_to_player(*player_id, BytesMut::from(&serialized_packet[..]));
             }
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             std::process::exit(0);
         } else if self.blue_base.stats.health <= 0 {
             println!("Sending EndGamePacket: Blue base destroyed, Red team wins!");
             let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Blue);
+            println!("EndGamePacket: {:?}", packet);
             let serialized_packet = packet.serialize();
             for (player_id, _) in &self.client_channel {
                 self.send_to_player(*player_id, BytesMut::from(&serialized_packet[..]));
             }
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             std::process::exit(0);
         }
 

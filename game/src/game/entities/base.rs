@@ -15,8 +15,8 @@ impl Base {
         let stats = Stats {
             attack_damage: 0,
             attack_speed: std::time::Duration::from_secs(999),
-            health: 5000,
-            max_health: 5000,
+            health: 1000,
+            max_health: 1000,
             armor: 20,
         };
 
@@ -51,7 +51,7 @@ mod tests {
     fn test_new_base() {
         let base = Base::new(Team::Red, (10, 10));
         assert_eq!(base.team, Team::Red);
-        assert_eq!(base.hp, 5000);
+        assert_eq!(base.stats.health, 5000);
         assert_eq!(base.position, (10, 10));
     }
 
@@ -59,12 +59,12 @@ mod tests {
     fn test_take_damage() {
         let mut base = Base::new(Team::Red, (10, 10));
         base.take_damage(100);
-        assert_eq!(base.hp, 4900);
+        assert_eq!(base.stats.health, 4900);
 
         base.take_damage(5000);
-        assert_eq!(base.hp, 0);
+        assert_eq!(base.stats.health, 0);
 
         base.take_damage(100);
-        assert_eq!(base.hp, 0);
+        assert_eq!(base.stats.health, 0);
     }
 }
