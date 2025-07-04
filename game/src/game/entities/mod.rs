@@ -5,11 +5,13 @@ use super::{animation::AnimationTrait, Board, Cell, MinionId, PlayerId, TowerId}
 pub mod champion;
 pub mod tower;
 pub mod minion;
+pub mod base;
 
 pub enum Target {
     Tower(TowerId),
     Minion(MinionId),
     Champion(PlayerId),
+    Base(Team),
 }
 
 

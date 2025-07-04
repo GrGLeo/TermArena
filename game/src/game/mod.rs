@@ -13,7 +13,7 @@ use cell::Team;
 pub use cell::{BaseTerrain, Cell, CellContent, MinionId, PlayerId, TowerId};
 pub use entities::champion::{Action, Champion};
 use entities::{
-    Fighter, Target,
+    Fighter, Target, base::Base,
     tower::{Tower, generate_tower_id},
 };
 use minion_manager::MinionManager;
@@ -34,6 +34,8 @@ pub struct GameManager {
     player_action: HashMap<PlayerId, Action>,
     champions: HashMap<PlayerId, Champion>,
     towers: HashMap<TowerId, Tower>,
+    red_base: Base,
+    blue_base: Base,
     minion_manager: MinionManager,
     animations: Vec<Box<dyn AnimationTrait>>,
     pub client_channel: HashMap<PlayerId, mpsc::Sender<ClientMessage>>,
@@ -82,6 +84,24 @@ impl GameManager {
             tower_2.place_tower(&mut board);
         }
 
+        let red_base = Base::new(Team::Red, (190, 10));
+        let blue_base = Base::new(Team::Blue, (10, 190));
+
+        for i in 0..3 {
+            for j in 0..3 {
+                board.place_cell(
+                    CellContent::Base(Team::Red),
+                    (red_base.position.0 + i) as usize,
+                    (red_base.position.1 + j) as usize,
+                );
+                board.place_cell(
+                    CellContent::Base(Team::Blue),
+                    (blue_base.position.0 + i) as usize,
+                    (blue_base.position.1 + j) as usize,
+                );
+            }
+        }
+
         let minion_manager = MinionManager::new();
 
         GameManager {
@@ -91,6 +111,8 @@ impl GameManager {
             player_action: HashMap::new(),
             champions: HashMap::new(),
             towers,
+            red_base,
+            blue_base,
             minion_manager,
             animations: Vec::new(),
             client_channel: HashMap::new(),
@@ -245,6 +267,12 @@ impl GameManager {
                                     pending_damages.push((Target::Champion(*id), damage))
                                 }
                             }
+                            CellContent::Base(team) => {
+                                if let Some((damage, animation)) = champ.can_attack() {
+                                    new_animations.push(animation);
+                                    pending_damages.push((Target::Base(team), damage))
+                                }
+                            }
                             _ => break,
                         }
                     }
@@ -302,6 +330,10 @@ impl GameManager {
                         champ.take_damage(damage);
                     }
                 }
+                Target::Base(team) => match team {
+                    Team::Red => self.red_base.take_damage(damage),
+                    Team::Blue => self.blue_base.take_damage(damage),
+                },
             });
 
         // clear dead minion
@@ -405,6 +437,23 @@ impl GameManager {
             }
         }
 
+        // Check for win condition
+        if self.red_base.stats.health <= 0 {
+            let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Blue);
+            let serialized_packet = packet.serialize();
+            for (player_id, _) in &self.client_channel {
+                self.send_to_player(*player_id, BytesMut::from(&serialized_packet[..]));
+            }
+            std::process::exit(0);
+        } else if self.blue_base.stats.health <= 0 {
+            let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Red);
+            let serialized_packet = packet.serialize();
+            for (player_id, _) in &self.client_channel {
+                self.send_to_player(*player_id, BytesMut::from(&serialized_packet[..]));
+            }
+            std::process::exit(0);
+        }
+
         // --- Send per player there board view ---
         for (player_id, champion) in &self.champions {
             // 1. Get player-specific board view
@@ -449,6 +498,16 @@ impl GameManager {
                                     None
                                 }
                             }
+                            CellContent::Base(team) => {
+                                if let Some((damage, mut animation)) = tower.can_attack() {
+                                    animation.attach_target(0); // No specific target ID for base
+                                    println!("tower anim: {:?}", animation);
+                                    self.animations.push(animation);
+                                    Some((Target::Base(team), damage))
+                                } else {
+                                    None
+                                }
+                            }
                             _ => None,
                         },
                         None => None,
@@ -478,6 +537,10 @@ impl GameManager {
                         champ.take_damage(damage);
                     }
                 }
+                Target::Base(team) => match team {
+                    Team::Red => self.red_base.take_damage(damage),
+                    Team::Blue => self.blue_base.take_damage(damage),
+                },
             });
     }
 }

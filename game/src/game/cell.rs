@@ -26,6 +26,7 @@ pub enum CellContent {
     Minion(MinionId, Team),
     Flag(FlagId, Team),
     Tower(TowerId, Team),
+    Base(Team),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -76,6 +77,8 @@ pub enum EncodedCellValue {
     Tower = 8,
     MeleeHitAnimation = 9,
     TowerHitAnimation = 10,
+    BaseBlue = 11,
+    BaseRed = 12,
 }
 
 impl From<&Cell> for EncodedCellValue {
@@ -96,6 +99,10 @@ impl From<&Cell> for EncodedCellValue {
                 }
                 CellContent::Flag(_, _) => EncodedCellValue::Flag,
                 CellContent::Tower(_, _) => EncodedCellValue::Tower,
+                CellContent::Base(team) => match team {
+                    Team::Blue => EncodedCellValue::BaseBlue,
+                    Team::Red => EncodedCellValue::BaseRed,
+                },
             }
         } else {
             match cell.base {
