@@ -14,8 +14,9 @@ const (
 	Intro      = "animation"
 	Login      = "login"
 	Lobby      = "lobby"
-	Menu       = "menu"
+	    Menu       = "menu"
 	Game       = "game"
+    GameOver   = "gameover"
 )
 
 type MetaModel struct {
@@ -24,6 +25,7 @@ type MetaModel struct {
 	AuthModel      model.AuthModel
 	LobbyModel     model.LobbyModel
 	GameModel      model.GameModel
+	GameOverModel  model.GameOverModel
 	state          string
 	Username       string
 	Connection     *net.TCPConn
@@ -146,7 +148,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case Game:
 		switch msg.(type) {
-		case communication.GameCloseMsg:
+		        case communication.GameCloseMsg:
 			conn, err := communication.MakeConnection("8082")
 			if err != nil {
 				log.Println("Failed to make connection after game close: ", err.Error())
@@ -156,6 +158,11 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.LobbyModel.SetConn(conn)
 			m.LobbyModel.SetLooking(false)
 			go communication.ListenForPackets(m.Connection, m.msgs)
+        case communication.EndGameMsg:
+            m.state = GameOver
+            m.GameOverModel = model.NewGameOverModel(msg.Win)
+            m.GameOverModel.SetDimension(m.height, m.width)
+            return m, m.GameOverModel.Init()
 		default:
 			newmodel, cmd = m.GameModel.Update(msg)
 			m.GameModel = newmodel.(model.GameModel)
@@ -177,6 +184,8 @@ func (m MetaModel) View() string {
 		return m.LobbyModel.View()
 	case Game:
 		return m.GameModel.View()
+	case GameOver:
+		return m.GameOverModel.View()
 	}
 	return ""
 }

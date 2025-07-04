@@ -23,6 +23,7 @@ code 8: send action
 code 9: receive RLEboard
 code 10: receive Delta
 code 11: game close
+code 12: game end
 */
 
 type Packet interface {
@@ -385,6 +386,39 @@ func (gc *GameClosePacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
+type EndGamePacket struct {
+	version, code int
+	Win           bool
+}
+
+func NewEndGamePacket(win bool) *EndGamePacket {
+	return &EndGamePacket{
+		version: 1,
+		code:    12,
+		Win:     win,
+	}
+}
+
+func (egp EndGamePacket) Version() int {
+	return egp.version
+}
+
+func (egp EndGamePacket) Code() int {
+	return egp.code
+}
+
+func (egp *EndGamePacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(egp.version))
+	buf.WriteByte(byte(egp.code))
+	if egp.Win {
+		buf.WriteByte(1)
+	} else {
+		buf.WriteByte(0)
+	}
+	return buf.Bytes()
+}
+
 /*
 GAME PACKETS
 */
@@ -740,6 +774,14 @@ func DeSerialize(data []byte) (Packet, error) {
 			version: version,
 			code:    code,
 			Success: int(data[2]),
+		}, nil
+
+	case 12: // EndGamePacket
+		win := data[2] == 1
+		return &EndGamePacket{
+			version: version,
+			code:    code,
+			Win:     win,
 		}, nil
 
 	default:
