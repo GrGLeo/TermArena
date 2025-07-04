@@ -5,6 +5,14 @@ if [ -f .env ]; then
   export $(cat .env | sed 's/#.*//g' | xargs)
 fi
 
+# Clean up previous logs and processes
+echo "Cleaning up previous game logs..."
+rm -f rust_game_*.log
+rm -f client/debug.log
+
+echo "Attempting to clear port 50053..."
+sudo fuser -k 50053/tcp >/dev/null 2>&1 || true
+
 # Set server IP based on environment
 if [ "$APP_ENV" = "prd" ]; then
   SERVER_IP="endurace.cloud"
