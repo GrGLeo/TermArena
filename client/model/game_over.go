@@ -8,11 +8,11 @@ import (
 )
 
 type GameOverModel struct {
-	win     bool
+	win     int
 	height, width int
 }
 
-func NewGameOverModel(win bool) GameOverModel {
+func NewGameOverModel(win int) GameOverModel {
 	return GameOverModel{win: win}
 }
 
@@ -37,7 +37,7 @@ func (m GameOverModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m GameOverModel) View() string {
 	var s string
-	if m.win {
+	if m.win == 0 {
 		s = "You Win!"
 	} else {
 		s = "You Lose!"
