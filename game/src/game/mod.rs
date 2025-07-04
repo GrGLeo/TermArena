@@ -147,12 +147,12 @@ impl GameManager {
             let player_id = self.players_count;
             // Assign Champion to player, and place it on the board
             {
-                let row = 0;
-                let col = 199;
-                let champion = Champion::new(player_id, Team::Red, row, col);
+                let row = 199;
+                let col = 0;
+                let champion = Champion::new(player_id, Team::Blue, row, col);
                 self.champions.insert(player_id, champion);
                 self.board.place_cell(
-                    cell::CellContent::Champion(player_id, Team::Red),
+                    cell::CellContent::Champion(player_id, Team::Blue),
                     row as usize,
                     col as usize,
                 );
