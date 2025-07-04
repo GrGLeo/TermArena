@@ -41,3 +41,30 @@ impl Fighter for Base {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::game::cell::Team;
+
+    #[test]
+    fn test_new_base() {
+        let base = Base::new(Team::Red, (10, 10));
+        assert_eq!(base.team, Team::Red);
+        assert_eq!(base.hp, 5000);
+        assert_eq!(base.position, (10, 10));
+    }
+
+    #[test]
+    fn test_take_damage() {
+        let mut base = Base::new(Team::Red, (10, 10));
+        base.take_damage(100);
+        assert_eq!(base.hp, 4900);
+
+        base.take_damage(5000);
+        assert_eq!(base.hp, 0);
+
+        base.take_damage(100);
+        assert_eq!(base.hp, 0);
+    }
+}

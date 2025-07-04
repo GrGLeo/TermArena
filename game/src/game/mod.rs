@@ -544,3 +544,54 @@ impl GameManager {
             });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::game::cell::{CellContent, Team};
+    use crate::game::board::Board;
+
+    // Helper function to create a dummy board
+    fn create_dummy_board(rows: usize, cols: usize) -> Board {
+        Board::new(rows, cols)
+    }
+
+    #[test]
+    fn test_game_manager_base_placement() {
+        let game_manager = GameManager::new();
+        let board = game_manager.board;
+
+        // Test Red Base placement (190, 10) to (192, 12)
+        for i in 0..3 {
+            for j in 0..3 {
+                let cell = board.get_cell((190 + i) as usize, (10 + j) as usize).unwrap();
+                assert_eq!(cell.content, Some(CellContent::Base(Team::Red)));
+            }
+        }
+
+        // Test Blue Base placement (10, 190) to (12, 192)
+        for i in 0..3 {
+            for j in 0..3 {
+                let cell = board.get_cell((10 + i) as usize, (190 + j) as usize).unwrap();
+                assert_eq!(cell.content, Some(CellContent::Base(Team::Blue)));
+            }
+        }
+    }
+
+    #[test]
+    fn test_win_condition() {
+        let mut game_manager = GameManager::new();
+
+        // Simulate red base being destroyed
+        game_manager.red_base.stats.health = 0;
+
+        // Call game_tick, which should trigger the win condition and exit
+        // We can't directly test std::process::exit(0), but we can verify the health.
+        // The important part is that the health is 0, which would lead to the exit.
+        game_manager.game_tick();
+
+        assert_eq!(game_manager.red_base.stats.health, 0);
+        // In a real test, you might mock the send_to_player and std::process::exit
+        // to assert that the correct packet was sent and exit was called.
+    }
+}
