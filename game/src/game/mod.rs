@@ -90,12 +90,12 @@ impl GameManager {
         for i in 0..3 {
             for j in 0..3 {
                 board.place_cell(
-                    CellContent::Base(Team::Red),
+                    CellContent::Base(Team::Blue),
                     (red_base.position.0 + i) as usize,
                     (red_base.position.1 + j) as usize,
                 );
                 board.place_cell(
-                    CellContent::Base(Team::Blue),
+                    CellContent::Base(Team::Red),
                     (blue_base.position.0 + i) as usize,
                     (blue_base.position.1 + j) as usize,
                 );
@@ -439,14 +439,14 @@ impl GameManager {
 
         // Check for win condition
         if self.red_base.stats.health <= 0 {
-            let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Blue);
+            let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Red);
             let serialized_packet = packet.serialize();
             for (player_id, _) in &self.client_channel {
                 self.send_to_player(*player_id, BytesMut::from(&serialized_packet[..]));
             }
             std::process::exit(0);
         } else if self.blue_base.stats.health <= 0 {
-            let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Red);
+            let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Blue);
             let serialized_packet = packet.serialize();
             for (player_id, _) in &self.client_channel {
                 self.send_to_player(*player_id, BytesMut::from(&serialized_packet[..]));
