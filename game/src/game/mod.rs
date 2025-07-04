@@ -13,12 +13,12 @@ use cell::Team;
 pub use cell::{BaseTerrain, Cell, CellContent, MinionId, PlayerId, TowerId};
 pub use entities::champion::{Action, Champion};
 use entities::{
-    Fighter, Target, base::Base,
+    Fighter, Target,
+    base::Base,
     tower::{Tower, generate_tower_id},
 };
 use minion_manager::MinionManager;
 use tokio::sync::mpsc;
-use tokio::time;
 
 use std::{
     collections::HashMap,
@@ -59,7 +59,6 @@ impl GameManager {
         let mut towers: HashMap<TowerId, Tower> = HashMap::new();
         // Tower placement
         {
-            //                  t1   bot      top      mid     t2 bot        top      mid
             let placement = vec![
                 (196, 150),
                 (39, 7),
@@ -320,7 +319,11 @@ impl GameManager {
                         minion.take_damage(damage);
                         if minion.is_dead() {
                             minion_to_clear.push(id);
-                            self.dead_minion_positions.push((minion.row, minion.col, minion.team_id));
+                            self.dead_minion_positions.push((
+                                minion.row,
+                                minion.col,
+                                minion.team_id,
+                            ));
                             self.board
                                 .clear_cell(minion.row as usize, minion.col as usize);
                         }
@@ -347,9 +350,10 @@ impl GameManager {
             let mut champions_in_range = Vec::new();
             for (_, champion) in self.champions.iter_mut() {
                 // Check if champion is in 5x5 range and is on the opposing team
-                if champion.team_id != minion_team &&
-                   (champion.row as i32 - minion_row as i32).abs() <= 2 &&
-                   (champion.col as i32 - minion_col as i32).abs() <= 2 {
+                if champion.team_id != minion_team
+                    && (champion.row as i32 - minion_row as i32).abs() <= 2
+                    && (champion.col as i32 - minion_col as i32).abs() <= 2
+                {
                     champions_in_range.push(champion);
                 }
             }
@@ -466,7 +470,14 @@ impl GameManager {
             // 2. Create the board packet
             let health = champion.get_health();
             let xp_needed = champion.xp_for_next_level().unwrap_or(0); // Get XP needed, 0 if max level
-            let board_packet = BoardPacket::new(health.0, health.1, champion.level, champion.xp, xp_needed, board_rle_vec);
+            let board_packet = BoardPacket::new(
+                health.0,
+                health.1,
+                champion.level,
+                champion.xp,
+                xp_needed,
+                board_rle_vec,
+            );
             let serialized_packet = board_packet.serialize();
             // 3. Store the serialized packet to be sent later
             updates.insert(*player_id, serialized_packet);
@@ -499,16 +510,6 @@ impl GameManager {
                                     println!("tower anim: {:?}", animation);
                                     self.animations.push(animation);
                                     Some((Target::Champion(*id), damage))
-                                } else {
-                                    None
-                                }
-                            }
-                            CellContent::Base(team) => {
-                                if let Some((damage, mut animation)) = tower.can_attack() {
-                                    animation.attach_target(0); // No specific target ID for base
-                                    println!("tower anim: {:?}", animation);
-                                    self.animations.push(animation);
-                                    Some((Target::Base(*team), damage))
                                 } else {
                                     None
                                 }
@@ -553,8 +554,8 @@ impl GameManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::cell::{CellContent, Team};
     use crate::game::board::Board;
+    use crate::game::cell::{CellContent, Team};
 
     // Helper function to create a dummy board
     fn create_dummy_board(rows: usize, cols: usize) -> Board {
@@ -569,7 +570,9 @@ mod tests {
         // Test Red Base placement (190, 10) to (192, 12)
         for i in 0..3 {
             for j in 0..3 {
-                let cell = board.get_cell((190 + i) as usize, (10 + j) as usize).unwrap();
+                let cell = board
+                    .get_cell((190 + i) as usize, (10 + j) as usize)
+                    .unwrap();
                 assert_eq!(cell.content, Some(CellContent::Base(Team::Red)));
             }
         }
@@ -577,7 +580,9 @@ mod tests {
         // Test Blue Base placement (10, 190) to (12, 192)
         for i in 0..3 {
             for j in 0..3 {
-                let cell = board.get_cell((10 + i) as usize, (190 + j) as usize).unwrap();
+                let cell = board
+                    .get_cell((10 + i) as usize, (190 + j) as usize)
+                    .unwrap();
                 assert_eq!(cell.content, Some(CellContent::Base(Team::Blue)));
             }
         }

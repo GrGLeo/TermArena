@@ -8,7 +8,7 @@ import (
 )
 
 type GameOverModel struct {
-	win     int
+	win           int
 	height, width int
 }
 

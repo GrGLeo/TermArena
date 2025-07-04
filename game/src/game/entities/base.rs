@@ -1,8 +1,8 @@
-use crate::game::cell::Team;
-use crate::game::entities::{Fighter, Stats};
 use crate::game::Board;
 use crate::game::Cell;
 use crate::game::animation::AnimationTrait;
+use crate::game::cell::Team;
+use crate::game::entities::{Fighter, Stats};
 
 pub struct Base {
     pub team: Team,
@@ -17,10 +17,10 @@ impl Base {
             attack_speed: std::time::Duration::from_secs(999),
             health: 1000,
             max_health: 1000,
-            armor: 20,
+            armor: 10,
         };
 
-        Self {
+        Base {
             team,
             stats,
             position,
@@ -34,10 +34,12 @@ impl Fighter for Base {
     }
 
     fn can_attack(&mut self) -> Option<(u16, Box<dyn AnimationTrait>)> {
+        // Base can't attack
         None
     }
 
     fn get_potential_target<'a>(&self, _board: &'a Board, _range: (u16, u16)) -> Option<&'a Cell> {
+        // Base can't get potential target
         None
     }
 }
