@@ -79,23 +79,31 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
   for {
     n, err := conn.Read(buf)
     if err != nil {
+      log.Printf("Error reading from connection: %v", err)
       // Handle disconnection or read error
       return
     }
+    log.Printf("Received %d bytes: %x", n, buf[:n])
     // Send the packet as a message to the model
     message, err := shared.DeSerialize(buf[:n])
     if err != nil {
+      log.Printf("Error deserializing packet: %v", err)
       return
     }
+    log.Printf("Deserialized packet type: %T", message)
     switch msg := message.(type) {
     case *shared.RespPacket:
+      log.Printf("Sending RespMsg: %+v", msg)
       msgs <- ResponseMsg{Code: msg.Success}
     case *shared.LookRoomPacket:
+      log.Printf("Sending LookRoomMsg: %+v", msg)
       msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID, RoomIP: msg.RoomIP}
     case *shared.GameStartPacket:
       log.Println("Game started packet found")
+      log.Printf("Sending GameStartMsg: %+v", msg)
       msgs <- GameStartMsg{Code: msg.Success}
     case *shared.GameClosePacket:
+      log.Printf("Sending GameCloseMsg: %+v", msg)
       msgs <- GameCloseMsg{Code: msg.Success}
     case *shared.BoardPacket:
       board, err := DecodeRLE(msg.EncodedBoard)
@@ -104,14 +112,17 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
       }
       health := [2]int{msg.Health, msg.MaxHealth}
       xp := [2]int{msg.Xp, msg.XpNeeded}
+      log.Printf("Sending BoardMsg: Health=%v, Level=%d, Xp=%v", health, msg.Level, xp)
       msgs <- BoardMsg{Points: msg.Points, Health: health, Level: msg.Level, Xp: xp,  Board: board}
     case *shared.DeltaPacket:
       deltas := DecodeDeltas(msg.Deltas)
+      log.Printf("Sending DeltaMsg: TickID=%d, Deltas=%v", msg.TickID, deltas)
       msgs <- DeltaMsg{Points: msg.Points, Deltas: deltas, TickID: msg.TickID}
     case *shared.EndGamePacket:
+      log.Printf("Sending EndGameMsg: Win=%t", msg.Win)
       msgs <- EndGameMsg{Win: msg.Win}
     default:
-      log.Printf("Unknown type: %T\n", message)
+      log.Printf("Unknown type: %T, raw: %x", message, buf[:n])
       msgs <- GamePacketMsg{Packet: buf[:n]}
     }
   }
