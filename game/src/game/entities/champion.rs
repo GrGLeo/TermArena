@@ -8,7 +8,7 @@ use crate::game::animation::melee::MeleeAnimation;
 use crate::game::cell::{CellContent, Team};
 use crate::game::{Board, cell::PlayerId};
 
-use super::{reduced_damage, Fighter, Stats};
+use super::{Fighter, Stats, reduced_damage};
 
 #[derive(Debug, Clone, Copy)]
 
@@ -92,7 +92,7 @@ impl Champion {
             16 => Some(110),
             17 => Some(115),
             18 => None, // Max level
-            _ => None, // Should not happen
+            _ => None,  // Should not happen
         }
     }
 
@@ -232,7 +232,8 @@ impl Fighter for Champion {
                     match content {
                         CellContent::Champion(_, team_id)
                         | CellContent::Tower(_, team_id)
-                        | CellContent::Minion(_, team_id) => {
+                        | CellContent::Minion(_, team_id)
+                        | CellContent::Base(team_id) => {
                             if *team_id != self.team_id {
                                 Some((row, col, cell))
                             } else {

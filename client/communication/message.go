@@ -47,6 +47,11 @@ type GameCloseMsg struct {
 	Code int
 }
 
+// EndGameMsg is sent when the game ends
+type EndGameMsg struct {
+	Win bool
+}
+
 // BoardMsg is used to transfer the board to game model
 type BoardMsg struct {
 	Points [2]int

@@ -4,5 +4,6 @@ test/
 /bin
 auth/target
 game/target
+GEMINI.md
 *.jsonl
 *.json

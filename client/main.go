@@ -16,6 +16,7 @@ const (
 	Lobby      = "lobby"
 	Menu       = "menu"
 	Game       = "game"
+	GameOver   = "gameover"
 )
 
 type MetaModel struct {
@@ -24,6 +25,7 @@ type MetaModel struct {
 	AuthModel      model.AuthModel
 	LobbyModel     model.LobbyModel
 	GameModel      model.GameModel
+	GameOverModel  model.GameOverModel
 	state          string
 	Username       string
 	Connection     *net.TCPConn
@@ -125,15 +127,15 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case Lobby:
 		newmodel, cmd = m.LobbyModel.Update(msg)
 		m.LobbyModel = newmodel.(model.LobbyModel)
-    switch msg := msg.(type) {
-    case communication.LookRoomMsg:
-      for {
-        conn, err := communication.MakeConnection(msg.RoomIP)
-        if err == nil {
-          m.GameConnection = conn
-          break
-        }
-      }
+		switch msg := msg.(type) {
+		case communication.LookRoomMsg:
+			for {
+				conn, err := communication.MakeConnection(msg.RoomIP)
+				if err == nil {
+					m.GameConnection = conn
+					break
+				}
+			}
 			go communication.ListenForPackets(m.GameConnection, m.msgs)
 		case communication.GameStartMsg:
 			m.state = Game
@@ -145,20 +147,39 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case Game:
-		switch msg.(type) {
+		switch msg := msg.(type) {
 		case communication.GameCloseMsg:
-			conn, err := communication.MakeConnection("8082")
-			if err != nil {
-				log.Println("Failed to make connection after game close: ", err.Error())
-			}
-			m.Connection = conn
-			m.state = Lobby
-			m.LobbyModel.SetConn(conn)
-			m.LobbyModel.SetLooking(false)
-			go communication.ListenForPackets(m.Connection, m.msgs)
+			m.state = GameOver
+			m.GameOverModel = model.NewGameOverModel(msg.Code)
+			m.GameOverModel.SetDimension(m.height, m.width)
+			return m, m.GameOverModel.Init()
 		default:
 			newmodel, cmd = m.GameModel.Update(msg)
 			m.GameModel = newmodel.(model.GameModel)
+			return m, cmd
+		}
+	case GameOver:
+		switch msg := msg.(type) {
+		case model.GoToLobbyMsg:
+			if m.GameConnection != nil {
+				m.GameConnection.Close()
+				m.GameConnection = nil
+			}
+			conn, err := communication.MakeConnection("8082")
+			if err != nil {
+				log.Println("Failed to make connection after game over: ", err.Error())
+        // TODO: add a retry mechanism as when we start the client
+				return m, tea.Quit
+			}
+			m.Connection = conn
+			m.state = Lobby
+			m.LobbyModel = model.NewLobbyModel(m.Connection)
+			m.LobbyModel.SetDimension(m.height, m.width)
+			go communication.ListenForPackets(m.Connection, m.msgs)
+			return m, m.LobbyModel.Init()
+		default:
+			newmodel, cmd = m.GameOverModel.Update(msg)
+			m.GameOverModel = newmodel.(model.GameOverModel)
 			return m, cmd
 		}
 	}
@@ -177,6 +198,8 @@ func (m MetaModel) View() string {
 		return m.LobbyModel.View()
 	case Game:
 		return m.GameModel.View()
+	case GameOver:
+		return m.GameOverModel.View()
 	}
 	return ""
 }

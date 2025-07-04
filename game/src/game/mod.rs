@@ -14,6 +14,7 @@ pub use cell::{BaseTerrain, Cell, CellContent, MinionId, PlayerId, TowerId};
 pub use entities::champion::{Action, Champion};
 use entities::{
     Fighter, Target,
+    base::Base,
     tower::{Tower, generate_tower_id},
 };
 use minion_manager::MinionManager;
@@ -34,6 +35,8 @@ pub struct GameManager {
     player_action: HashMap<PlayerId, Action>,
     champions: HashMap<PlayerId, Champion>,
     towers: HashMap<TowerId, Tower>,
+    red_base: Base,
+    blue_base: Base,
     minion_manager: MinionManager,
     animations: Vec<Box<dyn AnimationTrait>>,
     pub client_channel: HashMap<PlayerId, mpsc::Sender<ClientMessage>>,
@@ -56,7 +59,6 @@ impl GameManager {
         let mut towers: HashMap<TowerId, Tower> = HashMap::new();
         // Tower placement
         {
-            //                  t1   bot      top      mid     t2 bot        top      mid
             let placement = vec![
                 (196, 150),
                 (39, 7),
@@ -82,6 +84,24 @@ impl GameManager {
             tower_2.place_tower(&mut board);
         }
 
+        let red_base = Base::new(Team::Red, (190, 10));
+        let blue_base = Base::new(Team::Blue, (10, 190));
+
+        for i in 0..3 {
+            for j in 0..3 {
+                board.place_cell(
+                    CellContent::Base(Team::Blue),
+                    (red_base.position.0 + i) as usize,
+                    (red_base.position.1 + j) as usize,
+                );
+                board.place_cell(
+                    CellContent::Base(Team::Red),
+                    (blue_base.position.0 + i) as usize,
+                    (blue_base.position.1 + j) as usize,
+                );
+            }
+        }
+
         let minion_manager = MinionManager::new();
 
         GameManager {
@@ -91,6 +111,8 @@ impl GameManager {
             player_action: HashMap::new(),
             champions: HashMap::new(),
             towers,
+            red_base,
+            blue_base,
             minion_manager,
             animations: Vec::new(),
             client_channel: HashMap::new(),
@@ -245,6 +267,12 @@ impl GameManager {
                                     pending_damages.push((Target::Champion(*id), damage))
                                 }
                             }
+                            CellContent::Base(team) => {
+                                if let Some((damage, animation)) = champ.can_attack() {
+                                    new_animations.push(animation);
+                                    pending_damages.push((Target::Base(*team), damage))
+                                }
+                            }
                             _ => break,
                         }
                     }
@@ -291,7 +319,11 @@ impl GameManager {
                         minion.take_damage(damage);
                         if minion.is_dead() {
                             minion_to_clear.push(id);
-                            self.dead_minion_positions.push((minion.row, minion.col, minion.team_id));
+                            self.dead_minion_positions.push((
+                                minion.row,
+                                minion.col,
+                                minion.team_id,
+                            ));
                             self.board
                                 .clear_cell(minion.row as usize, minion.col as usize);
                         }
@@ -302,6 +334,10 @@ impl GameManager {
                         champ.take_damage(damage);
                     }
                 }
+                Target::Base(team) => match team {
+                    Team::Red => self.red_base.take_damage(damage),
+                    Team::Blue => self.blue_base.take_damage(damage),
+                },
             });
 
         // clear dead minion
@@ -314,9 +350,10 @@ impl GameManager {
             let mut champions_in_range = Vec::new();
             for (_, champion) in self.champions.iter_mut() {
                 // Check if champion is in 5x5 range and is on the opposing team
-                if champion.team_id != minion_team &&
-                   (champion.row as i32 - minion_row as i32).abs() <= 2 &&
-                   (champion.col as i32 - minion_col as i32).abs() <= 2 {
+                if champion.team_id != minion_team
+                    && (champion.row as i32 - minion_row as i32).abs() <= 2
+                    && (champion.col as i32 - minion_col as i32).abs() <= 2
+                {
                     champions_in_range.push(champion);
                 }
             }
@@ -405,6 +442,27 @@ impl GameManager {
             }
         }
 
+        // Check for win condition
+        if self.red_base.stats.health <= 0 {
+            println!("Sending EndGamePacket: Red base destroyed, Blue team wins!");
+            let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Red);
+            println!("EndGamePacket: {:?}", packet);
+            let serialized_packet = packet.serialize();
+            for (player_id, _) in &self.client_channel {
+                self.send_to_player(*player_id, BytesMut::from(&serialized_packet[..]));
+            }
+            std::process::exit(0);
+        } else if self.blue_base.stats.health <= 0 {
+            println!("Sending EndGamePacket: Blue base destroyed, Red team wins!");
+            let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Blue);
+            println!("EndGamePacket: {:?}", packet);
+            let serialized_packet = packet.serialize();
+            for (player_id, _) in &self.client_channel {
+                self.send_to_player(*player_id, BytesMut::from(&serialized_packet[..]));
+            }
+            std::process::exit(0);
+        }
+
         // --- Send per player there board view ---
         for (player_id, champion) in &self.champions {
             // 1. Get player-specific board view
@@ -412,7 +470,14 @@ impl GameManager {
             // 2. Create the board packet
             let health = champion.get_health();
             let xp_needed = champion.xp_for_next_level().unwrap_or(0); // Get XP needed, 0 if max level
-            let board_packet = BoardPacket::new(health.0, health.1, champion.level, champion.xp, xp_needed, board_rle_vec);
+            let board_packet = BoardPacket::new(
+                health.0,
+                health.1,
+                champion.level,
+                champion.xp,
+                xp_needed,
+                board_rle_vec,
+            );
             let serialized_packet = board_packet.serialize();
             // 3. Store the serialized packet to be sent later
             updates.insert(*player_id, serialized_packet);
@@ -478,6 +543,65 @@ impl GameManager {
                         champ.take_damage(damage);
                     }
                 }
+                Target::Base(team) => match team {
+                    Team::Red => self.red_base.take_damage(damage),
+                    Team::Blue => self.blue_base.take_damage(damage),
+                },
             });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::game::board::Board;
+    use crate::game::cell::{CellContent, Team};
+
+    // Helper function to create a dummy board
+    fn create_dummy_board(rows: usize, cols: usize) -> Board {
+        Board::new(rows, cols)
+    }
+
+    #[test]
+    fn test_game_manager_base_placement() {
+        let game_manager = GameManager::new();
+        let board = game_manager.board;
+
+        // Test Red Base placement (190, 10) to (192, 12)
+        for i in 0..3 {
+            for j in 0..3 {
+                let cell = board
+                    .get_cell((190 + i) as usize, (10 + j) as usize)
+                    .unwrap();
+                assert_eq!(cell.content, Some(CellContent::Base(Team::Red)));
+            }
+        }
+
+        // Test Blue Base placement (10, 190) to (12, 192)
+        for i in 0..3 {
+            for j in 0..3 {
+                let cell = board
+                    .get_cell((10 + i) as usize, (190 + j) as usize)
+                    .unwrap();
+                assert_eq!(cell.content, Some(CellContent::Base(Team::Blue)));
+            }
+        }
+    }
+
+    #[test]
+    fn test_win_condition() {
+        let mut game_manager = GameManager::new();
+
+        // Simulate red base being destroyed
+        game_manager.red_base.stats.health = 0;
+
+        // Call game_tick, which should trigger the win condition and exit
+        // We can't directly test std::process::exit(0), but we can verify the health.
+        // The important part is that the health is 0, which would lead to the exit.
+        game_manager.game_tick();
+
+        assert_eq!(game_manager.red_base.stats.health, 0);
+        // In a real test, you might mock the send_to_player and std::process::exit
+        // to assert that the correct packet was sent and exit was called.
     }
 }

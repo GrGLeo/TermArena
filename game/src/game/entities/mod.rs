@@ -1,17 +1,19 @@
 use std::time::Duration;
 
-use super::{animation::AnimationTrait, Board, Cell, MinionId, PlayerId, TowerId};
+use super::{Board, Cell, MinionId, PlayerId, TowerId, animation::AnimationTrait};
+use crate::game::cell::Team;
 
+pub mod base;
 pub mod champion;
-pub mod tower;
 pub mod minion;
+pub mod tower;
 
 pub enum Target {
     Tower(TowerId),
     Minion(MinionId),
     Champion(PlayerId),
+    Base(Team),
 }
-
 
 #[derive(Debug)]
 pub struct Stats {
@@ -31,6 +33,3 @@ pub trait Fighter {
 pub fn reduced_damage(damage: u16, armor: u16) -> u16 {
     damage / (1 + (armor / 100))
 }
-
-
-

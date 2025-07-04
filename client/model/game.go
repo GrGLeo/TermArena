@@ -37,8 +37,8 @@ func NewGameModel(conn *net.TCPConn) GameModel {
 		"#FFFF00", // Bright yellow
 		"#FFD700", // Gold
 	)
-  redSolid := progress.WithSolidFill("#AB2C0F")
-  blueSolid := progress.WithSolidFill("#0000FF")
+	redSolid := progress.WithSolidFill("#AB2C0F")
+	blueSolid := progress.WithSolidFill("#0000FF")
 	return GameModel{
 		conn:           conn,
 		healthProgress: progress.New(redSolid),
@@ -135,6 +135,8 @@ func (m GameModel) View() string {
 	Flag1Style := lipgloss.NewStyle().Background(lipgloss.Color("201"))
 	TowerStyle := lipgloss.NewStyle().Background(lipgloss.Color("94"))
 	FreezeStyle := lipgloss.NewStyle().Background(lipgloss.Color("105"))
+	BaseBlueStyle := lipgloss.NewStyle().Background(lipgloss.Color("21"))
+	BaseRedStyle := lipgloss.NewStyle().Background(lipgloss.Color("196"))
 
 	BluePointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("21"))
 	RedPointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("34"))
@@ -195,8 +197,12 @@ func (m GameModel) View() string {
 			case 10:
 				builder.WriteString(bgStyle.Render("▘")) // Render for dash
 			case 11:
-				builder.WriteString(bgStyle.Render("⣀")) // Render for dash
+				builder.WriteString(BaseBlueStyle.Render(" ")) // Render for base blue
 			case 12:
+				builder.WriteString(BaseRedStyle.Render(" ")) // Render for base red
+			case 13:
+				builder.WriteString(bgStyle.Render("⣀")) // Render for dash
+			case 14:
 				builder.WriteString(FreezeStyle.Render("x")) // Render for freezing spell
 			}
 		}
