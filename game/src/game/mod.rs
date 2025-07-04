@@ -18,6 +18,7 @@ use entities::{
 };
 use minion_manager::MinionManager;
 use tokio::sync::mpsc;
+use tokio::time;
 
 use std::{
     collections::HashMap,
@@ -445,6 +446,7 @@ impl GameManager {
             for (player_id, _) in &self.client_channel {
                 self.send_to_player(*player_id, BytesMut::from(&serialized_packet[..]));
             }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             std::process::exit(0);
         } else if self.blue_base.stats.health <= 0 {
             println!("Sending EndGamePacket: Blue base destroyed, Red team wins!");
@@ -453,6 +455,7 @@ impl GameManager {
             for (player_id, _) in &self.client_channel {
                 self.send_to_player(*player_id, BytesMut::from(&serialized_packet[..]));
             }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             std::process::exit(0);
         }
 
