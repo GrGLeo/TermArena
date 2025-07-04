@@ -270,7 +270,7 @@ impl GameManager {
                             CellContent::Base(team) => {
                                 if let Some((damage, animation)) = champ.can_attack() {
                                     new_animations.push(animation);
-                                    pending_damages.push((Target::Base(team), damage))
+                                    pending_damages.push((Target::Base(*team), damage))
                                 }
                             }
                             _ => break,
@@ -503,7 +503,7 @@ impl GameManager {
                                     animation.attach_target(0); // No specific target ID for base
                                     println!("tower anim: {:?}", animation);
                                     self.animations.push(animation);
-                                    Some((Target::Base(team), damage))
+                                    Some((Target::Base(*team), damage))
                                 } else {
                                     None
                                 }
