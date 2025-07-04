@@ -149,23 +149,23 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case Game:
 		switch msg := msg.(type) {
 		case communication.GameCloseMsg:
-      m.state = GameOver
-      m.GameOverModel = model.NewGameOverModel(msg.Code)
-      m.GameOverModel.SetDimension(m.height, m.width)
-      return m, m.GameOverModel.Init()
-      
-      /*
-			conn, err := communication.MakeConnection("8082")
-			if err != nil {
-				log.Println("Failed to make connection after game close: ", err.Error())
-			}
-			m.Connection = conn
-			m.state = Lobby
-			m.LobbyModel.SetConn(conn)
-			m.LobbyModel.SetLooking(false)
-			go communication.ListenForPackets(m.Connection, m.msgs)
-		case communication.EndGameMsg:
-      */
+			m.state = GameOver
+			m.GameOverModel = model.NewGameOverModel(msg.Code)
+			m.GameOverModel.SetDimension(m.height, m.width)
+			return m, m.GameOverModel.Init()
+
+			/*
+					conn, err := communication.MakeConnection("8082")
+					if err != nil {
+						log.Println("Failed to make connection after game close: ", err.Error())
+					}
+					m.Connection = conn
+					m.state = Lobby
+					m.LobbyModel.SetConn(conn)
+					m.LobbyModel.SetLooking(false)
+					go communication.ListenForPackets(m.Connection, m.msgs)
+				case communication.EndGameMsg:
+			*/
 		default:
 			newmodel, cmd = m.GameModel.Update(msg)
 			m.GameModel = newmodel.(model.GameModel)
