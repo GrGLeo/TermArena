@@ -80,7 +80,7 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
     n, err := conn.Read(buf)
     if err != nil {
       log.Printf("Error reading from connection: %v", err)
-      // Handle disconnection or read error
+      msgs <- GameCloseMsg{Code: 2} // Code 2 for server error/unexpected close
       return
     }
     log.Printf("Received %d bytes: %x", n, buf[:n])
