@@ -232,7 +232,8 @@ impl Fighter for Champion {
                     match content {
                         CellContent::Champion(_, team_id)
                         | CellContent::Tower(_, team_id)
-                        | CellContent::Minion(_, team_id) => {
+                        | CellContent::Minion(_, team_id)
+                        | CellContent::Base(team_id) => {
                             if *team_id != self.team_id {
                                 Some((row, col, cell))
                             } else {
