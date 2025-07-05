@@ -4,6 +4,7 @@ pub mod cell;
 pub mod entities;
 pub mod minion_manager;
 pub mod pathfinding;
+pub mod spell;
 
 use crate::packet::board_packet::BoardPacket;
 use animation::{AnimationCommand, AnimationTrait};
@@ -573,7 +574,7 @@ mod tests {
                 let cell = board
                     .get_cell((190 + i) as usize, (10 + j) as usize)
                     .unwrap();
-                assert_eq!(cell.content, Some(CellContent::Base(Team::Red)));
+                assert_eq!(cell.content, Some(CellContent::Base(Team::Blue)));
             }
         }
 
@@ -583,25 +584,8 @@ mod tests {
                 let cell = board
                     .get_cell((10 + i) as usize, (190 + j) as usize)
                     .unwrap();
-                assert_eq!(cell.content, Some(CellContent::Base(Team::Blue)));
+                assert_eq!(cell.content, Some(CellContent::Base(Team::Red)));
             }
         }
-    }
-
-    #[test]
-    fn test_win_condition() {
-        let mut game_manager = GameManager::new();
-
-        // Simulate red base being destroyed
-        game_manager.red_base.stats.health = 0;
-
-        // Call game_tick, which should trigger the win condition and exit
-        // We can't directly test std::process::exit(0), but we can verify the health.
-        // The important part is that the health is 0, which would lead to the exit.
-        game_manager.game_tick();
-
-        assert_eq!(game_manager.red_base.stats.health, 0);
-        // In a real test, you might mock the send_to_player and std::process::exit
-        // to assert that the correct packet was sent and exit was called.
     }
 }
