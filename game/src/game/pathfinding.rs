@@ -91,9 +91,7 @@ pub fn find_path_on_board(
     open_set.push(start_node);
     g_costs.insert(start, start_node_g_cost);
 
-
     while let Some(current_node) = open_set.pop() {
-
         if closed_set.contains(&current_node.position) {
             continue;
         }
@@ -117,7 +115,6 @@ pub fn find_path_on_board(
             get_valid_neighbors(board, current_node.position.0, current_node.position.1);
 
         for neighbor_pos in neighbors_pos {
-
             if closed_set.contains(&neighbor_pos) {
                 continue;
             }
@@ -574,20 +571,35 @@ mod pathfinding_tests {
 
         // Starting positions for the 8 minions
         let minion_starts = vec![
-            (0, 5), (1, 4), (1, 5), (1, 6), (2, 5), (3, 4), (3, 5), (3, 6)
+            (0, 5),
+            (1, 4),
+            (1, 5),
+            (1, 6),
+            (2, 5),
+            (3, 4),
+            (3, 5),
+            (3, 6),
         ];
 
         // Create the test minions and place them on the board initially
-        let mut minions: Vec<TestMinion> = minion_starts.into_iter().enumerate().map(|(i, pos)| {
-            // Place a dummy minion content on the board for pathfinding to see it as occupied
-            board.place_cell(CellContent::Minion(i, Team::Blue), pos.0 as usize, pos.1 as usize);
-            TestMinion {
-                id: i as u32,
-                position: pos,
-                path: None,
-                reached_goal_adjacent: false,
-            }
-        }).collect();
+        let mut minions: Vec<TestMinion> = minion_starts
+            .into_iter()
+            .enumerate()
+            .map(|(i, pos)| {
+                // Place a dummy minion content on the board for pathfinding to see it as occupied
+                board.place_cell(
+                    CellContent::Minion(i, Team::Blue),
+                    pos.0 as usize,
+                    pos.1 as usize,
+                );
+                TestMinion {
+                    id: i as u32,
+                    position: pos,
+                    path: None,
+                    reached_goal_adjacent: false,
+                }
+            })
+            .collect();
 
         let max_ticks = 50; // Prevent infinite loops in case of issues
         let mut all_reached = false;
@@ -599,10 +611,9 @@ mod pathfinding_tests {
             all_reached = true; // Assume all will reach this tick
 
             // Shuffle minions to avoid favoring those processed first
-            use rand::seq::SliceRandom;
             use rand::rng;
+            use rand::seq::SliceRandom;
             minions.shuffle(&mut rng());
-
 
             for minion in &mut minions {
                 if minion.reached_goal_adjacent {
@@ -613,67 +624,98 @@ mod pathfinding_tests {
 
                 // If the minion doesn't have a path, find one
                 if minion.path.is_none() {
-                    println!(" Minion {} at {:?} needs a path.", minion.id, minion.position);
+                    println!(
+                        " Minion {} at {:?} needs a path.",
+                        minion.id, minion.position
+                    );
                     minion.path = find_path_on_board(&board, minion.position, goal);
 
                     // If pathfinding failed, this minion is stuck for now
                     if minion.path.is_none() {
-                        println!(" Minion {} at {:?} could not find a path.", minion.id, minion.position);
+                        println!(
+                            " Minion {} at {:?} could not find a path.",
+                            minion.id, minion.position
+                        );
                         continue;
                     }
                 }
 
                 // If the minion has a path, attempt to move along it
                 if let Some(path) = &mut minion.path {
-                    if let Some(next_step) = path.front().copied() { // Peek at the next step
-                         println!(" Minion {} at {:?} attempting to move to {:?}.", minion.id, minion.position, next_step);
+                    if let Some(next_step) = path.front().copied() {
+                        // Peek at the next step
+                        println!(
+                            " Minion {} at {:?} attempting to move to {:?}.",
+                            minion.id, minion.position, next_step
+                        );
 
                         // Check if the next step is passable *before* attempting the move
-                        if board.get_cell(next_step.0 as usize, next_step.1 as usize).map_or(false, |cell| cell.is_passable()) {
+                        if board
+                            .get_cell(next_step.0 as usize, next_step.1 as usize)
+                            .map_or(false, |cell| cell.is_passable())
+                        {
                             // Attempt to move the minion: Clear old cell, update position, place on new cell
-                            board.clear_cell(minion.position.0 as usize, minion.position.1 as usize);
+                            board
+                                .clear_cell(minion.position.0 as usize, minion.position.1 as usize);
                             minion.position = next_step;
                             // Place dummy minion content on the new cell
-                             board.place_cell(CellContent::Minion(minion.id.try_into().unwrap(), Team::Blue), minion.position.0 as usize, minion.position.1 as usize);
+                            board.place_cell(
+                                CellContent::Minion(minion.id.try_into().unwrap(), Team::Blue),
+                                minion.position.0 as usize,
+                                minion.position.1 as usize,
+                            );
 
                             path.pop_front(); // Remove the step from the path since move was successful
-                             println!(" Minion {} successfully moved to {:?}. Path steps left: {}", minion.id, minion.position, path.len());
-
+                            println!(
+                                " Minion {} successfully moved to {:?}. Path steps left: {}",
+                                minion.id,
+                                minion.position,
+                                path.len()
+                            );
 
                             // Check if the minion has reached a cell adjacent to the goal after moving
                             if is_adjacent_to_goal(minion.position, goal) {
                                 minion.reached_goal_adjacent = true;
                                 minion.path = None; // Clear path once adjacent
-                                println!(" Minion {} reached goal adjacent position {:?}.", minion.id, minion.position);
+                                println!(
+                                    " Minion {} reached goal adjacent position {:?}.",
+                                    minion.id, minion.position
+                                );
                             } else if path.is_empty() {
                                 // Reached the end of a path but not adjacent to goal (shouldn't happen with correct A*)
-                                println!(" Minion {} reached end of path but not adjacent to goal.", minion.id);
+                                println!(
+                                    " Minion {} reached end of path but not adjacent to goal.",
+                                    minion.id
+                                );
                                 minion.path = None; // Clear path
                             }
-
                         } else {
                             // Next step in path is blocked (dynamic obstacle moved there)
-                            println!(" Minion {}'s next step {:?} is blocked. Clearing path.", minion.id, next_step);
+                            println!(
+                                " Minion {}'s next step {:?} is blocked. Clearing path.",
+                                minion.id, next_step
+                            );
                             minion.path = None; // Clear path, will recalculate next tick
                         }
                     } else {
                         // Path was empty, clear it (should be handled by initial check, but good fallback)
                         minion.path = None;
-                         println!(" Minion {}'s path was empty. Clearing path.", minion.id);
+                        println!(" Minion {}'s path was empty. Clearing path.", minion.id);
                     }
                 }
             }
 
             // If all minions have reached goal adjacent, stop simulation
             if all_reached {
-                println!("--- All minions reached goal adjacent positions. Simulation complete. ---");
+                println!(
+                    "--- All minions reached goal adjacent positions. Simulation complete. ---"
+                );
                 break;
             }
 
             // Optional: Add a delay here if you were visualizing
             // std::thread::sleep(std::time::Duration::from_millis(100));
         }
-
 
         // --- Assertions after simulation ---
 
@@ -687,13 +729,21 @@ mod pathfinding_tests {
                 final_positions.insert(minion.position);
 
                 // Assert that the final position is indeed adjacent to the goal
-                 assert!(is_adjacent_to_goal(minion.position, goal),
-                         "Minion {} final position {:?} should be adjacent to the goal {:?}.",
-                         minion.id, minion.position, goal);
+                assert!(
+                    is_adjacent_to_goal(minion.position, goal),
+                    "Minion {} final position {:?} should be adjacent to the goal {:?}.",
+                    minion.id,
+                    minion.position,
+                    goal
+                );
             }
         }
 
-        println!("Minions reached goal adjacent: {}/{}", reached_count, minions.len());
+        println!(
+            "Minions reached goal adjacent: {}/{}",
+            reached_count,
+            minions.len()
+        );
         println!("Final adjacent positions: {:?}", final_positions);
 
         // Assert that all minions reached a goal adjacent cell
@@ -712,24 +762,30 @@ mod pathfinding_tests {
 
         // Optional: Assert that the set of final positions covers all 8 adjacent cells if 8 minions are used
         // and the goal is not near the board edge.
-         if minions.len() == 8 {
-             let expected_adjacent_cells: HashSet<(u16, u16)> = vec![
-                 (goal.0 - 1, goal.1 - 1), (goal.0 - 1, goal.1), (goal.0 - 1, goal.1 + 1),
-                 (goal.0, goal.1 - 1), /* (goal.0, goal.1), */ (goal.0, goal.1 + 1),
-                 (goal.0 + 1, goal.1 - 1), (goal.0 + 1, goal.1), (goal.0 + 1, goal.1 + 1),
-             ].into_iter().collect();
+        if minions.len() == 8 {
+            let expected_adjacent_cells: HashSet<(u16, u16)> = vec![
+                (goal.0 - 1, goal.1 - 1),
+                (goal.0 - 1, goal.1),
+                (goal.0 - 1, goal.1 + 1),
+                (goal.0, goal.1 - 1),
+                /* (goal.0, goal.1), */ (goal.0, goal.1 + 1),
+                (goal.0 + 1, goal.1 - 1),
+                (goal.0 + 1, goal.1),
+                (goal.0 + 1, goal.1 + 1),
+            ]
+            .into_iter()
+            .collect();
 
-             // Filter expected cells to be within board bounds if necessary
-             let bounded_expected_adjacent_cells: HashSet<(u16, u16)> = expected_adjacent_cells.into_iter()
-                 .filter(|&(r, c)| usize::from(r) < board.rows && usize::from(c) < board.cols)
-                 .collect();
+            // Filter expected cells to be within board bounds if necessary
+            let bounded_expected_adjacent_cells: HashSet<(u16, u16)> = expected_adjacent_cells
+                .into_iter()
+                .filter(|&(r, c)| usize::from(r) < board.rows && usize::from(c) < board.cols)
+                .collect();
 
-             assert_eq!(
-                 final_positions,
-                 bounded_expected_adjacent_cells,
-                 "The final positions should cover all valid adjacent cells around the goal."
-             );
-         }
-
+            assert_eq!(
+                final_positions, bounded_expected_adjacent_cells,
+                "The final positions should cover all valid adjacent cells around the goal."
+            );
+        }
     }
 }

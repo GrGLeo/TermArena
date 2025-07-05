@@ -6,6 +6,7 @@ pub mod minion_manager;
 pub mod pathfinding;
 pub mod spell;
 
+use crate::config::GameConfig;
 use crate::packet::board_packet::BoardPacket;
 use animation::{AnimationCommand, AnimationTrait};
 pub use board::Board;
@@ -44,10 +45,11 @@ pub struct GameManager {
     board: Board,
     pub tick: u64,
     dead_minion_positions: Vec<(u16, u16, Team)>,
+    config: GameConfig,
 }
 
 impl GameManager {
-    pub fn new() -> Self {
+    pub fn new(config: GameConfig) -> Self {
         println!("Initializing GameManager...");
         let file_path = "game/assets/map.json";
         let mut board = match Board::from_json(file_path) {
@@ -71,18 +73,18 @@ impl GameManager {
             // Bottom t1
             placement.into_iter().for_each(|place| {
                 let id = generate_tower_id().unwrap();
-                let tower_blue = Tower::new(id, Team::Blue, place.0, place.1);
+                let tower_blue = Tower::new(id, Team::Blue, place.0, place.1, config.tower.clone());
                 tower_blue.place_tower(&mut board);
                 let id = generate_tower_id().unwrap();
-                let tower_red = Tower::new(id, Team::Red, place.1, place.0);
+                let tower_red = Tower::new(id, Team::Red, place.1, place.0, config.tower.clone());
                 tower_red.place_tower(&mut board);
                 towers.insert(tower_blue.tower_id, tower_blue);
                 towers.insert(tower_red.tower_id, tower_red);
             });
         }
 
-        let red_base = Base::new(Team::Red, (190, 10));
-        let blue_base = Base::new(Team::Blue, (10, 190));
+        let red_base = Base::new(Team::Red, (190, 10), config.base.clone());
+        let blue_base = Base::new(Team::Blue, (10, 190), config.base.clone());
 
         for i in 0..3 {
             for j in 0..3 {
@@ -99,12 +101,13 @@ impl GameManager {
             }
         }
 
-        let minion_manager = MinionManager::new();
+        let minion_manager = MinionManager::new(config.minion.clone());
 
         GameManager {
             players_count: 0,
             max_players: 1,
             game_started: false,
+            config,
             player_action: HashMap::new(),
             champions: HashMap::new(),
             towers,
@@ -146,7 +149,13 @@ impl GameManager {
             {
                 let row = 199;
                 let col = 0;
-                let champion = Champion::new(player_id, Team::Blue, row, col);
+                let champion = Champion::new(
+                    player_id,
+                    Team::Blue,
+                    row,
+                    col,
+                    self.config.champion.clone(),
+                );
                 self.champions.insert(player_id, champion);
                 self.board.place_cell(
                     cell::CellContent::Champion(player_id, Team::Blue),

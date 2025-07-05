@@ -1,5 +1,5 @@
-use crate::game::cell::Team;
 use crate::game::MinionId;
+use crate::game::cell::Team;
 use crate::game::minion_manager::MinionManager;
 
 use super::cell::{BaseTerrain, Cell, CellAnimation, CellContent, EncodedCellValue};
@@ -28,7 +28,7 @@ impl Board {
         let mut file = File::open(file_path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
-        
+
         let board_layout: BoardLayout = serde_json::from_str(&contents)?;
         let mut grid = Vec::with_capacity(board_layout.rows);
         for (i, row) in board_layout.layout.iter().enumerate() {
@@ -49,7 +49,7 @@ impl Board {
             rows: board_layout.rows,
             cols: board_layout.cols,
         };
-        
+
         Ok(board)
     }
 
@@ -97,7 +97,12 @@ impl Board {
         self.grid[row][col].content = None;
     }
 
-    pub fn place_animation(&mut self, animation: CellAnimation, animation_row: usize, animation_col: usize) {
+    pub fn place_animation(
+        &mut self,
+        animation: CellAnimation,
+        animation_row: usize,
+        animation_col: usize,
+    ) {
         if let Some(row) = self.grid.get_mut(animation_row) {
             if let Some(cell) = row.get_mut(animation_col) {
                 cell.animation = Some(animation);
@@ -109,7 +114,13 @@ impl Board {
         self.grid[row][col].animation = None;
     }
 
-    pub fn center_view(&self, player_row: u16, player_col: u16, view_height: u16, view_width: u16) -> Vec<Vec<&Cell>> {
+    pub fn center_view(
+        &self,
+        player_row: u16,
+        player_col: u16,
+        view_height: u16,
+        view_width: u16,
+    ) -> Vec<Vec<&Cell>> {
         let grid_height = self.grid.len() as u16;
         let grid_width = self.grid.get(0).map_or(0, |r| r.len() as u16);
 
@@ -122,7 +133,7 @@ impl Board {
 
         // Adjust if view hit the top
         if min_row == 0 {
-            max_row = (view_height - 1).min(grid_height -1);
+            max_row = (view_height - 1).min(grid_height - 1);
         }
         // Adjust if view hit the bottom
         if max_row == grid_height - 1 {
@@ -141,15 +152,21 @@ impl Board {
             min_col = (grid_width - view_width).max(0);
         }
 
-        self.grid[min_row as usize..= max_row as usize]
+        self.grid[min_row as usize..=max_row as usize]
             .iter()
-            .map(|row| &row[min_col as usize..= max_col as usize])
+            .map(|row| &row[min_col as usize..=max_col as usize])
             .map(|slice| slice.iter().collect())
             .collect()
     }
 
-    pub fn run_length_encode(&self, player_row: u16, player_col: u16, minion_manager: &MinionManager) -> Vec<u8> {
-        let flattened_grid: Vec<&Cell> = self.center_view(player_row, player_col, 21, 51)
+    pub fn run_length_encode(
+        &self,
+        player_row: u16,
+        player_col: u16,
+        minion_manager: &MinionManager,
+    ) -> Vec<u8> {
+        let flattened_grid: Vec<&Cell> = self
+            .center_view(player_row, player_col, 21, 51)
             .into_iter()
             .flat_map(|row| row.into_iter())
             .collect();
@@ -194,13 +211,14 @@ fn get_encoded_cell_value(cell: &Cell, minion_manager: &MinionManager) -> Encode
             CellContent::Champion(_, _) => EncodedCellValue::Champion,
             CellContent::Minion(minion_id, team) => {
                 if let Some(minion) = minion_manager.minions.get(minion_id) {
-                    let health_percentage = (minion.stats.health as f32 / minion.stats.max_health as f32) * 100.0;
+                    let health_percentage =
+                        (minion.stats.health as f32 / minion.stats.max_health as f32) * 100.0;
                     let health_level = ((health_percentage / 12.5).ceil() as u8).max(1).min(8); // Map to 1-8
                     EncodedCellValue::from_health_level(health_level, *team)
                 } else {
                     EncodedCellValue::MinionPlaceholder
                 }
-            },
+            }
             CellContent::Flag(_, _) => EncodedCellValue::Flag,
             CellContent::Tower(_, _) => EncodedCellValue::Tower,
             CellContent::Base(team) => match team {
@@ -302,15 +320,24 @@ mod tests {
 
         // Test out-of-bounds row
         let cell_out_of_bounds_row = board.get_cell(5, 2);
-        assert!(cell_out_of_bounds_row.is_none(), "Should not get a cell with out-of-bounds row");
+        assert!(
+            cell_out_of_bounds_row.is_none(),
+            "Should not get a cell with out-of-bounds row"
+        );
 
         // Test out-of-bounds col
         let cell_out_of_bounds_col = board.get_cell(2, 5);
-        assert!(cell_out_of_bounds_col.is_none(), "Should not get a cell with out-of-bounds col");
+        assert!(
+            cell_out_of_bounds_col.is_none(),
+            "Should not get a cell with out-of-bounds col"
+        );
 
         // Test out-of-bounds row and col
         let cell_out_of_bounds_both = board.get_cell(5, 5);
-        assert!(cell_out_of_bounds_both.is_none(), "Should not get a cell with out-of-bounds row and col");
+        assert!(
+            cell_out_of_bounds_both.is_none(),
+            "Should not get a cell with out-of-bounds row and col"
+        );
     }
 
     #[test]
@@ -324,19 +351,33 @@ mod tests {
 
         // Place initial content
         board.place_cell(content.clone(), old_row, old_col);
-        let cell_at_old_pos_before_move = board.get_cell(old_row, old_col).expect("Cell should exist");
-        assert_eq!(cell_at_old_pos_before_move.content, Some(content.clone()), "Content should be at the old position before move");
+        let cell_at_old_pos_before_move =
+            board.get_cell(old_row, old_col).expect("Cell should exist");
+        assert_eq!(
+            cell_at_old_pos_before_move.content,
+            Some(content.clone()),
+            "Content should be at the old position before move"
+        );
 
         // Move the cell content
         board.move_cell(old_row, old_col, new_row, new_col);
 
         // Check the old position (should be empty)
-        let cell_at_old_pos_after_move = board.get_cell(old_row, old_col).expect("Cell should exist");
-        assert!(cell_at_old_pos_after_move.content.is_none(), "Old position should be empty after move");
+        let cell_at_old_pos_after_move =
+            board.get_cell(old_row, old_col).expect("Cell should exist");
+        assert!(
+            cell_at_old_pos_after_move.content.is_none(),
+            "Old position should be empty after move"
+        );
 
         // Check the new position (should have the content)
-        let cell_at_new_pos_after_move = board.get_cell(new_row, new_col).expect("Cell should exist");
-        assert_eq!(cell_at_new_pos_after_move.content, Some(content), "New position should have the content after move");
+        let cell_at_new_pos_after_move =
+            board.get_cell(new_row, new_col).expect("Cell should exist");
+        assert_eq!(
+            cell_at_new_pos_after_move.content,
+            Some(content),
+            "New position should have the content after move"
+        );
     }
 
     #[test]
@@ -359,7 +400,12 @@ mod tests {
         // Test view when player is in the center (not near edges)
         let center_player_row = rows / 2;
         let center_player_col = cols / 2;
-        let center_view = board.center_view(center_player_row as u16, center_player_col as u16, view_height, view_width);
+        let center_view = board.center_view(
+            center_player_row as u16,
+            center_player_col as u16,
+            view_height,
+            view_width,
+        );
 
         assert_eq!(center_view.len(), view_height as usize);
         assert_eq!(center_view[0].len(), view_width as usize);
@@ -368,43 +414,72 @@ mod tests {
         // This corresponds to the player's position on the board
         let center_view_center_row = view_height as usize / 2;
         let center_view_center_col = view_width as usize / 2;
-        assert_eq!(center_view[center_view_center_row][center_view_center_col].base, BaseTerrain::Wall, "Center cell in center view should be Wall");
-
+        assert_eq!(
+            center_view[center_view_center_row][center_view_center_col].base,
+            BaseTerrain::Wall,
+            "Center cell in center view should be Wall"
+        );
 
         // Test view when player is in the top-left corner
         let top_left_player_row = 0;
         let top_left_player_col = 0;
-        let top_left_view = board.center_view(top_left_player_row as u16, top_left_player_col as u16, view_height, view_width);
+        let top_left_view = board.center_view(
+            top_left_player_row as u16,
+            top_left_player_col as u16,
+            view_height,
+            view_width,
+        );
 
         assert_eq!(top_left_view.len(), view_height as usize);
         assert_eq!(top_left_view[0].len(), view_width as usize);
-        assert_eq!(top_left_view[0][0].base, BaseTerrain::Wall, "Top-left cell in top-left view should be Wall");
-
+        assert_eq!(
+            top_left_view[0][0].base,
+            BaseTerrain::Wall,
+            "Top-left cell in top-left view should be Wall"
+        );
 
         // Test view when player is in the bottom-right corner
         let bottom_right_player_row = rows - 1;
         let bottom_right_player_col = cols - 1;
-         let bottom_right_view = board.center_view(bottom_right_player_row as u16, bottom_right_player_col as u16, view_height, view_width);
+        let bottom_right_view = board.center_view(
+            bottom_right_player_row as u16,
+            bottom_right_player_col as u16,
+            view_height,
+            view_width,
+        );
 
         assert_eq!(bottom_right_view.len(), view_height as usize);
         assert_eq!(bottom_right_view[0].len(), view_width as usize);
         let bottom_right_view_corner_row = view_height as usize - 1;
         let bottom_right_view_corner_col = view_width as usize - 1;
-        assert_eq!(bottom_right_view[bottom_right_view_corner_row][bottom_right_view_corner_col].base, BaseTerrain::Bush, "Bottom-right cell in bottom-right view should be Bush");
+        assert_eq!(
+            bottom_right_view[bottom_right_view_corner_row][bottom_right_view_corner_col].base,
+            BaseTerrain::Bush,
+            "Bottom-right cell in bottom-right view should be Bush"
+        );
 
         // Test view when player is near the top edge
         let top_edge_player_row = 1;
         let top_edge_player_col = cols / 2;
-         let top_edge_view = board.center_view(top_edge_player_row as u16, top_edge_player_col as u16, view_height, view_width);
+        let top_edge_view = board.center_view(
+            top_edge_player_row as u16,
+            top_edge_player_col as u16,
+            view_height,
+            view_width,
+        );
 
         assert_eq!(top_edge_view.len(), view_height as usize);
         assert_eq!(top_edge_view[0].len(), view_width as usize);
 
-
         // Test view when player is near the left edge
         let left_edge_player_row = rows / 2;
         let left_edge_player_col = 1;
-         let left_edge_view = board.center_view(left_edge_player_row as u16, left_edge_player_col as u16, view_height, view_width);
+        let left_edge_view = board.center_view(
+            left_edge_player_row as u16,
+            left_edge_player_col as u16,
+            view_height,
+            view_width,
+        );
 
         assert_eq!(left_edge_view.len(), view_height as usize);
         assert_eq!(left_edge_view[0].len(), view_width as usize);
@@ -427,7 +502,8 @@ mod tests {
         let view_width = 4; // Match board width
 
         // Get the view and flatten it for RLE
-        let flattened_grid: Vec<&Cell> = board.center_view(player_row, player_col, view_height, view_width)
+        let flattened_grid: Vec<&Cell> = board
+            .center_view(player_row, player_col, view_height, view_width)
             .into_iter()
             .flat_map(|row| row.into_iter())
             .collect();
@@ -435,7 +511,8 @@ mod tests {
         let mut rle: Vec<String> = Vec::new();
 
         if !flattened_grid.is_empty() {
-            let mut current_cell_value: EncodedCellValue = EncodedCellValue::from(flattened_grid[0]);
+            let mut current_cell_value: EncodedCellValue =
+                EncodedCellValue::from(flattened_grid[0]);
             let mut count = 1;
             for i in 1..flattened_grid.len() {
                 let encoded_value = EncodedCellValue::from(flattened_grid[i]);
@@ -454,6 +531,10 @@ mod tests {
 
         let expected_rle = "0:1|2:1|1:3|4:1|1:2|3:1|1:2|9:1";
 
-        assert_eq!(String::from_utf8(encoded_bytes).expect("Valid UTF-8 string"), expected_rle, "Run-length encoding did not match expected output");
+        assert_eq!(
+            String::from_utf8(encoded_bytes).expect("Valid UTF-8 string"),
+            expected_rle,
+            "Run-length encoding did not match expected output"
+        );
     }
 }

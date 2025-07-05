@@ -1,0 +1,25 @@
+[base]
+health = 5000
+armor = 10
+
+[champion]
+attack_damage = 20
+attack_speed_ms = 2500 # Milliseconds for easier TOML representation
+health = 200
+armor = 5
+xp_per_level = [35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115] # Max level 18, so 17 levels to define XP for
+level_up_health_increase = 20
+level_up_attack_damage_increase = 5
+level_up_armor_increase = 2
+
+[minion]
+attack_damage = 6
+attack_speed_ms = 2500
+health = 40
+armor = 0
+
+[tower]
+attack_damage = 40
+attack_speed_secs = 3 # Seconds for easier TOML representation
+health = 400
+armor = 8

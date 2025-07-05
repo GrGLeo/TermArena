@@ -286,7 +286,7 @@ mod tests {
         };
         assert_eq!(
             EncodedCellValue::from(&minion_cell),
-            EncodedCellValue::MinionRed
+            EncodedCellValue::MinionPlaceholder
         );
 
         let flag_cell = Cell {

@@ -9,6 +9,7 @@ use crate::game::cell::{CellContent, Team};
 use crate::game::{Board, cell::PlayerId};
 
 use super::{Fighter, Stats, reduced_damage};
+use crate::config::ChampionStats;
 
 #[derive(Debug, Clone, Copy)]
 
@@ -29,6 +30,7 @@ pub struct Champion {
     pub xp: u32,
     pub level: u8,
     stats: Stats,
+    champion_stats: ChampionStats,
     death_counter: u8,
     death_timer: Instant,
     last_attacked: Instant,
@@ -37,18 +39,25 @@ pub struct Champion {
 }
 
 impl Champion {
-    pub fn new(player_id: PlayerId, team_id: Team, row: u16, col: u16) -> Self {
+    pub fn new(
+        player_id: PlayerId,
+        team_id: Team,
+        row: u16,
+        col: u16,
+        champion_stats: ChampionStats,
+    ) -> Self {
         let stats = Stats {
-            attack_damage: 20,
-            attack_speed: Duration::from_millis(2500),
-            health: 200,
-            max_health: 200,
-            armor: 5,
+            attack_damage: champion_stats.attack_damage,
+            attack_speed: Duration::from_millis(champion_stats.attack_speed_ms),
+            health: champion_stats.health,
+            max_health: champion_stats.health,
+            armor: champion_stats.armor,
         };
 
         Champion {
             player_id,
             stats,
+            champion_stats,
             xp: 0,
             level: 1,
             death_counter: 0,
@@ -73,35 +82,19 @@ impl Champion {
     }
 
     pub fn xp_for_next_level(&self) -> Option<u32> {
-        match self.level {
-            1 => Some(35),
-            2 => Some(40),
-            3 => Some(45),
-            4 => Some(50),
-            5 => Some(55),
-            6 => Some(60),
-            7 => Some(65),
-            8 => Some(70),
-            9 => Some(75),
-            10 => Some(80),
-            11 => Some(85),
-            12 => Some(90),
-            13 => Some(95),
-            14 => Some(100),
-            15 => Some(105),
-            16 => Some(110),
-            17 => Some(115),
-            18 => None, // Max level
-            _ => None,  // Should not happen
+        if (self.level as usize - 1) < self.champion_stats.xp_per_level.len() {
+            Some(self.champion_stats.xp_per_level[self.level as usize - 1])
+        } else {
+            None
         }
     }
 
     fn level_up(&mut self) {
         self.level += 1;
-        self.stats.max_health += 20;
-        self.stats.health += 20;
-        self.stats.attack_damage += 5;
-        self.stats.armor += 2;
+        self.stats.max_health += self.champion_stats.level_up_health_increase;
+        self.stats.health += self.champion_stats.level_up_health_increase;
+        self.stats.attack_damage += self.champion_stats.level_up_attack_damage_increase;
+        self.stats.armor += self.champion_stats.level_up_armor_increase;
     }
 
     pub fn take_action(&mut self, action: &Action, board: &mut Board) -> Result<(), GameError> {
@@ -258,6 +251,7 @@ impl Fighter for Champion {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::ChampionStats;
     use crate::game::BaseTerrain; // Assuming BaseTerrain is needed for Board creation
     use crate::game::Board;
 
@@ -266,13 +260,29 @@ mod tests {
         Board::new(rows, cols)
     }
 
+    fn create_default_champion_stats() -> ChampionStats {
+        ChampionStats {
+            attack_damage: 20,
+            attack_speed_ms: 2500,
+            health: 200,
+            armor: 5,
+            xp_per_level: vec![
+                35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115,
+            ],
+            level_up_health_increase: 20,
+            level_up_attack_damage_increase: 5,
+            level_up_armor_increase: 2,
+        }
+    }
+
     #[test]
     fn test_new_champion() {
         let player_id = 1;
         let team_id = Team::Red;
         let row = 10;
         let col = 20;
-        let champion = Champion::new(player_id, team_id, row, col);
+        let champion_stats = create_default_champion_stats();
+        let champion = Champion::new(player_id, team_id, row, col, champion_stats);
 
         assert_eq!(champion.player_id, player_id);
         assert_eq!(champion.team_id, team_id);
@@ -292,7 +302,8 @@ mod tests {
 
     #[test]
     fn test_take_damage() {
-        let mut champion = Champion::new(1, Team::Red, 10, 20);
+        let champion_stats = create_default_champion_stats();
+        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats);
         let initial_health = champion.stats.health;
         let damage = 30;
         let armor = champion.stats.armor as u16;
@@ -312,7 +323,8 @@ mod tests {
         );
 
         // Test taking enough damage to be defeated
-        let mut champion_to_defeat = Champion::new(2, Team::Red, 10, 20);
+        let champion_stats_defeat = create_default_champion_stats();
+        let mut champion_to_defeat = Champion::new(2, Team::Red, 10, 20, champion_stats_defeat);
         let lethal_damage = 250; // Damage exceeding health + armor
 
         // Use a specific instant for death timer check
@@ -342,7 +354,9 @@ mod tests {
         );
 
         // Test taking damage when already at 0 health (should not go below 0)
-        let mut champion_already_defeated = Champion::new(3, Team::Red, 10, 20);
+        let champion_stats_already_defeated = create_default_champion_stats();
+        let mut champion_already_defeated =
+            Champion::new(3, Team::Red, 10, 20, champion_stats_already_defeated);
         champion_already_defeated.stats.health = 0;
         let additional_damage = 10;
 
@@ -361,7 +375,14 @@ mod tests {
         let player_id = 1;
 
         // Place the champion on the board
-        let mut champion = Champion::new(player_id, Team::Red, initial_row, initial_col);
+        let champion_stats = create_default_champion_stats();
+        let mut champion = Champion::new(
+            player_id,
+            Team::Red,
+            initial_row,
+            initial_col,
+            champion_stats.clone(),
+        );
         board.place_cell(
             CellContent::Champion(player_id, Team::Red),
             initial_row as usize,
@@ -534,7 +555,14 @@ mod tests {
         let player_id = 1;
 
         // Place the champion on the board
-        let mut champion = Champion::new(player_id, Team::Red, initial_row, initial_col);
+        let champion_stats = create_default_champion_stats();
+        let mut champion = Champion::new(
+            player_id,
+            Team::Red,
+            initial_row,
+            initial_col,
+            champion_stats.clone(),
+        );
         board.place_cell(
             CellContent::Champion(player_id, Team::Red),
             initial_row as usize,
@@ -619,7 +647,8 @@ mod tests {
     #[test]
     fn test_take_action_other_actions() {
         let mut board = create_dummy_board(5, 5);
-        let mut champion = Champion::new(1, Team::Red, 2, 2);
+        let champion_stats = create_default_champion_stats();
+        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats);
 
         // Test Action1 (currently does nothing, should not error)
         let action1 = Action::Action1;
@@ -635,7 +664,8 @@ mod tests {
     #[test]
     fn test_take_action_invalid_action() {
         let mut board = create_dummy_board(5, 5);
-        let mut champion = Champion::new(1, Team::Red, 2, 2);
+        let champion_stats = create_default_champion_stats();
+        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats.clone());
 
         // Test InvalidAction
         let invalid_action = Action::InvalidAction;
@@ -656,7 +686,14 @@ mod tests {
         let base_col = 2;
 
         // Place champion at initial position
-        let mut champion = Champion::new(player_id, Team::Red, initial_row, initial_col);
+        let champion_stats = create_default_champion_stats();
+        let mut champion = Champion::new(
+            player_id,
+            Team::Red,
+            initial_row,
+            initial_col,
+            champion_stats.clone(),
+        );
         board.place_cell(
             CellContent::Champion(player_id, Team::Red),
             initial_row as usize,
@@ -702,7 +739,14 @@ mod tests {
         let player_id = 1;
         let champion_team = Team::Red;
 
-        let champion = Champion::new(player_id, champion_team, champion_row, champion_col);
+        let champion_stats = create_default_champion_stats();
+        let champion = Champion::new(
+            player_id,
+            champion_team,
+            champion_row,
+            champion_col,
+            champion_stats,
+        );
         board.place_cell(
             CellContent::Champion(player_id, champion_team),
             champion_row as usize,
@@ -761,7 +805,14 @@ mod tests {
         let player_id = 1;
         let champion_team = Team::Red;
 
-        let champion = Champion::new(player_id, champion_team, champion_row, champion_col);
+        let champion_stats = create_default_champion_stats();
+        let champion = Champion::new(
+            player_id,
+            champion_team,
+            champion_row,
+            champion_col,
+            champion_stats,
+        );
         board.place_cell(
             CellContent::Champion(player_id, champion_team),
             champion_row as usize,
@@ -827,7 +878,14 @@ mod tests {
         let player_id = 1;
         let champion_team = Team::Red;
 
-        let champion = Champion::new(player_id, champion_team, champion_row, champion_col);
+        let champion_stats = create_default_champion_stats();
+        let champion = Champion::new(
+            player_id,
+            champion_team,
+            champion_row,
+            champion_col,
+            champion_stats,
+        );
         board.place_cell(
             CellContent::Champion(player_id, champion_team),
             champion_row as usize,
@@ -890,7 +948,14 @@ mod tests {
         let player_id = 1;
         let champion_team = Team::Red;
 
-        let champion = Champion::new(player_id, champion_team, champion_row, champion_col);
+        let champion_stats = create_default_champion_stats();
+        let champion = Champion::new(
+            player_id,
+            champion_team,
+            champion_row,
+            champion_col,
+            champion_stats,
+        );
         board.place_cell(
             CellContent::Champion(player_id, champion_team),
             champion_row as usize,
@@ -918,7 +983,8 @@ mod tests {
 
     #[test]
     fn test_level_up() {
-        let mut champion = Champion::new(1, Team::Red, 0, 0);
+        let champion_stats = create_default_champion_stats();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats);
         assert_eq!(champion.level, 1);
         assert_eq!(champion.stats.max_health, 200);
         assert_eq!(champion.stats.attack_damage, 20);

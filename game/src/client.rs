@@ -1,9 +1,9 @@
 // client.rs
-use tokio::net::TcpStream;
-use tokio::io::{AsyncWriteExt, AsyncBufReadExt, BufReader};
-use tokio::time::{sleep, Duration};
-use tokio::spawn;
 use rand::Rng;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::TcpStream;
+use tokio::spawn;
+use tokio::time::{Duration, sleep};
 
 #[derive(Debug)]
 struct ActionPacket {

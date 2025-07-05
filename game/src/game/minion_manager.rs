@@ -1,5 +1,8 @@
 use rand::prelude::*;
-use std::{collections::HashMap, time::{Duration, Instant}};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 use strum::IntoEnumIterator;
 
 use crate::errors::GameError;
@@ -13,6 +16,7 @@ use super::{
         minion::{Lane, Minion},
     },
 };
+use crate::config::MinionStats;
 
 #[derive(Debug)]
 pub struct MinionManager {
@@ -20,21 +24,23 @@ pub struct MinionManager {
     pub minions_this_wave: u8,
     pub minions: HashMap<MinionId, Minion>,
     pub wave_creation_time: Instant,
+    minion_stats: MinionStats,
 }
 
 impl MinionManager {
-    pub fn new() -> Self {
+    pub fn new(minion_stats: MinionStats) -> Self {
         Self {
             minions_per_wave: 6,
             minions_this_wave: 0,
             minions: HashMap::new(),
             wave_creation_time: Instant::now(),
+            minion_stats,
         }
     }
 
     pub fn make_wave(&mut self, board: &mut Board) {
         let now = Instant::now();
-        if now >= self.wave_creation_time  {
+        if now >= self.wave_creation_time {
             for team in Team::iter() {
                 match team {
                     Team::Blue => {
@@ -42,7 +48,12 @@ impl MinionManager {
                             let minion_id = generate_minion_id().unwrap();
                             match lane {
                                 Lane::Top => {
-                                    let minion = Minion::new(minion_id, team, lane);
+                                    let minion = Minion::new(
+                                        minion_id,
+                                        team,
+                                        lane,
+                                        self.minion_stats.clone(),
+                                    );
                                     board.place_cell(
                                         CellContent::Minion(minion_id, team),
                                         minion.row as usize,
@@ -51,7 +62,12 @@ impl MinionManager {
                                     self.minions.insert(minion_id, minion);
                                 }
                                 Lane::Mid => {
-                                    let minion = Minion::new(minion_id, team, lane);
+                                    let minion = Minion::new(
+                                        minion_id,
+                                        team,
+                                        lane,
+                                        self.minion_stats.clone(),
+                                    );
                                     board.place_cell(
                                         CellContent::Minion(minion_id, team),
                                         minion.row as usize,
@@ -60,7 +76,12 @@ impl MinionManager {
                                     self.minions.insert(minion_id, minion);
                                 }
                                 Lane::Bottom => {
-                                    let minion = Minion::new(minion_id, team, lane);
+                                    let minion = Minion::new(
+                                        minion_id,
+                                        team,
+                                        lane,
+                                        self.minion_stats.clone(),
+                                    );
                                     board.place_cell(
                                         CellContent::Minion(minion_id, team),
                                         minion.row as usize,
@@ -76,7 +97,12 @@ impl MinionManager {
                             let minion_id = generate_minion_id().unwrap();
                             match lane {
                                 Lane::Top => {
-                                    let minion = Minion::new(minion_id, team, lane);
+                                    let minion = Minion::new(
+                                        minion_id,
+                                        team,
+                                        lane,
+                                        self.minion_stats.clone(),
+                                    );
                                     board.place_cell(
                                         CellContent::Minion(minion_id, team),
                                         minion.row as usize,
@@ -85,7 +111,12 @@ impl MinionManager {
                                     self.minions.insert(minion_id, minion);
                                 }
                                 Lane::Mid => {
-                                    let minion = Minion::new(minion_id, team, lane);
+                                    let minion = Minion::new(
+                                        minion_id,
+                                        team,
+                                        lane,
+                                        self.minion_stats.clone(),
+                                    );
                                     board.place_cell(
                                         CellContent::Minion(minion_id, team),
                                         minion.row as usize,
@@ -94,7 +125,12 @@ impl MinionManager {
                                     self.minions.insert(minion_id, minion);
                                 }
                                 Lane::Bottom => {
-                                    let minion = Minion::new(minion_id, team, lane);
+                                    let minion = Minion::new(
+                                        minion_id,
+                                        team,
+                                        lane,
+                                        self.minion_stats.clone(),
+                                    );
                                     board.place_cell(
                                         CellContent::Minion(minion_id, team),
                                         minion.row as usize,

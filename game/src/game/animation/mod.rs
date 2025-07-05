@@ -1,15 +1,22 @@
 use std::fmt::Debug;
 
-use super::{cell::CellAnimation, PlayerId};
+use super::{PlayerId, cell::CellAnimation};
 
 pub mod melee;
 pub mod tower;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum AnimationCommand {
-    Draw { row: u16, col: u16, animation_type: CellAnimation },
-    Clear { row: u16, col: u16 },
-    Done, 
+    Draw {
+        row: u16,
+        col: u16,
+        animation_type: CellAnimation,
+    },
+    Clear {
+        row: u16,
+        col: u16,
+    },
+    Done,
 }
 
 pub trait AnimationTrait: Send + Sync + Debug {
@@ -20,7 +27,7 @@ pub trait AnimationTrait: Send + Sync + Debug {
 
     // Method to get the ID of the entity that owns/triggered this animation
     fn get_owner_id(&self) -> usize;
-    
+
     // Method to attach the target id, for next position calculation
     fn attach_target(&mut self, target_id: PlayerId);
 
