@@ -95,9 +95,7 @@ impl Fighter for Tower {
     fn take_damage(&mut self, damage: u16) {
         let reduced_damage = reduced_damage(damage, self.stats.armor);
         self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
-        println!("Tower health: {}", self.stats.health);
         if self.stats.health == 0 {
-            println!("Tower got 0 health");
             self.destroyed = true;
         }
     }

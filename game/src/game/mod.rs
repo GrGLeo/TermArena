@@ -79,10 +79,6 @@ impl GameManager {
                 towers.insert(tower_blue.tower_id, tower_blue);
                 towers.insert(tower_red.tower_id, tower_red);
             });
-            let tower_1 = Tower::new(1, Team::Blue, 196, 150);
-            tower_1.place_tower(&mut board);
-            let tower_2 = Tower::new(2, Team::Red, 150, 196);
-            tower_2.place_tower(&mut board);
         }
 
         let red_base = Base::new(Team::Red, (190, 10));
@@ -301,8 +297,6 @@ impl GameManager {
         );
 
         // 3. Apply dealt damages
-        let mut minion_to_clear: Vec<MinionId> = Vec::new();
-
         pending_damages
             .into_iter()
             .for_each(|(target, damage)| match target {
@@ -318,16 +312,7 @@ impl GameManager {
                 Target::Minion(id) => {
                     if let Some(minion) = self.minion_manager.minions.get_mut(&id) {
                         minion.take_damage(damage);
-                        if minion.is_dead() {
-                            minion_to_clear.push(id);
-                            self.dead_minion_positions.push((
-                                minion.row,
-                                minion.col,
-                                minion.team_id,
-                            ));
-                            self.board
-                                .clear_cell(minion.row as usize, minion.col as usize);
-                        }
+                        self.handle_minion_death(&id);
                     }
                 }
                 Target::Champion(id) => {
@@ -340,11 +325,6 @@ impl GameManager {
                     Team::Blue => self.blue_base.take_damage(damage),
                 },
             });
-
-        // clear dead minion
-        minion_to_clear.iter().for_each(|id| {
-            self.minion_manager.minions.remove(id);
-        });
 
         // Distribute XP from dead minions
         for (minion_row, minion_col, minion_team) in self.dead_minion_positions.drain(..) {
@@ -467,7 +447,9 @@ impl GameManager {
         // --- Send per player there board view ---
         for (player_id, champion) in &self.champions {
             // 1. Get player-specific board view
-            let board_rle_vec = self.board.run_length_encode(champion.row, champion.col, &self.minion_manager);
+            let board_rle_vec =
+                self.board
+                    .run_length_encode(champion.row, champion.col, &self.minion_manager);
             // 2. Create the board packet
             let health = champion.get_health();
             let xp_needed = champion.xp_for_next_level().unwrap_or(0); // Get XP needed, 0 if max level
@@ -537,6 +519,7 @@ impl GameManager {
                 Target::Minion(id) => {
                     if let Some(minion) = self.minion_manager.minions.get_mut(&id) {
                         minion.take_damage(damage);
+                        self.handle_minion_death(&id);
                     }
                 }
                 Target::Champion(id) => {
@@ -549,5 +532,17 @@ impl GameManager {
                     Team::Blue => self.blue_base.take_damage(damage),
                 },
             });
+    }
+
+    fn handle_minion_death(&mut self, id: &MinionId) {
+        if let Some(minion) = self.minion_manager.minions.get(id) {
+            if minion.is_dead() {
+                self.dead_minion_positions
+                    .push((minion.row, minion.col, minion.team_id));
+                self.board
+                    .clear_cell(minion.row as usize, minion.col as usize);
+                self.minion_manager.minions.remove(&id);
+            }
+        }
     }
 }

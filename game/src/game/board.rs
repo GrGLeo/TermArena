@@ -44,18 +44,12 @@ impl Board {
             }
             grid.push(grid_row);
         }
-        let mut board = Board {
+        let board = Board {
             grid,
             rows: board_layout.rows,
             cols: board_layout.cols,
         };
         
-        // For now we place the tower here
-        Tower::new(1, Team::Blue, 196, 150).place_tower(&mut board);  
-        Tower::new(2, Team::Red, 150, 196).place_tower(&mut board);  
-        println!("Tower: {:?}", board.grid[196][150]);
-        println!("Tower: {:?}", board.grid[196][196]);
-
         Ok(board)
     }
 
