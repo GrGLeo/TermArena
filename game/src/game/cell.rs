@@ -70,14 +70,59 @@ pub enum EncodedCellValue {
     Bush = 2,
     TowerDestroyed = 3,
     Champion = 4,
-    MinionBlue = 5,
-    MinionRed = 6,
     Flag = 7,
     Tower = 8,
     MeleeHitAnimation = 9,
     TowerHitAnimation = 10,
     BaseBlue = 11,
     BaseRed = 12,
+    // Minion health values (100-115)
+    MinionBlueHealth1 = 100,
+    MinionBlueHealth2 = 101,
+    MinionBlueHealth3 = 102,
+    MinionBlueHealth4 = 103,
+    MinionBlueHealth5 = 104,
+    MinionBlueHealth6 = 105,
+    MinionBlueHealth7 = 106,
+    MinionBlueHealth8 = 107,
+    MinionRedHealth1 = 108,
+    MinionRedHealth2 = 109,
+    MinionRedHealth3 = 110,
+    MinionRedHealth4 = 111,
+    MinionRedHealth5 = 112,
+    MinionRedHealth6 = 113,
+    MinionRedHealth7 = 114,
+    MinionRedHealth8 = 115,
+    MinionPlaceholder = 255, // Temporary placeholder
+}
+
+impl EncodedCellValue {
+    pub fn from_health_level(level: u8, team: Team) -> Self {
+        match team {
+            Team::Blue => match level {
+                1 => EncodedCellValue::MinionBlueHealth1,
+                2 => EncodedCellValue::MinionBlueHealth2,
+                3 => EncodedCellValue::MinionBlueHealth3,
+                4 => EncodedCellValue::MinionBlueHealth4,
+                5 => EncodedCellValue::MinionBlueHealth5,
+                6 => EncodedCellValue::MinionBlueHealth6,
+                7 => EncodedCellValue::MinionBlueHealth7,
+                8 => EncodedCellValue::MinionBlueHealth8,
+                _ => EncodedCellValue::MinionPlaceholder, // Should not happen with proper health_level calculation
+            },
+            Team::Red => match level {
+                1 => EncodedCellValue::MinionRedHealth1,
+                2 => EncodedCellValue::MinionRedHealth2,
+                3 => EncodedCellValue::MinionRedHealth3,
+                4 => EncodedCellValue::MinionRedHealth4,
+                5 => EncodedCellValue::MinionRedHealth5,
+                6 => EncodedCellValue::MinionRedHealth6,
+                7 => EncodedCellValue::MinionRedHealth7,
+                8 => EncodedCellValue::MinionRedHealth8,
+                _ => EncodedCellValue::MinionPlaceholder, // Should not happen
+            },
+        }
+    }
 }
 
 impl From<&Cell> for EncodedCellValue {
@@ -90,10 +135,7 @@ impl From<&Cell> for EncodedCellValue {
         } else if let Some(content) = &cell.content {
             match content {
                 CellContent::Champion(_, _) => EncodedCellValue::Champion,
-                CellContent::Minion(_, team) => match team {
-                    Team::Blue => EncodedCellValue::MinionBlue,
-                    Team::Red => EncodedCellValue::MinionRed,
-                },
+                CellContent::Minion(_, _) => EncodedCellValue::MinionPlaceholder, // Placeholder for now
                 CellContent::Flag(_, _) => EncodedCellValue::Flag,
                 CellContent::Tower(_, _) => EncodedCellValue::Tower,
                 CellContent::Base(team) => match team {
