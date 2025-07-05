@@ -10,7 +10,7 @@ pub struct StartPacket {
 
 impl StartPacket {
     pub fn new(success: u8) -> Self {
-         StartPacket {
+        StartPacket {
             version: 1,
             code: 7,
             success,
@@ -58,9 +58,12 @@ mod tests {
         // Manually construct the expected byte buffer
         let mut expected_buffer = BytesMut::new();
         expected_buffer.put_u8(packet.version); // 1
-        expected_buffer.put_u8(packet.code);    // 7
+        expected_buffer.put_u8(packet.code); // 7
         expected_buffer.put_u8(packet.success); // success_value (e.g., 1)
 
-        assert_eq!(serialized_buffer, expected_buffer, "Serialized buffer should match expected format");
+        assert_eq!(
+            serialized_buffer, expected_buffer,
+            "Serialized buffer should match expected format"
+        );
     }
 }

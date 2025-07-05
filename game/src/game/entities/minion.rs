@@ -15,6 +15,7 @@ use crate::{
 };
 
 use super::{Fighter, Stats, Target, reduced_damage};
+use crate::config::MinionStats;
 
 type MinionPath = (u16, u16);
 
@@ -49,13 +50,13 @@ impl Minion {
         self.stats.max_health
     }
 
-    pub fn new(minion_id: MinionId, team_id: Team, lane: Lane) -> Self {
+    pub fn new(minion_id: MinionId, team_id: Team, lane: Lane, minion_stats: MinionStats) -> Self {
         let stats = Stats {
-            attack_damage: 6,
-            attack_speed: Duration::from_millis(2500),
-            health: 40,
-            max_health: 40,
-            armor: 0,
+            attack_damage: minion_stats.attack_damage,
+            attack_speed: Duration::from_millis(minion_stats.attack_speed_ms),
+            health: minion_stats.health,
+            max_health: minion_stats.health,
+            armor: minion_stats.armor,
         };
 
         let (row, col, paths) = match team_id {
@@ -310,6 +311,7 @@ impl Fighter for Minion {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::MinionStats;
     use crate::game::{
         Board, MinionId,
         cell::Team,
@@ -338,33 +340,36 @@ mod tests {
         (next_row, next_col)
     }
 
+    fn create_default_minion_stats() -> MinionStats {
+        MinionStats {
+            attack_damage: 6,
+            attack_speed_ms: 2500,
+            health: 40,
+            armor: 0,
+        }
+    }
+
     #[test]
     fn test_new_minion() {
         let minion_id = 1;
-        let stats = Stats {
-            attack_damage: 6,
-            attack_speed: Duration::from_millis(2500),
-            health: 40,
-            max_health: 40,
-            armor: 8,
-        };
+        let minion_stats = create_default_minion_stats();
 
         // Test Blue Team Minions
-        let blue_top_minion = Minion::new(minion_id, Team::Blue, Lane::Top);
+        let blue_top_minion = Minion::new(minion_id, Team::Blue, Lane::Top, minion_stats.clone());
         assert_eq!(blue_top_minion.minion_id, minion_id);
         assert_eq!(blue_top_minion.team_id, Team::Blue);
         assert_eq!(blue_top_minion.lane, Lane::Top);
-        assert_eq!(blue_top_minion.stats.health, stats.health); // Check a few stats fields
+        assert_eq!(blue_top_minion.stats.health, minion_stats.health); // Check a few stats fields
         assert_eq!(blue_top_minion.row, 184);
         assert_eq!(blue_top_minion.col, 10);
         assert_eq!(blue_top_minion.current_path, (120, 8));
 
         // Test Red Team Minions
-        let red_top_minion = Minion::new(minion_id, Team::Red, Lane::Top);
+        let red_top_minion = Minion::new(minion_id, Team::Red, Lane::Top, minion_stats.clone());
         assert_eq!(red_top_minion.minion_id, minion_id);
         assert_eq!(red_top_minion.team_id, Team::Red);
         assert_eq!(red_top_minion.lane, Lane::Top);
-        assert_eq!(red_top_minion.stats.health, stats.health);
+        assert_eq!(red_top_minion.stats.health, minion_stats.health);
         assert_eq!(red_top_minion.row, 10);
         assert_eq!(red_top_minion.col, 184);
         assert_eq!(red_top_minion.current_path, (8, 120));
@@ -379,7 +384,8 @@ mod tests {
         let initial_col = 5;
 
         // Create a minion and place it on the board
-        let mut minion = Minion::new(minion_id, team_id, Lane::Mid);
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(minion_id, team_id, Lane::Mid, minion_stats);
         minion.row = initial_row; // Set initial position manually for testing
         minion.col = initial_col;
         let minion_content = CellContent::Minion(minion_id, team_id);
@@ -428,6 +434,7 @@ mod tests {
         );
 
         // Test moving down (d_row = 1, d_col = 0) - Reset position first
+        let minion_stats = create_default_minion_stats();
         minion.row = initial_row;
         minion.col = initial_col;
         board.place_cell(
@@ -478,6 +485,7 @@ mod tests {
         // Add tests for other directions (left, up, and diagonals if minion can move diagonally) similarly
         // Based on the code, it handles d_row and d_col independently, so it supports diagonal movement.
         // Test moving up-left (d_row = -1, d_col = -1) - Reset position first
+        let minion_stats = create_default_minion_stats();
         minion.row = initial_row;
         minion.col = initial_col;
         board.place_cell(
@@ -536,7 +544,8 @@ mod tests {
         let initial_row = 191;
         let initial_col = 179;
 
-        let mut minion = Minion::new(minion_id, team_id, Lane::Bottom);
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(minion_id, team_id, Lane::Bottom, minion_stats);
         minion.row = initial_row;
         minion.col = initial_col;
         minion.change_goal();
@@ -554,7 +563,8 @@ mod tests {
         let initial_row = 39;
         let initial_col = 7;
 
-        let mut minion = Minion::new(minion_id, team_id, Lane::Top);
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(minion_id, team_id, Lane::Top, minion_stats);
         minion.checkpoint = 2;
         minion.row = initial_row;
         minion.col = initial_col;
@@ -574,7 +584,8 @@ mod tests {
         let initial_row = 0; // Place minion at top-left edge
         let initial_col = 0;
 
-        let mut minion = Minion::new(minion_id, team_id, Lane::Mid);
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(minion_id, team_id, Lane::Mid, minion_stats);
         minion.row = initial_row;
         minion.col = initial_col;
         let minion_content = CellContent::Minion(minion_id, team_id);
@@ -651,7 +662,8 @@ mod tests {
 
         // Add tests for moving out of bounds from other edges/corners similarly...
         // Test moving down from row 9
-        let mut minion_bottom = Minion::new(minion_id + 1, team_id, Lane::Mid);
+        let minion_stats_bottom = create_default_minion_stats();
+        let mut minion_bottom = Minion::new(minion_id + 1, team_id, Lane::Mid, minion_stats_bottom);
         let initial_row_bottom = 9;
         let initial_col_bottom = 5;
         minion_bottom.row = initial_row_bottom;
@@ -694,7 +706,8 @@ mod tests {
         let initial_row = 5;
         let initial_col = 5;
 
-        let mut minion = Minion::new(minion_id, team_id, Lane::Mid);
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(minion_id, team_id, Lane::Mid, minion_stats);
         minion.row = initial_row;
         minion.col = initial_col;
         let minion_content = CellContent::Minion(minion_id, team_id);
@@ -812,7 +825,8 @@ mod tests {
         let goal_row1 = 20;
         let goal_col1 = 20;
 
-        let mut minion1 = Minion::new(minion_id, team_id, Lane::Mid);
+        let minion_stats = create_default_minion_stats();
+        let mut minion1 = Minion::new(minion_id, team_id, Lane::Mid, minion_stats);
         minion1.row = initial_row1;
         minion1.col = initial_col1;
         minion1.current_path = (goal_row1, goal_col1); // Set the goal
@@ -871,7 +885,8 @@ mod tests {
         let goal_row2 = 40; // Goal is above and to the left
         let goal_col2 = 40;
 
-        let mut minion2 = Minion::new(minion_id, team_id, Lane::Mid);
+        let minion_stats = create_default_minion_stats();
+        let mut minion2 = Minion::new(minion_id, team_id, Lane::Mid, minion_stats);
         minion2.row = initial_row2;
         minion2.col = initial_col2;
         minion2.current_path = (goal_row2, goal_col2); // Set the goal
@@ -930,7 +945,8 @@ mod tests {
         let goal_row3 = 90; // Goal is straight up
         let goal_col3 = 100; // Same column
 
-        let mut minion3 = Minion::new(minion_id, team_id, Lane::Mid);
+        let minion_stats = create_default_minion_stats();
+        let mut minion3 = Minion::new(minion_id, team_id, Lane::Mid, minion_stats);
         minion3.row = initial_row3;
         minion3.col = initial_col3;
         minion3.current_path = (goal_row3, goal_col3); // Set the goal
@@ -990,7 +1006,8 @@ mod tests {
         let minion_team = Team::Blue;
         let minion_row = 25; // Center minion on a large board
         let minion_col = 25;
-        let mut minion = Minion::new(minion_id, minion_team, Lane::Mid);
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(minion_id, minion_team, Lane::Mid, minion_stats);
         minion.row = minion_row;
         minion.col = minion_col;
 
@@ -1039,7 +1056,8 @@ mod tests {
         let minion_team = Team::Blue;
         let minion_row = 25; // Center minion
         let minion_col = 25;
-        let mut minion = Minion::new(minion_id, minion_team, Lane::Mid);
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(minion_id, minion_team, Lane::Mid, minion_stats);
         minion.row = minion_row;
         minion.col = minion_col;
 
@@ -1138,7 +1156,8 @@ mod tests {
         let minion_team = Team::Blue;
         let minion_row = 25; // Center minion
         let minion_col = 25;
-        let mut minion = Minion::new(minion_id, minion_team, Lane::Mid);
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(minion_id, minion_team, Lane::Mid, minion_stats);
         minion.row = minion_row;
         minion.col = minion_col;
 
@@ -1239,7 +1258,8 @@ mod tests {
         let minion_team = Team::Blue;
         let minion_row = 25; // Center minion
         let minion_col = 25;
-        let mut minion = Minion::new(minion_id, minion_team, Lane::Mid);
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(minion_id, minion_team, Lane::Mid, minion_stats);
         minion.row = minion_row;
         minion.col = minion_col;
 

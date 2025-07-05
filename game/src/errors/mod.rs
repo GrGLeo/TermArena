@@ -15,5 +15,5 @@ pub enum GameError {
     #[error("Invalid Animation was called")]
     InvalidAnimation,
     #[error("Error generating ID")]
-    GenerateIdError
+    GenerateIdError,
 }

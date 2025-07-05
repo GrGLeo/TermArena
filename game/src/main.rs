@@ -1,7 +1,7 @@
 use crate::game::{ClientMessage, GameManager, PlayerId};
+use clap::Parser;
 use packet::action_packet::ActionPacket;
 use packet::start_packet::StartPacket;
-use clap::Parser;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -12,9 +12,10 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 use tokio::time::{Duration, sleep};
 
+mod config;
+mod errors;
 mod game;
 mod packet;
-mod errors;
 
 // Cli Parser
 #[derive(Parser, Debug)]
@@ -105,8 +106,6 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
         }
     }
 
-    
-
     // -- Read Client Action loop --
     println!("Listening for Player {} ({:?}) actions...", player_id, addr);
     loop {
@@ -182,7 +181,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(0);
     });
 
-    let game_manager = GameManager::new();
+    let config =
+        config::GameConfig::load("game/stats.toml").expect("Failed to load game configuration");
+    let game_manager = GameManager::new(config);
     let arc_gm = Arc::new(Mutex::new(game_manager));
     println!("GameManager created and wrapped.");
 

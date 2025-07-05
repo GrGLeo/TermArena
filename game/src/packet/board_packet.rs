@@ -17,12 +17,19 @@ pub struct BoardPacket {
 }
 
 impl BoardPacket {
-    pub fn new(health: u16, max_health: u16, level: u8, xp: u32, xp_needed: u32, encoded_board: Vec<u8>) -> Self {
+    pub fn new(
+        health: u16,
+        max_health: u16,
+        level: u8,
+        xp: u32,
+        xp_needed: u32,
+        encoded_board: Vec<u8>,
+    ) -> Self {
         let length = encoded_board.len().try_into().unwrap();
         BoardPacket {
             version: 1,
             code: 9,
-            points:0,
+            points: 0,
             health,
             max_health,
             level,
@@ -64,7 +71,14 @@ mod tests {
         let xp_needed = 35;
         let expected_length = encoded_board_data.len() as u16;
 
-        let packet = BoardPacket::new(health, max_health, level, xp, xp_needed, encoded_board_data.clone());
+        let packet = BoardPacket::new(
+            health,
+            max_health,
+            level,
+            xp,
+            xp_needed,
+            encoded_board_data.clone(),
+        );
 
         assert_eq!(packet.version, 1);
         assert_eq!(packet.code, 9);
@@ -86,14 +100,21 @@ mod tests {
         let level = 1;
         let xp = 0;
         let xp_needed = 35;
-        let packet = BoardPacket::new(health, max_health, level, xp, xp_needed, encoded_board_data.clone());
+        let packet = BoardPacket::new(
+            health,
+            max_health,
+            level,
+            xp,
+            xp_needed,
+            encoded_board_data.clone(),
+        );
 
         let serialized_buffer = packet.serialize();
 
         // Manually construct the expected byte buffer
         let mut expected_buffer = BytesMut::new();
         expected_buffer.put_u8(packet.version); // 1
-        expected_buffer.put_u8(packet.code);    // 9
+        expected_buffer.put_u8(packet.code); // 9
         expected_buffer.put_u16(packet.points); // 0 (as BigEndian)
         expected_buffer.put_u16(packet.health); // 400 (as BigEndian)
         expected_buffer.put_u16(packet.max_health); // 400 (as BigEndian)
@@ -103,6 +124,9 @@ mod tests {
         expected_buffer.put_u16(packet.length); // encoded_board_data.len() as u16 (as BigEndian)
         expected_buffer.extend_from_slice(&packet.encoded_board); // [0, 1, 1, 2, 3, 1, 1]
 
-        assert_eq!(serialized_buffer, expected_buffer, "Serialized buffer should match expected format");
+        assert_eq!(
+            serialized_buffer, expected_buffer,
+            "Serialized buffer should match expected format"
+        );
     }
 }
