@@ -8,6 +8,7 @@ pub mod champion;
 pub mod minion;
 pub mod tower;
 
+#[derive(Debug)]
 pub enum Target {
     Tower(TowerId),
     Minion(MinionId),
