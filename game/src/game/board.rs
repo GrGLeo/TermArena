@@ -1,4 +1,6 @@
 use crate::game::cell::Team;
+use crate::game::MinionId;
+use crate::game::minion_manager::MinionManager;
 
 use super::cell::{BaseTerrain, Cell, CellAnimation, CellContent, EncodedCellValue};
 use super::entities::tower::Tower;
@@ -152,7 +154,7 @@ impl Board {
             .collect()
     }
 
-    pub fn run_length_encode(&self, player_row: u16, player_col: u16) -> Vec<u8> {
+    pub fn run_length_encode(&self, player_row: u16, player_col: u16, minion_manager: &MinionManager) -> Vec<u8> {
         let flattened_grid: Vec<&Cell> = self.center_view(player_row, player_col, 21, 51)
             .into_iter()
             .flat_map(|row| row.into_iter())
@@ -163,11 +165,16 @@ impl Board {
             return Vec::new();
         }
 
-        let mut current_cell_value: EncodedCellValue = EncodedCellValue::from(flattened_grid[0]);
+        let mut current_cell_value: EncodedCellValue;
+        if let Some(first_cell) = flattened_grid.get(0) {
+            current_cell_value = get_encoded_cell_value(first_cell, minion_manager);
+        } else {
+            return Vec::new(); // Should not happen if flattened_grid is not empty
+        }
         let mut count = 1;
 
         for i in 1..flattened_grid.len() {
-            let encoded_value = EncodedCellValue::from(flattened_grid[i]);
+            let encoded_value = get_encoded_cell_value(flattened_grid[i], minion_manager);
             if encoded_value == current_cell_value {
                 count += 1;
             } else {
@@ -179,6 +186,41 @@ impl Board {
         rle.push(format!("{}:{}", current_cell_value as u8, count));
         println!("Encoded board: {}", rle.join("|"));
         rle.join("|").into_bytes()
+    }
+}
+
+fn get_encoded_cell_value(cell: &Cell, minion_manager: &MinionManager) -> EncodedCellValue {
+    if let Some(animation) = &cell.animation {
+        match animation {
+            CellAnimation::MeleeHit => EncodedCellValue::MeleeHitAnimation,
+            CellAnimation::TowerHit => EncodedCellValue::TowerHitAnimation,
+        }
+    } else if let Some(content) = &cell.content {
+        match content {
+            CellContent::Champion(_, _) => EncodedCellValue::Champion,
+            CellContent::Minion(minion_id, team) => {
+                if let Some(minion) = minion_manager.minions.get(minion_id) {
+                    let health_percentage = (minion.stats.health as f32 / minion.stats.max_health as f32) * 100.0;
+                    let health_level = ((health_percentage / 12.5).ceil() as u8).max(1).min(8); // Map to 1-8
+                    EncodedCellValue::from_health_level(health_level, *team)
+                } else {
+                    EncodedCellValue::MinionPlaceholder
+                }
+            },
+            CellContent::Flag(_, _) => EncodedCellValue::Flag,
+            CellContent::Tower(_, _) => EncodedCellValue::Tower,
+            CellContent::Base(team) => match team {
+                Team::Blue => EncodedCellValue::BaseBlue,
+                Team::Red => EncodedCellValue::BaseRed,
+            },
+        }
+    } else {
+        match cell.base {
+            BaseTerrain::Wall => EncodedCellValue::Wall,
+            BaseTerrain::Floor => EncodedCellValue::Floor,
+            BaseTerrain::Bush => EncodedCellValue::Bush,
+            BaseTerrain::TowerDestroyed => EncodedCellValue::TowerDestroyed,
+        }
     }
 }
 

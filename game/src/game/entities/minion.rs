@@ -31,7 +31,7 @@ pub struct Minion {
     pub team_id: Team,
     lane: Lane,
     path: Option<VecDeque<(u16, u16)>>,
-    stats: Stats,
+    pub stats: Stats,
     current_path: MinionPath,
     minion_path: Vec<MinionPath>,
     checkpoint: usize,
@@ -41,6 +41,14 @@ pub struct Minion {
 }
 
 impl Minion {
+    pub fn get_health(&self) -> u16 {
+        self.stats.health
+    }
+
+    pub fn get_max_health(&self) -> u16 {
+        self.stats.max_health
+    }
+
     pub fn new(minion_id: MinionId, team_id: Team, lane: Lane) -> Self {
         let stats = Stats {
             attack_damage: 6,

@@ -130,7 +130,7 @@ func (m GameModel) View() string {
 	p1Style := lipgloss.NewStyle().Background(lipgloss.Color("21"))
 	TowerDest := lipgloss.NewStyle().Background(lipgloss.Color("91"))
 	bushStyle := lipgloss.NewStyle().Background(lipgloss.Color("34"))
-	p4Style := lipgloss.NewStyle().Background(lipgloss.Color("220"))
+	p4Style := lipgloss.NewStyle().Background(lipgloss.Color("1"))
 	grayStyle := lipgloss.NewStyle().Background(lipgloss.Color("240"))
 	Flag1Style := lipgloss.NewStyle().Background(lipgloss.Color("201"))
 	TowerStyle := lipgloss.NewStyle().Background(lipgloss.Color("94"))
@@ -141,6 +141,8 @@ func (m GameModel) View() string {
 	BluePointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("21"))
 	RedPointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("34"))
 	HudStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("0"))
+
+	var minionHealthChars = []string{"⡀", "⣀", "⣄", "⣤", "⣦", "⣶", "⣷", "⣿"} // 1/8 to 8/8 health
 
 	var builder strings.Builder
 
@@ -191,7 +193,8 @@ func (m GameModel) View() string {
 			case 7:
 				builder.WriteString(TowerStyle.Render(" ")) // Render for tower
 			case 8:
-				builder.WriteString(bgStyle.Render("⣿")) // Render for dash
+				builder.WriteString(bgStyle.Render("⍓")) // Render for dash
+				//builder.WriteString(bgStyle.Render("⣿")) // Render for dash
 			case 9:
 				builder.WriteString(bgStyle.Render("x")) // Render for dash
 			case 10:
@@ -204,6 +207,12 @@ func (m GameModel) View() string {
 				builder.WriteString(bgStyle.Render("⣀")) // Render for dash
 			case 14:
 				builder.WriteString(FreezeStyle.Render("x")) // Render for freezing spell
+			case 100, 101, 102, 103, 104, 105, 106, 107: // Friendly minion health (1/8 to 8/8)
+				healthIndex := cell - 100
+				builder.WriteString(p1Style.Render(minionHealthChars[healthIndex]))
+			case 108, 109, 110, 111, 112, 113, 114, 115: // Enemy minion health (1/8 to 8/8)
+				healthIndex := cell - 108
+				builder.WriteString(p4Style.Render(minionHealthChars[healthIndex]))
 			}
 		}
 		builder.WriteString("\n") // New line at the end of each row
