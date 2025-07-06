@@ -7,6 +7,7 @@ pub mod base;
 pub mod champion;
 pub mod minion;
 pub mod tower;
+pub mod projectile;
 
 #[derive(Debug)]
 pub enum Target {

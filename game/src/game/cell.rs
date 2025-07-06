@@ -32,6 +32,7 @@ pub enum CellContent {
 pub enum CellAnimation {
     MeleeHit,
     TowerHit,
+    Projectile,
 }
 
 #[derive(Debug, Clone)]
@@ -76,6 +77,7 @@ pub enum EncodedCellValue {
     TowerHitAnimation = 10,
     BaseBlue = 11,
     BaseRed = 12,
+    ProjectileAnimation = 13,
     // Minion health values (100-115)
     MinionBlueHealth1 = 100,
     MinionBlueHealth2 = 101,
@@ -131,6 +133,7 @@ impl From<&Cell> for EncodedCellValue {
             match animation {
                 CellAnimation::MeleeHit => EncodedCellValue::MeleeHitAnimation,
                 CellAnimation::TowerHit => EncodedCellValue::TowerHitAnimation,
+                CellAnimation::Projectile => EncodedCellValue::ProjectileAnimation,
             }
         } else if let Some(content) = &cell.content {
             match content {
