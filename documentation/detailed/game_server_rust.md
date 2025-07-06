@@ -1,6 +1,6 @@
 # Rust Game Server
 
-The Rust game server is responsible for running the core game logic in real-time. It is designed to be highly performant and scalable, ensuring a smooth and responsive gaming experience.
+The Rust game server is a standalone executable that is spawned by the Go server when a new game room is created. It is responsible for running the core game logic in real-time.
 
 ## Key Responsibilities
 

@@ -7,7 +7,7 @@ The Go server acts as the central orchestrator of the CTF game. It is responsibl
 - **Client Connection Handling:** Listens for incoming TCP connections from clients and manages the lifecycle of each connection.
 - **Authentication:** Communicates with the [Rust Auth Service](./auth_rust.md) to authenticate users.
 - **Room Management:** Allows players to create, find, and join game rooms.
-- **Game Server Orchestration:** Provides clients with the necessary information to connect to the [Rust Game Server](./game_server_rust.md).
+- **Game Server Orchestration:** Spawns a new Rust game server process when a game room is created.
 
 ## Architecture
 

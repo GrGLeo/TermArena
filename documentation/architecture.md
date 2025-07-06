@@ -20,14 +20,14 @@ The following diagram illustrates the interaction between the different componen
 graph TD
     A[Client] -->|TCP| B(Go Server)
     B -->|gRPC| C{Auth Service}
-    B -->|TCP| D(Rust Game Server)
-    D -->|TCP| A
+    B -->|Spawns| D(Rust Game Server)
+    A -->|TCP| D
 ```
 
 ### Data Flow
 
 1.  **Client to Go Server:** The client initiates a connection to the Go server for authentication and to find or create a game room.
 2.  **Go Server to Auth Service:** The Go server communicates with the Auth service via gRPC to verify user credentials.
-3.  **Go Server to Rust Game Server:** Once a game room is ready, the Go server provides the client with the address of the Rust game server.
+3.  **Go Server Spawns Rust Game Server:** When a game room is created, the Go server spawns a new Rust game server process.
 4.  **Client to Rust Game Server:** The client connects directly to the Rust game server to play the game.
 5.  **Rust Game Server to Client:** The Rust game server sends real-time game state updates to the client.
