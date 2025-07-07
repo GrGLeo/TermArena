@@ -4,13 +4,14 @@ use std::{
 };
 use strum_macros::EnumIter;
 
+
 use crate::{
     errors::GameError,
     game::{
         Board, Cell, CellContent, MinionId,
         animation::{AnimationTrait, melee::MeleeAnimation},
         cell::Team,
-        pathfinding::{find_path_on_board, is_adjacent_to_goal},
+       algorithms::pathfinding::{find_path_on_board, is_adjacent_to_goal},
     },
 };
 

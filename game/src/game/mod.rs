@@ -4,7 +4,6 @@ pub mod board;
 pub mod cell;
 pub mod entities;
 pub mod minion_manager;
-pub mod pathfinding;
 pub mod projectile_manager;
 pub mod spell;
 
