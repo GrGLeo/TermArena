@@ -1,11 +1,11 @@
+pub mod algorithms;
 pub mod animation;
 pub mod board;
 pub mod cell;
 pub mod entities;
 pub mod minion_manager;
-pub mod projectile_manager;
 pub mod pathfinding;
-pub mod algorithms;
+pub mod projectile_manager;
 pub mod spell;
 
 use crate::config::GameConfig;
@@ -22,6 +22,7 @@ use entities::{
     tower::{Tower, generate_tower_id},
 };
 use minion_manager::MinionManager;
+use projectile_manager::ProjectileManager;
 use tokio::sync::mpsc;
 
 use std::{
@@ -42,6 +43,7 @@ pub struct GameManager {
     red_base: Base,
     blue_base: Base,
     minion_manager: MinionManager,
+    projectile_manager: ProjectileManager,
     animations: Vec<Box<dyn AnimationTrait>>,
     pub client_channel: HashMap<PlayerId, mpsc::Sender<ClientMessage>>,
     board: Board,
@@ -104,6 +106,7 @@ impl GameManager {
         }
 
         let minion_manager = MinionManager::new(config.minion.clone());
+        let projectile_manager = ProjectileManager::new();
 
         GameManager {
             players_count: 0,
@@ -116,6 +119,7 @@ impl GameManager {
             red_base,
             blue_base,
             minion_manager,
+            projectile_manager,
             animations: Vec::new(),
             client_channel: HashMap::new(),
             board,
@@ -306,6 +310,9 @@ impl GameManager {
             &mut new_animations,
             &mut pending_damages,
         );
+        let (projectile_animation, projectile_damage, projectile_commands) = self.projectile_manager.update_and_check_collisions(&self.board);
+        new_animations.extend(projectile_animation);
+        pending_damages.extend(projectile_damage);
 
         // 3. Apply dealt damages
         pending_damages
@@ -365,7 +372,7 @@ impl GameManager {
 
         // Render animation
         let mut kept_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
-        let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
+        let mut animation_commands_executable: Vec<AnimationCommand> = projectile_commands;
 
         // 1. clear past frame animation
         for anim in &self.animations {
