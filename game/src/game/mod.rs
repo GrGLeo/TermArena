@@ -5,6 +5,7 @@ pub mod entities;
 pub mod minion_manager;
 pub mod projectile_manager;
 pub mod pathfinding;
+pub mod algorithms;
 pub mod spell;
 
 use crate::config::GameConfig;

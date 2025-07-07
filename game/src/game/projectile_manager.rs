@@ -68,7 +68,7 @@ impl ProjectileManager {
                         match cell.content {
                             Some(CellContent::Champion(target_id, target_team)) => {
                                 if projectile.team_id != target_team {
-                                    // for now we only one GameplayEffect
+                                    // for now we only have one GameplayEffect
                                     if let GameplayEffect::Damage(amount) = projectile.payload {
                                         pending_damages.push((Target::Champion(target_id), amount));
                                         hit_target = true;
@@ -77,7 +77,7 @@ impl ProjectileManager {
                             }
                             Some(CellContent::Minion(target_id, target_team)) => {
                                 if projectile.team_id != target_team {
-                                    // for now we only one GameplayEffect
+                                    // for now we only have one GameplayEffect
                                     if let GameplayEffect::Damage(amount) = projectile.payload {
                                         pending_damages.push((Target::Minion(target_id), amount));
                                         hit_target = true;

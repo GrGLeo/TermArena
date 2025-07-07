@@ -1,4 +1,5 @@
 use crate::game::{
+    algorithms::bresenham::Bresenham,
     animation::{AnimationCommand, AnimationTrait},
     cell::{CellAnimation, Team},
 };
@@ -56,12 +57,10 @@ impl Projectile {
 
 impl AnimationTrait for Projectile {
     fn next_frame(&mut self, _owner_row: u16, _owner_col: u16) -> AnimationCommand {
-        // If the projectile has reached the end of its path, it's done.
         if self.path_index >= self.path.len() {
             return AnimationCommand::Done;
         }
 
-        // Get the position for the *current* frame before updating for the next.
         let (current_row, current_col) = self.path[self.path_index];
 
         // Update for the *next* frame
@@ -71,7 +70,6 @@ impl AnimationTrait for Projectile {
             self.path_index += 1;
         }
 
-        // Return the command to draw the projectile at its current position.
         AnimationCommand::Draw {
             row: current_row,
             col: current_col,
@@ -123,8 +121,7 @@ mod tests {
         assert_eq!(projectile.speed, 1);
         assert_eq!(projectile.tick_counter, 0);
         match projectile.payload {
-            GameplayEffect::Damage(amount) => assert_eq!(amount, 10),
-            _ => panic!("Unexpected payload type"),
+            GameplayEffect::Damage(amount) => assert_eq!(amount, 10)
         }
         assert_eq!(projectile.visual_cell_type, CellAnimation::Projectile);
     }
