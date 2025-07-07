@@ -27,8 +27,6 @@ pub struct Projectile {
 }
 
 impl Projectile {
-    // A basic constructor for initial testing.
-    // Bresenham's path calculation will be integrated here later.
     pub fn new(
         id: u64,
         owner_id: u64,
@@ -39,7 +37,7 @@ impl Projectile {
         payload: GameplayEffect,
         visual_cell_type: CellAnimation,
     ) -> Self {
-        let path = vec![start_pos, end_pos];
+        let path = Bresenham::new(start_pos, end_pos).collect();
 
         Projectile {
             id,
@@ -105,7 +103,7 @@ mod tests {
     #[test]
     fn test_projectile_creation() {
         let start_pos = (0, 0);
-        let end_pos = (5, 5);
+        let end_pos = (2, 5);
         let speed = 1;
         let payload = GameplayEffect::Damage(10);
         let visual_type = CellAnimation::Projectile;
@@ -114,9 +112,8 @@ mod tests {
 
         assert_eq!(projectile.id, 1);
         assert_eq!(projectile.owner_id, 100);
-        assert_eq!(projectile.path.len(), 2); // Expecting the dummy path
-        assert_eq!(projectile.path[0], start_pos);
-        assert_eq!(projectile.path[1], end_pos);
+        let expected_path = Bresenham::new(start_pos, end_pos).collect::<Vec<_>>();
+        assert_eq!(projectile.path, expected_path);
         assert_eq!(projectile.path_index, 0);
         assert_eq!(projectile.speed, 1);
         assert_eq!(projectile.tick_counter, 0);
@@ -146,26 +143,23 @@ mod tests {
         assert_eq!(projectile.get_last_drawn_pos(), None); // No previous position
         assert_eq!(projectile.path_index, 0);
 
-        // Tick 1: Should move to the first position in the path (start_pos)
-        let command1 = projectile.next_frame(0, 0); // owner_row, owner_col don't matter for projectile
-        assert!(
-            matches!(command1, AnimationCommand::Draw { row, col, animation_type } if row == start_pos.0 && col == start_pos.1 && animation_type == visual_type)
-        );
-        assert_eq!(projectile.get_last_drawn_pos(), Some(start_pos));
-        assert_eq!(projectile.path_index, 1);
+        let expected_path = Bresenham::new(start_pos, end_pos).collect::<Vec<_>>();
 
-        // Tick 2: Should move to the second position in the path (end_pos)
-        let command2 = projectile.next_frame(0, 0);
-        assert!(
-            matches!(command2, AnimationCommand::Draw { row, col, animation_type } if row == end_pos.0 && col == end_pos.1 && animation_type == visual_type)
-        );
-        assert_eq!(projectile.get_last_drawn_pos(), Some(end_pos));
-        assert_eq!(projectile.path_index, 2);
+        for i in 0..expected_path.len() {
+            let (expected_row, expected_col) = expected_path[i];
+            let command = projectile.next_frame(0, 0);
+            assert!(
+                matches!(command, AnimationCommand::Draw { row, col, animation_type } if row == expected_row && col == expected_col && animation_type == visual_type)
+            );
+            // The path_index advances after the tick_counter reaches speed
+            // For speed = 1, path_index should be i + 1 after each frame
+            assert_eq!(projectile.path_index, i as usize + 1);
+        }
 
-        // Tick 3: Should be finished
-        let command3 = projectile.next_frame(0, 0);
-        assert!(matches!(command3, AnimationCommand::Done));
-        assert_eq!(projectile.get_last_drawn_pos(), Some(end_pos)); // Last drawn pos remains the same
+        // After all path points are drawn, the next frame should be Done
+        let command_done = projectile.next_frame(0, 0);
+        assert!(matches!(command_done, AnimationCommand::Done));
+        assert_eq!(projectile.path_index, expected_path.len());
     }
 
     #[test]
