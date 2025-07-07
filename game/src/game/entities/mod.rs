@@ -29,7 +29,7 @@ pub struct Stats {
 pub trait Fighter {
     fn take_damage(&mut self, damage: u16);
     fn can_attack(&mut self) -> Option<(u16, Box<dyn AnimationTrait>)>;
-    fn get_potential_target<'a>(&self, board: &'a Board, range: (u16, u16)) -> Option<&'a Cell>;
+    fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell>;
 }
 
 pub fn reduced_damage(damage: u16, armor: u16) -> u16 {

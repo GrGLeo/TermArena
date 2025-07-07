@@ -256,7 +256,7 @@ impl GameManager {
             }
 
             // 2. auto_attack
-            if let Some(enemy) = champ.get_potential_target(&self.board, (3, 3)) {
+            if let Some(enemy) = champ.get_potential_target(&self.board) {
                 match &enemy.content {
                     Some(content) => {
                         println!("Got content: {:?}", content);
@@ -492,7 +492,7 @@ impl GameManager {
             .towers
             .iter_mut()
             .map(|(_, tower)| {
-                if let Some(enemy) = tower.get_potential_target(&self.board, (7, 9)) {
+                if let Some(enemy) = tower.get_potential_target(&self.board) {
                     match &enemy.content {
                         Some(content) => match content {
                             CellContent::Minion(id, _) => {

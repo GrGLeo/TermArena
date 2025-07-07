@@ -33,6 +33,7 @@ pub struct Minion {
     lane: Lane,
     path: Option<VecDeque<(u16, u16)>>,
     pub stats: Stats,
+    minion_stats: MinionStats,
     current_path: MinionPath,
     minion_path: Vec<MinionPath>,
     checkpoint: usize,
@@ -103,6 +104,7 @@ impl Minion {
             lane,
             path: None,
             stats,
+            minion_stats,
             current_path: path,
             minion_path: paths,
             checkpoint: 0,
@@ -146,7 +148,7 @@ impl Minion {
         }
         // scan aggro range 10*10 aggro range for now
         // and move toward closest target
-        let target_pos = if let Some(cell) = self.get_potential_target(board, (10, 10)) {
+        let target_pos = if let Some(cell) = self.get_potential_target(board) {
             cell.position
         } else {
             self.current_path
@@ -179,7 +181,7 @@ impl Minion {
         new_animations: &mut Vec<Box<dyn AnimationTrait>>,
         pending_damages: &mut Vec<(Target, u16)>,
     ) {
-        if let Some(enemy) = self.get_potential_target(board, (3, 3)) {
+        if let Some(enemy) = self.get_potential_target(board) {
             println!("Minion found target in melee range: {:?}", enemy);
             match &enemy.content {
                 Some(content) => match content {
@@ -267,8 +269,8 @@ impl Fighter for Minion {
         }
     }
 
-    fn get_potential_target<'a>(&self, board: &'a Board, range: (u16, u16)) -> Option<&'a Cell> {
-        let (row_range, col_range) = range;
+    fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell> {
+        let (row_range, col_range) = (self.minion_stats.aggro_range_row, self.minion_stats.aggro_range_col);
         let target_area = board.center_view(self.row, self.col, row_range, col_range);
         let center_row = target_area.len() / 2;
         let center_col = target_area[0].len() / 2;
@@ -346,6 +348,10 @@ mod tests {
             attack_speed_ms: 2500,
             health: 40,
             armor: 0,
+            aggro_range_row: 10,
+            aggro_range_col: 10,
+            attack_range_row: 3,
+            attack_range_col: 3,
         }
     }
 
@@ -1014,7 +1020,7 @@ mod tests {
         let scan_range = (10, 10); // 10x10 range
 
         // Case 1: Empty board
-        let target_none = minion.get_potential_target(&board, scan_range);
+        let target_none = minion.get_potential_target(&board);
         assert!(
             target_none.is_none(),
             "Should return None when board is empty"
@@ -1029,7 +1035,7 @@ mod tests {
             ally_row as usize,
             ally_col as usize,
         );
-        let target_ally = minion.get_potential_target(&board, scan_range);
+        let target_ally = minion.get_potential_target(&board);
         assert!(
             target_ally.is_none(),
             "Should return None when only allies are in range"
@@ -1042,7 +1048,7 @@ mod tests {
             (minion_row + 1) as usize,
             minion_col as usize,
         ); // Wall in range
-        let target_wall = minion.get_potential_target(&board, scan_range);
+        let target_wall = minion.get_potential_target(&board);
         assert!(
             target_wall.is_none(),
             "Should return None when only impassable terrain is in range"
@@ -1074,7 +1080,7 @@ mod tests {
             enemy_col as usize,
         );
 
-        let target_cell_option = minion.get_potential_target(&board, scan_range);
+        let target_cell_option = minion.get_potential_target(&board);
 
         assert!(
             target_cell_option.is_some(),
@@ -1103,7 +1109,7 @@ mod tests {
             enemy_minion_col as usize,
         );
 
-        let target_minion_cell_option = minion.get_potential_target(&board, scan_range);
+        let target_minion_cell_option = minion.get_potential_target(&board);
         assert!(
             target_minion_cell_option.is_some(),
             "Should return Some when an enemy minion is in range"
@@ -1131,7 +1137,7 @@ mod tests {
             enemy_tower_col as usize,
         );
 
-        let target_tower_cell_option = minion.get_potential_target(&board, scan_range);
+        let target_tower_cell_option = minion.get_potential_target(&board);
         assert!(
             target_tower_cell_option.is_some(),
             "Should return Some when an enemy tower is in range"
@@ -1231,7 +1237,7 @@ mod tests {
             "Closest enemy distance calculation error"
         );
 
-        let target_cell_option = minion.get_potential_target(&board, scan_range);
+        let target_cell_option = minion.get_potential_target(&board);
 
         assert!(
             target_cell_option.is_some(),
@@ -1258,42 +1264,41 @@ mod tests {
         let minion_team = Team::Blue;
         let minion_row = 25; // Center minion
         let minion_col = 25;
-        let minion_stats = create_default_minion_stats();
-        let mut minion = Minion::new(minion_id, minion_team, Lane::Mid, minion_stats);
+        let minion_stats = create_default_minion_stats(); // aggro_range_row: 10, aggro_range_col: 10
+        let mut minion = Minion::new(minion_id, minion_team, Lane::Mid, minion_stats.clone()); // Use clone to avoid moving minion_stats
+
         minion.row = minion_row;
         minion.col = minion_col;
 
-        let scan_range = (5, 5); // 11x11 range centered at (25,25)
-        let enemy_team = Team::Red; // Opposite team
+        let aggro_range_row = minion.minion_stats.aggro_range_row;
+        let aggro_range_col = minion.minion_stats.aggro_range_col;
 
-        // Place an enemy champion just outside the x10 range
-        // Range rows [25-5, 25+5] = [20, 30], cols [25-5, 25+5] = [20, 30]
-        // Place enemy at row 19 or 30, or col 19 or 30.
-        let enemy_row_outside = minion_row + 5; // row 30, outside range
-        let enemy_col_outside = minion_col + 1; // col 26, within range
+        // Place an enemy champion just outside the aggro range (row-wise)
+        let enemy_row_outside = minion_row + aggro_range_row + 1; // One cell outside the range
+        let enemy_col_outside = minion_col; // Within range
         board.place_cell(
-            CellContent::Champion(99, enemy_team),
+            CellContent::Champion(99, Team::Red),
             enemy_row_outside as usize,
             enemy_col_outside as usize,
         );
 
-        let target_cell_option = minion.get_potential_target(&board, scan_range);
+        let target_cell_option = minion.get_potential_target(&board);
         assert!(
             target_cell_option.is_none(),
             "Should return None when enemies are outside the specified range (row)"
         );
 
-        // Place an enemy minion just outside the range
-        board.clear_cell(enemy_row_outside as usize, enemy_col_outside as usize);
-        let enemy_minion_row_outside = minion_row + 1; // row 26, within range
-        let enemy_minion_col_outside = minion_col - 6; // col 19, outside range
+        // Place an enemy minion just outside the aggro range (col-wise)
+        board.clear_cell(enemy_row_outside as usize, enemy_col_outside as usize); // Clear previous enemy
+        let enemy_minion_row_outside = minion_row; // Within range
+        let enemy_minion_col_outside = minion_col + aggro_range_col + 1; // One cell outside the range
         board.place_cell(
-            CellContent::Minion(2, enemy_team),
+            CellContent::Minion(2, Team::Red),
             enemy_minion_row_outside as usize,
             enemy_minion_col_outside as usize,
         );
 
-        let target_minion_cell_option = minion.get_potential_target(&board, scan_range);
+        let target_minion_cell_option = minion.get_potential_target(&board);
         assert!(
             target_minion_cell_option.is_none(),
             "Should return None when enemies are outside the specified range (col)"

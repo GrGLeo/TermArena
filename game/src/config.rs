@@ -20,6 +20,8 @@ pub struct ChampionStats {
     pub level_up_health_increase: u16,
     pub level_up_attack_damage_increase: u16,
     pub level_up_armor_increase: u16,
+    pub attack_range_row: u16,
+    pub attack_range_col: u16,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -28,6 +30,10 @@ pub struct MinionStats {
     pub attack_speed_ms: u64,
     pub health: u16,
     pub armor: u16,
+    pub aggro_range_row: u16,
+    pub aggro_range_col: u16,
+    pub attack_range_row: u16,
+    pub attack_range_col: u16,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -36,6 +42,8 @@ pub struct TowerStats {
     pub attack_speed_secs: u64,
     pub health: u16,
     pub armor: u16,
+    pub attack_range_row: u16,
+    pub attack_range_col: u16,
 }
 
 #[derive(Debug, Deserialize, Clone)]

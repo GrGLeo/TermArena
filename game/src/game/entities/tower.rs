@@ -17,6 +17,7 @@ pub struct Tower {
     pub tower_id: TowerId,
     pub team_id: Team,
     stats: Stats,
+    tower_stats: TowerStats,
     destroyed: bool,
     last_attacked: Instant,
     pub row: u16,
@@ -26,17 +27,18 @@ pub struct Tower {
 use crate::config::TowerStats;
 
 impl Tower {
-    pub fn new(tower_id: TowerId, team_id: Team, row: u16, col: u16, stats: TowerStats) -> Self {
+    pub fn new(tower_id: TowerId, team_id: Team, row: u16, col: u16, tower_stats: TowerStats) -> Self {
         Tower {
             tower_id,
             team_id,
             stats: Stats {
-                attack_damage: stats.attack_damage,
-                attack_speed: Duration::from_secs(stats.attack_speed_secs),
-                health: stats.health,
-                max_health: stats.health,
-                armor: stats.armor,
+                attack_damage: tower_stats.attack_damage,
+                attack_speed: Duration::from_secs(tower_stats.attack_speed_secs),
+                health: tower_stats.health,
+                max_health: tower_stats.health,
+                armor: tower_stats.armor,
             },
+            tower_stats,
             destroyed: false,
             last_attacked: Instant::now(),
             row,
@@ -112,9 +114,8 @@ impl Fighter for Tower {
         }
     }
 
-    fn get_potential_target<'a>(&self, board: &'a Board, range: (u16, u16)) -> Option<&'a Cell> {
-        // range is implied here with: 6, 8
-        let (row_range, col_range) = range;
+    fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell> {
+        let (row_range, col_range) = (self.tower_stats.attack_range_row, self.tower_stats.attack_range_col);
         let target_area = board.center_view(self.row, self.col, row_range, col_range);
         let center_row = target_area.len() / 2;
         let center_col = target_area[0].len() / 2;
@@ -179,6 +180,8 @@ mod tests {
             attack_speed_secs: 3,
             health: 400,
             armor: 8,
+            attack_range_row: 7,
+            attack_range_col: 9,
         }
     }
 
@@ -459,7 +462,7 @@ mod tests {
         // We don't need to place the tower content for scan_range test itself
 
         // Case 1: No other entities on the board
-        let target_none = tower.get_potential_target(&board, (7, 9));
+        let target_none = tower.get_potential_target(&board);
         assert!(
             target_none.is_none(),
             "Tower scan_range should return None when no other entities are present"
@@ -475,7 +478,7 @@ mod tests {
             ally_row as usize,
             ally_col as usize,
         );
-        let target_ally_champ = tower.get_potential_target(&board, (7, 9));
+        let target_ally_champ = tower.get_potential_target(&board);
         assert!(
             target_ally_champ.is_none(),
             "Tower scan_range should return None when only allied champions are in range"
@@ -492,7 +495,7 @@ mod tests {
             ally_minion_row as usize,
             ally_minion_col as usize,
         );
-        let target_ally_minion = tower.get_potential_target(&board, (7, 9));
+        let target_ally_minion = tower.get_potential_target(&board);
         assert!(
             target_ally_minion.is_none(),
             "Tower scan_range should return None when only allied minions are in range"
@@ -509,7 +512,7 @@ mod tests {
             enemy_tower_row as usize,
             enemy_tower_col as usize,
         );
-        let target_enemy_tower = tower.get_potential_target(&board, (7, 9));
+        let target_enemy_tower = tower.get_potential_target(&board);
         assert!(
             target_enemy_tower.is_none(),
             "Tower scan_range should return None when only enemy towers are in range"
@@ -541,7 +544,7 @@ mod tests {
             enemy_champ_col as usize,
         );
 
-        let target_champ = tower.get_potential_target(&board, (7, 9));
+        let target_champ = tower.get_potential_target(&board);
         assert!(
             target_champ.is_some(),
             "Tower scan_range should return Some when an enemy champion is in range"
@@ -565,7 +568,7 @@ mod tests {
             enemy_minion_col as usize,
         );
 
-        let target_minion = tower.get_potential_target(&board, (7, 9));
+        let target_minion = tower.get_potential_target(&board);
         assert!(
             target_minion.is_some(),
             "Tower scan_range should return Some when an enemy minion is in range"
@@ -626,7 +629,7 @@ mod tests {
             further_enemy_col_2 as usize,
         );
 
-        let target = tower.get_potential_target(&board, (7, 9));
+        let target = tower.get_potential_target(&board);
 
         assert!(
             target.is_some(),
@@ -665,7 +668,7 @@ mod tests {
             enemy_col_outside as usize,
         );
 
-        let target = tower.get_potential_target(&board, (7, 9));
+        let target = tower.get_potential_target(&board);
 
         assert!(
             target.is_none(),
@@ -681,7 +684,7 @@ mod tests {
             enemy_minion_col_outside as usize,
         );
 
-        let target_minion_outside = tower.get_potential_target(&board, (7, 9));
+        let target_minion_outside = tower.get_potential_target(&board);
         assert!(
             target_minion_outside.is_none(),
             "Tower scan_range should return None when enemies are outside the 7x9 range"
