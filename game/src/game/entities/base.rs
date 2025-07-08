@@ -1,9 +1,10 @@
 use crate::config::BaseStats;
 use crate::game::Board;
 use crate::game::Cell;
-use crate::game::animation::AnimationTrait;
 use crate::game::cell::Team;
 use crate::game::entities::{Fighter, Stats};
+
+use super::AttackAction;
 
 pub struct Base {
     pub team: Team,
@@ -34,7 +35,7 @@ impl Fighter for Base {
         self.stats.health = self.stats.health.saturating_sub(damage);
     }
 
-    fn can_attack(&mut self) -> Option<(u16, Box<dyn AnimationTrait>)> {
+    fn can_attack(&mut self) -> Option<AttackAction> {
         // Base can't attack
         None
     }

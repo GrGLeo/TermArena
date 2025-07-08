@@ -7,10 +7,10 @@ use crate::game::BaseTerrain;
 use crate::game::animation::AnimationTrait;
 use crate::game::animation::tower::TowerHitAnimation;
 use crate::game::board::Board;
-use crate::game::cell::{Cell, CellContent, Team, TowerId};
+use crate::game::cell::{Cell, CellAnimation, CellContent, Team, TowerId};
 use crate::game::entities::reduced_damage;
 
-use super::{Fighter, Stats};
+use super::{AttackAction, Fighter, Stats};
 
 #[derive(Debug)]
 pub struct Tower {
@@ -27,7 +27,13 @@ pub struct Tower {
 use crate::config::TowerStats;
 
 impl Tower {
-    pub fn new(tower_id: TowerId, team_id: Team, row: u16, col: u16, tower_stats: TowerStats) -> Self {
+    pub fn new(
+        tower_id: TowerId,
+        team_id: Team,
+        row: u16,
+        col: u16,
+        tower_stats: TowerStats,
+    ) -> Self {
         Tower {
             tower_id,
             team_id,
@@ -102,20 +108,24 @@ impl Fighter for Tower {
         }
     }
 
-    fn can_attack(&mut self) -> Option<(u16, Box<dyn AnimationTrait>)> {
+    fn can_attack(&mut self) -> Option<AttackAction> {
         if self.last_attacked + self.stats.attack_speed < Instant::now() {
             self.last_attacked = Instant::now();
-            Some((
-                self.stats.attack_damage,
-                Box::new(TowerHitAnimation::new(self.row, self.col)),
-            ))
+            Some(AttackAction::Projectile {
+                damage: self.stats.attack_damage,
+                speed: 1,
+                visual: CellAnimation::Projectile,
+            })
         } else {
             None
         }
     }
 
     fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell> {
-        let (row_range, col_range) = (self.tower_stats.attack_range_row, self.tower_stats.attack_range_col);
+        let (row_range, col_range) = (
+            self.tower_stats.attack_range_row,
+            self.tower_stats.attack_range_col,
+        );
         let target_area = board.center_view(self.row, self.col, row_range, col_range);
         let center_row = target_area.len() / 2;
         let center_col = target_area[0].len() / 2;

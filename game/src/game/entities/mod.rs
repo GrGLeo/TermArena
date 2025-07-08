@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use super::{Board, Cell, MinionId, PlayerId, TowerId, animation::AnimationTrait};
+use super::{animation::AnimationTrait, cell::CellAnimation, Board, Cell, MinionId, PlayerId, TowerId};
 use crate::game::cell::Team;
 
 pub mod base;
@@ -8,6 +8,18 @@ pub mod champion;
 pub mod minion;
 pub mod tower;
 pub mod projectile;
+
+pub enum AttackAction {
+    Melee {
+        damage: u16,
+        animation: Box<dyn AnimationTrait>
+    },
+    Projectile {
+        damage: u16,
+        speed: u32,
+        visual: CellAnimation
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Target {
@@ -28,7 +40,7 @@ pub struct Stats {
 
 pub trait Fighter {
     fn take_damage(&mut self, damage: u16);
-    fn can_attack(&mut self) -> Option<(u16, Box<dyn AnimationTrait>)>;
+    fn can_attack(&mut self) -> Option<AttackAction>;
     fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell>;
 }
 

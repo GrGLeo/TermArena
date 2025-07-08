@@ -16,8 +16,9 @@ use cell::Team;
 pub use cell::{BaseTerrain, Cell, CellContent, MinionId, PlayerId, TowerId};
 pub use entities::champion::{Action, Champion};
 use entities::{
-    Fighter, Target,
+    AttackAction, Fighter, Target,
     base::Base,
+    projectile::GameplayEffect,
     tower::{Tower, generate_tower_id},
 };
 use minion_manager::MinionManager;
@@ -261,27 +262,47 @@ impl GameManager {
                         println!("Got content: {:?}", content);
                         match content {
                             CellContent::Tower(id, _) => {
-                                if let Some((damage, animation)) = champ.can_attack() {
-                                    new_animations.push(animation);
-                                    pending_damages.push((Target::Tower(*id), damage))
+                                if let Some(attack) = champ.can_attack() {
+                                    match attack {
+                                        AttackAction::Melee { damage, animation } => {
+                                            new_animations.push(animation);
+                                            pending_damages.push((Target::Tower(*id), damage))
+                                        }
+                                        _ => {}
+                                    }
                                 }
                             }
                             CellContent::Minion(id, _) => {
-                                if let Some((damage, animation)) = champ.can_attack() {
-                                    new_animations.push(animation);
-                                    pending_damages.push((Target::Minion(*id), damage))
+                                if let Some(attack) = champ.can_attack() {
+                                    match attack {
+                                        AttackAction::Melee { damage, animation } => {
+                                            new_animations.push(animation);
+                                            pending_damages.push((Target::Minion(*id), damage))
+                                        }
+                                        _ => {}
+                                    }
                                 }
                             }
                             CellContent::Champion(id, _) => {
-                                if let Some((damage, animation)) = champ.can_attack() {
-                                    new_animations.push(animation);
-                                    pending_damages.push((Target::Champion(*id), damage))
+                                if let Some(attack) = champ.can_attack() {
+                                    match attack {
+                                        AttackAction::Melee { damage, animation } => {
+                                            new_animations.push(animation);
+                                            pending_damages.push((Target::Champion(*id), damage))
+                                        }
+                                        _ => {}
+                                    }
                                 }
                             }
                             CellContent::Base(team) => {
-                                if let Some((damage, animation)) = champ.can_attack() {
-                                    new_animations.push(animation);
-                                    pending_damages.push((Target::Base(*team), damage))
+                                if let Some(attack) = champ.can_attack() {
+                                    match attack {
+                                        AttackAction::Melee { damage, animation } => {
+                                            new_animations.push(animation);
+                                            pending_damages.push((Target::Base(*team), damage))
+                                        }
+                                        _ => {}
+                                    }
                                 }
                             }
                             _ => break,
@@ -309,6 +330,12 @@ impl GameManager {
             &mut new_animations,
             &mut pending_damages,
         );
+
+        // Tower turn
+        // 1. Scan range
+        // 2. attack closest enemy
+        self.tower_turn();
+
         let (projectile_animation, projectile_damage, projectile_commands) =
             self.projectile_manager.update_and_check_collisions(
                 &self.board,
@@ -316,6 +343,8 @@ impl GameManager {
                 &self.minion_manager.minions,
                 &self.towers,
             );
+        println!("Animation: {:?} | Damage: {:?} | Commands: {:?}",
+                 projectile_animation, projectile_damage, projectile_commands);
         new_animations.extend(projectile_animation);
         pending_damages.extend(projectile_damage);
 
@@ -370,10 +399,7 @@ impl GameManager {
             }
         }
 
-        // Tower turn
-        // 1. Scan range
-        // 2. attack closest enemy
-        self.tower_turn();
+        // Update projectile_manager
 
         // Render animation
         let mut kept_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
@@ -493,68 +519,52 @@ impl GameManager {
     }
 
     fn tower_turn(&mut self) {
-        let pending_damages = self
-            .towers
-            .iter_mut()
-            .map(|(_, tower)| {
-                if let Some(enemy) = tower.get_potential_target(&self.board) {
-                    match &enemy.content {
-                        Some(content) => match content {
-                            CellContent::Minion(id, _) => {
-                                if let Some((damage, mut animation)) = tower.can_attack() {
-                                    animation.attach_target(*id);
-                                    println!("tower anim: {:?}", animation);
-                                    self.animations.push(animation);
-                                    Some((Target::Minion(*id), damage))
-                                } else {
-                                    None
-                                }
-                            }
-                            CellContent::Champion(id, _) => {
-                                if let Some((damage, mut animation)) = tower.can_attack() {
-                                    animation.attach_target(*id);
-                                    println!("tower anim: {:?}", animation);
-                                    self.animations.push(animation);
-                                    Some((Target::Champion(*id), damage))
-                                } else {
-                                    None
-                                }
-                            }
-                            _ => None,
-                        },
-                        None => None,
-                    }
-                } else {
-                    None
-                }
-            })
-            .filter_map(|option| option)
-            .collect::<Vec<(Target, u16)>>();
+        let mut projectiles_to_create = Vec::new();
 
-        pending_damages
-            .into_iter()
-            .for_each(|(target, damage)| match target {
-                Target::Tower(id) => {
-                    if let Some(tower) = self.towers.get_mut(&id) {
-                        tower.take_damage(damage);
+        for (_, tower) in self.towers.iter_mut() {
+            if let Some(enemy_cell) = tower.get_potential_target(&self.board) {
+                if let Some(enemy_content) = &enemy_cell.content {
+                    let target = match enemy_content {
+                        CellContent::Champion(id, _) => Some(Target::Champion(*id)),
+                        CellContent::Minion(id, _) => Some(Target::Minion(*id)),
+                        _ => None, // Towers can't target other entities
+                    };
+
+                    if let Some(target) = target {
+                        if let Some(attack_action) = tower.can_attack() {
+                            if let AttackAction::Projectile {
+                                damage,
+                                speed,
+                                visual,
+                            } = attack_action
+                            {
+                                projectiles_to_create.push((
+                                    tower.tower_id,
+                                    target,
+                                    damage,
+                                    speed,
+                                    visual,
+                                ));
+                            }
+                        }
                     }
                 }
-                Target::Minion(id) => {
-                    if let Some(minion) = self.minion_manager.minions.get_mut(&id) {
-                        minion.take_damage(damage);
-                        self.handle_minion_death(&id);
-                    }
-                }
-                Target::Champion(id) => {
-                    if let Some(champ) = self.champions.get_mut(&id) {
-                        champ.take_damage(damage);
-                    }
-                }
-                Target::Base(team) => match team {
-                    Team::Red => self.red_base.take_damage(damage),
-                    Team::Blue => self.blue_base.take_damage(damage),
-                },
-            });
+            }
+        }
+        // We create the projectiles
+        for (tower_id, target, damage, speed, visual) in projectiles_to_create {
+            if let Some(tower) = self.towers.get(&tower_id) {
+                self.projectile_manager.create_homing_projectile(
+                    tower.tower_id as u64,
+                    tower.team_id,
+                    target,
+                    (tower.row, tower.col),
+                    speed,
+                    GameplayEffect::Damage(damage),
+                    visual,
+                );
+            }
+        }
     }
 
     fn handle_minion_death(&mut self, id: &MinionId) {

@@ -8,7 +8,7 @@ use crate::game::animation::melee::MeleeAnimation;
 use crate::game::cell::{CellContent, Team};
 use crate::game::{Board, cell::PlayerId};
 
-use super::{Fighter, Stats, reduced_damage};
+use super::{AttackAction, Fighter, Stats, reduced_damage};
 use crate::config::ChampionStats;
 
 #[derive(Debug, Clone, Copy)]
@@ -195,18 +195,24 @@ impl Fighter for Champion {
         }
     }
 
-    fn can_attack(&mut self) -> Option<(u16, Box<dyn AnimationTrait>)> {
+    fn can_attack(&mut self) -> Option<AttackAction> {
         if self.last_attacked + self.stats.attack_speed < Instant::now() {
             self.last_attacked = Instant::now();
             let animation = MeleeAnimation::new(self.player_id);
-            Some((self.stats.attack_damage, Box::new(animation)))
+            Some(AttackAction::Melee {
+                damage: self.stats.attack_damage,
+                animation: Box::new(animation),
+            })
         } else {
             None
         }
     }
 
     fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell> {
-        let (row_range, col_range) = (self.champion_stats.attack_range_row, self.champion_stats.attack_range_col);
+        let (row_range, col_range) = (
+            self.champion_stats.attack_range_row,
+            self.champion_stats.attack_range_col,
+        );
         let target_area = board.center_view(self.row, self.col, row_range, col_range);
         let center_row = target_area.len() / 2;
         let center_col = target_area[0].len() / 2;
@@ -798,7 +804,7 @@ mod tests {
         board.clear_cell(flag_row as usize, flag_col as usize);
     }
 
-        #[test]
+    #[test]
     fn test_scan_range_enemy_in_range() {
         let mut board = create_dummy_board(10, 10);
         let champion_row = 5;

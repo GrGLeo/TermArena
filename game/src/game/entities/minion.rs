@@ -4,18 +4,17 @@ use std::{
 };
 use strum_macros::EnumIter;
 
-
 use crate::{
     errors::GameError,
     game::{
         Board, Cell, CellContent, MinionId,
+        algorithms::pathfinding::{find_path_on_board, is_adjacent_to_goal},
         animation::{AnimationTrait, melee::MeleeAnimation},
         cell::Team,
-       algorithms::pathfinding::{find_path_on_board, is_adjacent_to_goal},
     },
 };
 
-use super::{Fighter, Stats, Target, reduced_damage};
+use super::{AttackAction, Fighter, Stats, Target, reduced_damage};
 use crate::config::MinionStats;
 
 type MinionPath = (u16, u16);
@@ -183,26 +182,39 @@ impl Minion {
         pending_damages: &mut Vec<(Target, u16)>,
     ) {
         if let Some(enemy) = self.get_potential_target(board) {
-            println!("Minion found target in melee range: {:?}", enemy);
             match &enemy.content {
                 Some(content) => match content {
                     CellContent::Tower(id, _) => {
-                        if let Some((damage, animation)) = self.can_attack() {
-                            println!("Raw damage: {}", damage);
-                            new_animations.push(animation);
-                            pending_damages.push((Target::Tower(*id), damage))
+                        if let Some(attack) = self.can_attack() {
+                            match attack {
+                                AttackAction::Melee { damage, animation } => {
+                                    new_animations.push(animation);
+                                    pending_damages.push((Target::Tower(*id), damage))
+                                }
+                                _ => {}
+                            }
                         }
                     }
                     CellContent::Minion(id, _) => {
-                        if let Some((damage, animation)) = self.can_attack() {
-                            new_animations.push(animation);
-                            pending_damages.push((Target::Minion(*id), damage))
+                        if let Some(attack) = self.can_attack() {
+                            match attack {
+                                AttackAction::Melee { damage, animation } => {
+                                    new_animations.push(animation);
+                                    pending_damages.push((Target::Minion(*id), damage))
+                                }
+                                _ => {}
+                            }
                         }
                     }
                     CellContent::Champion(id, _) => {
-                        if let Some((damage, animation)) = self.can_attack() {
-                            new_animations.push(animation);
-                            pending_damages.push((Target::Champion(*id), damage))
+                        if let Some(attack) = self.can_attack() {
+                            match attack {
+                                AttackAction::Melee { damage, animation } => {
+                                    new_animations.push(animation);
+                                    pending_damages.push((Target::Champion(*id), damage))
+                                }
+                                _ => {}
+                            }
                         }
                     }
                     _ => return,
@@ -260,18 +272,24 @@ impl Fighter for Minion {
         self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
     }
 
-    fn can_attack(&mut self) -> Option<(u16, Box<dyn AnimationTrait>)> {
+    fn can_attack(&mut self) -> Option<AttackAction> {
         if self.last_attacked + self.stats.attack_speed < Instant::now() {
             self.last_attacked = Instant::now();
             let animation = MeleeAnimation::new(self.minion_id);
-            Some((self.stats.attack_damage, Box::new(animation)))
+            Some(AttackAction::Melee {
+                damage: self.stats.attack_damage,
+                animation: Box::new(animation),
+            })
         } else {
             None
         }
     }
 
     fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell> {
-        let (row_range, col_range) = (self.minion_stats.aggro_range_row, self.minion_stats.aggro_range_col);
+        let (row_range, col_range) = (
+            self.minion_stats.aggro_range_row,
+            self.minion_stats.aggro_range_col,
+        );
         let target_area = board.center_view(self.row, self.col, row_range, col_range);
         let center_row = target_area.len() / 2;
         let center_col = target_area[0].len() / 2;
