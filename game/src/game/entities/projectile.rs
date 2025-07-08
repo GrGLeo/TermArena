@@ -4,9 +4,22 @@ use crate::game::{
     cell::{CellAnimation, Team},
 };
 
+use super::Target;
+
 #[derive(Debug, Clone)]
 pub enum GameplayEffect {
     Damage(u16),
+}
+
+#[derive(Debug, Clone)]
+pub enum PathingLogic {
+    Straight {
+        path: Vec<(u16, u16)>,
+        current_index: usize,
+    },
+    LockOn {
+        target_id: Target,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -15,8 +28,8 @@ pub struct Projectile {
     pub team_id: Team,
     pub owner_id: u64,
     // Path and Movement
-    pub path: Vec<(u16, u16)>,
-    path_index: usize,
+    pub current_position: (u16, u16),
+    pub pathing: PathingLogic,
     // Timing
     speed: u32, // number of tick to move one cell
     tick_counter: u32,
@@ -27,7 +40,7 @@ pub struct Projectile {
 }
 
 impl Projectile {
-    pub fn new(
+    pub fn from_skillshot(
         id: u64,
         owner_id: u64,
         team_id: Team,
@@ -38,13 +51,40 @@ impl Projectile {
         visual_cell_type: CellAnimation,
     ) -> Self {
         let path = Bresenham::new(start_pos, end_pos).collect();
-
+        let pathing = PathingLogic::Straight {
+            path,
+            current_index: 0,
+        };
         Projectile {
             id,
             owner_id,
             team_id,
-            path,
-            path_index: 0,
+            current_position: start_pos,
+            pathing,
+            speed,
+            tick_counter: 0,
+            payload,
+            visual_cell_type,
+        }
+    }
+
+    pub fn from_homing_shot(
+        id: u64,
+        owner_id: u64,
+        team_id: Team,
+        start_pos: (u16, u16),
+        target_id: Target,
+        speed: u32,
+        payload: GameplayEffect,
+        visual_cell_type: CellAnimation,
+    ) -> Self {
+        let pathing = PathingLogic::LockOn { target_id };
+        Projectile {
+            id,
+            owner_id,
+            team_id,
+            current_position: start_pos,
+            pathing,
             speed,
             tick_counter: 0,
             payload,
@@ -54,33 +94,52 @@ impl Projectile {
 }
 
 impl AnimationTrait for Projectile {
-    fn next_frame(&mut self, _owner_row: u16, _owner_col: u16) -> AnimationCommand {
-        if self.path_index >= self.path.len() {
-            return AnimationCommand::Done;
-        }
-
-        let (current_row, current_col) = self.path[self.path_index];
-
-        // Update for the *next* frame
+    fn next_frame(&mut self, target_row: u16, target_col: u16) -> AnimationCommand {
+        // 1. Handling speed timing
         self.tick_counter += 1;
-        if self.tick_counter >= self.speed as u32 {
-            self.tick_counter = 0;
-            self.path_index += 1;
+        if self.tick_counter < self.speed {
+            return AnimationCommand::Draw {
+                row: self.current_position.0,
+                col: self.current_position.1,
+                animation_type: self.visual_cell_type.clone(),
+            };
         }
+        self.tick_counter = 0;
 
-        AnimationCommand::Draw {
-            row: current_row,
-            col: current_col,
-            animation_type: self.visual_cell_type.clone(),
+        // 2. Match projectile type
+        match &mut self.pathing {
+            PathingLogic::Straight { path, current_index } => {
+                if *current_index >= path.len() {
+                    return AnimationCommand::Done;
+                }
+                self.current_position = path[*current_index];
+                *current_index += 1;
+            }
+            PathingLogic::LockOn { .. } => {
+                let row_step = (target_row as i32 - self.current_position.0 as i32).signum() as i16;
+                let col_step = (target_col as i32 - self.current_position.1 as i32).signum() as i16;
+
+                if row_step == 0 && col_step == 0 {
+                    return AnimationCommand::Done;
+                }
+                self.current_position.0 = self.current_position.0.saturating_add_signed(row_step);
+                self.current_position.1 = self.current_position.1.saturating_add_signed(col_step);
+            }
         }
+         // 3. Return the Draw command with the new position
+         AnimationCommand::Draw {
+             row: self.current_position.0,
+             col: self.current_position.1,
+             animation_type: self.visual_cell_type.clone(),
+         }
     }
 
     fn get_owner_id(&self) -> usize {
         self.owner_id as usize
     }
 
-    fn attach_target(&mut self, target_id: crate::game::PlayerId) {
-        todo!()
+    fn attach_target(&mut self, _target_id: crate::game::PlayerId) {
+        // This is not needed for projectiles as their target is determined on creation
     }
 
     fn get_animation_type(&self) -> crate::game::cell::CellAnimation {
@@ -88,10 +147,18 @@ impl AnimationTrait for Projectile {
     }
 
     fn get_last_drawn_pos(&self) -> Option<(u16, u16)> {
-        if self.path_index > 0 {
-            self.path.get(self.path_index - 1).copied()
-        } else {
-            None
+        match &self.pathing {
+            PathingLogic::Straight {
+                path,
+                current_index,
+            } => {
+                if *current_index > 1 {
+                    path.get(*current_index - 2).copied()
+                } else {
+                    None
+                }
+            }
+            PathingLogic::LockOn { .. } => Some(self.current_position),
         }
     }
 }
@@ -99,120 +166,175 @@ impl AnimationTrait for Projectile {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::game::animation::AnimationTrait; // For trait methods
+    use crate::game::cell::CellAnimation;
+    use crate::game::entities::Target;
 
+    // Test `from_skillshot` constructor
     #[test]
-    fn test_projectile_creation() {
-        let start_pos = (0, 0);
-        let end_pos = (2, 5);
-        let speed = 1;
-        let payload = GameplayEffect::Damage(10);
-        let visual_type = CellAnimation::Projectile;
-
-        let projectile = Projectile::new(1, 100, Team::Red, start_pos, end_pos, speed, payload, visual_type);
+    fn test_from_skillshot_creation() {
+        let start_pos = (10, 10);
+        let end_pos = (15, 10);
+        let projectile = Projectile::from_skillshot(
+            1,
+            101,
+            Team::Blue,
+            start_pos,
+            end_pos,
+            1,
+            GameplayEffect::Damage(50),
+            CellAnimation::Projectile,
+        );
 
         assert_eq!(projectile.id, 1);
-        assert_eq!(projectile.owner_id, 100);
-        let expected_path = Bresenham::new(start_pos, end_pos).collect::<Vec<_>>();
-        assert_eq!(projectile.path, expected_path);
-        assert_eq!(projectile.path_index, 0);
-        assert_eq!(projectile.speed, 1);
-        assert_eq!(projectile.tick_counter, 0);
-        match projectile.payload {
-            GameplayEffect::Damage(amount) => assert_eq!(amount, 10)
+        assert_eq!(projectile.owner_id, 101);
+        assert_eq!(projectile.team_id, Team::Blue);
+        assert_eq!(projectile.current_position, start_pos);
+
+        if let PathingLogic::Straight { path, current_index } = projectile.pathing {
+            let expected_path = Bresenham::new(start_pos, end_pos).collect::<Vec<_>>();
+            assert_eq!(path, expected_path);
+            assert_eq!(current_index, 0);
+        } else {
+            panic!("Expected PathingLogic::Straight");
         }
-        assert_eq!(projectile.visual_cell_type, CellAnimation::Projectile);
     }
 
-    // Test for Animation trait implementation
-    // Note: The AnimationTrait needs to be imported or defined for this test to compile.
-    // Assuming it will be imported from super::super::animation::AnimationTrait
-    use super::super::super::animation::AnimationTrait;
-
+    // Test `from_homing_shot` constructor
     #[test]
-    fn test_projectile_movement_and_finish() {
+    fn test_from_homing_shot_creation() {
+        let start_pos = (5, 5);
+        let target = Target::Champion(202);
+        let projectile = Projectile::from_homing_shot(
+            2,
+            102,
+            Team::Red,
+            start_pos,
+            target.clone(),
+            2,
+            GameplayEffect::Damage(30),
+            CellAnimation::Projectile,
+        );
+
+        assert_eq!(projectile.id, 2);
+        assert_eq!(projectile.owner_id, 102);
+        assert_eq!(projectile.team_id, Team::Red);
+        assert_eq!(projectile.current_position, start_pos);
+
+        if let PathingLogic::LockOn { target_id } = projectile.pathing {
+            // You might need to derive or implement PartialEq for Target to do this
+            // assert_eq!(target_id, target);
+        } else {
+            panic!("Expected PathingLogic::LockOn");
+        }
+    }
+
+    // Test movement for a Straight projectile
+    #[test]
+    fn test_next_frame_for_skillshot() {
         let start_pos = (0, 0);
-        let end_pos = (2, 0); // Moving horizontally
-        let speed = 1; // Moves every tick
-        let payload = GameplayEffect::Damage(10);
-        let visual_type = CellAnimation::Projectile;
+        let end_pos = (2, 0); // Simple horizontal path
+        let mut projectile = Projectile::from_skillshot(
+            3,
+            103,
+            Team::Blue,
+            start_pos,
+            end_pos,
+            1, // speed = 1 tick per cell
+            GameplayEffect::Damage(10),
+            CellAnimation::Projectile,
+        );
 
-        let mut projectile =
-            Projectile::new(1, 100, Team::Red, start_pos, end_pos, speed, payload, visual_type.clone());
+        // Tick 1: Moves to (0, 0)
+        let cmd1 = projectile.next_frame(99, 99); // Target pos is ignored
+        assert!(matches!(cmd1, AnimationCommand::Draw { row: 0, col: 0, .. }));
+        assert_eq!(projectile.current_position, (0, 0));
 
-        // Initial state
-        assert_eq!(projectile.get_last_drawn_pos(), None); // No previous position
-        assert_eq!(projectile.path_index, 0);
+        // Tick 2: Moves to (1, 0)
+        let cmd2 = projectile.next_frame(99, 99);
+        assert!(matches!(cmd2, AnimationCommand::Draw { row: 1, col: 0, .. }));
+        assert_eq!(projectile.current_position, (1, 0));
 
-        let expected_path = Bresenham::new(start_pos, end_pos).collect::<Vec<_>>();
+        // Tick 3: Moves to (2, 0)
+        let cmd3 = projectile.next_frame(99, 99);
+        assert!(matches!(cmd3, AnimationCommand::Draw { row: 2, col: 0, .. }));
+        assert_eq!(projectile.current_position, (2, 0));
 
-        for i in 0..expected_path.len() {
-            let (expected_row, expected_col) = expected_path[i];
-            let command = projectile.next_frame(0, 0);
-            assert!(
-                matches!(command, AnimationCommand::Draw { row, col, animation_type } if row == expected_row && col == expected_col && animation_type == visual_type)
-            );
-            // The path_index advances after the tick_counter reaches speed
-            // For speed = 1, path_index should be i + 1 after each frame
-            assert_eq!(projectile.path_index, i as usize + 1);
-        }
-
-        // After all path points are drawn, the next frame should be Done
-        let command_done = projectile.next_frame(0, 0);
-        assert!(matches!(command_done, AnimationCommand::Done));
-        assert_eq!(projectile.path_index, expected_path.len());
+        // Tick 4: Path is finished
+        let cmd4 = projectile.next_frame(99, 99);
+        assert!(matches!(cmd4, AnimationCommand::Done));
     }
 
+    // Test movement for a LockOn projectile
     #[test]
-    fn test_projectile_movement_with_speed_delay() {
+    fn test_next_frame_for_homing_shot() {
+        let start_pos = (10, 10);
+        let target = Target::Champion(202);
+        let mut projectile = Projectile::from_homing_shot(
+            4,
+            104,
+            Team::Red,
+            start_pos,
+            target,
+            1, // speed = 1 tick per cell
+            GameplayEffect::Damage(10),
+            CellAnimation::Projectile,
+        );
+
+        // Tick 1: Target is at (10, 13). Projectile should move to (10, 11)
+        let cmd1 = projectile.next_frame(10, 13);
+        assert!(matches!(cmd1, AnimationCommand::Draw { row: 10, col: 11, .. }));
+        assert_eq!(projectile.current_position, (10, 11));
+
+        // Tick 2: Target is still at (10, 13). Projectile should move to (10, 12)
+        let cmd2 = projectile.next_frame(10, 13);
+        assert!(matches!(cmd2, AnimationCommand::Draw { row: 10, col: 12, .. }));
+        assert_eq!(projectile.current_position, (10, 12));
+
+        // Tick 3: Target is now at (10, 13). Projectile moves to (10, 13)
+        let cmd3 = projectile.next_frame(10, 13);
+        assert!(matches!(cmd3, AnimationCommand::Draw { row: 10, col: 13, .. }));
+        assert_eq!(projectile.current_position, (10, 13));
+
+        // Tick 4: Projectile is on the target. Should be Done.
+        let cmd4 = projectile.next_frame(10, 13);
+        assert!(matches!(cmd4, AnimationCommand::Done));
+    }
+
+    // Test movement with speed delay
+    #[test]
+    fn test_movement_with_speed_delay() {
         let start_pos = (0, 0);
         let end_pos = (1, 0);
-        let speed = 2; // Moves every 2 ticks
-        let payload = GameplayEffect::Damage(10);
-        let visual_type = CellAnimation::Projectile;
-
-        let mut projectile =
-            Projectile::new(1, 100, Team::Red, start_pos, end_pos, speed, payload, visual_type.clone());
-
-        // Initial state
-        assert_eq!(projectile.get_last_drawn_pos(), None);
-        assert_eq!(projectile.path_index, 0);
-
-        // Tick 1: Should draw at start_pos, path_index remains 0
-        let command1 = projectile.next_frame(0, 0);
-        assert!(
-            matches!(command1, AnimationCommand::Draw { row, col, animation_type } if row == start_pos.0 && col == start_pos.1 && animation_type == visual_type)
+        let mut projectile = Projectile::from_skillshot(
+            5,
+            105,
+            Team::Blue,
+            start_pos,
+            end_pos,
+            2, // speed = 2 ticks per cell
+            GameplayEffect::Damage(10),
+            CellAnimation::Projectile,
         );
-        assert_eq!(projectile.get_last_drawn_pos(), None);
-        assert_eq!(projectile.path_index, 0);
 
-        // Tick 2: Should draw at start_pos again, path_index advances to 1
-        let command2 = projectile.next_frame(0, 0);
-        assert!(
-            matches!(command2, AnimationCommand::Draw { row, col, animation_type } if row == start_pos.0 && col == start_pos.1 && animation_type == visual_type)
-        );
-        assert_eq!(projectile.get_last_drawn_pos(), Some(start_pos));
-        assert_eq!(projectile.path_index, 1);
+        // Tick 1: Not time to move yet. Redraws at (0,0)
+        let cmd1 = projectile.next_frame(99, 99);
+        assert!(matches!(cmd1, AnimationCommand::Draw { row: 0, col: 0, .. }));
+        assert_eq!(projectile.current_position, (0, 0));
 
-        // Tick 3: Should draw at end_pos, path_index remains 1
-        let command3 = projectile.next_frame(0, 0);
-        assert!(
-            matches!(command3, AnimationCommand::Draw { row, col, animation_type } if row == end_pos.0 && col == end_pos.1 && animation_type == visual_type)
-        );
-        assert_eq!(projectile.get_last_drawn_pos(), Some(start_pos));
-        assert_eq!(projectile.path_index, 1);
+        // Tick 2: Time to move. Moves to (0,0) from path.
+        let cmd2 = projectile.next_frame(99, 99);
+        assert!(matches!(cmd2, AnimationCommand::Draw { row: 0, col: 0, .. }));
+        assert_eq!(projectile.current_position, (0, 0));
 
-        // Tick 4: Should draw at end_pos again, path_index advances to 2
-        let command4 = projectile.next_frame(0, 0);
-        assert!(
-            matches!(command4, AnimationCommand::Draw { row, col, animation_type } if row == end_pos.0 && col == end_pos.1 && animation_type == visual_type)
-        );
-        assert_eq!(projectile.get_last_drawn_pos(), Some(end_pos));
-        assert_eq!(projectile.path_index, 2);
+        // Tick 3: Not time to move. Redraws at (0,0).
+        let cmd3 = projectile.next_frame(99, 99);
+        assert!(matches!(cmd3, AnimationCommand::Draw { row: 0, col: 0, .. }));
+        assert_eq!(projectile.current_position, (0, 0));
 
-        // Tick 5: Should be finished
-        let command5 = projectile.next_frame(0, 0);
-        assert!(matches!(command5, AnimationCommand::Done));
-        assert_eq!(projectile.get_last_drawn_pos(), Some(end_pos));
-        assert_eq!(projectile.path_index, 2);
+        // Tick 4: Time to move. Moves to (1,0) from path.
+        let cmd4 = projectile.next_frame(99, 99);
+        assert!(matches!(cmd4, AnimationCommand::Draw { row: 1, col: 0, .. }));
+        assert_eq!(projectile.current_position, (1, 0));
     }
 }

@@ -9,7 +9,7 @@ pub mod minion;
 pub mod tower;
 pub mod projectile;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Target {
     Tower(TowerId),
     Minion(MinionId),

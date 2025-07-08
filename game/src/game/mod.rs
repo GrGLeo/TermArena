@@ -309,7 +309,13 @@ impl GameManager {
             &mut new_animations,
             &mut pending_damages,
         );
-        let (projectile_animation, projectile_damage, projectile_commands) = self.projectile_manager.update_and_check_collisions(&self.board);
+        let (projectile_animation, projectile_damage, projectile_commands) =
+            self.projectile_manager.update_and_check_collisions(
+                &self.board,
+                &self.champions,
+                &self.minion_manager.minions,
+                &self.towers,
+            );
         new_animations.extend(projectile_animation);
         pending_damages.extend(projectile_damage);
 
