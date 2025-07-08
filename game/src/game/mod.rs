@@ -442,6 +442,9 @@ impl GameManager {
         }
         kept_animations.extend(new_animations);
         self.animations = kept_animations;
+        println!("AnimationKept: {:?} | ProjectileManager: {:?}",
+                 self.animations, self.projectile_manager.projectiles
+                 );
 
         // 3. Execute animation command
         for command in animation_commands_executable {

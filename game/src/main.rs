@@ -197,7 +197,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 game_started = manager.game_started;
             }
             if game_started {
-                sleep(Duration::from_millis(40)).await;
+                sleep(Duration::from_millis(200)).await;
 
                 let updates: HashMap<PlayerId, ClientMessage>;
                 {

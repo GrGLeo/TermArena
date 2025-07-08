@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct ProjectileManager {
-    projectiles: HashMap<u64, Projectile>,
+    pub projectiles: HashMap<u64, Projectile>,
     next_projectile_id: u64,
 }
 

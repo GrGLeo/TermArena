@@ -114,7 +114,7 @@ impl Fighter for Tower {
             Some(AttackAction::Projectile {
                 damage: self.stats.attack_damage,
                 speed: 1,
-                visual: CellAnimation::Projectile,
+                visual: CellAnimation::TowerHit,
             })
         } else {
             None
