@@ -153,8 +153,8 @@ impl GameManager {
             let player_id = self.players_count;
             // Assign Champion to player, and place it on the board
             {
-                let row = 199;
-                let col = 0;
+                let row = 180;
+                let col = 199;
                 let champion = Champion::new(
                     player_id,
                     Team::Blue,
@@ -173,7 +173,8 @@ impl GameManager {
             // We check if we can start the game and send a Start to each player
             if self.players_count == self.max_players {
                 self.game_started = true;
-                self.minion_manager.wave_creation_time = Instant::now() + Duration::from_secs(10);
+                // TODO: change back 300 to 10
+                self.minion_manager.wave_creation_time = Instant::now() + Duration::from_secs(300);
             }
             Some(player_id)
         } else {
@@ -343,8 +344,6 @@ impl GameManager {
                 &self.minion_manager.minions,
                 &self.towers,
             );
-        println!("Animation: {:?} | Damage: {:?} | Commands: {:?}",
-                 projectile_animation, projectile_damage, projectile_commands);
         new_animations.extend(projectile_animation);
         pending_damages.extend(projectile_damage);
 
@@ -399,8 +398,6 @@ impl GameManager {
             }
         }
 
-        // Update projectile_manager
-
         // Render animation
         let mut kept_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = projectile_commands;
@@ -408,12 +405,12 @@ impl GameManager {
         // 1. clear past frame animation
         for anim in &self.animations {
             if let Some((row, col)) = anim.get_last_drawn_pos() {
-                println!("tick: {} | anim: {:?}", self.tick, anim);
                 animation_commands_executable.push(AnimationCommand::Clear { row, col })
             }
         }
         // 2. Process next frame animations
         for mut anim in self.animations.drain(..) {
+            println!("Animation: {:?}", anim);
             let owner_pos = if let Some(champ) = self.champions.get(&anim.get_owner_id()) {
                 Some((champ.row, champ.col))
             } else if let Some(tower) = self.towers.get(&anim.get_owner_id()) {
@@ -426,6 +423,7 @@ impl GameManager {
 
             if let Some((owner_row, owner_col)) = owner_pos {
                 let command = anim.next_frame(owner_row, owner_col);
+                println!("Command: {:?}", command);
                 match command {
                     AnimationCommand::Done => {}
                     AnimationCommand::Draw { .. } => {
@@ -442,9 +440,6 @@ impl GameManager {
         }
         kept_animations.extend(new_animations);
         self.animations = kept_animations;
-        println!("AnimationKept: {:?} | ProjectileManager: {:?}",
-                 self.animations, self.projectile_manager.projectiles
-                 );
 
         // 3. Execute animation command
         for command in animation_commands_executable {
