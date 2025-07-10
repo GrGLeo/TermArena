@@ -3,7 +3,6 @@ use std::usize;
 
 use crate::errors::GameError;
 use crate::game::Cell;
-use crate::game::animation::AnimationTrait;
 use crate::game::animation::melee::MeleeAnimation;
 use crate::game::cell::{CellContent, Team};
 use crate::game::{Board, cell::PlayerId};
@@ -12,7 +11,14 @@ use super::{AttackAction, Fighter, Stats, reduced_damage};
 use crate::config::ChampionStats;
 
 #[derive(Debug, Clone, Copy)]
+pub enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
 
+#[derive(Debug, Clone, Copy)]
 pub enum Action {
     MoveUp,
     MoveDown,
@@ -29,13 +35,14 @@ pub struct Champion {
     pub team_id: Team,
     pub xp: u32,
     pub level: u8,
-    stats: Stats,
+    pub stats: Stats,
     champion_stats: ChampionStats,
     death_counter: u8,
     death_timer: Instant,
     last_attacked: Instant,
     pub row: u16,
     pub col: u16,
+    pub direction: Direction,
 }
 
 impl Champion {
@@ -66,6 +73,7 @@ impl Champion {
             team_id,
             row,
             col,
+            direction: Direction::Up,
         }
     }
 
@@ -99,10 +107,22 @@ impl Champion {
 
     pub fn take_action(&mut self, action: &Action, board: &mut Board) -> Result<(), GameError> {
         let res = match action {
-            Action::MoveUp => self.move_champion(board, -1, 0),
-            Action::MoveDown => self.move_champion(board, 1, 0),
-            Action::MoveLeft => self.move_champion(board, 0, -1),
-            Action::MoveRight => self.move_champion(board, 0, 1),
+            Action::MoveUp => {
+                self.direction = Direction::Up;
+                return self.move_champion(board, -1, 0)
+            }
+            Action::MoveDown => {
+                self.direction = Direction::Down;
+                return self.move_champion(board, 1, 0)
+            }
+            Action::MoveLeft => {
+                self.direction = Direction::Left;
+                return self.move_champion(board, 0, -1)
+            }
+            Action::MoveRight => {
+                self.direction = Direction::Right;
+                return self.move_champion(board, 0, 1)
+            }
             Action::Action1 => Ok(()),
             Action::Action2 => Ok(()),
             Action::InvalidAction => {

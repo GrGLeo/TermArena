@@ -290,7 +290,7 @@ mod tests {
             assert_eq!(manager.projectiles.len(), 1);
         }
 
-        let (_, pending_damages, _) =
+        let (_, pending_damages) =
             manager.update_and_check_collisions(&board, &champions, &minions, &towers);
         assert!(pending_damages.is_empty());
         assert!(manager.projectiles.is_empty());
