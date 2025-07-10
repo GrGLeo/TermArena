@@ -58,12 +58,7 @@ func (eb *EventBroker) ResponseChannel(eventType string) chan Message {
 // It retrieves messages from the queue, invokes the corresponding subscriber callbacks, and sends responses to the appropriate channels.
 func (eb *EventBroker) ProcessMessage() {
 	for {
-		eb.mu.Lock()
 		msg := eb.eventQueue.Dequeue()
-		if msg == nil {
-			eb.mu.Unlock()
-			continue
-		}
 		eventType := msg.Type()
 		eb.logger.Infow("Processing message", "message", eventType)
 		var respMsg Message
@@ -75,7 +70,6 @@ func (eb *EventBroker) ProcessMessage() {
         }
 			}
 		}
-		eb.mu.Unlock()
 
 		// Use the ResponseChannel method to ensure the channel is created
 		channel := eb.ResponseChannel(eventType)
