@@ -173,8 +173,7 @@ impl GameManager {
             // We check if we can start the game and send a Start to each player
             if self.players_count == self.max_players {
                 self.game_started = true;
-                // TODO: change back 300 to 10
-                self.minion_manager.wave_creation_time = Instant::now() + Duration::from_secs(300);
+                self.minion_manager.wave_creation_time = Instant::now() + Duration::from_secs(30);
             }
             Some(player_id)
         } else {
