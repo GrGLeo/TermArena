@@ -237,6 +237,7 @@ impl GameManager {
 
         let mut updates = HashMap::new();
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
+        let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
         let mut pending_damages: Vec<(Target, u16)> = Vec::new();
 
         // --- Game Logic ---
@@ -337,15 +338,16 @@ impl GameManager {
         // 2. attack closest enemy
         self.tower_turn();
 
-        let (projectile_animation, projectile_damage, projectile_commands) =
+        let (projectile_damage, projectile_commands) =
             self.projectile_manager.update_and_check_collisions(
                 &self.board,
                 &self.champions,
                 &self.minion_manager.minions,
                 &self.towers,
             );
-        new_animations.extend(projectile_animation);
         pending_damages.extend(projectile_damage);
+        animation_commands_executable.extend(projectile_commands);
+        println!("Executable: {:?}", animation_commands_executable);
 
         // 3. Apply dealt damages
         pending_damages
@@ -400,7 +402,6 @@ impl GameManager {
 
         // Render animation
         let mut kept_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
-        let mut animation_commands_executable: Vec<AnimationCommand> = projectile_commands;
 
         // 1. clear past frame animation
         for anim in &self.animations {

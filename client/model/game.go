@@ -198,7 +198,7 @@ func (m GameModel) View() string {
 			case 9:
 				builder.WriteString(bgStyle.Render("x")) // Render for dash
 			case 10:
-				builder.WriteString(bgStyle.Render("▘")) // Render for dash
+				builder.WriteString(bgStyle.Render("𐙢")) // Render for dash
 			case 11:
 				builder.WriteString(BaseBlueStyle.Render(" ")) // Render for base blue
 			case 12:

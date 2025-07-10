@@ -77,12 +77,7 @@ impl ProjectileManager {
         champions: &HashMap<PlayerId, Champion>,
         minions: &HashMap<MinionId, Minion>,
         towers: &HashMap<TowerId, Tower>,
-    ) -> (
-        Vec<Box<dyn AnimationTrait>>,
-        Vec<(Target, u16)>,
-        Vec<AnimationCommand>,
-    ) {
-        let mut animations_to_keep: Vec<Box<dyn AnimationTrait>> = Vec::new();
+    ) -> (Vec<(Target, u16)>, Vec<AnimationCommand>) {
         let mut projectiles_to_remove: Vec<u64> = Vec::new();
         let mut pending_damages: Vec<(Target, u16)> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
@@ -121,6 +116,13 @@ impl ProjectileManager {
                     }
                 },
             };
+
+            if let Some(last_pos) = projectile.get_last_drawn_pos() {
+                animation_commands_executable.push(AnimationCommand::Clear {
+                    row: last_pos.0,
+                    col: last_pos.1,
+                });
+            }
 
             let command = projectile.next_frame(target_row, target_col);
             match command {
@@ -170,7 +172,6 @@ impl ProjectileManager {
                         projectiles_to_remove.push(*id);
                         animation_commands_executable.push(AnimationCommand::Clear { row, col });
                     } else {
-                        animations_to_keep.push(Box::new(projectile.clone()));
                         animation_commands_executable.push(AnimationCommand::Draw {
                             row,
                             col,
@@ -186,11 +187,7 @@ impl ProjectileManager {
             self.projectiles.remove(&id);
         }
 
-        (
-            animations_to_keep,
-            pending_damages,
-            animation_commands_executable,
-        )
+        (pending_damages, animation_commands_executable)
     }
 }
 
@@ -287,7 +284,7 @@ mod tests {
         );
 
         for _ in 0..3 {
-            let (_, pending_damages, _) =
+            let (_, pending_damages) =
                 manager.update_and_check_collisions(&board, &champions, &minions, &towers);
             assert!(pending_damages.is_empty());
             assert_eq!(manager.projectiles.len(), 1);
@@ -341,7 +338,7 @@ mod tests {
         println!("{:?}", manager);
 
         // Tick 3: Projectile should hit the target
-        let (_, damages, _) =
+        let (damages, _) =
             manager.update_and_check_collisions(&board, &champions, &minions, &towers);
         assert_eq!(damages.len(), 1);
         assert!(matches!(damages[0], (Target::Champion(id), 50) if id == target_id));
@@ -376,7 +373,7 @@ mod tests {
             101,
             Team::Blue,
             Target::Tower(target_id),
-            (0,2),
+            (0, 2),
             1,
             GameplayEffect::Damage(50),
             CellAnimation::Projectile,
@@ -385,7 +382,7 @@ mod tests {
         // Tick 1, 2, 3: Move closer
         manager.update_and_check_collisions(&board, &champions, &minions, &towers);
         manager.update_and_check_collisions(&board, &champions, &minions, &towers);
-        let (_, damages, _) =
+        let (damages, _) =
             manager.update_and_check_collisions(&board, &champions, &minions, &towers);
 
         assert_eq!(damages.len(), 1);
@@ -402,8 +399,7 @@ mod tests {
         let towers = HashMap::new();
 
         let target_id = 202;
-        let target_champion =
-            Champion::new(target_id, Team::Red, 10, 13, mock_champion_stats());
+        let target_champion = Champion::new(target_id, Team::Red, 10, 13, mock_champion_stats());
         champions.insert(target_id, target_champion);
 
         manager.create_homing_projectile(

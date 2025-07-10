@@ -95,7 +95,7 @@ impl Projectile {
 
 impl AnimationTrait for Projectile {
     fn next_frame(&mut self, target_row: u16, target_col: u16) -> AnimationCommand {
-        // 1. Handling speed timing
+        // 0. Handling speed timing
         self.tick_counter += 1;
         if self.tick_counter < self.speed {
             return AnimationCommand::Draw {
@@ -106,7 +106,7 @@ impl AnimationTrait for Projectile {
         }
         self.tick_counter = 0;
 
-        // 2. Match projectile type
+        // 1. Match projectile type
         match &mut self.pathing {
             PathingLogic::Straight { path, current_index } => {
                 if *current_index >= path.len() {
@@ -147,19 +147,7 @@ impl AnimationTrait for Projectile {
     }
 
     fn get_last_drawn_pos(&self) -> Option<(u16, u16)> {
-        match &self.pathing {
-            PathingLogic::Straight {
-                path,
-                current_index,
-            } => {
-                if *current_index > 1 {
-                    path.get(*current_index - 2).copied()
-                } else {
-                    None
-                }
-            }
-            PathingLogic::LockOn { .. } => Some(self.current_position),
-        }
+        Some(self.current_position)
     }
 }
 
