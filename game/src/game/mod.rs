@@ -153,8 +153,8 @@ impl GameManager {
             let player_id = self.players_count;
             // Assign Champion to player, and place it on the board
             {
-                let row = 180;
-                let col = 199;
+                let row = 199;
+                let col = 0;
                 let champion = Champion::new(
                     player_id,
                     Team::Blue,
@@ -346,7 +346,6 @@ impl GameManager {
             );
         pending_damages.extend(projectile_damage);
         animation_commands_executable.extend(projectile_commands);
-        println!("Executable: {:?}", animation_commands_executable);
 
         // 3. Apply dealt damages
         pending_damages
@@ -410,7 +409,6 @@ impl GameManager {
         }
         // 2. Process next frame animations
         for mut anim in self.animations.drain(..) {
-            println!("Animation: {:?}", anim);
             let owner_pos = if let Some(champ) = self.champions.get(&anim.get_owner_id()) {
                 Some((champ.row, champ.col))
             } else if let Some(tower) = self.towers.get(&anim.get_owner_id()) {
@@ -423,7 +421,6 @@ impl GameManager {
 
             if let Some((owner_row, owner_col)) = owner_pos {
                 let command = anim.next_frame(owner_row, owner_col);
-                println!("Command: {:?}", command);
                 match command {
                     AnimationCommand::Done => {}
                     AnimationCommand::Draw { .. } => {
