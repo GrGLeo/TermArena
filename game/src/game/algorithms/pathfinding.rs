@@ -1,4 +1,4 @@
-use super::Board;
+use crate::game::Board;
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 
 pub fn get_valid_neighbors(board: &Board, row: u16, col: u16) -> Vec<(u16, u16)> {

@@ -11,15 +11,23 @@ xp_per_level = [35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 11
 level_up_health_increase = 20
 level_up_attack_damage_increase = 5
 level_up_armor_increase = 2
+attack_range_row = 3
+attack_range_col = 3
 
 [minion]
 attack_damage = 6
 attack_speed_ms = 2500
 health = 40
 armor = 0
+aggro_range_row = 10
+aggro_range_col = 10
+attack_range_row = 3
+attack_range_col = 3
 
 [tower]
 attack_damage = 40
 attack_speed_secs = 3 # Seconds for easier TOML representation
 health = 400
 armor = 8
+attack_range_row = 7
+attack_range_col = 9

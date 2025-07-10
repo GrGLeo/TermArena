@@ -8,7 +8,7 @@ use crate::game::animation::melee::MeleeAnimation;
 use crate::game::cell::{CellContent, Team};
 use crate::game::{Board, cell::PlayerId};
 
-use super::{Fighter, Stats, reduced_damage};
+use super::{AttackAction, Fighter, Stats, reduced_damage};
 use crate::config::ChampionStats;
 
 #[derive(Debug, Clone, Copy)]
@@ -195,19 +195,24 @@ impl Fighter for Champion {
         }
     }
 
-    fn can_attack(&mut self) -> Option<(u16, Box<dyn AnimationTrait>)> {
+    fn can_attack(&mut self) -> Option<AttackAction> {
         if self.last_attacked + self.stats.attack_speed < Instant::now() {
             self.last_attacked = Instant::now();
             let animation = MeleeAnimation::new(self.player_id);
-            Some((self.stats.attack_damage, Box::new(animation)))
+            Some(AttackAction::Melee {
+                damage: self.stats.attack_damage,
+                animation: Box::new(animation),
+            })
         } else {
             None
         }
     }
 
-    fn get_potential_target<'a>(&self, board: &'a Board, range: (u16, u16)) -> Option<&'a Cell> {
-        // range is implied here with: 3*3 square
-        let (row_range, col_range) = range;
+    fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell> {
+        let (row_range, col_range) = (
+            self.champion_stats.attack_range_row,
+            self.champion_stats.attack_range_col,
+        );
         let target_area = board.center_view(self.row, self.col, row_range, col_range);
         let center_row = target_area.len() / 2;
         let center_col = target_area[0].len() / 2;
@@ -272,6 +277,8 @@ mod tests {
             level_up_health_increase: 20,
             level_up_attack_damage_increase: 5,
             level_up_armor_increase: 2,
+            attack_range_row: 3,
+            attack_range_col: 3,
         }
     }
 
@@ -754,7 +761,7 @@ mod tests {
         );
 
         // Case 1: No other entities on the board
-        let target_none = champion.get_potential_target(&board, (3, 3));
+        let target_none = champion.get_potential_target(&board);
         assert!(
             target_none.is_none(),
             "scan_range should return None when no other entities are present"
@@ -769,7 +776,7 @@ mod tests {
             ally_row as usize,
             ally_col as usize,
         );
-        let target_ally = champion.get_potential_target(&board, (3, 3));
+        let target_ally = champion.get_potential_target(&board);
         assert!(
             target_ally.is_none(),
             "scan_range should return None when only allies are in range"
@@ -786,7 +793,7 @@ mod tests {
             flag_row as usize,
             flag_col as usize,
         );
-        let target_flag_ally = champion.get_potential_target(&board, (3, 3));
+        let target_flag_ally = champion.get_potential_target(&board);
         assert!(
             target_flag_ally.is_none(),
             "scan_range should return None when only allied flags are in range"
@@ -831,7 +838,7 @@ mod tests {
             enemy_col as usize,
         );
 
-        let target = champion.get_potential_target(&board, (3, 3));
+        let target = champion.get_potential_target(&board);
 
         assert!(
             target.is_some(),
@@ -857,7 +864,7 @@ mod tests {
             tower_col as usize,
         );
 
-        let target_tower = champion.get_potential_target(&board, (3, 3));
+        let target_tower = champion.get_potential_target(&board);
         assert!(
             target_tower.is_some(),
             "scan_range should return Some when an enemy tower is in range"
@@ -925,7 +932,7 @@ mod tests {
             even_further_enemy_col as usize,
         );
 
-        let target = champion.get_potential_target(&board, (3, 3));
+        let target = champion.get_potential_target(&board);
 
         assert!(
             target.is_some(),
@@ -973,7 +980,7 @@ mod tests {
             enemy_col_outside as usize,
         );
 
-        let target = champion.get_potential_target(&board, (3, 3));
+        let target = champion.get_potential_target(&board);
 
         assert!(
             target.is_none(),

@@ -173,14 +173,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind(&address).await?;
     println!("Server listening  on {}", address);
 
-    // -- Shutdown Task --
-    // This is temporary to fix the game not being able to end
-    spawn(async move {
-        sleep(Duration::from_secs(300)).await;
-        println!("Game duration over 5 minutes, closing the server");
-        std::process::exit(0);
-    });
-
     let config =
         config::GameConfig::load("game/stats.toml").expect("Failed to load game configuration");
     let game_manager = GameManager::new(config);
