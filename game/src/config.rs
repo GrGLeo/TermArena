@@ -47,11 +47,21 @@ pub struct TowerStats {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct SpellStats {
+    pub range: u16,
+    pub speed: u32,
+    pub width: u8,
+    pub damage_ratio: f32,
+    pub base_damage: u16,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct GameConfig {
     pub base: BaseStats,
     pub champion: ChampionStats,
     pub minion: MinionStats,
     pub tower: TowerStats,
+    pub spells: HashMap<String, SpellStats>,
 }
 
 impl GameConfig {

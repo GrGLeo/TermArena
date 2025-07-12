@@ -1,9 +1,12 @@
+use crate::game::spell::ProjectileType;
+
 use super::animation::{AnimationCommand, AnimationTrait};
 use super::cell::{CellAnimation, Team};
 use super::entities::Target;
 use super::entities::minion::Minion;
 use super::entities::projectile::{GameplayEffect, PathingLogic, Projectile};
 use super::entities::tower::Tower;
+use super::spell::ProjectileBlueprint;
 use super::{Board, CellContent, Champion, MinionId, PlayerId, TowerId};
 use std::collections::HashMap;
 
@@ -18,6 +21,35 @@ impl ProjectileManager {
         ProjectileManager {
             projectiles: HashMap::new(),
             next_projectile_id: 0,
+        }
+    }
+
+    pub fn create_from_blueprint(&mut self, blueprint: ProjectileBlueprint) {
+        match blueprint.projectile_type {
+            ProjectileType::LockOn => {
+                if let Some(target_id) = blueprint.target_id {
+                    self.create_homing_projectile(
+                        blueprint.owner_id,
+                        blueprint.team_id,
+                        target_id,
+                        blueprint.start_pos,
+                        blueprint.speed,
+                        blueprint.payload,
+                        blueprint.visual_cell_type,
+                    );
+                }
+            }
+            ProjectileType::SkillShot => {
+                self.create_skillshot_projectile(
+                    blueprint.owner_id,
+                    blueprint.team_id,
+                    blueprint.start_pos,
+                    blueprint.end_pos,
+                    blueprint.speed,
+                    blueprint.payload,
+                    blueprint.visual_cell_type,
+                );
+            }
         }
     }
 
@@ -264,6 +296,46 @@ mod tests {
         let projectile = manager.projectiles.get(&0).unwrap();
         assert!(matches!(projectile.pathing, PathingLogic::LockOn { .. }));
     }
+    
+    #[test]
+    fn test_create_lockon_from_blueprint() {
+        let mut manager = ProjectileManager::new();
+        let blueprint = ProjectileBlueprint{
+            projectile_type: ProjectileType::LockOn,
+            owner_id: 101,
+            team_id: Team::Blue,
+            target_id: Option::Some(Target::Minion(5)),
+            start_pos: (0, 0),
+            end_pos: (10, 10),
+            speed: 2,
+            payload: GameplayEffect::Damage(5),
+            visual_cell_type: CellAnimation::Projectile,
+        };
+        manager.create_from_blueprint(blueprint);
+        assert_eq!(manager.projectiles.len(), 1);
+        let projectile = manager.projectiles.get(&0).unwrap();
+        assert!(matches!(projectile.pathing, PathingLogic::LockOn { .. }));
+    }
+
+    #[test]
+    fn test_create_skillshot_from_blueprint() {
+        let mut manager = ProjectileManager::new();
+        let blueprint = ProjectileBlueprint{
+            projectile_type: ProjectileType::SkillShot,
+            owner_id: 101,
+            team_id: Team::Blue,
+            target_id: Option::Some(Target::Minion(5)),
+            start_pos: (0, 0),
+            end_pos: (10, 10),
+            speed: 2,
+            payload: GameplayEffect::Damage(5),
+            visual_cell_type: CellAnimation::Projectile,
+        };
+        manager.create_from_blueprint(blueprint);
+        assert_eq!(manager.projectiles.len(), 1);
+        let projectile = manager.projectiles.get(&0).unwrap();
+        assert!(matches!(projectile.pathing, PathingLogic::Straight { .. }));
+    }
 
     #[test]
     fn test_update_skillshot_misses_and_finishes() {
@@ -284,13 +356,14 @@ mod tests {
         );
 
         for _ in 0..3 {
-            let (_, pending_damages) =
+            let (pending_damages, _) =
                 manager.update_and_check_collisions(&board, &champions, &minions, &towers);
+            println!("{:?}", pending_damages);
             assert!(pending_damages.is_empty());
             assert_eq!(manager.projectiles.len(), 1);
         }
 
-        let (_, pending_damages, _) =
+        let (pending_damages, _) =
             manager.update_and_check_collisions(&board, &champions, &minions, &towers);
         assert!(pending_damages.is_empty());
         assert!(manager.projectiles.is_empty());
@@ -312,6 +385,7 @@ mod tests {
             target_pos.0,
             target_pos.1,
             mock_champion_stats(),
+            HashMap::new(),
         );
         champions.insert(target_id, target_champion);
         board.place_cell(
@@ -399,7 +473,7 @@ mod tests {
         let towers = HashMap::new();
 
         let target_id = 202;
-        let target_champion = Champion::new(target_id, Team::Red, 10, 13, mock_champion_stats());
+        let target_champion = Champion::new(target_id, Team::Red, 10, 13, mock_champion_stats(), HashMap::new());
         champions.insert(target_id, target_champion);
 
         manager.create_homing_projectile(

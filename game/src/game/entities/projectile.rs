@@ -209,7 +209,7 @@ mod tests {
         assert_eq!(projectile.team_id, Team::Red);
         assert_eq!(projectile.current_position, start_pos);
 
-        if let PathingLogic::LockOn { target_id } = projectile.pathing {
+        if let PathingLogic::LockOn { .. } = projectile.pathing {
             // You might need to derive or implement PartialEq for Target to do this
             // assert_eq!(target_id, target);
         } else {

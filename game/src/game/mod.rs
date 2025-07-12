@@ -161,6 +161,7 @@ impl GameManager {
                     row,
                     col,
                     self.config.champion.clone(),
+                    self.config.spells.clone(),
                 );
                 self.champions.insert(player_id, champion);
                 self.board.place_cell(
@@ -251,7 +252,7 @@ impl GameManager {
             }
             // 1. Iterate through player action
             if let Some(action) = self.player_action.get(&player_id) {
-                if let Err(e) = champ.take_action(action, &mut self.board) {
+                if let Err(e) = champ.take_action(action, &mut self.board, &mut self.projectile_manager) {
                     println!("Error on player action: {}", e);
                 }
             }

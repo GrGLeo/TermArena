@@ -4,7 +4,7 @@ armor = 10
 
 [champion]
 attack_damage = 20
-attack_speed_ms = 2500 # Milliseconds for easier TOML representation
+attack_speed_ms = 2500
 health = 200
 armor = 5
 xp_per_level = [35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115] # Max level 18, so 17 levels to define XP for
@@ -26,8 +26,16 @@ attack_range_col = 3
 
 [tower]
 attack_damage = 40
-attack_speed_secs = 3 # Seconds for easier TOML representation
+attack_speed_secs = 3
 health = 400
 armor = 8
 attack_range_row = 7
 attack_range_col = 9
+
+[spells]
+[spells.freeze_wall]
+range = 10
+speed = 2
+width = 5
+damage_ratio = 0.8
+base_damage = 20
