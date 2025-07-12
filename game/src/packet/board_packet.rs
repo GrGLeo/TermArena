@@ -1,4 +1,3 @@
-use byteorder::{BigEndian, ByteOrder};
 use bytes::BufMut;
 use bytes::BytesMut;
 

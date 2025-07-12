@@ -14,6 +14,7 @@ use super::{
     entities::{
         Target,
         minion::{Lane, Minion},
+        projectile::GameplayEffect,
     },
 };
 use crate::config::MinionStats;
@@ -155,7 +156,7 @@ impl MinionManager {
 
     pub fn manage_minions_mouvements(&mut self, mut board: &mut Board) {
         self.minions.iter_mut().for_each(|(_, minion)| {
-            minion.movement_phase(&mut board);
+            let _ = minion.movement_phase(&mut board);
         });
     }
 
@@ -163,10 +164,10 @@ impl MinionManager {
         &mut self,
         mut board: &mut Board,
         new_animations: &mut Vec<Box<dyn AnimationTrait>>,
-        pending_damages: &mut Vec<(Target, u16)>,
+        pending_effects: &mut Vec<(Target, Vec<GameplayEffect>)>,
     ) {
         self.minions.iter_mut().for_each(|(_, minion)| {
-            minion.attack_phase(&mut board, new_animations, pending_damages);
+            minion.attack_phase(&mut board, new_animations, pending_effects);
         });
     }
 }

@@ -1,5 +1,5 @@
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     time::{Duration, Instant},
 };
 use strum_macros::EnumIter;
@@ -10,11 +10,12 @@ use crate::{
         Board, Cell, CellContent, MinionId,
         algorithms::pathfinding::{find_path_on_board, is_adjacent_to_goal},
         animation::{AnimationTrait, melee::MeleeAnimation},
+        buffs::{Buff, HasBuff},
         cell::Team,
     },
 };
 
-use super::{AttackAction, Fighter, Stats, Target, reduced_damage};
+use super::{AttackAction, Fighter, Stats, Target, projectile::GameplayEffect, reduced_damage};
 use crate::config::MinionStats;
 
 type MinionPath = (u16, u16);
@@ -38,6 +39,8 @@ pub struct Minion {
     minion_path: Vec<MinionPath>,
     checkpoint: usize,
     last_attacked: Instant,
+    stun_timer: Option<Instant>,
+    pub active_buffs: HashMap<String, Box<dyn Buff>>,
     pub row: u16,
     pub col: u16,
 }
@@ -109,6 +112,8 @@ impl Minion {
             minion_path: paths,
             checkpoint: 0,
             last_attacked: Instant::now(),
+            stun_timer: None,
+            active_buffs: HashMap::new(),
             row,
             col,
         }
@@ -126,6 +131,9 @@ impl Minion {
     }
 
     pub fn movement_phase(&mut self, board: &mut Board) -> Result<(), GameError> {
+        if self.is_stunned() {
+            return Ok(())
+        }
         if is_adjacent_to_goal((self.row, self.col), self.current_path) {
             self.change_goal();
         }
@@ -179,8 +187,11 @@ impl Minion {
         &mut self,
         board: &mut Board,
         new_animations: &mut Vec<Box<dyn AnimationTrait>>,
-        pending_damages: &mut Vec<(Target, u16)>,
+        pending_effects: &mut Vec<(Target, Vec<GameplayEffect>)>,
     ) {
+        if self.is_stunned() {
+            return;
+        }
         if let Some(enemy) = self.get_potential_target(board) {
             match &enemy.content {
                 Some(content) => match content {
@@ -189,7 +200,10 @@ impl Minion {
                             match attack {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
-                                    pending_damages.push((Target::Tower(*id), damage))
+                                    pending_effects.push((
+                                        Target::Tower(*id),
+                                        vec![GameplayEffect::Damage(damage)],
+                                    ))
                                 }
                                 _ => {}
                             }
@@ -200,7 +214,10 @@ impl Minion {
                             match attack {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
-                                    pending_damages.push((Target::Minion(*id), damage))
+                                    pending_effects.push((
+                                        Target::Minion(*id),
+                                        vec![GameplayEffect::Damage(damage)],
+                                    ))
                                 }
                                 _ => {}
                             }
@@ -211,7 +228,10 @@ impl Minion {
                             match attack {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
-                                    pending_damages.push((Target::Champion(*id), damage))
+                                    pending_effects.push((
+                                        Target::Champion(*id),
+                                        vec![GameplayEffect::Damage(damage)],
+                                    ))
                                 }
                                 _ => {}
                             }
@@ -267,9 +287,19 @@ impl Minion {
 }
 
 impl Fighter for Minion {
-    fn take_damage(&mut self, damage: u16) {
-        let reduced_damage = reduced_damage(damage, self.stats.armor);
-        self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+    fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
+        for effect in effects.into_iter() {
+            match effect {
+                GameplayEffect::Damage(damage) => {
+                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+                }
+                GameplayEffect::Buff(mut buff) => {
+                    buff.on_apply(self);
+                    self.active_buffs.insert(buff.id().to_string(), buff);
+                }
+            }
+        }
     }
 
     fn can_attack(&mut self) -> Option<AttackAction> {
@@ -329,10 +359,30 @@ impl Fighter for Minion {
     }
 }
 
+impl HasBuff for Minion {
+    fn is_stunned(&self) -> bool {
+        self.stun_timer
+            .map_or(false, |timer_end| Instant::now() < timer_end)
+    }
+
+    fn set_stunned(&mut self, stunned: bool, duration: Option<Duration>) {
+        if stunned {
+            if let Some(dur) = duration {
+                self.stun_timer = Some(Instant::now() + dur);
+            } else {
+                self.stun_timer = Some(Instant::now() + Duration::from_secs(1));
+            }
+        } else {
+            self.stun_timer = None;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::config::MinionStats;
+    use crate::game::buffs::stun_buff::StunBuff;
     use crate::game::{
         Board, MinionId,
         cell::Team,
@@ -375,6 +425,70 @@ mod tests {
     }
 
     #[test]
+    fn test_minion_stun_application() {
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(1, Team::Blue, Lane::Mid, minion_stats);
+        let mut board = create_dummy_board(10, 10);
+        let mut new_animations = Vec::new();
+        let mut pending_effects = Vec::new();
+
+        // Apply a stun buff
+        let stun_duration_secs = 5;
+        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(stun_duration_secs)));
+        minion.take_effect(vec![stun_effect]);
+
+        // Assert minion is stunned
+        assert!(minion.is_stunned(), "Minion should be stunned after applying stun buff");
+
+        // Assert stunned minion cannot move
+        let move_result = minion.movement_phase(&mut board);
+        assert!(move_result.is_err(), "Stunned minion should not be able to move");
+        assert_eq!(move_result.unwrap_err(), GameError::IsStunned, "Stunned minion move error should be GameError::IsStunned");
+
+        // Assert stunned minion cannot attack
+        assert!(minion.can_attack().is_none(), "Stunned minion should not be able to attack");
+        // attack_phase should also do nothing
+        minion.attack_phase(&mut board, &mut new_animations, &mut pending_effects);
+        assert!(new_animations.is_empty(), "Stunned minion attack_phase should not create animations");
+        assert!(pending_effects.is_empty(), "Stunned minion attack_phase should not create pending effects");
+    }
+
+    #[test]
+    fn test_minion_stun_expiration() {
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(1, Team::Blue, Lane::Mid, minion_stats);
+        let mut board = create_dummy_board(10, 10);
+
+        // Apply a very short stun buff
+        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(0))); // Duration 0 for immediate expiration
+        minion.take_effect(vec![stun_effect]);
+
+        // Manually process buffs to trigger expiration
+        let current_buffs = std::mem::take(&mut minion.active_buffs);
+        let mut kept_buffs = HashMap::new();
+        for (id, mut buff) in current_buffs.into_iter() {
+            if buff.on_tick(&mut minion) {
+                buff.on_remove(&mut minion);
+            } else {
+                kept_buffs.insert(id, buff);
+            }
+        }
+        minion.active_buffs = kept_buffs;
+
+        // Assert minion is no longer stunned
+        assert!(!minion.is_stunned(), "Minion should not be stunned after buff expiration");
+
+        // Assert minion can now move
+        // Place minion on board for movement test
+        board.place_cell(CellContent::Minion(minion.minion_id, minion.team_id), minion.row as usize, minion.col as usize);
+        let move_result = minion.movement_phase(&mut board);
+        assert!(move_result.is_ok(), "Unstunned minion should be able to move");
+
+        // Assert minion can now attack
+        minion.last_attacked = Instant::now() - minion.stats.attack_speed - Duration::from_secs(1);
+        assert!(minion.can_attack().is_some(), "Unstunned minion should be able to attack");
+    }
+
     fn test_new_minion() {
         let minion_id = 1;
         let minion_stats = create_default_minion_stats();
@@ -459,7 +573,6 @@ mod tests {
         );
 
         // Test moving down (d_row = 1, d_col = 0) - Reset position first
-        let minion_stats = create_default_minion_stats();
         minion.row = initial_row;
         minion.col = initial_col;
         board.place_cell(
@@ -510,7 +623,6 @@ mod tests {
         // Add tests for other directions (left, up, and diagonals if minion can move diagonally) similarly
         // Based on the code, it handles d_row and d_col independently, so it supports diagonal movement.
         // Test moving up-left (d_row = -1, d_col = -1) - Reset position first
-        let minion_stats = create_default_minion_stats();
         minion.row = initial_row;
         minion.col = initial_col;
         board.place_cell(
@@ -1036,8 +1148,6 @@ mod tests {
         minion.row = minion_row;
         minion.col = minion_col;
 
-        let scan_range = (10, 10); // 10x10 range
-
         // Case 1: Empty board
         let target_none = minion.get_potential_target(&board);
         assert!(
@@ -1086,7 +1196,6 @@ mod tests {
         minion.row = minion_row;
         minion.col = minion_col;
 
-        let scan_range = (10, 10); // 10x10 range
         let enemy_team = Team::Red; // Opposite team
 
         // Place an enemy champion in range
@@ -1186,7 +1295,6 @@ mod tests {
         minion.row = minion_row;
         minion.col = minion_col;
 
-        let scan_range = (10, 10); // 10x10 range centered at (25,25)
         let enemy_team = Team::Red; // Opposite team
 
         // Place multiple enemies at different distances within the 10x10 range

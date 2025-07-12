@@ -5,13 +5,15 @@ use std::usize;
 use crate::errors::GameError;
 use crate::game::Cell;
 use crate::game::animation::melee::MeleeAnimation;
+use crate::game::buffs::{Buff, HasBuff};
 use crate::game::cell::{CellContent, Team};
 use crate::game::projectile_manager::ProjectileManager;
 use crate::game::spell::freeze_wall::cast_freeze_wall;
 use crate::game::{Board, cell::PlayerId};
 
+use super::projectile::GameplayEffect;
 use super::{AttackAction, Fighter, Stats, reduced_damage};
-use crate::config::{ChampionStats, GameConfig, SpellStats};
+use crate::config::{ChampionStats, SpellStats};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Direction {
@@ -41,9 +43,11 @@ pub struct Champion {
     pub stats: Stats,
     champion_stats: ChampionStats,
     pub spells: HashMap<String, SpellStats>,
+    pub active_buffs: HashMap<String, Box<dyn Buff>>,
     death_counter: u8,
     death_timer: Instant,
     last_attacked: Instant,
+    stun_timer: Option<Instant>,
     pub row: u16,
     pub col: u16,
     pub direction: Direction,
@@ -76,6 +80,8 @@ impl Champion {
             death_counter: 0,
             death_timer: Instant::now(),
             last_attacked: Instant::now(),
+            stun_timer: None,
+            active_buffs: HashMap::new(),
             team_id,
             row,
             col,
@@ -117,6 +123,10 @@ impl Champion {
         board: &mut Board,
         projectile_manager: &mut ProjectileManager,
     ) -> Result<(), GameError> {
+        // Check if stunned before taking any action
+        if self.is_stunned() {
+            return Ok(())
+        }
         let res = match action {
             Action::MoveUp => {
                 self.direction = Direction::Up;
@@ -136,7 +146,8 @@ impl Champion {
             }
             Action::Action1 => {
                 if let Some(spell_stats) = self.spells.get("freeze_wall") {
-                    for blueprint in cast_freeze_wall(&self, self.stats.attack_damage, spell_stats) {
+                    for blueprint in cast_freeze_wall(&self, self.stats.attack_damage, spell_stats)
+                    {
                         projectile_manager.create_from_blueprint(blueprint);
                     }
                 }
@@ -222,18 +233,32 @@ impl Champion {
 }
 
 impl Fighter for Champion {
-    fn take_damage(&mut self, damage: u16) {
-        let reduced_damage = reduced_damage(damage, self.stats.armor);
-        self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
-        // Check if champion get killed
-        if self.stats.health == 0 {
-            self.death_counter += 1;
-            let timer = ((self.death_counter as f32).sqrt() * 10.) as u64;
-            self.death_timer = Instant::now() + Duration::from_secs(timer);
+    fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
+        for effect in effects.into_iter() {
+            match effect {
+                GameplayEffect::Damage(damage) => {
+                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+                    // Check if champion get killed
+                    if self.stats.health == 0 {
+                        self.death_counter += 1;
+                        let timer = ((self.death_counter as f32).sqrt() * 10.) as u64;
+                        self.death_timer = Instant::now() + Duration::from_secs(timer);
+                    }
+                }
+                GameplayEffect::Buff(mut buff) => {
+                    buff.on_apply(self);
+                    self.active_buffs.insert(buff.id().to_string(), buff);
+                }
+            };
         }
     }
 
     fn can_attack(&mut self) -> Option<AttackAction> {
+        // Cannot attack while stun
+        if self.is_stunned() {
+            return None;
+        }
         if self.last_attacked + self.stats.attack_speed < Instant::now() {
             self.last_attacked = Instant::now();
             let animation = MeleeAnimation::new(self.player_id);
@@ -291,10 +316,27 @@ impl Fighter for Champion {
     }
 }
 
+impl HasBuff for Champion {
+    fn is_stunned(&self) -> bool {
+        self.stun_timer
+            .map_or(false, |timer_end| Instant::now() < timer_end)
+    }
+
+    fn set_stunned(&mut self, stunned: bool, duration: Option<Duration>) {
+        if stunned {
+            if let Some(dur) = duration {
+                self.stun_timer = Some(Instant::now() + dur);
+            } else {
+                self.stun_timer = Some(Instant::now() + Duration::from_secs(1));
+            }
+        } else {
+            self.stun_timer = None;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-
-    use rand::distr::uniform::SampleBorrow;
 
     use super::*;
     use crate::config::ChampionStats;
@@ -358,7 +400,7 @@ mod tests {
         let damage = 30;
         let armor = champion.stats.armor as u16;
 
-        champion.take_damage(damage);
+        champion.take_effect(vec![GameplayEffect::Damage(damage)]);
 
         // Calculate expected health after damage reduction by armor
         let reduced_damage = reduced_damage(damage, armor);
@@ -375,7 +417,8 @@ mod tests {
         // Test taking enough damage to be defeated
         let champion_stats_defeat = create_default_champion_stats();
         let spell_stats = HashMap::new();
-        let mut champion_to_defeat = Champion::new(2, Team::Red, 10, 20, champion_stats_defeat, spell_stats);
+        let mut champion_to_defeat =
+            Champion::new(2, Team::Red, 10, 20, champion_stats_defeat, spell_stats);
         let lethal_damage = 250; // Damage exceeding health + armor
 
         // Use a specific instant for death timer check
@@ -384,7 +427,7 @@ mod tests {
         // but for now, we can at least check if it's set to *sometime in the future*
         // and that is_dead returns true immediately after taking lethal damage.
 
-        champion_to_defeat.take_damage(lethal_damage);
+        champion_to_defeat.take_effect(vec![GameplayEffect::Damage(lethal_damage)]);
 
         assert_eq!(
             champion_to_defeat.stats.health, 0,
@@ -407,12 +450,18 @@ mod tests {
         // Test taking damage when already at 0 health (should not go below 0)
         let champion_stats_already_defeated = create_default_champion_stats();
         let spell_stats = HashMap::new();
-        let mut champion_already_defeated =
-            Champion::new(3, Team::Red, 10, 20, champion_stats_already_defeated, spell_stats);
+        let mut champion_already_defeated = Champion::new(
+            3,
+            Team::Red,
+            10,
+            20,
+            champion_stats_already_defeated,
+            spell_stats,
+        );
         champion_already_defeated.stats.health = 0;
         let additional_damage = 10;
 
-        champion_already_defeated.take_damage(additional_damage);
+        champion_already_defeated.take_effect(vec![GameplayEffect::Damage(additional_damage)]);
         assert_eq!(
             champion_already_defeated.stats.health, 0,
             "Health should remain at 0 if already defeated"
@@ -707,12 +756,13 @@ mod tests {
         let mut board = create_dummy_board(5, 5);
         let mut pm = ProjectileManager::new();
         let champion_stats = create_default_champion_stats();
-        let spell_stat = SpellStats{
+        let spell_stat = SpellStats {
             range: 10,
             width: 5,
             speed: 1,
             base_damage: 20,
             damage_ratio: 0.8,
+            stun_duration: 5,
         };
         let mut spell_stats: HashMap<String, SpellStats> = HashMap::new();
         spell_stats.insert("freeze_wall".to_string(), spell_stat);
@@ -727,7 +777,6 @@ mod tests {
         // Test Action1 correctly created 5 projectiles
         assert_eq!(pm.projectiles.len(), 5);
     }
-
 
     #[test]
     fn test_take_action_other_actions() {
@@ -838,7 +887,7 @@ mod tests {
             champion_row,
             champion_col,
             champion_stats,
-            spell_stats
+            spell_stats,
         );
         board.place_cell(
             CellContent::Champion(player_id, champion_team),
@@ -981,7 +1030,7 @@ mod tests {
             champion_row,
             champion_col,
             champion_stats,
-            spell_stats
+            spell_stats,
         );
         board.place_cell(
             CellContent::Champion(player_id, champion_team),
@@ -1081,6 +1130,75 @@ mod tests {
     }
 
     #[test]
+    fn test_champion_stun_application() {
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+        let mut board = create_dummy_board(10, 10);
+        let mut pm = ProjectileManager::new();
+
+        // Apply a stun buff
+        let stun_duration_secs = 5;
+        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(stun_duration_secs)));
+        champion.take_effect(vec![stun_effect]);
+
+        // Assert champion is stunned
+        assert!(champion.is_stunned(), "Champion should be stunned after applying stun buff");
+
+        // Assert stunned champion cannot move
+        let move_action = Action::MoveUp;
+        let move_result = champion.take_action(&move_action, &mut board, &mut pm);
+        assert!(move_result.is_err(), "Stunned champion should not be able to move");
+        assert_eq!(move_result.unwrap_err(), GameError::IsStunned, "Stunned champion move error should be GameError::IsStunned");
+
+        // Assert stunned champion cannot attack
+        assert!(champion.can_attack().is_none(), "Stunned champion should not be able to attack");
+    }
+
+    #[test]
+    fn test_champion_stun_expiration() {
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+
+        // Apply a very short stun buff
+        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(0))); // Duration 0 for immediate expiration
+        champion.take_effect(vec![stun_effect]);
+
+        // Manually process buffs to trigger expiration
+        let current_buffs = std::mem::take(&mut champion.active_buffs);
+        let mut kept_buffs = HashMap::new();
+        for (id, mut buff) in current_buffs.into_iter() {
+            if buff.on_tick(&mut champion) {
+                buff.on_remove(&mut champion);
+            } else {
+                kept_buffs.insert(id, buff);
+            }
+        }
+        champion.active_buffs = kept_buffs;
+
+        // Assert champion is no longer stunned
+        assert!(!champion.is_stunned(), "Champion should not be stunned after buff expiration");
+
+        // Assert champion can now move (assuming board and pm are set up for a valid move)
+        let mut board = create_dummy_board(10, 10);
+        let mut pm = ProjectileManager::new();
+        // Place champion on board for movement test
+        board.place_cell(CellContent::Champion(champion.player_id, champion.team_id), champion.row as usize, champion.col as usize);
+        let move_action = Action::MoveDown;
+        let move_result = champion.take_action(&move_action, &mut board, &mut pm);
+        assert!(move_result.is_ok(), "Unstunned champion should be able to move");
+
+        // Assert champion can now attack
+        // For can_attack to return Some, last_attacked needs to be old enough.
+        // In a real test, you might mock Instant::now() or set last_attacked explicitly.
+        // For simplicity here, we'll just check if it's not None.
+        // Note: This test might be flaky if run too quickly after champion creation due to Instant::now()
+        // A more robust test would involve setting champion.last_attacked to a past time.
+        champion.last_attacked = Instant::now() - champion.stats.attack_speed - Duration::from_secs(1);
+        assert!(champion.can_attack().is_some(), "Unstunned champion should be able to attack");
+    }
+
     fn test_level_up() {
         let champion_stats = create_default_champion_stats();
         let spell_stats = HashMap::new();

@@ -1,2 +1,2 @@
-pub mod pathfinding;
 pub mod bresenham;
+pub mod pathfinding;

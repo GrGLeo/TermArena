@@ -1,4 +1,5 @@
 use crate::config::SpellStats;
+use crate::game::buffs::stun_buff::StunBuff;
 use crate::game::{
     Champion,
     cell::CellAnimation,
@@ -7,9 +8,14 @@ use crate::game::{
 
 use super::{ProjectileBlueprint, ProjectileType};
 
-pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16, spell_stats: &SpellStats) -> Vec<ProjectileBlueprint> {
+pub fn cast_freeze_wall(
+    caster: &Champion,
+    caster_damage: u16,
+    spell_stats: &SpellStats,
+) -> Vec<ProjectileBlueprint> {
     let mut blueprints = Vec::new();
-    let spell_damage = (caster_damage as f32 * spell_stats.damage_ratio + spell_stats.base_damage as f32) as u16;
+    let spell_damage =
+        (caster_damage as f32 * spell_stats.damage_ratio + spell_stats.base_damage as f32) as u16;
 
     let (wall_center_row, wall_center_col) = match caster.direction {
         Direction::Up => (caster.row.saturating_sub(1), caster.col),
@@ -32,11 +38,27 @@ pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16, spell_stats: &Spe
         };
 
         let (proj_end_row, proj_end_col) = match caster.direction {
-            Direction::Up => (proj_start_row.saturating_sub(spell_stats.range), proj_start_col),
-            Direction::Down => (proj_start_row.saturating_add(spell_stats.range), proj_start_col),
-            Direction::Left => (proj_start_row, proj_start_col.saturating_sub(spell_stats.range)),
-            Direction::Right => (proj_start_row, proj_start_col.saturating_add(spell_stats.range)),
+            Direction::Up => (
+                proj_start_row.saturating_sub(spell_stats.range),
+                proj_start_col,
+            ),
+            Direction::Down => (
+                proj_start_row.saturating_add(spell_stats.range),
+                proj_start_col,
+            ),
+            Direction::Left => (
+                proj_start_row,
+                proj_start_col.saturating_sub(spell_stats.range),
+            ),
+            Direction::Right => (
+                proj_start_row,
+                proj_start_col.saturating_add(spell_stats.range),
+            ),
         };
+        let payloads = vec![
+            GameplayEffect::Damage(spell_damage),
+            GameplayEffect::Buff(Box::new(StunBuff::new(spell_stats.stun_duration as u64))),
+        ];
 
         let blueprint = ProjectileBlueprint {
             projectile_type: ProjectileType::SkillShot,
@@ -46,7 +68,7 @@ pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16, spell_stats: &Spe
             start_pos: (proj_start_row, proj_start_col),
             end_pos: (proj_end_row, proj_end_col),
             speed: spell_stats.speed,
-            payload: GameplayEffect::Damage(spell_damage),
+            payloads,
             visual_cell_type: CellAnimation::FreezeWall,
         };
         blueprints.push(blueprint)
@@ -63,12 +85,13 @@ mod tests {
     use crate::game::{Champion, cell::Team};
 
     fn create_spell_stats() -> SpellStats {
-        SpellStats{
+        SpellStats {
             range: 10,
             speed: 1,
             width: 5,
             damage_ratio: 0.8,
             base_damage: 20,
+            stun_duration: 1,
         }
     }
 
@@ -115,7 +138,9 @@ mod tests {
                 blueprint.end_pos,
                 (expected_center_row.saturating_sub(10), expected_col)
             );
-            // Need to test damage
+            assert_eq!(blueprint.payloads.len(), 2);
+            assert!(matches!(blueprint.payloads[0], GameplayEffect::Damage(_)));
+            assert!(matches!(blueprint.payloads[1], GameplayEffect::Buff(_)));
         }
     }
 
@@ -162,6 +187,9 @@ mod tests {
                 blueprint.end_pos,
                 (expected_row, expected_center_col.saturating_sub(10))
             );
+            assert_eq!(blueprint.payloads.len(), 2);
+            assert!(matches!(blueprint.payloads[0], GameplayEffect::Damage(_)));
+            assert!(matches!(blueprint.payloads[1], GameplayEffect::Buff(_)));
         }
     }
 
@@ -185,12 +213,15 @@ mod tests {
                 blueprint.end_pos,
                 (expected_row, expected_center_col.saturating_add(10))
             );
+            assert_eq!(blueprint.payloads.len(), 2);
+            assert!(matches!(blueprint.payloads[0], GameplayEffect::Damage(_)));
+            assert!(matches!(blueprint.payloads[1], GameplayEffect::Buff(_)));
         }
     }
 
     #[test]
     fn test_cast_freeze_wall_edge_case_top_left() {
-        // Caster is at (5, 5), casting Up. Wall should be at (0, 5)
+        // Caster is at (1, 1), casting Up. Wall should be at (0, 5)
         let caster = create_test_champion(5, 5, Direction::Up, 100);
         let spell_stats = create_spell_stats();
         let blueprints = cast_freeze_wall(&caster, 100, &spell_stats);
@@ -201,9 +232,12 @@ mod tests {
             let offset = i as i16 - 2;
             let expected_col = 5i16.saturating_add(offset) as u16;
             assert_eq!(blueprint.start_pos, (expected_row, expected_col));
+            assert_eq!(blueprint.payloads.len(), 2);
+            assert!(matches!(blueprint.payloads[0], GameplayEffect::Damage(_)));
+            assert!(matches!(blueprint.payloads[1], GameplayEffect::Buff(_)));
         }
 
-        // Caster is at (5, 5), casting Left. Wall should be at (5, 0)
+        // Caster is at (1, 1), casting Left. Wall should be at (5, 0)
         let caster = create_test_champion(5, 5, Direction::Left, 100);
         let blueprints = cast_freeze_wall(&caster, 100, &spell_stats);
 
@@ -213,8 +247,9 @@ mod tests {
             let offset = i as i16 - 2;
             let expected_row = 5i16.saturating_add(offset) as u16;
             assert_eq!(blueprint.start_pos, (expected_row, expected_col));
+            assert_eq!(blueprint.payloads.len(), 2);
+            assert!(matches!(blueprint.payloads[0], GameplayEffect::Damage(_)));
+            assert!(matches!(blueprint.payloads[1], GameplayEffect::Buff(_)));
         }
     }
-    // Need to add a specific test for damage
-
 }

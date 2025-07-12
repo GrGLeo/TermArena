@@ -1,14 +1,28 @@
 use crate::game::{
     algorithms::bresenham::Bresenham,
     animation::{AnimationCommand, AnimationTrait},
+    buffs::Buff,
     cell::{CellAnimation, Team},
 };
 
 use super::Target;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
+/// Represents the various effects a projectile can apply upon impact.
 pub enum GameplayEffect {
+    /// Applies a specified amount of damage to the target.
     Damage(u16),
+    /// Applies a specific buff/debuff to the target
+    Buff(Box<dyn Buff>),
+}
+
+impl Clone for GameplayEffect {
+    fn clone(&self) -> Self {
+        match self {
+            GameplayEffect::Damage(d) => GameplayEffect::Damage(*d),
+            GameplayEffect::Buff(b) => GameplayEffect::Buff(b.clone_box()),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -22,7 +36,7 @@ pub enum PathingLogic {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Projectile {
     pub id: u64,
     pub team_id: Team,
@@ -34,7 +48,7 @@ pub struct Projectile {
     speed: u32, // number of tick to move one cell
     tick_counter: u32,
     // Gameplay
-    pub payload: GameplayEffect,
+    pub payloads: Vec<GameplayEffect>,
     // Rendering
     pub visual_cell_type: CellAnimation,
 }
@@ -47,7 +61,7 @@ impl Projectile {
         start_pos: (u16, u16),
         end_pos: (u16, u16),
         speed: u32,
-        payload: GameplayEffect,
+        payloads: Vec<GameplayEffect>,
         visual_cell_type: CellAnimation,
     ) -> Self {
         let path = Bresenham::new(start_pos, end_pos).collect();
@@ -63,7 +77,7 @@ impl Projectile {
             pathing,
             speed,
             tick_counter: 0,
-            payload,
+            payloads,
             visual_cell_type,
         }
     }
@@ -75,7 +89,7 @@ impl Projectile {
         start_pos: (u16, u16),
         target_id: Target,
         speed: u32,
-        payload: GameplayEffect,
+        payloads: Vec<GameplayEffect>,
         visual_cell_type: CellAnimation,
     ) -> Self {
         let pathing = PathingLogic::LockOn { target_id };
@@ -87,7 +101,7 @@ impl Projectile {
             pathing,
             speed,
             tick_counter: 0,
-            payload,
+            payloads,
             visual_cell_type,
         }
     }
@@ -108,7 +122,10 @@ impl AnimationTrait for Projectile {
 
         // 1. Match projectile type
         match &mut self.pathing {
-            PathingLogic::Straight { path, current_index } => {
+            PathingLogic::Straight {
+                path,
+                current_index,
+            } => {
                 if *current_index >= path.len() {
                     return AnimationCommand::Done;
                 }
@@ -126,12 +143,12 @@ impl AnimationTrait for Projectile {
                 self.current_position.1 = self.current_position.1.saturating_add_signed(col_step);
             }
         }
-         // 3. Return the Draw command with the new position
-         AnimationCommand::Draw {
-             row: self.current_position.0,
-             col: self.current_position.1,
-             animation_type: self.visual_cell_type.clone(),
-         }
+        // 3. Return the Draw command with the new position
+        AnimationCommand::Draw {
+            row: self.current_position.0,
+            col: self.current_position.1,
+            animation_type: self.visual_cell_type.clone(),
+        }
     }
 
     fn get_owner_id(&self) -> usize {
@@ -170,7 +187,7 @@ mod tests {
             start_pos,
             end_pos,
             1,
-            GameplayEffect::Damage(50),
+            vec![GameplayEffect::Damage(50)],
             CellAnimation::Projectile,
         );
 
@@ -179,7 +196,11 @@ mod tests {
         assert_eq!(projectile.team_id, Team::Blue);
         assert_eq!(projectile.current_position, start_pos);
 
-        if let PathingLogic::Straight { path, current_index } = projectile.pathing {
+        if let PathingLogic::Straight {
+            path,
+            current_index,
+        } = projectile.pathing
+        {
             let expected_path = Bresenham::new(start_pos, end_pos).collect::<Vec<_>>();
             assert_eq!(path, expected_path);
             assert_eq!(current_index, 0);
@@ -200,7 +221,7 @@ mod tests {
             start_pos,
             target.clone(),
             2,
-            GameplayEffect::Damage(30),
+            vec![GameplayEffect::Damage(30)],
             CellAnimation::Projectile,
         );
 
@@ -229,23 +250,32 @@ mod tests {
             start_pos,
             end_pos,
             1, // speed = 1 tick per cell
-            GameplayEffect::Damage(10),
+            vec![GameplayEffect::Damage(10)],
             CellAnimation::Projectile,
         );
 
         // Tick 1: Moves to (0, 0)
         let cmd1 = projectile.next_frame(99, 99); // Target pos is ignored
-        assert!(matches!(cmd1, AnimationCommand::Draw { row: 0, col: 0, .. }));
+        assert!(matches!(
+            cmd1,
+            AnimationCommand::Draw { row: 0, col: 0, .. }
+        ));
         assert_eq!(projectile.current_position, (0, 0));
 
         // Tick 2: Moves to (1, 0)
         let cmd2 = projectile.next_frame(99, 99);
-        assert!(matches!(cmd2, AnimationCommand::Draw { row: 1, col: 0, .. }));
+        assert!(matches!(
+            cmd2,
+            AnimationCommand::Draw { row: 1, col: 0, .. }
+        ));
         assert_eq!(projectile.current_position, (1, 0));
 
         // Tick 3: Moves to (2, 0)
         let cmd3 = projectile.next_frame(99, 99);
-        assert!(matches!(cmd3, AnimationCommand::Draw { row: 2, col: 0, .. }));
+        assert!(matches!(
+            cmd3,
+            AnimationCommand::Draw { row: 2, col: 0, .. }
+        ));
         assert_eq!(projectile.current_position, (2, 0));
 
         // Tick 4: Path is finished
@@ -265,23 +295,44 @@ mod tests {
             start_pos,
             target,
             1, // speed = 1 tick per cell
-            GameplayEffect::Damage(10),
+            vec![GameplayEffect::Damage(10)],
             CellAnimation::Projectile,
         );
 
         // Tick 1: Target is at (10, 13). Projectile should move to (10, 11)
         let cmd1 = projectile.next_frame(10, 13);
-        assert!(matches!(cmd1, AnimationCommand::Draw { row: 10, col: 11, .. }));
+        assert!(matches!(
+            cmd1,
+            AnimationCommand::Draw {
+                row: 10,
+                col: 11,
+                ..
+            }
+        ));
         assert_eq!(projectile.current_position, (10, 11));
 
         // Tick 2: Target is still at (10, 13). Projectile should move to (10, 12)
         let cmd2 = projectile.next_frame(10, 13);
-        assert!(matches!(cmd2, AnimationCommand::Draw { row: 10, col: 12, .. }));
+        assert!(matches!(
+            cmd2,
+            AnimationCommand::Draw {
+                row: 10,
+                col: 12,
+                ..
+            }
+        ));
         assert_eq!(projectile.current_position, (10, 12));
 
         // Tick 3: Target is now at (10, 13). Projectile moves to (10, 13)
         let cmd3 = projectile.next_frame(10, 13);
-        assert!(matches!(cmd3, AnimationCommand::Draw { row: 10, col: 13, .. }));
+        assert!(matches!(
+            cmd3,
+            AnimationCommand::Draw {
+                row: 10,
+                col: 13,
+                ..
+            }
+        ));
         assert_eq!(projectile.current_position, (10, 13));
 
         // Tick 4: Projectile is on the target. Should be Done.
@@ -301,28 +352,40 @@ mod tests {
             start_pos,
             end_pos,
             2, // speed = 2 ticks per cell
-            GameplayEffect::Damage(10),
+            vec![GameplayEffect::Damage(10)],
             CellAnimation::Projectile,
         );
 
         // Tick 1: Not time to move yet. Redraws at (0,0)
         let cmd1 = projectile.next_frame(99, 99);
-        assert!(matches!(cmd1, AnimationCommand::Draw { row: 0, col: 0, .. }));
+        assert!(matches!(
+            cmd1,
+            AnimationCommand::Draw { row: 0, col: 0, .. }
+        ));
         assert_eq!(projectile.current_position, (0, 0));
 
         // Tick 2: Time to move. Moves to (0,0) from path.
         let cmd2 = projectile.next_frame(99, 99);
-        assert!(matches!(cmd2, AnimationCommand::Draw { row: 0, col: 0, .. }));
+        assert!(matches!(
+            cmd2,
+            AnimationCommand::Draw { row: 0, col: 0, .. }
+        ));
         assert_eq!(projectile.current_position, (0, 0));
 
         // Tick 3: Not time to move. Redraws at (0,0).
         let cmd3 = projectile.next_frame(99, 99);
-        assert!(matches!(cmd3, AnimationCommand::Draw { row: 0, col: 0, .. }));
+        assert!(matches!(
+            cmd3,
+            AnimationCommand::Draw { row: 0, col: 0, .. }
+        ));
         assert_eq!(projectile.current_position, (0, 0));
 
         // Tick 4: Time to move. Moves to (1,0) from path.
         let cmd4 = projectile.next_frame(99, 99);
-        assert!(matches!(cmd4, AnimationCommand::Draw { row: 1, col: 0, .. }));
+        assert!(matches!(
+            cmd4,
+            AnimationCommand::Draw { row: 1, col: 0, .. }
+        ));
         assert_eq!(projectile.current_position, (1, 0));
     }
 }

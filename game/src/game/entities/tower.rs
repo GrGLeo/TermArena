@@ -4,12 +4,11 @@ use rand::seq::IndexedRandom;
 
 use crate::errors::GameError;
 use crate::game::BaseTerrain;
-use crate::game::animation::AnimationTrait;
-use crate::game::animation::tower::TowerHitAnimation;
 use crate::game::board::Board;
 use crate::game::cell::{Cell, CellAnimation, CellContent, Team, TowerId};
 use crate::game::entities::reduced_damage;
 
+use super::projectile::GameplayEffect;
 use super::{AttackAction, Fighter, Stats};
 
 #[derive(Debug)]
@@ -100,11 +99,19 @@ impl Tower {
 }
 
 impl Fighter for Tower {
-    fn take_damage(&mut self, damage: u16) {
-        let reduced_damage = reduced_damage(damage, self.stats.armor);
-        self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
-        if self.stats.health == 0 {
-            self.destroyed = true;
+    fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
+        for effect in effects.into_iter() {
+            match effect {
+                GameplayEffect::Damage(damage) => {
+                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+                    if self.stats.health == 0 {
+                        self.destroyed = true;
+                    }
+                }
+                // Tower cannot be affected by buff or debuff
+                _ => {}
+            }
         }
     }
 
@@ -241,7 +248,7 @@ mod tests {
         let damage = 50;
         let armor = tower.stats.armor as u16;
 
-        tower.take_damage(damage);
+        tower.take_effect(vec![GameplayEffect::Damage(damage)]);
 
         // Calculate expected health after damage reduction by armor
         let reduced_damage = reduced_damage(damage, armor);
@@ -259,7 +266,7 @@ mod tests {
         let mut tower_to_destroy = Tower::new(2, Team::Red, 10, 20, create_default_tower_stats());
         let lethal_damage = 500; // Damage exceeding health + armor
 
-        tower_to_destroy.take_damage(lethal_damage);
+        tower_to_destroy.take_effect(vec![GameplayEffect::Damage(lethal_damage)]);
 
         assert_eq!(
             tower_to_destroy.stats.health, 0,
@@ -277,7 +284,7 @@ mod tests {
         tower_already_destroyed.destroyed = true;
         let additional_damage = 10;
 
-        tower_already_destroyed.take_damage(additional_damage);
+        tower_already_destroyed.take_effect(vec![GameplayEffect::Damage(additional_damage)]);
         assert_eq!(
             tower_already_destroyed.stats.health, 0,
             "Health should remain at 0 if already destroyed"

@@ -1,27 +1,31 @@
 use std::time::Duration;
 
-use super::{animation::AnimationTrait, cell::CellAnimation, Board, Cell, MinionId, PlayerId, TowerId};
+use projectile::GameplayEffect;
+
+use super::{
+    Board, Cell, MinionId, PlayerId, TowerId, animation::AnimationTrait, cell::CellAnimation,
+};
 use crate::game::cell::Team;
 
 pub mod base;
 pub mod champion;
 pub mod minion;
-pub mod tower;
 pub mod projectile;
+pub mod tower;
 
 pub enum AttackAction {
     Melee {
         damage: u16,
-        animation: Box<dyn AnimationTrait>
+        animation: Box<dyn AnimationTrait>,
     },
     Projectile {
         damage: u16,
         speed: u32,
-        visual: CellAnimation
-    }
+        visual: CellAnimation,
+    },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Target {
     Tower(TowerId),
     Minion(MinionId),
@@ -39,7 +43,7 @@ pub struct Stats {
 }
 
 pub trait Fighter {
-    fn take_damage(&mut self, damage: u16);
+    fn take_effect(&mut self, effect: Vec<GameplayEffect>);
     fn can_attack(&mut self) -> Option<AttackAction>;
     fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell>;
 }
