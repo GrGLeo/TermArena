@@ -43,15 +43,15 @@ For an entity to be affected by buffs, it must be integrated into this system.
 
 2.  **Implementing `HasBuff`**: Both `Champion` and `Minion` implement the `HasBuff` trait. They each have a `stun_timer: Option<Instant>` field. The `is_stunned` and `set_stunned` methods simply manage this timer to control the entity's state.
 
-3.  **Receiving Buffs**: Buffs are applied when an entity's `Fighter::take_effect` method is called with a `GameplayEffect` that carries a buff. For example, `GameplayEffect::Stun(damage, duration)` triggers the creation of a `StunBuff`, which is then applied and added to the entity's `active_buffs`.
+3.  **Receiving Buffs**: Buffs are applied when an entity's `Fighter::take_effect` method is called with a `Vec<GameplayEffect>`. This vector can contain multiple effects, including `GameplayEffect::Buff`.
 
 ## Interaction with the Game Loop (`GameManager::game_tick()`)
 
 The lifecycle of every buff is managed centrally within the main game loop to ensure effects are updated and expire correctly.
 
 1.  **Buff Application (Trigger)**:
-    - A buff is typically applied as a result of another action. For example, when a projectile with a `Stun` payload hits a target, the `ProjectileManager` reports this effect.
-    - The `GameManager` then calls the target's `take_effect` method, which creates and applies the `StunBuff`.
+    - A buff is typically applied as a result of another action. For example, when a projectile with a `Vec<GameplayEffect>` (which might include `GameplayEffect::Buff(...)`) hits a target, the `ProjectileManager` reports these effects.
+    - The `GameManager` then calls the target's `take_effect` method, passing the `Vec<GameplayEffect>`, which processes each effect, including applying the `StunBuff` if present.
 
 2.  **Buff Lifecycle Management (The "Tick")**:
     - This is the most critical part of the system and happens at the **very beginning** of each `game_tick`.
