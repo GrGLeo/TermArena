@@ -48,7 +48,6 @@ pub struct Champion {
     death_timer: Instant,
     last_attacked: Instant,
     stun_timer: Option<Instant>,
-
     pub row: u16,
     pub col: u16,
     pub direction: Direction,
@@ -126,7 +125,7 @@ impl Champion {
     ) -> Result<(), GameError> {
         // Check if stunned before taking any action
         if self.is_stunned() {
-            return Err(GameError::IsStunned);
+            return Ok(())
         }
         let res = match action {
             Action::MoveUp => {

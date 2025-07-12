@@ -132,8 +132,7 @@ impl Minion {
 
     pub fn movement_phase(&mut self, board: &mut Board) -> Result<(), GameError> {
         if self.is_stunned() {
-            println!("MinionIsStun");
-            return Err(GameError::IsStunned);
+            return Ok(())
         }
         if is_adjacent_to_goal((self.row, self.col), self.current_path) {
             self.change_goal();
