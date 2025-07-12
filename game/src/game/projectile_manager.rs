@@ -285,12 +285,12 @@ mod tests {
     fn test_create_skillshot_projectile() {
         let mut manager = ProjectileManager::new();
         manager.create_skillshot_projectile(
-            101,
+            1,
             Team::Blue,
             (10, 10),
             (20, 20),
             1,
-            GameplayEffect::Damage(50),
+            vec![GameplayEffect::Damage(50)],
             CellAnimation::Projectile,
         );
         assert_eq!(manager.projectiles.len(), 1);
@@ -302,12 +302,12 @@ mod tests {
     fn test_create_homing_projectile() {
         let mut manager = ProjectileManager::new();
         manager.create_homing_projectile(
-            102,
+            2,
             Team::Red,
             Target::Champion(202),
             (5, 5),
             2,
-            GameplayEffect::Damage(30),
+            vec![GameplayEffect::Damage(30)],
             CellAnimation::Projectile,
         );
         assert_eq!(manager.projectiles.len(), 1);
@@ -326,7 +326,7 @@ mod tests {
             start_pos: (0, 0),
             end_pos: (10, 10),
             speed: 2,
-            payload: GameplayEffect::Damage(5),
+            payloads: vec![GameplayEffect::Damage(5)],
             visual_cell_type: CellAnimation::Projectile,
         };
         manager.create_from_blueprint(blueprint);
@@ -346,7 +346,7 @@ mod tests {
             start_pos: (0, 0),
             end_pos: (10, 10),
             speed: 2,
-            payload: GameplayEffect::Damage(5),
+            payloads: vec![GameplayEffect::Damage(5)],
             visual_cell_type: CellAnimation::Projectile,
         };
         manager.create_from_blueprint(blueprint);
@@ -369,7 +369,7 @@ mod tests {
             (0, 0),
             (2, 0),
             1,
-            GameplayEffect::Damage(10),
+            vec![GameplayEffect::Damage(10)],
             CellAnimation::Projectile,
         );
 
@@ -418,7 +418,7 @@ mod tests {
             (10, 10),
             target_pos,
             1,
-            GameplayEffect::Damage(50),
+            vec![GameplayEffect::Damage(50)],
             CellAnimation::Projectile,
         );
 
@@ -432,10 +432,9 @@ mod tests {
         // Tick 3: Projectile should hit the target
         let (damages, _) =
             manager.update_and_check_collisions(&board, &champions, &minions, &towers);
-        assert_eq!(damages.len(), 1);
-        assert!(
-            matches!(damages[0], (Target::Champion(id), GameplayEffect::Damage(50)) if id == target_id)
-        );
+        assert_eq!(damages[0].0, Target::Champion(target_id));
+        assert_eq!(damages[0].1.len(), 1);
+        assert!(matches!(damages[0].1[0], GameplayEffect::Damage(50)));
         assert!(manager.projectiles.is_empty());
     }
 
@@ -469,7 +468,7 @@ mod tests {
             Target::Tower(target_id),
             (0, 2),
             1,
-            GameplayEffect::Damage(50),
+            vec![GameplayEffect::Damage(50)],
             CellAnimation::Projectile,
         );
 
@@ -480,9 +479,9 @@ mod tests {
             manager.update_and_check_collisions(&board, &champions, &minions, &towers);
 
         assert_eq!(damages.len(), 1);
-        assert!(
-            matches!(damages[0], (Target::Tower(id), GameplayEffect::Damage(50)) if id == target_id)
-        );
+        assert_eq!(damages[0].0, Target::Tower(target_id));
+        assert_eq!(damages[0].1.len(), 1);
+        assert!(matches!(damages[0].1[0], GameplayEffect::Damage(50)));
         assert!(manager.projectiles.is_empty());
     }
 
@@ -511,7 +510,7 @@ mod tests {
             Target::Champion(target_id),
             (10, 10),
             1,
-            GameplayEffect::Damage(30),
+            vec![GameplayEffect::Damage(30)],
             CellAnimation::Projectile,
         );
 

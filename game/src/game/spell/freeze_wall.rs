@@ -138,7 +138,9 @@ mod tests {
                 blueprint.end_pos,
                 (expected_center_row.saturating_sub(10), expected_col)
             );
-            // Need to test damage
+            assert_eq!(blueprint.payloads.len(), 2);
+            assert!(matches!(blueprint.payloads[0], GameplayEffect::Damage(_)));
+            assert!(matches!(blueprint.payloads[1], GameplayEffect::Buff(_)));
         }
     }
 
@@ -185,6 +187,9 @@ mod tests {
                 blueprint.end_pos,
                 (expected_row, expected_center_col.saturating_sub(10))
             );
+            assert_eq!(blueprint.payloads.len(), 2);
+            assert!(matches!(blueprint.payloads[0], GameplayEffect::Damage(_)));
+            assert!(matches!(blueprint.payloads[1], GameplayEffect::Buff(_)));
         }
     }
 
@@ -208,6 +213,9 @@ mod tests {
                 blueprint.end_pos,
                 (expected_row, expected_center_col.saturating_add(10))
             );
+            assert_eq!(blueprint.payloads.len(), 2);
+            assert!(matches!(blueprint.payloads[0], GameplayEffect::Damage(_)));
+            assert!(matches!(blueprint.payloads[1], GameplayEffect::Buff(_)));
         }
     }
 
@@ -224,6 +232,9 @@ mod tests {
             let offset = i as i16 - 2;
             let expected_col = 5i16.saturating_add(offset) as u16;
             assert_eq!(blueprint.start_pos, (expected_row, expected_col));
+            assert_eq!(blueprint.payloads.len(), 2);
+            assert!(matches!(blueprint.payloads[0], GameplayEffect::Damage(_)));
+            assert!(matches!(blueprint.payloads[1], GameplayEffect::Buff(_)));
         }
 
         // Caster is at (1, 1), casting Left. Wall should be at (5, 0)
@@ -236,7 +247,9 @@ mod tests {
             let offset = i as i16 - 2;
             let expected_row = 5i16.saturating_add(offset) as u16;
             assert_eq!(blueprint.start_pos, (expected_row, expected_col));
+            assert_eq!(blueprint.payloads.len(), 2);
+            assert!(matches!(blueprint.payloads[0], GameplayEffect::Damage(_)));
+            assert!(matches!(blueprint.payloads[1], GameplayEffect::Buff(_)));
         }
     }
-    // Need to add a specific test for damage
 }

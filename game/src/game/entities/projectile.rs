@@ -187,7 +187,7 @@ mod tests {
             start_pos,
             end_pos,
             1,
-            GameplayEffect::Damage(50),
+            vec![GameplayEffect::Damage(50)],
             CellAnimation::Projectile,
         );
 
@@ -221,7 +221,7 @@ mod tests {
             start_pos,
             target.clone(),
             2,
-            GameplayEffect::Damage(30),
+            vec![GameplayEffect::Damage(30)],
             CellAnimation::Projectile,
         );
 
@@ -250,7 +250,7 @@ mod tests {
             start_pos,
             end_pos,
             1, // speed = 1 tick per cell
-            GameplayEffect::Damage(10),
+            vec![GameplayEffect::Damage(10)],
             CellAnimation::Projectile,
         );
 
@@ -295,7 +295,7 @@ mod tests {
             start_pos,
             target,
             1, // speed = 1 tick per cell
-            GameplayEffect::Damage(10),
+            vec![GameplayEffect::Damage(10)],
             CellAnimation::Projectile,
         );
 
@@ -352,7 +352,7 @@ mod tests {
             start_pos,
             end_pos,
             2, // speed = 2 ticks per cell
-            GameplayEffect::Damage(10),
+            vec![GameplayEffect::Damage(10)],
             CellAnimation::Projectile,
         );
 

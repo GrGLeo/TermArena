@@ -25,7 +25,7 @@ pub enum AttackAction {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Target {
     Tower(TowerId),
     Minion(MinionId),

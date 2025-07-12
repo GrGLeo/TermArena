@@ -248,7 +248,7 @@ mod tests {
         let damage = 50;
         let armor = tower.stats.armor as u16;
 
-        tower.take_effect(GameplayEffect::Damage(damage));
+        tower.take_effect(vec![GameplayEffect::Damage(damage)]);
 
         // Calculate expected health after damage reduction by armor
         let reduced_damage = reduced_damage(damage, armor);
@@ -266,7 +266,7 @@ mod tests {
         let mut tower_to_destroy = Tower::new(2, Team::Red, 10, 20, create_default_tower_stats());
         let lethal_damage = 500; // Damage exceeding health + armor
 
-        tower_to_destroy.take_effect(GameplayEffect::Damage(lethal_damage));
+        tower_to_destroy.take_effect(vec![GameplayEffect::Damage(lethal_damage)]);
 
         assert_eq!(
             tower_to_destroy.stats.health, 0,
@@ -284,7 +284,7 @@ mod tests {
         tower_already_destroyed.destroyed = true;
         let additional_damage = 10;
 
-        tower_already_destroyed.take_effect(GameplayEffect::Damage(additional_damage));
+        tower_already_destroyed.take_effect(vec![GameplayEffect::Damage(additional_damage)]);
         assert_eq!(
             tower_already_destroyed.stats.health, 0,
             "Health should remain at 0 if already destroyed"
