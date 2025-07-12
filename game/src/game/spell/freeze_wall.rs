@@ -10,14 +10,14 @@ pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16) -> Vec<Projectile
     let mut blueprints = Vec::new();
     let wall_width = 5;
     let spell_range = 10;
-    let spell_speed = 1;
+    let spell_speed = 2;
     let spell_damage = (caster_damage as f32 * 0.8 + 20 as f32) as u16;
 
     let (wall_center_row, wall_center_col) = match caster.direction {
-        Direction::Up => (caster.row.saturating_sub(spell_range), caster.col),
-        Direction::Down => (caster.row.saturating_add(spell_range), caster.col),
-        Direction::Left => (caster.row, caster.col.saturating_sub(spell_range)),
-        Direction::Right => (caster.row, caster.col.saturating_add(spell_range)),
+        Direction::Up => (caster.row.saturating_sub(1), caster.col),
+        Direction::Down => (caster.row.saturating_add(1), caster.col),
+        Direction::Left => (caster.row, caster.col.saturating_sub(1)),
+        Direction::Right => (caster.row, caster.col.saturating_add(1)),
     };
 
     for i in 0..wall_width {
@@ -44,6 +44,7 @@ pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16) -> Vec<Projectile
             projectile_type: ProjectileType::SkillShot,
             owner_id: caster.player_id as u64,
             team_id: caster.team_id,
+            target_id: None,
             start_pos: (proj_start_row, proj_start_col),
             end_pos: (proj_end_row, proj_end_col),
             speed: spell_speed,

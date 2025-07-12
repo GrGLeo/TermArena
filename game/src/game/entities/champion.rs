@@ -5,6 +5,8 @@ use crate::errors::GameError;
 use crate::game::Cell;
 use crate::game::animation::melee::MeleeAnimation;
 use crate::game::cell::{CellContent, Team};
+use crate::game::projectile_manager::ProjectileManager;
+use crate::game::spell::freeze_wall::cast_freeze_wall;
 use crate::game::{Board, cell::PlayerId};
 
 use super::{AttackAction, Fighter, Stats, reduced_damage};
@@ -105,25 +107,35 @@ impl Champion {
         self.stats.armor += self.champion_stats.level_up_armor_increase;
     }
 
-    pub fn take_action(&mut self, action: &Action, board: &mut Board) -> Result<(), GameError> {
+    pub fn take_action(
+        &mut self,
+        action: &Action,
+        board: &mut Board,
+        projectile_manager: &mut ProjectileManager,
+    ) -> Result<(), GameError> {
         let res = match action {
             Action::MoveUp => {
                 self.direction = Direction::Up;
-                return self.move_champion(board, -1, 0)
+                return self.move_champion(board, -1, 0);
             }
             Action::MoveDown => {
                 self.direction = Direction::Down;
-                return self.move_champion(board, 1, 0)
+                return self.move_champion(board, 1, 0);
             }
             Action::MoveLeft => {
                 self.direction = Direction::Left;
-                return self.move_champion(board, 0, -1)
+                return self.move_champion(board, 0, -1);
             }
             Action::MoveRight => {
                 self.direction = Direction::Right;
-                return self.move_champion(board, 0, 1)
+                return self.move_champion(board, 0, 1);
             }
-            Action::Action1 => Ok(()),
+            Action::Action1 => {
+                for blueprint in cast_freeze_wall(&self, self.stats.attack_damage) {
+                    projectile_manager.create_from_blueprint(blueprint);
+                }
+                Ok(())
+            }
             Action::Action2 => Ok(()),
             Action::InvalidAction => {
                 Err(GameError::InvalidInput("InvalidAction found".to_string()))
@@ -397,6 +409,7 @@ mod tests {
     #[test]
     fn test_take_action_move() {
         let mut board = create_dummy_board(5, 5);
+        let mut pm = ProjectileManager::new();
         let initial_row = 2;
         let initial_col = 2;
         let player_id = 1;
@@ -418,7 +431,7 @@ mod tests {
 
         // Test moving up
         let action_up = Action::MoveUp;
-        let result_up = champion.take_action(&action_up, &mut board);
+        let result_up = champion.take_action(&action_up, &mut board, &mut pm);
         assert!(result_up.is_ok(), "Moving up should be successful");
         assert_eq!(
             champion.row,
@@ -460,7 +473,7 @@ mod tests {
 
         // Test moving right
         let action_right = Action::MoveRight;
-        let result_right = champion.take_action(&action_right, &mut board);
+        let result_right = champion.take_action(&action_right, &mut board, &mut pm);
         assert!(result_right.is_ok(), "Moving right should be successful");
         assert_eq!(
             champion.row, initial_row,
@@ -503,7 +516,7 @@ mod tests {
 
         // Test moving down
         let action_down = Action::MoveDown;
-        let result_down = champion.take_action(&action_down, &mut board);
+        let result_down = champion.take_action(&action_down, &mut board, &mut pm);
         assert!(result_down.is_ok(), "Moving down should be successful");
         assert_eq!(
             champion.row,
@@ -545,7 +558,7 @@ mod tests {
 
         // Test moving left
         let action_left = Action::MoveLeft;
-        let result_left = champion.take_action(&action_left, &mut board);
+        let result_left = champion.take_action(&action_left, &mut board, &mut pm);
         assert!(result_left.is_ok(), "Moving left should be successful");
         assert_eq!(
             champion.row, initial_row,
@@ -577,6 +590,7 @@ mod tests {
     #[test]
     fn test_take_action_move_into_impassable() {
         let mut board = create_dummy_board(5, 5);
+        let mut pm = ProjectileManager::new();
         let initial_row = 2;
         let initial_col = 2;
         let player_id = 1;
@@ -603,7 +617,7 @@ mod tests {
 
         // Attempt to move into the wall
         let action_up = Action::MoveUp;
-        let result_up = champion.take_action(&action_up, &mut board);
+        let result_up = champion.take_action(&action_up, &mut board, &mut pm);
 
         assert!(
             result_up.is_err(),
@@ -638,7 +652,7 @@ mod tests {
 
         // Attempt to move into the cell with content
         let action_right = Action::MoveRight;
-        let result_right = champion.take_action(&action_right, &mut board);
+        let result_right = champion.take_action(&action_right, &mut board, &mut pm);
 
         assert!(
             result_right.is_err(),
@@ -672,31 +686,50 @@ mod tests {
     }
 
     #[test]
-    fn test_take_action_other_actions() {
+    fn test_take_action_one() {
         let mut board = create_dummy_board(5, 5);
+        let mut pm = ProjectileManager::new();
         let champion_stats = create_default_champion_stats();
         let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats);
 
         // Test Action1 (currently does nothing, should not error)
         let action1 = Action::Action1;
-        let result1 = champion.take_action(&action1, &mut board);
+        let result1 = champion.take_action(&action1, &mut board, &mut pm);
+        assert!(result1.is_ok(), "Action1 should not return an error");
+
+        // Test Action1 correctly created 5 projectiles
+        assert_eq!(pm.projectiles.len(), 5);
+    }
+
+
+    #[test]
+    fn test_take_action_other_actions() {
+        let mut board = create_dummy_board(5, 5);
+        let mut pm = ProjectileManager::new();
+        let champion_stats = create_default_champion_stats();
+        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats);
+
+        // Test Action1 (currently does nothing, should not error)
+        let action1 = Action::Action1;
+        let result1 = champion.take_action(&action1, &mut board, &mut pm);
         assert!(result1.is_ok(), "Action1 should not return an error");
 
         // Test Action2 (currently does nothing, should not error)
         let action2 = Action::Action2;
-        let result2 = champion.take_action(&action2, &mut board);
+        let result2 = champion.take_action(&action2, &mut board, &mut pm);
         assert!(result2.is_ok(), "Action2 should not return an error");
     }
 
     #[test]
     fn test_take_action_invalid_action() {
         let mut board = create_dummy_board(5, 5);
+        let mut pm = ProjectileManager::new();
         let champion_stats = create_default_champion_stats();
         let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats.clone());
 
         // Test InvalidAction
         let invalid_action = Action::InvalidAction;
-        let result = champion.take_action(&invalid_action, &mut board);
+        let result = champion.take_action(&invalid_action, &mut board, &mut pm);
         println!("{:?}", result);
 
         assert!(result.is_err(), "InvalidAction should return an error");
