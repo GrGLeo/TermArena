@@ -7,3 +7,4 @@ game/target
 GEMINI.md
 *.jsonl
 *.json
+Dockerfile
