@@ -356,13 +356,14 @@ mod tests {
         );
 
         for _ in 0..3 {
-            let (_, pending_damages) =
+            let (pending_damages, _) =
                 manager.update_and_check_collisions(&board, &champions, &minions, &towers);
+            println!("{:?}", pending_damages);
             assert!(pending_damages.is_empty());
             assert_eq!(manager.projectiles.len(), 1);
         }
 
-        let (_, pending_damages) =
+        let (pending_damages, _) =
             manager.update_and_check_collisions(&board, &champions, &minions, &towers);
         assert!(pending_damages.is_empty());
         assert!(manager.projectiles.is_empty());
@@ -384,6 +385,7 @@ mod tests {
             target_pos.0,
             target_pos.1,
             mock_champion_stats(),
+            HashMap::new(),
         );
         champions.insert(target_id, target_champion);
         board.place_cell(
@@ -471,7 +473,7 @@ mod tests {
         let towers = HashMap::new();
 
         let target_id = 202;
-        let target_champion = Champion::new(target_id, Team::Red, 10, 13, mock_champion_stats());
+        let target_champion = Champion::new(target_id, Team::Red, 10, 13, mock_champion_stats(), HashMap::new());
         champions.insert(target_id, target_champion);
 
         manager.create_homing_projectile(

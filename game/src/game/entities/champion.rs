@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use std::usize;
 
@@ -10,7 +11,7 @@ use crate::game::spell::freeze_wall::cast_freeze_wall;
 use crate::game::{Board, cell::PlayerId};
 
 use super::{AttackAction, Fighter, Stats, reduced_damage};
-use crate::config::ChampionStats;
+use crate::config::{ChampionStats, GameConfig, SpellStats};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Direction {
@@ -39,6 +40,7 @@ pub struct Champion {
     pub level: u8,
     pub stats: Stats,
     champion_stats: ChampionStats,
+    pub spells: HashMap<String, SpellStats>,
     death_counter: u8,
     death_timer: Instant,
     last_attacked: Instant,
@@ -54,6 +56,7 @@ impl Champion {
         row: u16,
         col: u16,
         champion_stats: ChampionStats,
+        spells: HashMap<String, SpellStats>,
     ) -> Self {
         let stats = Stats {
             attack_damage: champion_stats.attack_damage,
@@ -67,6 +70,7 @@ impl Champion {
             player_id,
             stats,
             champion_stats,
+            spells,
             xp: 0,
             level: 1,
             death_counter: 0,
@@ -131,8 +135,10 @@ impl Champion {
                 return self.move_champion(board, 0, 1);
             }
             Action::Action1 => {
-                for blueprint in cast_freeze_wall(&self, self.stats.attack_damage) {
-                    projectile_manager.create_from_blueprint(blueprint);
+                if let Some(spell_stats) = self.spells.get("freeze_wall") {
+                    for blueprint in cast_freeze_wall(&self, self.stats.attack_damage, spell_stats) {
+                        projectile_manager.create_from_blueprint(blueprint);
+                    }
                 }
                 Ok(())
             }
@@ -287,6 +293,9 @@ impl Fighter for Champion {
 
 #[cfg(test)]
 mod tests {
+
+    use rand::distr::uniform::SampleBorrow;
+
     use super::*;
     use crate::config::ChampionStats;
     use crate::game::BaseTerrain; // Assuming BaseTerrain is needed for Board creation
@@ -321,7 +330,8 @@ mod tests {
         let row = 10;
         let col = 20;
         let champion_stats = create_default_champion_stats();
-        let champion = Champion::new(player_id, team_id, row, col, champion_stats);
+        let spell_stats = HashMap::new();
+        let champion = Champion::new(player_id, team_id, row, col, champion_stats, spell_stats);
 
         assert_eq!(champion.player_id, player_id);
         assert_eq!(champion.team_id, team_id);
@@ -342,7 +352,8 @@ mod tests {
     #[test]
     fn test_take_damage() {
         let champion_stats = create_default_champion_stats();
-        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats);
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats, spell_stats);
         let initial_health = champion.stats.health;
         let damage = 30;
         let armor = champion.stats.armor as u16;
@@ -363,7 +374,8 @@ mod tests {
 
         // Test taking enough damage to be defeated
         let champion_stats_defeat = create_default_champion_stats();
-        let mut champion_to_defeat = Champion::new(2, Team::Red, 10, 20, champion_stats_defeat);
+        let spell_stats = HashMap::new();
+        let mut champion_to_defeat = Champion::new(2, Team::Red, 10, 20, champion_stats_defeat, spell_stats);
         let lethal_damage = 250; // Damage exceeding health + armor
 
         // Use a specific instant for death timer check
@@ -394,8 +406,9 @@ mod tests {
 
         // Test taking damage when already at 0 health (should not go below 0)
         let champion_stats_already_defeated = create_default_champion_stats();
+        let spell_stats = HashMap::new();
         let mut champion_already_defeated =
-            Champion::new(3, Team::Red, 10, 20, champion_stats_already_defeated);
+            Champion::new(3, Team::Red, 10, 20, champion_stats_already_defeated, spell_stats);
         champion_already_defeated.stats.health = 0;
         let additional_damage = 10;
 
@@ -410,6 +423,7 @@ mod tests {
     fn test_take_action_move() {
         let mut board = create_dummy_board(5, 5);
         let mut pm = ProjectileManager::new();
+        let spell_stats = HashMap::new();
         let initial_row = 2;
         let initial_col = 2;
         let player_id = 1;
@@ -422,6 +436,7 @@ mod tests {
             initial_row,
             initial_col,
             champion_stats.clone(),
+            spell_stats,
         );
         board.place_cell(
             CellContent::Champion(player_id, Team::Red),
@@ -591,6 +606,7 @@ mod tests {
     fn test_take_action_move_into_impassable() {
         let mut board = create_dummy_board(5, 5);
         let mut pm = ProjectileManager::new();
+        let spell_stats = HashMap::new();
         let initial_row = 2;
         let initial_col = 2;
         let player_id = 1;
@@ -603,6 +619,7 @@ mod tests {
             initial_row,
             initial_col,
             champion_stats.clone(),
+            spell_stats,
         );
         board.place_cell(
             CellContent::Champion(player_id, Team::Red),
@@ -690,7 +707,17 @@ mod tests {
         let mut board = create_dummy_board(5, 5);
         let mut pm = ProjectileManager::new();
         let champion_stats = create_default_champion_stats();
-        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats);
+        let spell_stat = SpellStats{
+            range: 10,
+            width: 5,
+            speed: 1,
+            base_damage: 20,
+            damage_ratio: 0.8,
+        };
+        let mut spell_stats: HashMap<String, SpellStats> = HashMap::new();
+        spell_stats.insert("freeze_wall".to_string(), spell_stat);
+
+        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats, spell_stats);
 
         // Test Action1 (currently does nothing, should not error)
         let action1 = Action::Action1;
@@ -707,7 +734,8 @@ mod tests {
         let mut board = create_dummy_board(5, 5);
         let mut pm = ProjectileManager::new();
         let champion_stats = create_default_champion_stats();
-        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats);
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats, spell_stats);
 
         // Test Action1 (currently does nothing, should not error)
         let action1 = Action::Action1;
@@ -725,7 +753,8 @@ mod tests {
         let mut board = create_dummy_board(5, 5);
         let mut pm = ProjectileManager::new();
         let champion_stats = create_default_champion_stats();
-        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats.clone());
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats.clone(), spell_stats);
 
         // Test InvalidAction
         let invalid_action = Action::InvalidAction;
@@ -747,12 +776,14 @@ mod tests {
 
         // Place champion at initial position
         let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
         let mut champion = Champion::new(
             player_id,
             Team::Red,
             initial_row,
             initial_col,
             champion_stats.clone(),
+            spell_stats,
         );
         board.place_cell(
             CellContent::Champion(player_id, Team::Red),
@@ -800,12 +831,14 @@ mod tests {
         let champion_team = Team::Red;
 
         let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
         let champion = Champion::new(
             player_id,
             champion_team,
             champion_row,
             champion_col,
             champion_stats,
+            spell_stats
         );
         board.place_cell(
             CellContent::Champion(player_id, champion_team),
@@ -866,12 +899,14 @@ mod tests {
         let champion_team = Team::Red;
 
         let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
         let champion = Champion::new(
             player_id,
             champion_team,
             champion_row,
             champion_col,
             champion_stats,
+            spell_stats,
         );
         board.place_cell(
             CellContent::Champion(player_id, champion_team),
@@ -939,12 +974,14 @@ mod tests {
         let champion_team = Team::Red;
 
         let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
         let champion = Champion::new(
             player_id,
             champion_team,
             champion_row,
             champion_col,
             champion_stats,
+            spell_stats
         );
         board.place_cell(
             CellContent::Champion(player_id, champion_team),
@@ -1009,12 +1046,14 @@ mod tests {
         let champion_team = Team::Red;
 
         let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
         let champion = Champion::new(
             player_id,
             champion_team,
             champion_row,
             champion_col,
             champion_stats,
+            spell_stats,
         );
         board.place_cell(
             CellContent::Champion(player_id, champion_team),
@@ -1044,7 +1083,8 @@ mod tests {
     #[test]
     fn test_level_up() {
         let champion_stats = create_default_champion_stats();
-        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats);
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
         assert_eq!(champion.level, 1);
         assert_eq!(champion.stats.max_health, 200);
         assert_eq!(champion.stats.attack_damage, 20);

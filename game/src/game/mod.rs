@@ -161,6 +161,7 @@ impl GameManager {
                     row,
                     col,
                     self.config.champion.clone(),
+                    self.config.spells.clone(),
                 );
                 self.champions.insert(player_id, champion);
                 self.board.place_cell(

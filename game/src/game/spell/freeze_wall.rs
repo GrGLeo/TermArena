@@ -1,3 +1,4 @@
+use crate::config::SpellStats;
 use crate::game::{
     Champion,
     cell::CellAnimation,
@@ -6,12 +7,9 @@ use crate::game::{
 
 use super::{ProjectileBlueprint, ProjectileType};
 
-pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16) -> Vec<ProjectileBlueprint> {
+pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16, spell_stats: &SpellStats) -> Vec<ProjectileBlueprint> {
     let mut blueprints = Vec::new();
-    let wall_width = 5;
-    let spell_range = 10;
-    let spell_speed = 2;
-    let spell_damage = (caster_damage as f32 * 0.8 + 20 as f32) as u16;
+    let spell_damage = (caster_damage as f32 * spell_stats.damage_ratio + spell_stats.base_damage as f32) as u16;
 
     let (wall_center_row, wall_center_col) = match caster.direction {
         Direction::Up => (caster.row.saturating_sub(1), caster.col),
@@ -20,8 +18,8 @@ pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16) -> Vec<Projectile
         Direction::Right => (caster.row, caster.col.saturating_add(1)),
     };
 
-    for i in 0..wall_width {
-        let offset = i as i16 - (wall_width / 2) as i16;
+    for i in 0..spell_stats.width {
+        let offset = i as i16 - (spell_stats.width / 2) as i16;
         let (proj_start_row, proj_start_col) = match caster.direction {
             Direction::Up | Direction::Down => (
                 wall_center_row,
@@ -34,10 +32,10 @@ pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16) -> Vec<Projectile
         };
 
         let (proj_end_row, proj_end_col) = match caster.direction {
-            Direction::Up => (proj_start_row.saturating_sub(spell_range), proj_start_col),
-            Direction::Down => (proj_start_row.saturating_add(spell_range), proj_start_col),
-            Direction::Left => (proj_start_row, proj_start_col.saturating_sub(spell_range)),
-            Direction::Right => (proj_start_row, proj_start_col.saturating_add(spell_range)),
+            Direction::Up => (proj_start_row.saturating_sub(spell_stats.range), proj_start_col),
+            Direction::Down => (proj_start_row.saturating_add(spell_stats.range), proj_start_col),
+            Direction::Left => (proj_start_row, proj_start_col.saturating_sub(spell_stats.range)),
+            Direction::Right => (proj_start_row, proj_start_col.saturating_add(spell_stats.range)),
         };
 
         let blueprint = ProjectileBlueprint {
@@ -47,7 +45,7 @@ pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16) -> Vec<Projectile
             target_id: None,
             start_pos: (proj_start_row, proj_start_col),
             end_pos: (proj_end_row, proj_end_col),
-            speed: spell_speed,
+            speed: spell_stats.speed,
             payload: GameplayEffect::Damage(spell_damage),
             visual_cell_type: CellAnimation::FreezeWall,
         };
@@ -58,9 +56,21 @@ pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16) -> Vec<Projectile
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
     use crate::config::ChampionStats;
     use crate::game::{Champion, cell::Team};
+
+    fn create_spell_stats() -> SpellStats {
+        SpellStats{
+            range: 10,
+            speed: 1,
+            width: 5,
+            damage_ratio: 0.8,
+            base_damage: 20,
+        }
+    }
 
     fn create_test_champion(
         row: u16,
@@ -80,7 +90,7 @@ mod tests {
             attack_range_row: 1,
             attack_range_col: 1,
         };
-        let mut champion = Champion::new(1, Team::Red, row, col, champion_stats);
+        let mut champion = Champion::new(1, Team::Red, row, col, champion_stats, HashMap::new());
         champion.direction = direction;
         champion
     }
@@ -88,12 +98,13 @@ mod tests {
     #[test]
     fn test_cast_freeze_wall_up() {
         let caster = create_test_champion(20, 20, Direction::Up, 100);
-        let blueprints = cast_freeze_wall(&caster, 100);
+        let spell_stats = create_spell_stats();
+        let blueprints = cast_freeze_wall(&caster, 100, &spell_stats);
 
         assert_eq!(blueprints.len(), 5);
 
         // Wall should be centered at (10, 20), extending horizontally
-        let expected_center_row = 10 as u16;
+        let expected_center_row = 19 as u16;
         let expected_center_col = 20 as u16;
 
         for (i, blueprint) in blueprints.iter().enumerate() {
@@ -111,12 +122,13 @@ mod tests {
     #[test]
     fn test_cast_freeze_wall_down() {
         let caster = create_test_champion(20, 20, Direction::Down, 100);
-        let blueprints = cast_freeze_wall(&caster, 100);
+        let spell_stats = create_spell_stats();
+        let blueprints = cast_freeze_wall(&caster, 100, &spell_stats);
 
         assert_eq!(blueprints.len(), 5);
 
         // Wall should be centered at (30, 20), extending horizontally
-        let expected_center_row = 30 as u16;
+        let expected_center_row = 21 as u16;
         let expected_center_col = 20 as u16;
 
         for (i, blueprint) in blueprints.iter().enumerate() {
@@ -133,13 +145,14 @@ mod tests {
     #[test]
     fn test_cast_freeze_wall_left() {
         let caster = create_test_champion(20, 20, Direction::Left, 100);
-        let blueprints = cast_freeze_wall(&caster, 100);
+        let spell_stats = create_spell_stats();
+        let blueprints = cast_freeze_wall(&caster, 100, &spell_stats);
 
         assert_eq!(blueprints.len(), 5);
 
         // Wall should be centered at (20, 10), extending vertically
         let expected_center_row = 20 as u16;
-        let expected_center_col = 10 as u16;
+        let expected_center_col = 19 as u16;
 
         for (i, blueprint) in blueprints.iter().enumerate() {
             let offset = i as i16 - 2;
@@ -155,13 +168,14 @@ mod tests {
     #[test]
     fn test_cast_freeze_wall_right() {
         let caster = create_test_champion(20, 20, Direction::Right, 100);
-        let blueprints = cast_freeze_wall(&caster, 100);
+        let spell_stats = create_spell_stats();
+        let blueprints = cast_freeze_wall(&caster, 100, &spell_stats);
 
         assert_eq!(blueprints.len(), 5);
 
         // Wall should be centered at (20, 30), extending vertically
         let expected_center_row = 20 as u16;
-        let expected_center_col = 30 as u16;
+        let expected_center_col = 21 as u16;
 
         for (i, blueprint) in blueprints.iter().enumerate() {
             let offset = i as i16 - 2;
@@ -178,10 +192,11 @@ mod tests {
     fn test_cast_freeze_wall_edge_case_top_left() {
         // Caster is at (5, 5), casting Up. Wall should be at (0, 5)
         let caster = create_test_champion(5, 5, Direction::Up, 100);
-        let blueprints = cast_freeze_wall(&caster, 100);
+        let spell_stats = create_spell_stats();
+        let blueprints = cast_freeze_wall(&caster, 100, &spell_stats);
 
         assert_eq!(blueprints.len(), 5);
-        let expected_row = 0; // 5 - 10 saturates at 0
+        let expected_row = 4; // 5 - 1 saturates at 4
         for (i, blueprint) in blueprints.iter().enumerate() {
             let offset = i as i16 - 2;
             let expected_col = 5i16.saturating_add(offset) as u16;
@@ -190,10 +205,10 @@ mod tests {
 
         // Caster is at (5, 5), casting Left. Wall should be at (5, 0)
         let caster = create_test_champion(5, 5, Direction::Left, 100);
-        let blueprints = cast_freeze_wall(&caster, 100);
+        let blueprints = cast_freeze_wall(&caster, 100, &spell_stats);
 
         assert_eq!(blueprints.len(), 5);
-        let expected_col = 0; // 5 - 10 saturates at 0
+        let expected_col = 4; // 5 - 1 saturates at 4
         for (i, blueprint) in blueprints.iter().enumerate() {
             let offset = i as i16 - 2;
             let expected_row = 5i16.saturating_add(offset) as u16;
@@ -203,4 +218,3 @@ mod tests {
     // Need to add a specific test for damage
 
 }
-
