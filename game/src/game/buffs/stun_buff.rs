@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use super::Buff;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StunBuff {
     pub duration_remaining: Duration,
     pub applied_at: Instant,
@@ -32,5 +32,9 @@ impl Buff for StunBuff {
 
     fn on_remove(&mut self, target: &mut dyn super::HasBuff) {
         target.set_stunned(false, None);
+    }
+
+    fn clone_box(&self) -> Box<dyn Buff> {
+        Box::new(self.clone())
     }
 }

@@ -188,7 +188,7 @@ impl Minion {
         &mut self,
         board: &mut Board,
         new_animations: &mut Vec<Box<dyn AnimationTrait>>,
-        pending_effects: &mut Vec<(Target, GameplayEffect)>,
+        pending_effects: &mut Vec<(Target, Vec<GameplayEffect>)>,
     ) {
         if self.is_stunned() {
             return;
@@ -201,8 +201,10 @@ impl Minion {
                             match attack {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
-                                    pending_effects
-                                        .push((Target::Tower(*id), GameplayEffect::Damage(damage)))
+                                    pending_effects.push((
+                                        Target::Tower(*id),
+                                        vec![GameplayEffect::Damage(damage)],
+                                    ))
                                 }
                                 _ => {}
                             }
@@ -213,8 +215,10 @@ impl Minion {
                             match attack {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
-                                    pending_effects
-                                        .push((Target::Minion(*id), GameplayEffect::Damage(damage)))
+                                    pending_effects.push((
+                                        Target::Minion(*id),
+                                        vec![GameplayEffect::Damage(damage)],
+                                    ))
                                 }
                                 _ => {}
                             }
@@ -227,7 +231,7 @@ impl Minion {
                                     new_animations.push(animation);
                                     pending_effects.push((
                                         Target::Champion(*id),
-                                        GameplayEffect::Damage(damage),
+                                        vec![GameplayEffect::Damage(damage)],
                                     ))
                                 }
                                 _ => {}
@@ -284,15 +288,17 @@ impl Minion {
 }
 
 impl Fighter for Minion {
-    fn take_effect(&mut self, effect: GameplayEffect) {
-        match effect {
-            GameplayEffect::Damage(damage) => {
-                let reduced_damage = reduced_damage(damage, self.stats.armor);
-                self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
-            }
-            GameplayEffect::Stun(damage, ..) => {
-                let reduced_damage = reduced_damage(damage, self.stats.armor);
-                self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+    fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
+        for effect in effects.into_iter() {
+            match effect {
+                GameplayEffect::Damage(damage) => {
+                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+                }
+                GameplayEffect::Buff(mut buff) => {
+                    buff.on_apply(self);
+                    self.active_buffs.insert(buff.id().to_string(), buff);
+                }
             }
         }
     }

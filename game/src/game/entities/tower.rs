@@ -99,21 +99,18 @@ impl Tower {
 }
 
 impl Fighter for Tower {
-    fn take_effect(&mut self, effect: GameplayEffect) {
-        match effect {
-            GameplayEffect::Damage(damage) => {
-                let reduced_damage = reduced_damage(damage, self.stats.armor);
-                self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
-                if self.stats.health == 0 {
-                    self.destroyed = true;
+    fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
+        for effect in effects.into_iter() {
+            match effect {
+                GameplayEffect::Damage(damage) => {
+                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+                    if self.stats.health == 0 {
+                        self.destroyed = true;
+                    }
                 }
-            }
-            GameplayEffect::Stun(damage, ..) => {
-                let reduced_damage = reduced_damage(damage, self.stats.armor);
-                self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
-                if self.stats.health == 0 {
-                    self.destroyed = true;
-                }
+                // Tower cannot be affected by buff or debuff
+                _ => {}
             }
         }
     }

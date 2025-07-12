@@ -43,7 +43,7 @@ pub struct Stats {
 }
 
 pub trait Fighter {
-    fn take_effect(&mut self, effect: GameplayEffect);
+    fn take_effect(&mut self, effect: Vec<GameplayEffect>);
     fn can_attack(&mut self) -> Option<AttackAction>;
     fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell>;
 }

@@ -1,4 +1,5 @@
 use crate::config::SpellStats;
+use crate::game::buffs::stun_buff::StunBuff;
 use crate::game::{
     Champion,
     cell::CellAnimation,
@@ -54,6 +55,10 @@ pub fn cast_freeze_wall(
                 proj_start_col.saturating_add(spell_stats.range),
             ),
         };
+        let payloads = vec![
+            GameplayEffect::Damage(spell_damage),
+            GameplayEffect::Buff(Box::new(StunBuff::new(spell_stats.stun_duration as u64))),
+        ];
 
         let blueprint = ProjectileBlueprint {
             projectile_type: ProjectileType::SkillShot,
@@ -63,7 +68,7 @@ pub fn cast_freeze_wall(
             start_pos: (proj_start_row, proj_start_col),
             end_pos: (proj_end_row, proj_end_col),
             speed: spell_stats.speed,
-            payload: GameplayEffect::Stun(spell_damage, spell_stats.stun_duration),
+            payloads,
             visual_cell_type: CellAnimation::FreezeWall,
         };
         blueprints.push(blueprint)

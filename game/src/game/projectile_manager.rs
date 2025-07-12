@@ -1,3 +1,5 @@
+use rand::seq::IndexedRandom;
+
 use crate::game::spell::ProjectileType;
 
 use super::animation::{AnimationCommand, AnimationTrait};
@@ -34,7 +36,7 @@ impl ProjectileManager {
                         target_id,
                         blueprint.start_pos,
                         blueprint.speed,
-                        blueprint.payload,
+                        blueprint.payloads,
                         blueprint.visual_cell_type,
                     );
                 }
@@ -46,7 +48,7 @@ impl ProjectileManager {
                     blueprint.start_pos,
                     blueprint.end_pos,
                     blueprint.speed,
-                    blueprint.payload,
+                    blueprint.payloads,
                     blueprint.visual_cell_type,
                 );
             }
@@ -60,7 +62,7 @@ impl ProjectileManager {
         start_pos: (u16, u16),
         end_pos: (u16, u16),
         speed: u32,
-        payload: GameplayEffect,
+        payloads: Vec<GameplayEffect>,
         visual_cell_type: CellAnimation,
     ) {
         let id = self.next_projectile_id;
@@ -72,7 +74,7 @@ impl ProjectileManager {
             start_pos,
             end_pos,
             speed,
-            payload,
+            payloads,
             visual_cell_type,
         );
         self.projectiles.insert(id, projectile);
@@ -85,7 +87,7 @@ impl ProjectileManager {
         target_id: Target,
         start_pos: (u16, u16),
         speed: u32,
-        payload: GameplayEffect,
+        payloads: Vec<GameplayEffect>,
         visual_cell_type: CellAnimation,
     ) {
         let id = self.next_projectile_id;
@@ -97,7 +99,7 @@ impl ProjectileManager {
             start_pos,
             target_id,
             speed,
-            payload,
+            payloads,
             visual_cell_type,
         );
         self.projectiles.insert(id, projectile);
@@ -109,9 +111,9 @@ impl ProjectileManager {
         champions: &HashMap<PlayerId, Champion>,
         minions: &HashMap<MinionId, Minion>,
         towers: &HashMap<TowerId, Tower>,
-    ) -> (Vec<(Target, GameplayEffect)>, Vec<AnimationCommand>) {
+    ) -> (Vec<(Target, Vec<GameplayEffect>)>, Vec<AnimationCommand>) {
         let mut projectiles_to_remove: Vec<u64> = Vec::new();
-        let mut pending_effects: Vec<(Target, GameplayEffect)> = Vec::new();
+        let mut pending_effects: Vec<(Target, Vec<GameplayEffect>)> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
 
         for (id, projectile) in self.projectiles.iter_mut() {
@@ -173,7 +175,7 @@ impl ProjectileManager {
                                 hit_target = add_effects(
                                     &mut pending_effects,
                                     Target::Champion(target_id),
-                                    &projectile.payload,
+                                    projectile.payloads.clone(),
                                     projectile.team_id,
                                     target_team,
                                 )
@@ -182,7 +184,7 @@ impl ProjectileManager {
                                 hit_target = add_effects(
                                     &mut pending_effects,
                                     Target::Minion(target_id),
-                                    &projectile.payload,
+                                    projectile.payloads.clone(),
                                     projectile.team_id,
                                     target_team,
                                 )
@@ -191,7 +193,7 @@ impl ProjectileManager {
                                 hit_target = add_effects(
                                     &mut pending_effects,
                                     Target::Tower(target_id),
-                                    &projectile.payload,
+                                    projectile.payloads.clone(),
                                     projectile.team_id,
                                     target_team,
                                 )
@@ -224,25 +226,19 @@ impl ProjectileManager {
 }
 
 fn add_effects(
-    pending_effects: &mut Vec<(Target, GameplayEffect)>,
+    pending_effects: &mut Vec<(Target, Vec<GameplayEffect>)>,
     target: Target,
-    payload: &GameplayEffect,
+    payloads: Vec<GameplayEffect>,
     team: Team,
     target_team: Team,
 ) -> bool {
     if team != target_team {
-        match payload {
-            GameplayEffect::Damage(..) => {
-                pending_effects.push((target, payload.clone()));
-                return true;
-            }
-            GameplayEffect::Stun(..) => {
-                pending_effects.push((target, payload.clone()));
-                return true;
-            }
+        if !payloads.is_empty() {
+            pending_effects.push((target, payloads));
+            return true;
         }
     }
-    false
+    return false;
 }
 
 #[cfg(test)]

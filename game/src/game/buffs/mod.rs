@@ -7,6 +7,7 @@ pub trait HasBuff {
 }
 
 pub trait Buff: Send + Sync + Debug {
+    fn clone_box(&self) -> Box<dyn Buff>;
     fn id(&self) -> &str;
     fn on_apply(&mut self, target: &mut dyn HasBuff);
     fn on_tick(&mut self, target: &mut dyn HasBuff) -> bool;

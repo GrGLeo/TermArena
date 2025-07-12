@@ -7,15 +7,22 @@ use crate::game::{
 
 use super::Target;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// Represents the various effects a projectile can apply upon impact.
 pub enum GameplayEffect {
     /// Applies a specified amount of damage to the target.
     Damage(u16),
-    /// Applies damage and stuns the target for a given duration.
-    ///
-    /// The tuple contains: (damage_amount, stun_duration_in_ticks).
-    Stun(u16, u8),
+    /// Applies a specific buff/debuff to the target
+    Buff(Box<dyn Buff>),
+}
+
+impl Clone for GameplayEffect {
+    fn clone(&self) -> Self {
+        match self {
+            GameplayEffect::Damage(d) => GameplayEffect::Damage(*d),
+            GameplayEffect::Buff(b) => GameplayEffect::Buff(b.clone_box()),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -29,7 +36,7 @@ pub enum PathingLogic {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Projectile {
     pub id: u64,
     pub team_id: Team,
@@ -41,7 +48,7 @@ pub struct Projectile {
     speed: u32, // number of tick to move one cell
     tick_counter: u32,
     // Gameplay
-    pub payload: GameplayEffect,
+    pub payloads: Vec<GameplayEffect>,
     // Rendering
     pub visual_cell_type: CellAnimation,
 }
@@ -54,7 +61,7 @@ impl Projectile {
         start_pos: (u16, u16),
         end_pos: (u16, u16),
         speed: u32,
-        payload: GameplayEffect,
+        payloads: Vec<GameplayEffect>,
         visual_cell_type: CellAnimation,
     ) -> Self {
         let path = Bresenham::new(start_pos, end_pos).collect();
@@ -70,7 +77,7 @@ impl Projectile {
             pathing,
             speed,
             tick_counter: 0,
-            payload,
+            payloads,
             visual_cell_type,
         }
     }
@@ -82,7 +89,7 @@ impl Projectile {
         start_pos: (u16, u16),
         target_id: Target,
         speed: u32,
-        payload: GameplayEffect,
+        payloads: Vec<GameplayEffect>,
         visual_cell_type: CellAnimation,
     ) -> Self {
         let pathing = PathingLogic::LockOn { target_id };
@@ -94,7 +101,7 @@ impl Projectile {
             pathing,
             speed,
             tick_counter: 0,
-            payload,
+            payloads,
             visual_cell_type,
         }
     }

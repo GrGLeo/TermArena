@@ -235,32 +235,24 @@ impl Champion {
 }
 
 impl Fighter for Champion {
-    fn take_effect(&mut self, effect: GameplayEffect) {
-        match effect {
-            GameplayEffect::Damage(damage) => {
-                let reduced_damage = reduced_damage(damage, self.stats.armor);
-                self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
-                // Check if champion get killed
-                if self.stats.health == 0 {
-                    self.death_counter += 1;
-                    let timer = ((self.death_counter as f32).sqrt() * 10.) as u64;
-                    self.death_timer = Instant::now() + Duration::from_secs(timer);
+    fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
+        for effect in effects.into_iter() {
+            match effect {
+                GameplayEffect::Damage(damage) => {
+                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+                    // Check if champion get killed
+                    if self.stats.health == 0 {
+                        self.death_counter += 1;
+                        let timer = ((self.death_counter as f32).sqrt() * 10.) as u64;
+                        self.death_timer = Instant::now() + Duration::from_secs(timer);
+                    }
                 }
-            }
-            GameplayEffect::Stun(damage, duration) => {
-                let mut stun_buff = StunBuff::new(duration as u64);
-                stun_buff.on_apply(self);
-                self.active_buffs
-                    .insert(stun_buff.id().to_string(), Box::new(stun_buff));
-                let reduced_damage = reduced_damage(damage, self.stats.armor);
-                self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
-                // Check if champion get killed
-                if self.stats.health == 0 {
-                    self.death_counter += 1;
-                    let timer = ((self.death_counter as f32).sqrt() * 10.) as u64;
-                    self.death_timer = Instant::now() + Duration::from_secs(timer);
+                GameplayEffect::Buff(mut buff) => {
+                    buff.on_apply(self);
+                    self.active_buffs.insert(buff.id().to_string(), buff);
                 }
-            }
+            };
         }
     }
 
@@ -410,7 +402,7 @@ mod tests {
         let damage = 30;
         let armor = champion.stats.armor as u16;
 
-        champion.take_effect(GameplayEffect::Damage(damage));
+        champion.take_effect(vec![GameplayEffect::Damage(damage)]);
 
         // Calculate expected health after damage reduction by armor
         let reduced_damage = reduced_damage(damage, armor);
@@ -437,7 +429,7 @@ mod tests {
         // but for now, we can at least check if it's set to *sometime in the future*
         // and that is_dead returns true immediately after taking lethal damage.
 
-        champion_to_defeat.take_effect(GameplayEffect::Damage(lethal_damage));
+        champion_to_defeat.take_effect(vec![GameplayEffect::Damage(lethal_damage)]);
 
         assert_eq!(
             champion_to_defeat.stats.health, 0,
@@ -471,7 +463,7 @@ mod tests {
         champion_already_defeated.stats.health = 0;
         let additional_damage = 10;
 
-        champion_already_defeated.take_effect(GameplayEffect::Damage(additional_damage));
+        champion_already_defeated.take_effect(vec![GameplayEffect::Damage(additional_damage)]);
         assert_eq!(
             champion_already_defeated.stats.health, 0,
             "Health should remain at 0 if already defeated"

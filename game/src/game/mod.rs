@@ -241,7 +241,7 @@ impl GameManager {
         let mut updates = HashMap::new();
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
-        let mut pending_effects: Vec<(Target, GameplayEffect)> = Vec::new();
+        let mut pending_effects: Vec<(Target, Vec<GameplayEffect>)> = Vec::new();
 
         // --- Game Logic ---
         // Buff checks on all entities
@@ -305,7 +305,7 @@ impl GameManager {
                                             new_animations.push(animation);
                                             pending_effects.push((
                                                 Target::Tower(*id),
-                                                GameplayEffect::Damage(damage),
+                                                vec![GameplayEffect::Damage(damage)],
                                             ))
                                         }
                                         _ => {}
@@ -319,7 +319,7 @@ impl GameManager {
                                             new_animations.push(animation);
                                             pending_effects.push((
                                                 Target::Minion(*id),
-                                                GameplayEffect::Damage(damage),
+                                                vec![GameplayEffect::Damage(damage)],
                                             ))
                                         }
                                         _ => {}
@@ -333,7 +333,7 @@ impl GameManager {
                                             new_animations.push(animation);
                                             pending_effects.push((
                                                 Target::Champion(*id),
-                                                GameplayEffect::Damage(damage),
+                                                vec![GameplayEffect::Damage(damage)],
                                             ))
                                         }
                                         _ => {}
@@ -347,7 +347,7 @@ impl GameManager {
                                             new_animations.push(animation);
                                             pending_effects.push((
                                                 Target::Base(*team),
-                                                GameplayEffect::Damage(damage),
+                                                vec![GameplayEffect::Damage(damage)],
                                             ))
                                         }
                                         _ => {}
@@ -603,7 +603,7 @@ impl GameManager {
                     target,
                     (tower.row, tower.col),
                     speed,
-                    GameplayEffect::Damage(damage),
+                    vec![GameplayEffect::Damage(damage)],
                     visual,
                 );
             }
