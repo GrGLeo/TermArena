@@ -1,9 +1,6 @@
 // In animation/melee.rs
 use super::{AnimationCommand, AnimationTrait};
-use crate::{
-    errors::GameError,
-    game::{Board, Champion, PlayerId, cell::CellAnimation},
-};
+use crate::game::{PlayerId, cell::CellAnimation};
 
 #[derive(Debug)]
 pub struct MeleeAnimation {

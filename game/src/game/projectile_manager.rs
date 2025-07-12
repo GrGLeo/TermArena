@@ -1,5 +1,3 @@
-use rand::seq::IndexedRandom;
-
 use crate::game::spell::ProjectileType;
 
 use super::animation::{AnimationCommand, AnimationTrait};

@@ -5,7 +5,6 @@ use std::usize;
 use crate::errors::GameError;
 use crate::game::Cell;
 use crate::game::animation::melee::MeleeAnimation;
-use crate::game::buffs::stun_buff::StunBuff;
 use crate::game::buffs::{Buff, HasBuff};
 use crate::game::cell::{CellContent, Team};
 use crate::game::projectile_manager::ProjectileManager;

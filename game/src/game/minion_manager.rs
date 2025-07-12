@@ -156,7 +156,7 @@ impl MinionManager {
 
     pub fn manage_minions_mouvements(&mut self, mut board: &mut Board) {
         self.minions.iter_mut().for_each(|(_, minion)| {
-            minion.movement_phase(&mut board);
+            let _ = minion.movement_phase(&mut board);
         });
     }
 
