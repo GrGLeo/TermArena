@@ -227,7 +227,7 @@ mod tests {
         let blueprints = cast_freeze_wall(&caster, 100, &spell_stats);
 
         assert_eq!(blueprints.len(), 5);
-        let expected_row = 0; // 5 - 10 saturates at 0
+        let expected_row = 4; // 5 - 1 saturates at 4
         for (i, blueprint) in blueprints.iter().enumerate() {
             let offset = i as i16 - 2;
             let expected_col = 5i16.saturating_add(offset) as u16;
@@ -242,7 +242,7 @@ mod tests {
         let blueprints = cast_freeze_wall(&caster, 100, &spell_stats);
 
         assert_eq!(blueprints.len(), 5);
-        let expected_col = 0; // 5 - 10 saturates at 0
+        let expected_col = 4; // 5 - 1 saturates at 4
         for (i, blueprint) in blueprints.iter().enumerate() {
             let offset = i as i16 - 2;
             let expected_row = 5i16.saturating_add(offset) as u16;

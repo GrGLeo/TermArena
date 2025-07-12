@@ -383,6 +383,7 @@ impl HasBuff for Minion {
 mod tests {
     use super::*;
     use crate::config::MinionStats;
+    use crate::game::buffs::stun_buff::StunBuff;
     use crate::game::{
         Board, MinionId,
         cell::Team,
@@ -425,6 +426,70 @@ mod tests {
     }
 
     #[test]
+    fn test_minion_stun_application() {
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(1, Team::Blue, Lane::Mid, minion_stats);
+        let mut board = create_dummy_board(10, 10);
+        let mut new_animations = Vec::new();
+        let mut pending_effects = Vec::new();
+
+        // Apply a stun buff
+        let stun_duration_secs = 5;
+        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(stun_duration_secs)));
+        minion.take_effect(vec![stun_effect]);
+
+        // Assert minion is stunned
+        assert!(minion.is_stunned(), "Minion should be stunned after applying stun buff");
+
+        // Assert stunned minion cannot move
+        let move_result = minion.movement_phase(&mut board);
+        assert!(move_result.is_err(), "Stunned minion should not be able to move");
+        assert_eq!(move_result.unwrap_err(), GameError::IsStunned, "Stunned minion move error should be GameError::IsStunned");
+
+        // Assert stunned minion cannot attack
+        assert!(minion.can_attack().is_none(), "Stunned minion should not be able to attack");
+        // attack_phase should also do nothing
+        minion.attack_phase(&mut board, &mut new_animations, &mut pending_effects);
+        assert!(new_animations.is_empty(), "Stunned minion attack_phase should not create animations");
+        assert!(pending_effects.is_empty(), "Stunned minion attack_phase should not create pending effects");
+    }
+
+    #[test]
+    fn test_minion_stun_expiration() {
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(1, Team::Blue, Lane::Mid, minion_stats);
+        let mut board = create_dummy_board(10, 10);
+
+        // Apply a very short stun buff
+        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(0))); // Duration 0 for immediate expiration
+        minion.take_effect(vec![stun_effect]);
+
+        // Manually process buffs to trigger expiration
+        let current_buffs = std::mem::take(&mut minion.active_buffs);
+        let mut kept_buffs = HashMap::new();
+        for (id, mut buff) in current_buffs.into_iter() {
+            if buff.on_tick(&mut minion) {
+                buff.on_remove(&mut minion);
+            } else {
+                kept_buffs.insert(id, buff);
+            }
+        }
+        minion.active_buffs = kept_buffs;
+
+        // Assert minion is no longer stunned
+        assert!(!minion.is_stunned(), "Minion should not be stunned after buff expiration");
+
+        // Assert minion can now move
+        // Place minion on board for movement test
+        board.place_cell(CellContent::Minion(minion.minion_id, minion.team_id), minion.row as usize, minion.col as usize);
+        let move_result = minion.movement_phase(&mut board);
+        assert!(move_result.is_ok(), "Unstunned minion should be able to move");
+
+        // Assert minion can now attack
+        minion.last_attacked = Instant::now() - minion.stats.attack_speed - Duration::from_secs(1);
+        assert!(minion.can_attack().is_some(), "Unstunned minion should be able to attack");
+    }
+
     fn test_new_minion() {
         let minion_id = 1;
         let minion_stats = create_default_minion_stats();

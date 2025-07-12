@@ -1132,6 +1132,75 @@ mod tests {
     }
 
     #[test]
+    fn test_champion_stun_application() {
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+        let mut board = create_dummy_board(10, 10);
+        let mut pm = ProjectileManager::new();
+
+        // Apply a stun buff
+        let stun_duration_secs = 5;
+        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(stun_duration_secs)));
+        champion.take_effect(vec![stun_effect]);
+
+        // Assert champion is stunned
+        assert!(champion.is_stunned(), "Champion should be stunned after applying stun buff");
+
+        // Assert stunned champion cannot move
+        let move_action = Action::MoveUp;
+        let move_result = champion.take_action(&move_action, &mut board, &mut pm);
+        assert!(move_result.is_err(), "Stunned champion should not be able to move");
+        assert_eq!(move_result.unwrap_err(), GameError::IsStunned, "Stunned champion move error should be GameError::IsStunned");
+
+        // Assert stunned champion cannot attack
+        assert!(champion.can_attack().is_none(), "Stunned champion should not be able to attack");
+    }
+
+    #[test]
+    fn test_champion_stun_expiration() {
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+
+        // Apply a very short stun buff
+        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(0))); // Duration 0 for immediate expiration
+        champion.take_effect(vec![stun_effect]);
+
+        // Manually process buffs to trigger expiration
+        let current_buffs = std::mem::take(&mut champion.active_buffs);
+        let mut kept_buffs = HashMap::new();
+        for (id, mut buff) in current_buffs.into_iter() {
+            if buff.on_tick(&mut champion) {
+                buff.on_remove(&mut champion);
+            } else {
+                kept_buffs.insert(id, buff);
+            }
+        }
+        champion.active_buffs = kept_buffs;
+
+        // Assert champion is no longer stunned
+        assert!(!champion.is_stunned(), "Champion should not be stunned after buff expiration");
+
+        // Assert champion can now move (assuming board and pm are set up for a valid move)
+        let mut board = create_dummy_board(10, 10);
+        let mut pm = ProjectileManager::new();
+        // Place champion on board for movement test
+        board.place_cell(CellContent::Champion(champion.player_id, champion.team_id), champion.row as usize, champion.col as usize);
+        let move_action = Action::MoveDown;
+        let move_result = champion.take_action(&move_action, &mut board, &mut pm);
+        assert!(move_result.is_ok(), "Unstunned champion should be able to move");
+
+        // Assert champion can now attack
+        // For can_attack to return Some, last_attacked needs to be old enough.
+        // In a real test, you might mock Instant::now() or set last_attacked explicitly.
+        // For simplicity here, we'll just check if it's not None.
+        // Note: This test might be flaky if run too quickly after champion creation due to Instant::now()
+        // A more robust test would involve setting champion.last_attacked to a past time.
+        champion.last_attacked = Instant::now() - champion.stats.attack_speed - Duration::from_secs(1);
+        assert!(champion.can_attack().is_some(), "Unstunned champion should be able to attack");
+    }
+
     fn test_level_up() {
         let champion_stats = create_default_champion_stats();
         let spell_stats = HashMap::new();
