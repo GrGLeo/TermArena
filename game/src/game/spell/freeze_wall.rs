@@ -49,7 +49,7 @@ pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16) -> Vec<Projectile
             end_pos: (proj_end_row, proj_end_col),
             speed: spell_speed,
             payload: GameplayEffect::Damage(spell_damage),
-            visual_cell_type: CellAnimation::Projectile,
+            visual_cell_type: CellAnimation::FreezeWall,
         };
         blueprints.push(blueprint)
     }

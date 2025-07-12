@@ -134,7 +134,7 @@ func (m GameModel) View() string {
 	grayStyle := lipgloss.NewStyle().Background(lipgloss.Color("240"))
 	Flag1Style := lipgloss.NewStyle().Background(lipgloss.Color("201"))
 	TowerStyle := lipgloss.NewStyle().Background(lipgloss.Color("94"))
-	FreezeStyle := lipgloss.NewStyle().Background(lipgloss.Color("105"))
+	FreezeStyle := lipgloss.NewStyle().Background(lipgloss.Color("39"))
 	BaseBlueStyle := lipgloss.NewStyle().Background(lipgloss.Color("21"))
 	BaseRedStyle := lipgloss.NewStyle().Background(lipgloss.Color("196"))
 
@@ -206,7 +206,7 @@ func (m GameModel) View() string {
 			case 13:
 				builder.WriteString(bgStyle.Render("⣀")) // Render for dash
 			case 14:
-				builder.WriteString(FreezeStyle.Render("x")) // Render for freezing spell
+				builder.WriteString(FreezeStyle.Render("𐙂")) // Render for freezing spell
 			case 100, 101, 102, 103, 104, 105, 106, 107: // Friendly minion health (1/8 to 8/8)
 				healthIndex := cell - 100
 				builder.WriteString(p1Style.Render(minionHealthChars[healthIndex]))
