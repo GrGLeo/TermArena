@@ -170,7 +170,7 @@ impl ProjectileManager {
                     if let Some(cell) = board.get_cell(row as usize, col as usize) {
                         match cell.content {
                             Some(CellContent::Champion(target_id, target_team)) => {
-                                hit_target = add_damages(
+                                hit_target = add_effects(
                                     &mut pending_effects,
                                     Target::Champion(target_id),
                                     &projectile.payload,
@@ -179,7 +179,7 @@ impl ProjectileManager {
                                 )
                             }
                             Some(CellContent::Minion(target_id, target_team)) => {
-                                hit_target = add_damages(
+                                hit_target = add_effects(
                                     &mut pending_effects,
                                     Target::Minion(target_id),
                                     &projectile.payload,
@@ -188,7 +188,7 @@ impl ProjectileManager {
                                 )
                             }
                             Some(CellContent::Tower(target_id, target_team)) => {
-                                hit_target = add_damages(
+                                hit_target = add_effects(
                                     &mut pending_effects,
                                     Target::Tower(target_id),
                                     &projectile.payload,
@@ -223,8 +223,8 @@ impl ProjectileManager {
     }
 }
 
-fn add_damages(
-    pending_damages: &mut Vec<(Target, GameplayEffect)>,
+fn add_effects(
+    pending_effects: &mut Vec<(Target, GameplayEffect)>,
     target: Target,
     payload: &GameplayEffect,
     team: Team,
@@ -233,11 +233,11 @@ fn add_damages(
     if team != target_team {
         match payload {
             GameplayEffect::Damage(..) => {
-                pending_damages.push((target, *payload));
+                pending_effects.push((target, payload.clone()));
                 return true;
             }
             GameplayEffect::Stun(..) => {
-                pending_damages.push((target, *payload));
+                pending_effects.push((target, payload.clone()));
                 return true;
             }
         }
@@ -437,7 +437,9 @@ mod tests {
         let (damages, _) =
             manager.update_and_check_collisions(&board, &champions, &minions, &towers);
         assert_eq!(damages.len(), 1);
-        assert!(matches!(damages[0], (Target::Champion(id), GameplayEffect::Damage(50)) if id == target_id));
+        assert!(
+            matches!(damages[0], (Target::Champion(id), GameplayEffect::Damage(50)) if id == target_id)
+        );
         assert!(manager.projectiles.is_empty());
     }
 
@@ -482,7 +484,9 @@ mod tests {
             manager.update_and_check_collisions(&board, &champions, &minions, &towers);
 
         assert_eq!(damages.len(), 1);
-        assert!(matches!(damages[0], (Target::Tower(id), GameplayEffect::Damage(50)) if id == target_id));
+        assert!(
+            matches!(damages[0], (Target::Tower(id), GameplayEffect::Damage(50)) if id == target_id)
+        );
         assert!(manager.projectiles.is_empty());
     }
 

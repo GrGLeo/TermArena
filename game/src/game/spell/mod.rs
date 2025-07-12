@@ -1,4 +1,7 @@
-use super::{cell::{CellAnimation, Team}, entities::{projectile::GameplayEffect, Target}};
+use super::{
+    cell::{CellAnimation, Team},
+    entities::{Target, projectile::GameplayEffect},
+};
 
 pub mod freeze_wall;
 
@@ -18,4 +21,3 @@ pub enum ProjectileType {
     LockOn,
     SkillShot,
 }
-

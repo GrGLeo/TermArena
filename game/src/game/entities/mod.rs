@@ -2,25 +2,27 @@ use std::time::Duration;
 
 use projectile::GameplayEffect;
 
-use super::{animation::AnimationTrait, cell::CellAnimation, Board, Cell, MinionId, PlayerId, TowerId};
+use super::{
+    Board, Cell, MinionId, PlayerId, TowerId, animation::AnimationTrait, cell::CellAnimation,
+};
 use crate::game::cell::Team;
 
 pub mod base;
 pub mod champion;
 pub mod minion;
-pub mod tower;
 pub mod projectile;
+pub mod tower;
 
 pub enum AttackAction {
     Melee {
         damage: u16,
-        animation: Box<dyn AnimationTrait>
+        animation: Box<dyn AnimationTrait>,
     },
     Projectile {
         damage: u16,
         speed: u32,
-        visual: CellAnimation
-    }
+        visual: CellAnimation,
+    },
 }
 
 #[derive(Debug, Clone)]

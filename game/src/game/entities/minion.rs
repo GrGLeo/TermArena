@@ -1,5 +1,5 @@
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     time::{Duration, Instant},
 };
 use strum_macros::EnumIter;
@@ -10,11 +10,12 @@ use crate::{
         Board, Cell, CellContent, MinionId,
         algorithms::pathfinding::{find_path_on_board, is_adjacent_to_goal},
         animation::{AnimationTrait, melee::MeleeAnimation},
+        buffs::{Buff, HasBuff},
         cell::Team,
     },
 };
 
-use super::{projectile::GameplayEffect, reduced_damage, AttackAction, Fighter, Stats, Target};
+use super::{AttackAction, Fighter, Stats, Target, projectile::GameplayEffect, reduced_damage};
 use crate::config::MinionStats;
 
 type MinionPath = (u16, u16);
@@ -38,6 +39,8 @@ pub struct Minion {
     minion_path: Vec<MinionPath>,
     checkpoint: usize,
     last_attacked: Instant,
+    stun_timer: Option<Instant>,
+    pub active_buffs: HashMap<String, Box<dyn Buff>>,
     pub row: u16,
     pub col: u16,
 }
@@ -109,6 +112,8 @@ impl Minion {
             minion_path: paths,
             checkpoint: 0,
             last_attacked: Instant::now(),
+            stun_timer: None,
+            active_buffs: HashMap::new(),
             row,
             col,
         }
@@ -126,6 +131,10 @@ impl Minion {
     }
 
     pub fn movement_phase(&mut self, board: &mut Board) -> Result<(), GameError> {
+        if self.is_stunned() {
+            println!("MinionIsStun");
+            return Err(GameError::IsStunned);
+        }
         if is_adjacent_to_goal((self.row, self.col), self.current_path) {
             self.change_goal();
         }
@@ -181,6 +190,9 @@ impl Minion {
         new_animations: &mut Vec<Box<dyn AnimationTrait>>,
         pending_effects: &mut Vec<(Target, GameplayEffect)>,
     ) {
+        if self.is_stunned() {
+            return;
+        }
         if let Some(enemy) = self.get_potential_target(board) {
             match &enemy.content {
                 Some(content) => match content {
@@ -189,7 +201,8 @@ impl Minion {
                             match attack {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
-                                    pending_effects.push((Target::Tower(*id), GameplayEffect::Damage(damage)))
+                                    pending_effects
+                                        .push((Target::Tower(*id), GameplayEffect::Damage(damage)))
                                 }
                                 _ => {}
                             }
@@ -200,7 +213,8 @@ impl Minion {
                             match attack {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
-                                    pending_effects.push((Target::Minion(*id), GameplayEffect::Damage(damage)))
+                                    pending_effects
+                                        .push((Target::Minion(*id), GameplayEffect::Damage(damage)))
                                 }
                                 _ => {}
                             }
@@ -211,7 +225,10 @@ impl Minion {
                             match attack {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
-                                    pending_effects.push((Target::Champion(*id), GameplayEffect::Damage(damage)))
+                                    pending_effects.push((
+                                        Target::Champion(*id),
+                                        GameplayEffect::Damage(damage),
+                                    ))
                                 }
                                 _ => {}
                             }
@@ -272,7 +289,7 @@ impl Fighter for Minion {
             GameplayEffect::Damage(damage) => {
                 let reduced_damage = reduced_damage(damage, self.stats.armor);
                 self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
-            },
+            }
             GameplayEffect::Stun(damage, ..) => {
                 let reduced_damage = reduced_damage(damage, self.stats.armor);
                 self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
@@ -334,6 +351,25 @@ impl Fighter for Minion {
                 dist1.cmp(&dist2)
             })
             .map(|(_, _, &cell)| cell)
+    }
+}
+
+impl HasBuff for Minion {
+    fn is_stunned(&self) -> bool {
+        self.stun_timer
+            .map_or(false, |timer_end| Instant::now() < timer_end)
+    }
+
+    fn set_stunned(&mut self, stunned: bool, duration: Option<Duration>) {
+        if stunned {
+            if let Some(dur) = duration {
+                self.stun_timer = Some(Instant::now() + dur);
+            } else {
+                self.stun_timer = Some(Instant::now() + Duration::from_secs(1));
+            }
+        } else {
+            self.stun_timer = None;
+        }
     }
 }
 
@@ -1041,7 +1077,6 @@ mod tests {
         let mut minion = Minion::new(minion_id, minion_team, Lane::Mid, minion_stats);
         minion.row = minion_row;
         minion.col = minion_col;
-
 
         // Case 1: Empty board
         let target_none = minion.get_potential_target(&board);

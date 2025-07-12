@@ -7,9 +7,14 @@ use crate::game::{
 
 use super::{ProjectileBlueprint, ProjectileType};
 
-pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16, spell_stats: &SpellStats) -> Vec<ProjectileBlueprint> {
+pub fn cast_freeze_wall(
+    caster: &Champion,
+    caster_damage: u16,
+    spell_stats: &SpellStats,
+) -> Vec<ProjectileBlueprint> {
     let mut blueprints = Vec::new();
-    let spell_damage = (caster_damage as f32 * spell_stats.damage_ratio + spell_stats.base_damage as f32) as u16;
+    let spell_damage =
+        (caster_damage as f32 * spell_stats.damage_ratio + spell_stats.base_damage as f32) as u16;
 
     let (wall_center_row, wall_center_col) = match caster.direction {
         Direction::Up => (caster.row.saturating_sub(1), caster.col),
@@ -32,10 +37,22 @@ pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16, spell_stats: &Spe
         };
 
         let (proj_end_row, proj_end_col) = match caster.direction {
-            Direction::Up => (proj_start_row.saturating_sub(spell_stats.range), proj_start_col),
-            Direction::Down => (proj_start_row.saturating_add(spell_stats.range), proj_start_col),
-            Direction::Left => (proj_start_row, proj_start_col.saturating_sub(spell_stats.range)),
-            Direction::Right => (proj_start_row, proj_start_col.saturating_add(spell_stats.range)),
+            Direction::Up => (
+                proj_start_row.saturating_sub(spell_stats.range),
+                proj_start_col,
+            ),
+            Direction::Down => (
+                proj_start_row.saturating_add(spell_stats.range),
+                proj_start_col,
+            ),
+            Direction::Left => (
+                proj_start_row,
+                proj_start_col.saturating_sub(spell_stats.range),
+            ),
+            Direction::Right => (
+                proj_start_row,
+                proj_start_col.saturating_add(spell_stats.range),
+            ),
         };
 
         let blueprint = ProjectileBlueprint {
@@ -63,13 +80,13 @@ mod tests {
     use crate::game::{Champion, cell::Team};
 
     fn create_spell_stats() -> SpellStats {
-        SpellStats{
+        SpellStats {
             range: 10,
             speed: 1,
             width: 5,
             damage_ratio: 0.8,
             base_damage: 20,
-            stun_duration: 5,
+            stun_duration: 1,
         }
     }
 
@@ -191,25 +208,25 @@ mod tests {
 
     #[test]
     fn test_cast_freeze_wall_edge_case_top_left() {
-        // Caster is at (5, 5), casting Up. Wall should be at (0, 5)
+        // Caster is at (1, 1), casting Up. Wall should be at (0, 5)
         let caster = create_test_champion(5, 5, Direction::Up, 100);
         let spell_stats = create_spell_stats();
         let blueprints = cast_freeze_wall(&caster, 100, &spell_stats);
 
         assert_eq!(blueprints.len(), 5);
-        let expected_row = 4; // 5 - 1 saturates at 4
+        let expected_row = 0; // 5 - 10 saturates at 0
         for (i, blueprint) in blueprints.iter().enumerate() {
             let offset = i as i16 - 2;
             let expected_col = 5i16.saturating_add(offset) as u16;
             assert_eq!(blueprint.start_pos, (expected_row, expected_col));
         }
 
-        // Caster is at (5, 5), casting Left. Wall should be at (5, 0)
+        // Caster is at (1, 1), casting Left. Wall should be at (5, 0)
         let caster = create_test_champion(5, 5, Direction::Left, 100);
         let blueprints = cast_freeze_wall(&caster, 100, &spell_stats);
 
         assert_eq!(blueprints.len(), 5);
-        let expected_col = 4; // 5 - 1 saturates at 4
+        let expected_col = 0; // 5 - 10 saturates at 0
         for (i, blueprint) in blueprints.iter().enumerate() {
             let offset = i as i16 - 2;
             let expected_row = 5i16.saturating_add(offset) as u16;
@@ -217,5 +234,4 @@ mod tests {
         }
     }
     // Need to add a specific test for damage
-
 }

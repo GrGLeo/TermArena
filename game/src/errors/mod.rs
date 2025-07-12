@@ -16,4 +16,6 @@ pub enum GameError {
     InvalidAnimation,
     #[error("Error generating ID")]
     GenerateIdError,
+    #[error("Entity is stunned")]
+    IsStunned,
 }

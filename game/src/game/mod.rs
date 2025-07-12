@@ -1,6 +1,7 @@
 pub mod algorithms;
 pub mod animation;
 pub mod board;
+pub mod buffs;
 pub mod cell;
 pub mod entities;
 pub mod minion_manager;
@@ -11,6 +12,7 @@ use crate::config::GameConfig;
 use crate::packet::board_packet::BoardPacket;
 use animation::{AnimationCommand, AnimationTrait};
 pub use board::Board;
+use buffs::Buff;
 use bytes::BytesMut;
 use cell::Team;
 pub use cell::{BaseTerrain, Cell, CellContent, MinionId, PlayerId, TowerId};
@@ -27,6 +29,7 @@ use tokio::sync::mpsc;
 
 use std::{
     collections::HashMap,
+    mem::take,
     time::{Duration, Instant},
     usize, vec,
 };
@@ -241,6 +244,36 @@ impl GameManager {
         let mut pending_effects: Vec<(Target, GameplayEffect)> = Vec::new();
 
         // --- Game Logic ---
+        // Buff checks on all entities
+        // Champions
+        for (_, champ) in self.champions.iter_mut() {
+            let current_buff = take(&mut champ.active_buffs);
+            let mut kept_buff: HashMap<String, Box<dyn Buff>> = HashMap::new();
+            for (id, mut buff) in current_buff.into_iter() {
+                if buff.on_tick(champ) {
+                    buff.on_remove(champ);
+                } else {
+                    kept_buff.insert(id, buff);
+                }
+            }
+            champ.active_buffs = kept_buff;
+        }
+
+        // Minions
+        for (_, minion) in self.minion_manager.minions.iter_mut() {
+            let current_buff = take(&mut minion.active_buffs);
+            let mut kept_buff: HashMap<String, Box<dyn Buff>> = HashMap::new();
+            for (id, mut buff) in current_buff.into_iter() {
+                if buff.on_tick(minion) {
+                    buff.on_remove(minion);
+                } else {
+                    kept_buff.insert(id, buff);
+                }
+            }
+            minion.active_buffs = kept_buff;
+        }
+
+        // --- Turn ---
         // Player turn
         for (player_id, champ) in &mut self.champions {
             // 0. Check death and replace
@@ -252,7 +285,9 @@ impl GameManager {
             }
             // 1. Iterate through player action
             if let Some(action) = self.player_action.get(&player_id) {
-                if let Err(e) = champ.take_action(action, &mut self.board, &mut self.projectile_manager) {
+                if let Err(e) =
+                    champ.take_action(action, &mut self.board, &mut self.projectile_manager)
+                {
                     println!("Error on player action: {}", e);
                 }
             }
@@ -268,7 +303,10 @@ impl GameManager {
                                     match attack {
                                         AttackAction::Melee { damage, animation } => {
                                             new_animations.push(animation);
-                                            pending_effects.push((Target::Tower(*id), GameplayEffect::Damage(damage)))
+                                            pending_effects.push((
+                                                Target::Tower(*id),
+                                                GameplayEffect::Damage(damage),
+                                            ))
                                         }
                                         _ => {}
                                     }
@@ -279,7 +317,10 @@ impl GameManager {
                                     match attack {
                                         AttackAction::Melee { damage, animation } => {
                                             new_animations.push(animation);
-                                            pending_effects.push((Target::Minion(*id), GameplayEffect::Damage(damage)))
+                                            pending_effects.push((
+                                                Target::Minion(*id),
+                                                GameplayEffect::Damage(damage),
+                                            ))
                                         }
                                         _ => {}
                                     }
@@ -290,7 +331,10 @@ impl GameManager {
                                     match attack {
                                         AttackAction::Melee { damage, animation } => {
                                             new_animations.push(animation);
-                                            pending_effects.push((Target::Champion(*id), GameplayEffect::Damage(damage)))
+                                            pending_effects.push((
+                                                Target::Champion(*id),
+                                                GameplayEffect::Damage(damage),
+                                            ))
                                         }
                                         _ => {}
                                     }
@@ -301,7 +345,10 @@ impl GameManager {
                                     match attack {
                                         AttackAction::Melee { damage, animation } => {
                                             new_animations.push(animation);
-                                            pending_effects.push((Target::Base(*team), GameplayEffect::Damage(damage)))
+                                            pending_effects.push((
+                                                Target::Base(*team),
+                                                GameplayEffect::Damage(damage),
+                                            ))
                                         }
                                         _ => {}
                                     }
@@ -338,14 +385,14 @@ impl GameManager {
         // 2. attack closest enemy
         self.tower_turn();
 
-        let (projectile_damage, projectile_commands) =
+        let (projectile_effects, projectile_commands) =
             self.projectile_manager.update_and_check_collisions(
                 &self.board,
                 &self.champions,
                 &self.minion_manager.minions,
                 &self.towers,
             );
-        pending_effects.extend(projectile_damage);
+        pending_effects.extend(projectile_effects);
         animation_commands_executable.extend(projectile_commands);
 
         // 3. Apply dealt damages

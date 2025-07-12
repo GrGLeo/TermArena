@@ -4,8 +4,8 @@ use crate::game::Cell;
 use crate::game::cell::Team;
 use crate::game::entities::{Fighter, Stats};
 
-use super::projectile::GameplayEffect;
 use super::AttackAction;
+use super::projectile::GameplayEffect;
 
 pub struct Base {
     pub team: Team,
@@ -34,8 +34,12 @@ impl Base {
 impl Fighter for Base {
     fn take_effect(&mut self, effect: GameplayEffect) {
         match effect {
-            GameplayEffect::Damage(damage) => self.stats.health = self.stats.health.saturating_sub(damage),
-            GameplayEffect::Stun(damage, .. ) => self.stats.health = self.stats.health.saturating_sub(damage),
+            GameplayEffect::Damage(damage) => {
+                self.stats.health = self.stats.health.saturating_sub(damage)
+            }
+            GameplayEffect::Stun(damage, ..) => {
+                self.stats.health = self.stats.health.saturating_sub(damage)
+            }
         }
     }
 

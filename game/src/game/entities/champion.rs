@@ -5,6 +5,8 @@ use std::usize;
 use crate::errors::GameError;
 use crate::game::Cell;
 use crate::game::animation::melee::MeleeAnimation;
+use crate::game::buffs::stun_buff::StunBuff;
+use crate::game::buffs::{Buff, HasBuff};
 use crate::game::cell::{CellContent, Team};
 use crate::game::projectile_manager::ProjectileManager;
 use crate::game::spell::freeze_wall::cast_freeze_wall;
@@ -12,7 +14,7 @@ use crate::game::{Board, cell::PlayerId};
 
 use super::projectile::GameplayEffect;
 use super::{AttackAction, Fighter, Stats, reduced_damage};
-use crate::config::{ChampionStats, GameConfig, SpellStats};
+use crate::config::{ChampionStats, SpellStats};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Direction {
@@ -42,9 +44,12 @@ pub struct Champion {
     pub stats: Stats,
     champion_stats: ChampionStats,
     pub spells: HashMap<String, SpellStats>,
+    pub active_buffs: HashMap<String, Box<dyn Buff>>,
     death_counter: u8,
     death_timer: Instant,
     last_attacked: Instant,
+    stun_timer: Option<Instant>,
+
     pub row: u16,
     pub col: u16,
     pub direction: Direction,
@@ -77,6 +82,8 @@ impl Champion {
             death_counter: 0,
             death_timer: Instant::now(),
             last_attacked: Instant::now(),
+            stun_timer: None,
+            active_buffs: HashMap::new(),
             team_id,
             row,
             col,
@@ -118,6 +125,10 @@ impl Champion {
         board: &mut Board,
         projectile_manager: &mut ProjectileManager,
     ) -> Result<(), GameError> {
+        // Check if stunned before taking any action
+        if self.is_stunned() {
+            return Err(GameError::IsStunned);
+        }
         let res = match action {
             Action::MoveUp => {
                 self.direction = Direction::Up;
@@ -137,7 +148,8 @@ impl Champion {
             }
             Action::Action1 => {
                 if let Some(spell_stats) = self.spells.get("freeze_wall") {
-                    for blueprint in cast_freeze_wall(&self, self.stats.attack_damage, spell_stats) {
+                    for blueprint in cast_freeze_wall(&self, self.stats.attack_damage, spell_stats)
+                    {
                         projectile_manager.create_from_blueprint(blueprint);
                     }
                 }
@@ -234,8 +246,12 @@ impl Fighter for Champion {
                     let timer = ((self.death_counter as f32).sqrt() * 10.) as u64;
                     self.death_timer = Instant::now() + Duration::from_secs(timer);
                 }
-            },
-            GameplayEffect::Stun(damage, .. ) => {
+            }
+            GameplayEffect::Stun(damage, duration) => {
+                let mut stun_buff = StunBuff::new(duration as u64);
+                stun_buff.on_apply(self);
+                self.active_buffs
+                    .insert(stun_buff.id().to_string(), Box::new(stun_buff));
                 let reduced_damage = reduced_damage(damage, self.stats.armor);
                 self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                 // Check if champion get killed
@@ -249,6 +265,10 @@ impl Fighter for Champion {
     }
 
     fn can_attack(&mut self) -> Option<AttackAction> {
+        // Cannot attack while stun
+        if self.is_stunned() {
+            return None;
+        }
         if self.last_attacked + self.stats.attack_speed < Instant::now() {
             self.last_attacked = Instant::now();
             let animation = MeleeAnimation::new(self.player_id);
@@ -303,6 +323,25 @@ impl Fighter for Champion {
                 dist1.cmp(&dist2)
             })
             .map(|(_, _, &cell)| cell)
+    }
+}
+
+impl HasBuff for Champion {
+    fn is_stunned(&self) -> bool {
+        self.stun_timer
+            .map_or(false, |timer_end| Instant::now() < timer_end)
+    }
+
+    fn set_stunned(&mut self, stunned: bool, duration: Option<Duration>) {
+        if stunned {
+            if let Some(dur) = duration {
+                self.stun_timer = Some(Instant::now() + dur);
+            } else {
+                self.stun_timer = Some(Instant::now() + Duration::from_secs(1));
+            }
+        } else {
+            self.stun_timer = None;
+        }
     }
 }
 
@@ -388,7 +427,8 @@ mod tests {
         // Test taking enough damage to be defeated
         let champion_stats_defeat = create_default_champion_stats();
         let spell_stats = HashMap::new();
-        let mut champion_to_defeat = Champion::new(2, Team::Red, 10, 20, champion_stats_defeat, spell_stats);
+        let mut champion_to_defeat =
+            Champion::new(2, Team::Red, 10, 20, champion_stats_defeat, spell_stats);
         let lethal_damage = 250; // Damage exceeding health + armor
 
         // Use a specific instant for death timer check
@@ -420,8 +460,14 @@ mod tests {
         // Test taking damage when already at 0 health (should not go below 0)
         let champion_stats_already_defeated = create_default_champion_stats();
         let spell_stats = HashMap::new();
-        let mut champion_already_defeated =
-            Champion::new(3, Team::Red, 10, 20, champion_stats_already_defeated, spell_stats);
+        let mut champion_already_defeated = Champion::new(
+            3,
+            Team::Red,
+            10,
+            20,
+            champion_stats_already_defeated,
+            spell_stats,
+        );
         champion_already_defeated.stats.health = 0;
         let additional_damage = 10;
 
@@ -720,7 +766,7 @@ mod tests {
         let mut board = create_dummy_board(5, 5);
         let mut pm = ProjectileManager::new();
         let champion_stats = create_default_champion_stats();
-        let spell_stat = SpellStats{
+        let spell_stat = SpellStats {
             range: 10,
             width: 5,
             speed: 1,
@@ -741,7 +787,6 @@ mod tests {
         // Test Action1 correctly created 5 projectiles
         assert_eq!(pm.projectiles.len(), 5);
     }
-
 
     #[test]
     fn test_take_action_other_actions() {
@@ -852,7 +897,7 @@ mod tests {
             champion_row,
             champion_col,
             champion_stats,
-            spell_stats
+            spell_stats,
         );
         board.place_cell(
             CellContent::Champion(player_id, champion_team),
@@ -995,7 +1040,7 @@ mod tests {
             champion_row,
             champion_col,
             champion_stats,
-            spell_stats
+            spell_stats,
         );
         board.place_cell(
             CellContent::Champion(player_id, champion_team),

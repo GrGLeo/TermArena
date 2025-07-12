@@ -1,6 +1,9 @@
 use std::fmt::Debug;
 
-use super::{cell::{CellAnimation, Team}, PlayerId};
+use super::{
+    PlayerId,
+    cell::{CellAnimation, Team},
+};
 
 pub mod melee;
 pub mod tower;

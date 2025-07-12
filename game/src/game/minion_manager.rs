@@ -8,9 +8,14 @@ use strum::IntoEnumIterator;
 use crate::errors::GameError;
 
 use super::{
-    animation::AnimationTrait, cell::Team, entities::{
-        minion::{Lane, Minion}, projectile::GameplayEffect, Target
-    }, Board, CellContent, MinionId
+    Board, CellContent, MinionId,
+    animation::AnimationTrait,
+    cell::Team,
+    entities::{
+        Target,
+        minion::{Lane, Minion},
+        projectile::GameplayEffect,
+    },
 };
 use crate::config::MinionStats;
 
