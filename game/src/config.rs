@@ -53,6 +53,7 @@ pub struct SpellStats {
     pub width: u8,
     pub damage_ratio: f32,
     pub base_damage: u16,
+    pub stun_duration: u8,
 }
 
 #[derive(Debug, Deserialize, Clone)]

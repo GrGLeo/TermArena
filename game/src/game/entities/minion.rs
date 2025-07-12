@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-use super::{AttackAction, Fighter, Stats, Target, reduced_damage};
+use super::{projectile::GameplayEffect, reduced_damage, AttackAction, Fighter, Stats, Target};
 use crate::config::MinionStats;
 
 type MinionPath = (u16, u16);
@@ -179,7 +179,7 @@ impl Minion {
         &mut self,
         board: &mut Board,
         new_animations: &mut Vec<Box<dyn AnimationTrait>>,
-        pending_damages: &mut Vec<(Target, u16)>,
+        pending_effects: &mut Vec<(Target, GameplayEffect)>,
     ) {
         if let Some(enemy) = self.get_potential_target(board) {
             match &enemy.content {
@@ -189,7 +189,7 @@ impl Minion {
                             match attack {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
-                                    pending_damages.push((Target::Tower(*id), damage))
+                                    pending_effects.push((Target::Tower(*id), GameplayEffect::Damage(damage)))
                                 }
                                 _ => {}
                             }
@@ -200,7 +200,7 @@ impl Minion {
                             match attack {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
-                                    pending_damages.push((Target::Minion(*id), damage))
+                                    pending_effects.push((Target::Minion(*id), GameplayEffect::Damage(damage)))
                                 }
                                 _ => {}
                             }
@@ -211,7 +211,7 @@ impl Minion {
                             match attack {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
-                                    pending_damages.push((Target::Champion(*id), damage))
+                                    pending_effects.push((Target::Champion(*id), GameplayEffect::Damage(damage)))
                                 }
                                 _ => {}
                             }
@@ -267,9 +267,17 @@ impl Minion {
 }
 
 impl Fighter for Minion {
-    fn take_damage(&mut self, damage: u16) {
-        let reduced_damage = reduced_damage(damage, self.stats.armor);
-        self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+    fn take_effect(&mut self, effect: GameplayEffect) {
+        match effect {
+            GameplayEffect::Damage(damage) => {
+                let reduced_damage = reduced_damage(damage, self.stats.armor);
+                self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+            },
+            GameplayEffect::Stun(damage, ..) => {
+                let reduced_damage = reduced_damage(damage, self.stats.armor);
+                self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+            }
+        }
     }
 
     fn can_attack(&mut self) -> Option<AttackAction> {
@@ -459,7 +467,6 @@ mod tests {
         );
 
         // Test moving down (d_row = 1, d_col = 0) - Reset position first
-        let minion_stats = create_default_minion_stats();
         minion.row = initial_row;
         minion.col = initial_col;
         board.place_cell(
@@ -510,7 +517,6 @@ mod tests {
         // Add tests for other directions (left, up, and diagonals if minion can move diagonally) similarly
         // Based on the code, it handles d_row and d_col independently, so it supports diagonal movement.
         // Test moving up-left (d_row = -1, d_col = -1) - Reset position first
-        let minion_stats = create_default_minion_stats();
         minion.row = initial_row;
         minion.col = initial_col;
         board.place_cell(
@@ -1036,7 +1042,6 @@ mod tests {
         minion.row = minion_row;
         minion.col = minion_col;
 
-        let scan_range = (10, 10); // 10x10 range
 
         // Case 1: Empty board
         let target_none = minion.get_potential_target(&board);
@@ -1086,7 +1091,6 @@ mod tests {
         minion.row = minion_row;
         minion.col = minion_col;
 
-        let scan_range = (10, 10); // 10x10 range
         let enemy_team = Team::Red; // Opposite team
 
         // Place an enemy champion in range
@@ -1186,7 +1190,6 @@ mod tests {
         minion.row = minion_row;
         minion.col = minion_col;
 
-        let scan_range = (10, 10); // 10x10 range centered at (25,25)
         let enemy_team = Team::Red; // Opposite team
 
         // Place multiple enemies at different distances within the 10x10 range

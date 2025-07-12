@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use projectile::GameplayEffect;
+
 use super::{animation::AnimationTrait, cell::CellAnimation, Board, Cell, MinionId, PlayerId, TowerId};
 use crate::game::cell::Team;
 
@@ -39,7 +41,7 @@ pub struct Stats {
 }
 
 pub trait Fighter {
-    fn take_damage(&mut self, damage: u16);
+    fn take_effect(&mut self, effect: GameplayEffect);
     fn can_attack(&mut self) -> Option<AttackAction>;
     fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell>;
 }

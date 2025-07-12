@@ -8,13 +8,9 @@ use strum::IntoEnumIterator;
 use crate::errors::GameError;
 
 use super::{
-    Board, CellContent, MinionId,
-    animation::AnimationTrait,
-    cell::Team,
-    entities::{
-        Target,
-        minion::{Lane, Minion},
-    },
+    animation::AnimationTrait, cell::Team, entities::{
+        minion::{Lane, Minion}, projectile::GameplayEffect, Target
+    }, Board, CellContent, MinionId
 };
 use crate::config::MinionStats;
 
@@ -163,10 +159,10 @@ impl MinionManager {
         &mut self,
         mut board: &mut Board,
         new_animations: &mut Vec<Box<dyn AnimationTrait>>,
-        pending_damages: &mut Vec<(Target, u16)>,
+        pending_effects: &mut Vec<(Target, GameplayEffect)>,
     ) {
         self.minions.iter_mut().for_each(|(_, minion)| {
-            minion.attack_phase(&mut board, new_animations, pending_damages);
+            minion.attack_phase(&mut board, new_animations, pending_effects);
         });
     }
 }

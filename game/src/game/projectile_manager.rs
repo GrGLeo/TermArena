@@ -109,9 +109,9 @@ impl ProjectileManager {
         champions: &HashMap<PlayerId, Champion>,
         minions: &HashMap<MinionId, Minion>,
         towers: &HashMap<TowerId, Tower>,
-    ) -> (Vec<(Target, u16)>, Vec<AnimationCommand>) {
+    ) -> (Vec<(Target, GameplayEffect)>, Vec<AnimationCommand>) {
         let mut projectiles_to_remove: Vec<u64> = Vec::new();
-        let mut pending_damages: Vec<(Target, u16)> = Vec::new();
+        let mut pending_effects: Vec<(Target, GameplayEffect)> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
 
         for (id, projectile) in self.projectiles.iter_mut() {
@@ -170,31 +170,31 @@ impl ProjectileManager {
                     if let Some(cell) = board.get_cell(row as usize, col as usize) {
                         match cell.content {
                             Some(CellContent::Champion(target_id, target_team)) => {
-                                if projectile.team_id != target_team {
-                                    // for now we only have one GameplayEffect
-                                    if let GameplayEffect::Damage(amount) = projectile.payload {
-                                        pending_damages.push((Target::Champion(target_id), amount));
-                                        hit_target = true;
-                                    }
-                                }
+                                hit_target = add_damages(
+                                    &mut pending_effects,
+                                    Target::Champion(target_id),
+                                    &projectile.payload,
+                                    projectile.team_id,
+                                    target_team,
+                                )
                             }
                             Some(CellContent::Minion(target_id, target_team)) => {
-                                if projectile.team_id != target_team {
-                                    // for now we only have one GameplayEffect
-                                    if let GameplayEffect::Damage(amount) = projectile.payload {
-                                        pending_damages.push((Target::Minion(target_id), amount));
-                                        hit_target = true;
-                                    }
-                                }
+                                hit_target = add_damages(
+                                    &mut pending_effects,
+                                    Target::Minion(target_id),
+                                    &projectile.payload,
+                                    projectile.team_id,
+                                    target_team,
+                                )
                             }
                             Some(CellContent::Tower(target_id, target_team)) => {
-                                if projectile.team_id != target_team {
-                                    // for now we only have one GameplayEffect
-                                    if let GameplayEffect::Damage(amount) = projectile.payload {
-                                        pending_damages.push((Target::Tower(target_id), amount));
-                                        hit_target = true;
-                                    }
-                                }
+                                hit_target = add_damages(
+                                    &mut pending_effects,
+                                    Target::Tower(target_id),
+                                    &projectile.payload,
+                                    projectile.team_id,
+                                    target_team,
+                                )
                             }
                             _ => {}
                         }
@@ -219,8 +219,30 @@ impl ProjectileManager {
             self.projectiles.remove(&id);
         }
 
-        (pending_damages, animation_commands_executable)
+        (pending_effects, animation_commands_executable)
     }
+}
+
+fn add_damages(
+    pending_damages: &mut Vec<(Target, GameplayEffect)>,
+    target: Target,
+    payload: &GameplayEffect,
+    team: Team,
+    target_team: Team,
+) -> bool {
+    if team != target_team {
+        match payload {
+            GameplayEffect::Damage(..) => {
+                pending_damages.push((target, *payload));
+                return true;
+            }
+            GameplayEffect::Stun(..) => {
+                pending_damages.push((target, *payload));
+                return true;
+            }
+        }
+    }
+    false
 }
 
 #[cfg(test)]
@@ -296,11 +318,11 @@ mod tests {
         let projectile = manager.projectiles.get(&0).unwrap();
         assert!(matches!(projectile.pathing, PathingLogic::LockOn { .. }));
     }
-    
+
     #[test]
     fn test_create_lockon_from_blueprint() {
         let mut manager = ProjectileManager::new();
-        let blueprint = ProjectileBlueprint{
+        let blueprint = ProjectileBlueprint {
             projectile_type: ProjectileType::LockOn,
             owner_id: 101,
             team_id: Team::Blue,
@@ -320,7 +342,7 @@ mod tests {
     #[test]
     fn test_create_skillshot_from_blueprint() {
         let mut manager = ProjectileManager::new();
-        let blueprint = ProjectileBlueprint{
+        let blueprint = ProjectileBlueprint {
             projectile_type: ProjectileType::SkillShot,
             owner_id: 101,
             team_id: Team::Blue,
@@ -415,7 +437,7 @@ mod tests {
         let (damages, _) =
             manager.update_and_check_collisions(&board, &champions, &minions, &towers);
         assert_eq!(damages.len(), 1);
-        assert!(matches!(damages[0], (Target::Champion(id), 50) if id == target_id));
+        assert!(matches!(damages[0], (Target::Champion(id), GameplayEffect::Damage(50)) if id == target_id));
         assert!(manager.projectiles.is_empty());
     }
 
@@ -460,7 +482,7 @@ mod tests {
             manager.update_and_check_collisions(&board, &champions, &minions, &towers);
 
         assert_eq!(damages.len(), 1);
-        assert!(matches!(damages[0], (Target::Tower(id), 50) if id == target_id));
+        assert!(matches!(damages[0], (Target::Tower(id), GameplayEffect::Damage(50)) if id == target_id));
         assert!(manager.projectiles.is_empty());
     }
 
@@ -473,7 +495,14 @@ mod tests {
         let towers = HashMap::new();
 
         let target_id = 202;
-        let target_champion = Champion::new(target_id, Team::Red, 10, 13, mock_champion_stats(), HashMap::new());
+        let target_champion = Champion::new(
+            target_id,
+            Team::Red,
+            10,
+            13,
+            mock_champion_stats(),
+            HashMap::new(),
+        );
         champions.insert(target_id, target_champion);
 
         manager.create_homing_projectile(

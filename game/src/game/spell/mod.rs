@@ -1,6 +1,5 @@
 use super::{cell::{CellAnimation, Team}, entities::{projectile::GameplayEffect, Target}};
 
-pub mod aoe;
 pub mod freeze_wall;
 
 pub struct ProjectileBlueprint {

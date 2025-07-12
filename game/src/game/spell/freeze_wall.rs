@@ -46,7 +46,7 @@ pub fn cast_freeze_wall(caster: &Champion, caster_damage: u16, spell_stats: &Spe
             start_pos: (proj_start_row, proj_start_col),
             end_pos: (proj_end_row, proj_end_col),
             speed: spell_stats.speed,
-            payload: GameplayEffect::Damage(spell_damage),
+            payload: GameplayEffect::Stun(spell_damage, spell_stats.stun_duration),
             visual_cell_type: CellAnimation::FreezeWall,
         };
         blueprints.push(blueprint)
@@ -69,6 +69,7 @@ mod tests {
             width: 5,
             damage_ratio: 0.8,
             base_damage: 20,
+            stun_duration: 5,
         }
     }
 

@@ -6,9 +6,15 @@ use crate::game::{
 
 use super::Target;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
+/// Represents the various effects a projectile can apply upon impact.
 pub enum GameplayEffect {
+    /// Applies a specified amount of damage to the target.
     Damage(u16),
+    /// Applies damage and stuns the target for a given duration.
+    ///
+    /// The tuple contains: (damage_amount, stun_duration_in_ticks).
+    Stun(u16, u8),
 }
 
 #[derive(Debug, Clone)]

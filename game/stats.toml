@@ -39,3 +39,4 @@ speed = 2
 width = 5
 damage_ratio = 0.8
 base_damage = 20
+stun_duration = 5 # In game tick

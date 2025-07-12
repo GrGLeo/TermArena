@@ -4,6 +4,7 @@ use crate::game::Cell;
 use crate::game::cell::Team;
 use crate::game::entities::{Fighter, Stats};
 
+use super::projectile::GameplayEffect;
 use super::AttackAction;
 
 pub struct Base {
@@ -31,8 +32,11 @@ impl Base {
 }
 
 impl Fighter for Base {
-    fn take_damage(&mut self, damage: u16) {
-        self.stats.health = self.stats.health.saturating_sub(damage);
+    fn take_effect(&mut self, effect: GameplayEffect) {
+        match effect {
+            GameplayEffect::Damage(damage) => self.stats.health = self.stats.health.saturating_sub(damage),
+            GameplayEffect::Stun(damage, .. ) => self.stats.health = self.stats.health.saturating_sub(damage),
+        }
     }
 
     fn can_attack(&mut self) -> Option<AttackAction> {
@@ -51,6 +55,7 @@ mod tests {
     use super::*;
     use crate::config::BaseStats;
     use crate::game::cell::Team;
+    use crate::game::entities::projectile::GameplayEffect;
 
     fn create_default_base_stats() -> BaseStats {
         BaseStats {
@@ -72,13 +77,13 @@ mod tests {
     fn test_take_damage() {
         let base_stats = create_default_base_stats();
         let mut base = Base::new(Team::Red, (10, 10), base_stats);
-        base.take_damage(100);
+        base.take_effect(GameplayEffect::Damage(100));
         assert_eq!(base.stats.health, 4900);
 
-        base.take_damage(5000);
+        base.take_effect(GameplayEffect::Damage(5000));
         assert_eq!(base.stats.health, 0);
 
-        base.take_damage(100);
+        base.take_effect(GameplayEffect::Damage(100));
         assert_eq!(base.stats.health, 0);
     }
 }

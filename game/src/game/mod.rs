@@ -238,7 +238,7 @@ impl GameManager {
         let mut updates = HashMap::new();
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
-        let mut pending_damages: Vec<(Target, u16)> = Vec::new();
+        let mut pending_effects: Vec<(Target, GameplayEffect)> = Vec::new();
 
         // --- Game Logic ---
         // Player turn
@@ -268,7 +268,7 @@ impl GameManager {
                                     match attack {
                                         AttackAction::Melee { damage, animation } => {
                                             new_animations.push(animation);
-                                            pending_damages.push((Target::Tower(*id), damage))
+                                            pending_effects.push((Target::Tower(*id), GameplayEffect::Damage(damage)))
                                         }
                                         _ => {}
                                     }
@@ -279,7 +279,7 @@ impl GameManager {
                                     match attack {
                                         AttackAction::Melee { damage, animation } => {
                                             new_animations.push(animation);
-                                            pending_damages.push((Target::Minion(*id), damage))
+                                            pending_effects.push((Target::Minion(*id), GameplayEffect::Damage(damage)))
                                         }
                                         _ => {}
                                     }
@@ -290,7 +290,7 @@ impl GameManager {
                                     match attack {
                                         AttackAction::Melee { damage, animation } => {
                                             new_animations.push(animation);
-                                            pending_damages.push((Target::Champion(*id), damage))
+                                            pending_effects.push((Target::Champion(*id), GameplayEffect::Damage(damage)))
                                         }
                                         _ => {}
                                     }
@@ -301,7 +301,7 @@ impl GameManager {
                                     match attack {
                                         AttackAction::Melee { damage, animation } => {
                                             new_animations.push(animation);
-                                            pending_damages.push((Target::Base(*team), damage))
+                                            pending_effects.push((Target::Base(*team), GameplayEffect::Damage(damage)))
                                         }
                                         _ => {}
                                     }
@@ -330,7 +330,7 @@ impl GameManager {
         self.minion_manager.manage_minions_attack(
             &mut self.board,
             &mut new_animations,
-            &mut pending_damages,
+            &mut pending_effects,
         );
 
         // Tower turn
@@ -345,16 +345,16 @@ impl GameManager {
                 &self.minion_manager.minions,
                 &self.towers,
             );
-        pending_damages.extend(projectile_damage);
+        pending_effects.extend(projectile_damage);
         animation_commands_executable.extend(projectile_commands);
 
         // 3. Apply dealt damages
-        pending_damages
+        pending_effects
             .into_iter()
-            .for_each(|(target, damage)| match target {
+            .for_each(|(target, effect)| match target {
                 Target::Tower(id) => {
                     if let Some(tower) = self.towers.get_mut(&id) {
-                        tower.take_damage(damage);
+                        tower.take_effect(effect);
                         if tower.is_destroyed() {
                             tower.destroy_tower(&mut self.board);
                             self.towers.remove(&id);
@@ -363,18 +363,18 @@ impl GameManager {
                 }
                 Target::Minion(id) => {
                     if let Some(minion) = self.minion_manager.minions.get_mut(&id) {
-                        minion.take_damage(damage);
+                        minion.take_effect(effect);
                         self.handle_minion_death(&id);
                     }
                 }
                 Target::Champion(id) => {
                     if let Some(champ) = self.champions.get_mut(&id) {
-                        champ.take_damage(damage);
+                        champ.take_effect(effect);
                     }
                 }
                 Target::Base(team) => match team {
-                    Team::Red => self.red_base.take_damage(damage),
-                    Team::Blue => self.blue_base.take_damage(damage),
+                    Team::Red => self.red_base.take_effect(effect),
+                    Team::Blue => self.blue_base.take_effect(effect),
                 },
             });
 

@@ -10,6 +10,7 @@ use crate::game::projectile_manager::ProjectileManager;
 use crate::game::spell::freeze_wall::cast_freeze_wall;
 use crate::game::{Board, cell::PlayerId};
 
+use super::projectile::GameplayEffect;
 use super::{AttackAction, Fighter, Stats, reduced_damage};
 use crate::config::{ChampionStats, GameConfig, SpellStats};
 
@@ -222,14 +223,28 @@ impl Champion {
 }
 
 impl Fighter for Champion {
-    fn take_damage(&mut self, damage: u16) {
-        let reduced_damage = reduced_damage(damage, self.stats.armor);
-        self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
-        // Check if champion get killed
-        if self.stats.health == 0 {
-            self.death_counter += 1;
-            let timer = ((self.death_counter as f32).sqrt() * 10.) as u64;
-            self.death_timer = Instant::now() + Duration::from_secs(timer);
+    fn take_effect(&mut self, effect: GameplayEffect) {
+        match effect {
+            GameplayEffect::Damage(damage) => {
+                let reduced_damage = reduced_damage(damage, self.stats.armor);
+                self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+                // Check if champion get killed
+                if self.stats.health == 0 {
+                    self.death_counter += 1;
+                    let timer = ((self.death_counter as f32).sqrt() * 10.) as u64;
+                    self.death_timer = Instant::now() + Duration::from_secs(timer);
+                }
+            },
+            GameplayEffect::Stun(damage, .. ) => {
+                let reduced_damage = reduced_damage(damage, self.stats.armor);
+                self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+                // Check if champion get killed
+                if self.stats.health == 0 {
+                    self.death_counter += 1;
+                    let timer = ((self.death_counter as f32).sqrt() * 10.) as u64;
+                    self.death_timer = Instant::now() + Duration::from_secs(timer);
+                }
+            }
         }
     }
 
@@ -294,8 +309,6 @@ impl Fighter for Champion {
 #[cfg(test)]
 mod tests {
 
-    use rand::distr::uniform::SampleBorrow;
-
     use super::*;
     use crate::config::ChampionStats;
     use crate::game::BaseTerrain; // Assuming BaseTerrain is needed for Board creation
@@ -358,7 +371,7 @@ mod tests {
         let damage = 30;
         let armor = champion.stats.armor as u16;
 
-        champion.take_damage(damage);
+        champion.take_effect(GameplayEffect::Damage(damage));
 
         // Calculate expected health after damage reduction by armor
         let reduced_damage = reduced_damage(damage, armor);
@@ -384,7 +397,7 @@ mod tests {
         // but for now, we can at least check if it's set to *sometime in the future*
         // and that is_dead returns true immediately after taking lethal damage.
 
-        champion_to_defeat.take_damage(lethal_damage);
+        champion_to_defeat.take_effect(GameplayEffect::Damage(lethal_damage));
 
         assert_eq!(
             champion_to_defeat.stats.health, 0,
@@ -412,7 +425,7 @@ mod tests {
         champion_already_defeated.stats.health = 0;
         let additional_damage = 10;
 
-        champion_already_defeated.take_damage(additional_damage);
+        champion_already_defeated.take_effect(GameplayEffect::Damage(additional_damage));
         assert_eq!(
             champion_already_defeated.stats.health, 0,
             "Health should remain at 0 if already defeated"
@@ -713,6 +726,7 @@ mod tests {
             speed: 1,
             base_damage: 20,
             damage_ratio: 0.8,
+            stun_duration: 5,
         };
         let mut spell_stats: HashMap<String, SpellStats> = HashMap::new();
         spell_stats.insert("freeze_wall".to_string(), spell_stat);
