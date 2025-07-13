@@ -92,9 +92,12 @@ func (m SpellSelectionModel) View() string {
 	// Left Panel: List of available spells
 	left.WriteString("Choose Your Spells\n\n")
 	for i, spell := range m.Spells {
-		cursor := " "
+		selectedChar := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("205")).
+			Render("> ")
+		cursor := "  "
 		if m.FocusedIndex == i {
-			cursor = m.styles.SelectedButton.Render(">")
+			cursor = selectedChar
 		}
 
 		selected := " "
