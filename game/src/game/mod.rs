@@ -25,6 +25,7 @@ use entities::{
 };
 use minion_manager::MinionManager;
 use projectile_manager::ProjectileManager;
+use spell::{freeze_wall::FreezeWallSpell, Spell};
 use tokio::sync::mpsc;
 
 use std::{
@@ -156,6 +157,13 @@ impl GameManager {
             let player_id = self.players_count;
             // Assign Champion to player, and place it on the board
             {
+                // We get the choosen spell
+                let mut selected_spell: HashMap<u8, Box<dyn Spell>> = HashMap::new();
+                if let Some(spell_stats) = self.config.spells.get("freeze_wall") {
+                    let spell = FreezeWallSpell::new(spell_stats.clone());
+                    let spell = Box::new(spell.clone());
+                    selected_spell.insert(1, spell);
+                }
                 let row = 199;
                 let col = 0;
                 let champion = Champion::new(
@@ -164,7 +172,7 @@ impl GameManager {
                     row,
                     col,
                     self.config.champion.clone(),
-                    self.config.spells.clone(),
+                    selected_spell,
                 );
                 self.champions.insert(player_id, champion);
                 self.board.place_cell(

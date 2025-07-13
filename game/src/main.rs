@@ -174,7 +174,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Server listening  on {}", address);
 
     let config =
-        config::GameConfig::load("game/stats.toml").expect("Failed to load game configuration");
+        config::GameConfig::load("game/stats.toml", "game/spells.toml").expect("Failed to load game configuration");
     let game_manager = GameManager::new(config);
     let arc_gm = Arc::new(Mutex::new(game_manager));
     println!("GameManager created and wrapped.");

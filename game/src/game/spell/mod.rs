@@ -1,6 +1,10 @@
+use std::fmt::Debug;
+
 use super::{
+    Champion,
     cell::{CellAnimation, Team},
     entities::{Target, projectile::GameplayEffect},
+    projectile_manager::ProjectileManager,
 };
 
 pub mod freeze_wall;
@@ -20,4 +24,16 @@ pub struct ProjectileBlueprint {
 pub enum ProjectileType {
     LockOn,
     SkillShot,
+}
+
+pub trait Spell: Send + Sync + Debug + 'static {
+    fn id(&self) -> &String;
+    fn mana_cost(&self) -> &u16;
+    fn cast(
+        &mut self,
+        caster: &mut Champion,
+        caster_damage: u16,
+        projectile_manager: &mut ProjectileManager,
+    );
+    fn clone_box(&self) -> Box<dyn Spell>;
 }

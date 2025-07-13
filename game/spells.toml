@@ -1,0 +1,20 @@
+[[spell]]
+id = "freeze_wall"
+mana_cost = 20
+cooldown_secs = 10
+range = 10
+width = 5
+speed = 1
+base_damage = 10
+damage_ratio = 0.2
+stun_duration = 1
+
+[[spell]]
+id = "fireball"
+mana_cost = 10
+cooldown_secs = 4
+range = 6
+width = 1
+speed = 1
+base_damage = 5
+damage_ratio = 0.4

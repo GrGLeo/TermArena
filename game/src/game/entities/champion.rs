@@ -8,12 +8,12 @@ use crate::game::animation::melee::MeleeAnimation;
 use crate::game::buffs::{Buff, HasBuff};
 use crate::game::cell::{CellContent, Team};
 use crate::game::projectile_manager::ProjectileManager;
-use crate::game::spell::freeze_wall::cast_freeze_wall;
+use crate::game::spell::Spell;
 use crate::game::{Board, cell::PlayerId};
 
 use super::projectile::GameplayEffect;
 use super::{AttackAction, Fighter, Stats, reduced_damage};
-use crate::config::{ChampionStats, SpellStats};
+use crate::config::ChampionStats;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Direction {
@@ -42,7 +42,7 @@ pub struct Champion {
     pub level: u8,
     pub stats: Stats,
     champion_stats: ChampionStats,
-    pub spells: HashMap<String, SpellStats>,
+    pub spells: HashMap<u8, Box<dyn Spell>>,
     pub active_buffs: HashMap<String, Box<dyn Buff>>,
     death_counter: u8,
     death_timer: Instant,
@@ -60,13 +60,15 @@ impl Champion {
         row: u16,
         col: u16,
         champion_stats: ChampionStats,
-        spells: HashMap<String, SpellStats>,
+        spells: HashMap<u8, Box<dyn Spell>>,
     ) -> Self {
         let stats = Stats {
             attack_damage: champion_stats.attack_damage,
             attack_speed: Duration::from_millis(champion_stats.attack_speed_ms),
             health: champion_stats.health,
             max_health: champion_stats.health,
+            mana: champion_stats.mana,
+            max_mana: champion_stats.mana,
             armor: champion_stats.armor,
         };
 
@@ -125,7 +127,7 @@ impl Champion {
     ) -> Result<(), GameError> {
         // Check if stunned before taking any action
         if self.is_stunned() {
-            return Ok(())
+            return Ok(());
         }
         let res = match action {
             Action::MoveUp => {
@@ -145,15 +147,21 @@ impl Champion {
                 return self.move_champion(board, 0, 1);
             }
             Action::Action1 => {
-                if let Some(spell_stats) = self.spells.get("freeze_wall") {
-                    for blueprint in cast_freeze_wall(&self, self.stats.attack_damage, spell_stats)
-                    {
-                        projectile_manager.create_from_blueprint(blueprint);
-                    }
+                if let Some(mut spell) = self.spells.remove(&1) {
+                    spell.cast(self, self.stats.attack_damage, projectile_manager);
+                    self.spells.insert(1, spell);
+                    return Ok(());
                 }
-                Ok(())
+                return Ok(());
             }
-            Action::Action2 => Ok(()),
+            Action::Action2 => {
+                if let Some(mut spell) = self.spells.remove(&2) {
+                    spell.cast(self, self.stats.attack_damage, projectile_manager);
+                    self.spells.insert(2, spell);
+                    return Ok(());
+                }
+                return Ok(());
+            }
             Action::InvalidAction => {
                 Err(GameError::InvalidInput("InvalidAction found".to_string()))
             }
@@ -1143,16 +1151,29 @@ mod tests {
         champion.take_effect(vec![stun_effect]);
 
         // Assert champion is stunned
-        assert!(champion.is_stunned(), "Champion should be stunned after applying stun buff");
+        assert!(
+            champion.is_stunned(),
+            "Champion should be stunned after applying stun buff"
+        );
 
         // Assert stunned champion cannot move
         let move_action = Action::MoveUp;
         let move_result = champion.take_action(&move_action, &mut board, &mut pm);
-        assert!(move_result.is_err(), "Stunned champion should not be able to move");
-        assert_eq!(move_result.unwrap_err(), GameError::IsStunned, "Stunned champion move error should be GameError::IsStunned");
+        assert!(
+            move_result.is_err(),
+            "Stunned champion should not be able to move"
+        );
+        assert_eq!(
+            move_result.unwrap_err(),
+            GameError::IsStunned,
+            "Stunned champion move error should be GameError::IsStunned"
+        );
 
         // Assert stunned champion cannot attack
-        assert!(champion.can_attack().is_none(), "Stunned champion should not be able to attack");
+        assert!(
+            champion.can_attack().is_none(),
+            "Stunned champion should not be able to attack"
+        );
     }
 
     #[test]
@@ -1178,16 +1199,26 @@ mod tests {
         champion.active_buffs = kept_buffs;
 
         // Assert champion is no longer stunned
-        assert!(!champion.is_stunned(), "Champion should not be stunned after buff expiration");
+        assert!(
+            !champion.is_stunned(),
+            "Champion should not be stunned after buff expiration"
+        );
 
         // Assert champion can now move (assuming board and pm are set up for a valid move)
         let mut board = create_dummy_board(10, 10);
         let mut pm = ProjectileManager::new();
         // Place champion on board for movement test
-        board.place_cell(CellContent::Champion(champion.player_id, champion.team_id), champion.row as usize, champion.col as usize);
+        board.place_cell(
+            CellContent::Champion(champion.player_id, champion.team_id),
+            champion.row as usize,
+            champion.col as usize,
+        );
         let move_action = Action::MoveDown;
         let move_result = champion.take_action(&move_action, &mut board, &mut pm);
-        assert!(move_result.is_ok(), "Unstunned champion should be able to move");
+        assert!(
+            move_result.is_ok(),
+            "Unstunned champion should be able to move"
+        );
 
         // Assert champion can now attack
         // For can_attack to return Some, last_attacked needs to be old enough.
@@ -1195,8 +1226,12 @@ mod tests {
         // For simplicity here, we'll just check if it's not None.
         // Note: This test might be flaky if run too quickly after champion creation due to Instant::now()
         // A more robust test would involve setting champion.last_attacked to a past time.
-        champion.last_attacked = Instant::now() - champion.stats.attack_speed - Duration::from_secs(1);
-        assert!(champion.can_attack().is_some(), "Unstunned champion should be able to attack");
+        champion.last_attacked =
+            Instant::now() - champion.stats.attack_speed - Duration::from_secs(1);
+        assert!(
+            champion.can_attack().is_some(),
+            "Unstunned champion should be able to attack"
+        );
     }
 
     fn test_level_up() {

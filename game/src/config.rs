@@ -14,6 +14,7 @@ pub struct ChampionStats {
     pub attack_damage: u16,
     pub attack_speed_ms: u64,
     pub health: u16,
+    pub mana: u16,
     pub armor: u16,
     pub xp_per_level: Vec<u32>,
     pub level_up_health_increase: u16,
@@ -47,12 +48,21 @@ pub struct TowerStats {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct SpellStats {
+    pub id: String,
+    pub mana_cost: u16,
+    pub cooldown_secs: u8,
     pub range: u16,
     pub speed: u32,
     pub width: u8,
     pub damage_ratio: f32,
     pub base_damage: u16,
-    pub stun_duration: u8,
+    #[serde(default)]
+    pub stun_duration: Option<u8>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct SpellFile {
+    spell: Vec<SpellStats>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -61,13 +71,24 @@ pub struct GameConfig {
     pub champion: ChampionStats,
     pub minion: MinionStats,
     pub tower: TowerStats,
+    #[serde(skip)]
     pub spells: HashMap<String, SpellStats>,
 }
 
 impl GameConfig {
-    pub fn load(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let content = fs::read_to_string(path)?;
-        let config: GameConfig = toml::from_str(&content)?;
+    pub fn load(config_path: &str, spell_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let content = fs::read_to_string(config_path)?;
+        let mut config: GameConfig = toml::from_str(&content)?;
+
+        let spell_content = fs::read_to_string(spell_path)?;
+        let spells_file: SpellFile = toml::from_str(&spell_content)?;
+
+        config.spells = spells_file
+            .spell
+            .into_iter()
+            .map(|spell_conf| (spell_conf.id.clone(), spell_conf))
+            .collect();
+
         Ok(config)
     }
 }

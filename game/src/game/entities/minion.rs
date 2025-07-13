@@ -60,6 +60,8 @@ impl Minion {
             attack_speed: Duration::from_millis(minion_stats.attack_speed_ms),
             health: minion_stats.health,
             max_health: minion_stats.health,
+            mana: 0,
+            max_mana: 0,
             armor: minion_stats.armor,
         };
 

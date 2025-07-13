@@ -39,6 +39,8 @@ pub struct Stats {
     attack_speed: Duration,
     pub health: u16,
     pub max_health: u16,
+    pub mana: u16,
+    pub max_mana: u16,
     armor: u16,
 }
 
