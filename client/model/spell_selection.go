@@ -1,0 +1,119 @@
+package model
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	upKey    = key.NewBinding(key.WithKeys("up", "k"))
+	downKey  = key.NewBinding(key.WithKeys("down", "j"))
+	enterKey = key.NewBinding(key.WithKeys("enter"))
+)
+
+// SpellSelectionModel manages the state of the spell selection UI.
+type SpellSelectionModel struct {
+	Spells          []Spell
+	FocusedIndex    int
+	SelectedIndices [2]int
+	ActiveSelection int // 0 or 1, for the next slot to fill
+	height, width int
+}
+
+func (m *SpellSelectionModel) SetDimension(height, width int) {
+	m.height = height
+	m.width = width
+}
+
+// NewSpellSelection creates and initializes a new SpellSelectionModel.
+func NewSpellSelection() SpellSelectionModel {
+	return SpellSelectionModel{
+		Spells:          availableSpells,
+		FocusedIndex:    0,
+		SelectedIndices: [2]int{-1, -1}, // -1 indicates no selection
+		ActiveSelection: 0,
+	}
+}
+
+// Init is the first command that is run when the model starts.
+func (m SpellSelectionModel) Init() tea.Cmd {
+	return nil
+}
+
+type SpellsSelectedMsg struct {
+	SpellIDs [2]string
+}
+
+// Update handles all incoming messages and updates the model accordingly.
+func (m SpellSelectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, upKey):
+			if m.FocusedIndex > 0 {
+				m.FocusedIndex--
+			}
+		case key.Matches(msg, downKey):
+			if m.FocusedIndex < len(m.Spells)-1 {
+				m.FocusedIndex++
+			}
+		case key.Matches(msg, enterKey):
+			// Prevent selecting the same spell twice
+			if m.SelectedIndices[0] != m.FocusedIndex && m.SelectedIndices[1] != m.FocusedIndex {
+				m.SelectedIndices[m.ActiveSelection] = m.FocusedIndex
+				m.ActiveSelection = (m.ActiveSelection + 1) % 2
+			}
+
+			// If both spells are selected, send a message
+			if m.SelectedIndices[0] != -1 && m.SelectedIndices[1] != -1 {
+				spellIDs := [2]string{
+					m.Spells[m.SelectedIndices[0]].ID,
+					m.Spells[m.SelectedIndices[1]].ID,
+				}
+				return m, func() tea.Msg {
+					return SpellsSelectedMsg{SpellIDs: spellIDs}
+				}
+			}
+		}
+	}
+	return m, nil
+}
+
+// View renders the UI for the spell selection screen.
+func (m SpellSelectionModel) View() string {
+	var left, right strings.Builder
+
+	// Left Panel: List of available spells
+	left.WriteString("Choose Your Spells\n\n")
+	for i, spell := range m.Spells {
+		cursor := " "
+		if m.FocusedIndex == i {
+			cursor = ">"
+		}
+
+		selected := " "
+		if m.SelectedIndices[0] == i || m.SelectedIndices[1] == i {
+			selected = "X"
+		}
+
+		left.WriteString(fmt.Sprintf("%s [%s] %s\n", cursor, selected, spell.Name))
+	}
+
+	// Right Panel: Details of the focused spell
+	if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Spells) {
+		right.WriteString(m.Spells[m.FocusedIndex].String())
+	}
+
+	// Combine panels
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		lipgloss.JoinHorizontal(lipgloss.Top, left.String(), right.String()),
+	)
+}
