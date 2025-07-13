@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTF Map Editor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>CTF Map Editor</h1>
+
+    <div class="controls">
+        <div class="file-input">
+            <label for="mapFileInput">Load Map JSON:</label>
+            <input type="file" id="mapFileInput" accept=".json">
+        </div>
+
+        <div class="brush-selection">
+            <label for="brushTool">Brush Tool:</label>
+            <select id="brushTool">
+                <option value="Floor">Floor</option>
+                <option value="Wall">Wall</option>
+                <option value="Bush">Bush</option>
+            </select>
+        </div>
+
+        <div class="symmetry-toggle">
+            <input type="checkbox" id="symmetryToggle">
+            <label for="symmetryToggle">Enable 180° Symmetry</label>
+        </div>
+
+        <button id="saveMapBtn">Save Map JSON</button>
+    </div>
+
+    <div class="map-container">
+        <canvas id="mapCanvas"></canvas>
+        <div class="coordinates">Row: <span id="coordRow">0</span>, Col: <span id="coordCol">0</span></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
