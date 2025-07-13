@@ -13,14 +13,14 @@ use super::{ProjectileBlueprint, ProjectileType, Spell};
 
 #[derive(Debug, Clone)]
 pub struct FreezeWallSpell {
-    last_casted: Instant,
+    last_casted: Option<Instant>,
     stats: SpellStats,
 }
 
 impl FreezeWallSpell {
     pub fn new(spell_stats: SpellStats) -> FreezeWallSpell {
         FreezeWallSpell {
-            last_casted: Instant::now(),
+            last_casted: None,
             stats: spell_stats,
         }
     }
@@ -47,8 +47,10 @@ impl Spell for FreezeWallSpell {
     ) {
         // TODO: return Err maybe instead of empty Vec
         // Cooldown check
-        if self.last_casted.elapsed() < Duration::from_secs(self.stats.cooldown_secs as u64) {
-            return ();
+        if let Some(last_casted) = self.last_casted {
+            if last_casted.elapsed() < Duration::from_secs(self.stats.cooldown_secs as u64) {
+                return ();
+            }
         }
         // Mana check
         if caster.stats.mana < self.stats.mana_cost {
@@ -57,7 +59,7 @@ impl Spell for FreezeWallSpell {
             caster.stats.mana -= self.stats.mana_cost;
         }
 
-        self.last_casted = Instant::now();
+        self.last_casted = Some(Instant::now());
 
         let spell_damage =
             (caster_damage as f32 * self.stats.damage_ratio + self.stats.base_damage as f32) as u16;
