@@ -27,8 +27,8 @@ impl FreezeWallSpell {
 }
 
 impl Spell for FreezeWallSpell {
-    fn id(&self) -> &String {
-        &self.stats.id
+    fn id(&self) -> u8 {
+        self.stats.id
     }
 
     fn mana_cost(&self) -> &u16 {
@@ -305,4 +305,3 @@ mod tests {
         }
     }
 }
-

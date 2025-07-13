@@ -151,7 +151,7 @@ impl GameManager {
         self.player_action.clear();
     }
 
-    pub fn add_player(&mut self) -> Option<PlayerId> {
+    pub fn add_player(&mut self, spell1_id: u8, spell2_id: u8) -> Option<PlayerId> {
         if self.players_count < self.max_players {
             self.players_count += 1;
             let player_id = self.players_count;
@@ -159,10 +159,11 @@ impl GameManager {
             {
                 // We get the choosen spell
                 let mut selected_spell: HashMap<u8, Box<dyn Spell>> = HashMap::new();
-                if let Some(spell_stats) = self.config.spells.get("freeze_wall") {
-                    let spell = FreezeWallSpell::new(spell_stats.clone());
-                    let spell = Box::new(spell.clone());
-                    selected_spell.insert(1, spell);
+                if let Some(spell_stats) = self.config.spells.get(&spell1_id) {
+                    selected_spell.insert(spell1_id, spell::create_spell_from_id(spell1_id, spell_stats.clone()));
+                }
+                if let Some(spell_stats) = self.config.spells.get(&spell2_id) {
+                    selected_spell.insert(spell2_id, spell::create_spell_from_id(spell2_id, spell_stats.clone()));
                 }
                 let row = 199;
                 let col = 0;

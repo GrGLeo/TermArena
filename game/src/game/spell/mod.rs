@@ -6,8 +6,10 @@ use super::{
     entities::{Target, projectile::GameplayEffect},
     projectile_manager::ProjectileManager,
 };
+use crate::config::SpellStats;
 
 pub mod freeze_wall;
+pub mod fireball;
 
 pub struct ProjectileBlueprint {
     pub projectile_type: ProjectileType,
@@ -27,7 +29,7 @@ pub enum ProjectileType {
 }
 
 pub trait Spell: Send + Sync + Debug + 'static {
-    fn id(&self) -> &String;
+    fn id(&self) -> u8;
     fn mana_cost(&self) -> &u16;
     fn cast(
         &mut self,
@@ -36,4 +38,12 @@ pub trait Spell: Send + Sync + Debug + 'static {
         projectile_manager: &mut ProjectileManager,
     );
     fn clone_box(&self) -> Box<dyn Spell>;
+}
+
+pub fn create_spell_from_id(id: u8, stats: SpellStats) -> Box<dyn Spell> {
+    match id {
+        0 => Box::new(freeze_wall::FreezeWallSpell::new(stats)),
+        1 => Box::new(fireball::FireballSpell::new(stats)),
+        _ => panic!("Unknown spell ID: {}", id),
+    }
 }

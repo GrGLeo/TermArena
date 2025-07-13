@@ -1,5 +1,5 @@
 [[spell]]
-id = "freeze_wall"
+id = 0
 mana_cost = 20
 cooldown_secs = 10
 range = 10
@@ -10,7 +10,7 @@ damage_ratio = 0.2
 stun_duration = 1
 
 [[spell]]
-id = "fireball"
+id = 1
 mana_cost = 10
 cooldown_secs = 4
 range = 6

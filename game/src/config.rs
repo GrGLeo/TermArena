@@ -48,7 +48,7 @@ pub struct TowerStats {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct SpellStats {
-    pub id: String,
+    pub id: u8,
     pub mana_cost: u16,
     pub cooldown_secs: u8,
     pub range: u16,
@@ -72,7 +72,7 @@ pub struct GameConfig {
     pub minion: MinionStats,
     pub tower: TowerStats,
     #[serde(skip)]
-    pub spells: HashMap<String, SpellStats>,
+    pub spells: HashMap<u8, SpellStats>,
 }
 
 impl GameConfig {
@@ -86,7 +86,7 @@ impl GameConfig {
         config.spells = spells_file
             .spell
             .into_iter()
-            .map(|spell_conf| (spell_conf.id.clone(), spell_conf))
+            .map(|spell_conf| (spell_conf.id, spell_conf))
             .collect();
 
         Ok(config)

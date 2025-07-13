@@ -95,14 +95,14 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			communication.SendAction(m.conn, 4)
 			return m, nil
-		case " ":
+		case "q":
 			if !m.dashed {
 				communication.SendAction(m.conn, 5)
 				m.dashed = true
 				m.dashStart = time.Now()
 				return m, doTick()
 			}
-		case "j":
+		case "e":
 			communication.SendAction(m.conn, 6)
 			return m, nil
 		}
@@ -194,7 +194,6 @@ func (m GameModel) View() string {
 				builder.WriteString(TowerStyle.Render(" ")) // Render for tower
 			case 8:
 				builder.WriteString(bgStyle.Render("⍓")) // Render for dash
-				//builder.WriteString(bgStyle.Render("⣿")) // Render for dash
 			case 9:
 				builder.WriteString(bgStyle.Render("x")) // Render for dash
 			case 10:
@@ -207,6 +206,8 @@ func (m GameModel) View() string {
 				builder.WriteString(bgStyle.Render("⣀")) // Render for dash
 			case 14:
 				builder.WriteString(FreezeStyle.Render("𐙂")) // Render for freezing spell
+			case 15:
+				builder.WriteString(bgStyle.Render("𐁙")) // Render for freezing spell
 			case 100, 101, 102, 103, 104, 105, 106, 107: // Friendly minion health (1/8 to 8/8)
 				healthIndex := cell - 100
 				builder.WriteString(p1Style.Render(minionHealthChars[healthIndex]))

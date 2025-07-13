@@ -147,17 +147,17 @@ impl Champion {
                 return self.move_champion(board, 0, 1);
             }
             Action::Action1 => {
-                if let Some(mut spell) = self.spells.remove(&1) {
+                if let Some(mut spell) = self.spells.remove(&0) {
                     spell.cast(self, self.stats.attack_damage, projectile_manager);
-                    self.spells.insert(1, spell);
+                    self.spells.insert(0, spell);
                     return Ok(());
                 }
                 return Ok(());
             }
             Action::Action2 => {
-                if let Some(mut spell) = self.spells.remove(&2) {
+                if let Some(mut spell) = self.spells.remove(&1) {
                     spell.cast(self, self.stats.attack_damage, projectile_manager);
-                    self.spells.insert(2, spell);
+                    self.spells.insert(1, spell);
                     return Ok(());
                 }
                 return Ok(());
