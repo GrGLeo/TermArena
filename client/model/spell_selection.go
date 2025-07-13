@@ -47,7 +47,7 @@ func (m SpellSelectionModel) Init() tea.Cmd {
 }
 
 type SpellsSelectedMsg struct {
-	SpellIDs [2]string
+	SpellIDs [2]int
 }
 
 // Update handles all incoming messages and updates the model accordingly.
@@ -72,7 +72,7 @@ func (m SpellSelectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// If both spells are selected, send a message
 			if m.SelectedIndices[0] != -1 && m.SelectedIndices[1] != -1 {
-				spellIDs := [2]string{
+				spellIDs := [2]int{
 					m.Spells[m.SelectedIndices[0]].ID,
 					m.Spells[m.SelectedIndices[1]].ID,
 				}
@@ -94,7 +94,7 @@ func (m SpellSelectionModel) View() string {
 	for i, spell := range m.Spells {
 		cursor := " "
 		if m.FocusedIndex == i {
-			cursor = m.styles.SelectedButton.Render("> ")
+			cursor = m.styles.SelectedButton.Render(">")
 		}
 
 		selected := " "
@@ -108,30 +108,30 @@ func (m SpellSelectionModel) View() string {
 		}
 
 		left.WriteString(fmt.Sprintf("%s [%s] %s\n", cursor, selected, spellNameStyle.Render(spell.Name)))
-	}
+    }
 
-	// Right Panel: Details of the focused spell
-	if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Spells) {
-		right.WriteString(m.Spells[m.FocusedIndex].String())
-	}
+    // Right Panel: Details of the focused spell
+    if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Spells) {
+        right.WriteString(m.Spells[m.FocusedIndex].String())
+    }
 
-	optionsStyle := lipgloss.NewStyle().
-		Width(m.width/2 - 2). // Half width minus padding/border
-		Align(lipgloss.Left).
-		Padding(1, 0)
+    // Calculate content height, assuming tabs take up 2 lines
 
-	instructionsStyle := lipgloss.NewStyle().
-		Width(m.width/2 - 2). // Half width minus padding/border
-		Align(lipgloss.Left).
-		Border(lipgloss.NormalBorder(), true, true, true, true).
-		BorderForeground(m.styles.BorderColor).
-		Padding(1, 0)
+    optionsStyle := lipgloss.NewStyle().
+        Align(lipgloss.Left).
+        Padding(1, 0)
 
-	layout := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		optionsStyle.Render(left.String()),
-		instructionsStyle.Render(right.String()),
-	)
+    instructionsStyle := lipgloss.NewStyle().
+        Align(lipgloss.Left).
+        Border(lipgloss.NormalBorder(), true, true, true, true).
+        BorderForeground(m.styles.BorderColor).
+        Padding(1, 0)
 
-		return layout
+    layout := lipgloss.JoinHorizontal(
+        lipgloss.Center,
+        optionsStyle.Render(left.String()),
+        instructionsStyle.Render(right.String()),
+    )
+
+    return layout
 }

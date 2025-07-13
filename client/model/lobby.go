@@ -13,14 +13,14 @@ import (
 )
 
 type LobbyModel struct {
-	styles         *Styles
-	tabSelected   int
-	queueModel    QueueModel
-	createModel   CreateModel
+	styles              *Styles
+	tabSelected         int
+	queueModel          QueueModel
+	createModel         CreateModel
 	spellSelectionModel SpellSelectionModel
-	conn          *net.TCPConn
-	looking       bool
-	width, height int
+	conn                *net.TCPConn
+	looking             bool
+	width, height       int
 }
 
 func NewLobbyModel(conn *net.TCPConn) LobbyModel {
@@ -30,12 +30,12 @@ func NewLobbyModel(conn *net.TCPConn) LobbyModel {
 	spellSelectionModel := NewSpellSelection(s)
 
 	return LobbyModel{
-		styles:       s,
-		tabSelected: 0,
-		queueModel:  queueModel,
-		createModel: createModel,
+		styles:              s,
+		tabSelected:         0,
+		queueModel:          queueModel,
+		createModel:         createModel,
 		spellSelectionModel: spellSelectionModel,
-		conn:        conn,
+		conn:                conn,
 	}
 }
 
@@ -134,7 +134,7 @@ func (m LobbyModel) View() string {
 		Render(tabRow)
 
 	// Combine the tab bar and the content vertically
-	ui := lipgloss.JoinVertical(lipgloss.Top,
+	ui := lipgloss.JoinVertical(lipgloss.Center,
 		tabBar,
 		content,
 	)
@@ -344,7 +344,7 @@ func (m CreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case communication.LookRoomMsg:
 		m.looking = true
 		m.roomID = msg.RoomID
-    log.Println(msg.RoomIP)
+		log.Println(msg.RoomIP)
 		return m, m.spinner.Tick
 	case tea.KeyMsg:
 		switch msg.Type {

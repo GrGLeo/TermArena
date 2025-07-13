@@ -4,7 +4,7 @@ import "fmt"
 
 // Spell represents the data for a single champion ability.
 type Spell struct {
-	ID           string
+	ID           int
 	Name         string
 	ManaCost     int
 	CooldownSecs int
@@ -13,14 +13,13 @@ type Spell struct {
 	Speed        int
 	BaseDamage   int
 	DamageRatio  float32
-	StunDuration int // In game ticks
+	StunDuration int
 }
 
 // String returns a formatted string for the spell's stats.
 func (s Spell) String() string {
 	return fmt.Sprintf(
-		"ID: %s\nName: %s\nMana Cost: %d\nCooldown: %ds\nRange: %d\nWidth: %d\nSpeed: %d\nBase Damage: %d\nDamage Ratio: %.2f\nStun: %d ticks",
-		s.ID,
+		"Name: %s\nMana Cost: %d\nCooldown: %ds\nRange: %d\nWidth: %d\nSpeed: %d\nBase Damage: %d\nDamage Ratio: %.2f\nStun: %d seconds",
 		s.Name,
 		s.ManaCost,
 		s.CooldownSecs,
@@ -37,7 +36,7 @@ func (s Spell) String() string {
 // This will be used to populate the selection UI.
 var availableSpells = []Spell{
 	{
-		ID:           "freeze_wall",
+		ID:           0,
 		Name:         "Freeze Wall",
 		ManaCost:     50,
 		CooldownSecs: 10,
@@ -49,7 +48,7 @@ var availableSpells = []Spell{
 		StunDuration: 1,
 	},
 	{
-		ID:           "fireball",
+		ID:           1,
 		Name:         "Fireball",
 		ManaCost:     30,
 		CooldownSecs: 5,
