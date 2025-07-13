@@ -26,8 +26,8 @@ type LobbyModel struct {
 func NewLobbyModel(conn *net.TCPConn) LobbyModel {
 	queueModel := NewQueueModel(conn)
 	createModel := NewCreateModel(conn)
-	spellSelectionModel := NewSpellSelection()
 	s := DefaultStyles()
+	spellSelectionModel := NewSpellSelection(s)
 
 	return LobbyModel{
 		styles:       s,
@@ -102,24 +102,25 @@ func (m LobbyModel) View() string {
 
 	// Render Tabs based on selection
 	spellSelectionTabStr := "Spell Selection"
-	loginTabStr := "Join a game"
-	createTabStr := "Create a game"
+	joinGameTabStr := "Join a game"
+	createGameTabStr := "Create a game"
+
+	tabs := []string{spellSelectionTabStr, joinGameTabStr, createGameTabStr}
+
+	for i, tab := range tabs {
+		if i == m.tabSelected {
+			renderedTabs = append(renderedTabs, m.styles.ActiveTab.Render(tab))
+		} else {
+			renderedTabs = append(renderedTabs, m.styles.InactiveTab.Render(tab))
+		}
+	}
 
 	if m.tabSelected == 0 {
-		renderedTabs = append(renderedTabs, m.styles.ActiveTab.Render(spellSelectionTabStr))
-		renderedTabs = append(renderedTabs, m.styles.InactiveTab.Render(loginTabStr))
-		renderedTabs = append(renderedTabs, m.styles.InactiveTab.Render(createTabStr))
-		content = m.spellSelectionModel.View() // Get content from the active model
+		content = m.spellSelectionModel.View()
 	} else if m.tabSelected == 1 {
-		renderedTabs = append(renderedTabs, m.styles.InactiveTab.Render(spellSelectionTabStr))
-		renderedTabs = append(renderedTabs, m.styles.ActiveTab.Render(loginTabStr))
-		renderedTabs = append(renderedTabs, m.styles.InactiveTab.Render(createTabStr))
-		content = m.queueModel.View() // Get content from the active model
+		content = m.queueModel.View()
 	} else {
-		renderedTabs = append(renderedTabs, m.styles.InactiveTab.Render(spellSelectionTabStr))
-		renderedTabs = append(renderedTabs, m.styles.InactiveTab.Render(loginTabStr))
-		renderedTabs = append(renderedTabs, m.styles.ActiveTab.Render(createTabStr))
-		content = m.createModel.View() // Get content from the active model
+		content = m.createModel.View()
 	}
 
 	// Join the individual tab strings horizontally
@@ -133,7 +134,7 @@ func (m LobbyModel) View() string {
 		Render(tabRow)
 
 	// Combine the tab bar and the content vertically
-	ui := lipgloss.JoinVertical(lipgloss.Center,
+	ui := lipgloss.JoinVertical(lipgloss.Top,
 		tabBar,
 		content,
 	)

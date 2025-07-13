@@ -17,6 +17,7 @@ var (
 
 // SpellSelectionModel manages the state of the spell selection UI.
 type SpellSelectionModel struct {
+	styles          *Styles
 	Spells          []Spell
 	FocusedIndex    int
 	SelectedIndices [2]int
@@ -30,8 +31,9 @@ func (m *SpellSelectionModel) SetDimension(height, width int) {
 }
 
 // NewSpellSelection creates and initializes a new SpellSelectionModel.
-func NewSpellSelection() SpellSelectionModel {
+func NewSpellSelection(styles *Styles) SpellSelectionModel {
 	return SpellSelectionModel{
+		styles:          styles,
 		Spells:          availableSpells,
 		FocusedIndex:    0,
 		SelectedIndices: [2]int{-1, -1}, // -1 indicates no selection
@@ -92,7 +94,7 @@ func (m SpellSelectionModel) View() string {
 	for i, spell := range m.Spells {
 		cursor := " "
 		if m.FocusedIndex == i {
-			cursor = ">"
+			cursor = m.styles.SelectedButton.Render("> ")
 		}
 
 		selected := " "
@@ -100,7 +102,12 @@ func (m SpellSelectionModel) View() string {
 			selected = "X"
 		}
 
-		left.WriteString(fmt.Sprintf("%s [%s] %s\n", cursor, selected, spell.Name))
+		spellNameStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+		if m.FocusedIndex == i {
+			spellNameStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true)
+		}
+
+		left.WriteString(fmt.Sprintf("%s [%s] %s\n", cursor, selected, spellNameStyle.Render(spell.Name)))
 	}
 
 	// Right Panel: Details of the focused spell
@@ -108,12 +115,23 @@ func (m SpellSelectionModel) View() string {
 		right.WriteString(m.Spells[m.FocusedIndex].String())
 	}
 
-	// Combine panels
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		lipgloss.JoinHorizontal(lipgloss.Top, left.String(), right.String()),
+	optionsStyle := lipgloss.NewStyle().
+		Width(m.width/2 - 2). // Half width minus padding/border
+		Align(lipgloss.Left).
+		Padding(1, 0)
+
+	instructionsStyle := lipgloss.NewStyle().
+		Width(m.width/2 - 2). // Half width minus padding/border
+		Align(lipgloss.Left).
+		Border(lipgloss.NormalBorder(), true, true, true, true).
+		BorderForeground(m.styles.BorderColor).
+		Padding(1, 0)
+
+	layout := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		optionsStyle.Render(left.String()),
+		instructionsStyle.Render(right.String()),
 	)
+
+		return layout
 }
