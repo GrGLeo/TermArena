@@ -419,9 +419,8 @@ func (egp *EndGamePacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
-
 type SpellSelectionPacket struct {
-	version, code int
+	version, code  int
 	Spell1, Spell2 int
 }
 
@@ -494,6 +493,8 @@ type BoardPacket struct {
 	Points        [2]int
 	Health        int
 	MaxHealth     int
+	Mana          int
+	MaxMana       int
 	Level         int
 	Xp            int
 	XpNeeded      int
@@ -749,22 +750,26 @@ func DeSerialize(data []byte) (Packet, error) {
 		points := [2]int{}
 		points[0] = int(data[2])
 		points[1] = int(data[3])
-    health := int(binary.BigEndian.Uint16(data[4:6]))
-    maxHealth := int(binary.BigEndian.Uint16(data[6:8]))
-    level := int(data[8])
-    xp := int(binary.BigEndian.Uint32(data[9:13]))
-    xpNeeded := int(binary.BigEndian.Uint32(data[13:17]))
-		length := int(binary.BigEndian.Uint16(data[17:19]))
-    log.Printf("Deserialize health: %d | %d", health, maxHealth)
+		health := int(binary.BigEndian.Uint16(data[4:6]))
+		maxHealth := int(binary.BigEndian.Uint16(data[6:8]))
+		mana := int(binary.BigEndian.Uint16(data[8:10]))
+		maxMana := int(binary.BigEndian.Uint16(data[10:12]))
+		level := int(data[12])
+		xp := int(binary.BigEndian.Uint32(data[13:17]))
+		xpNeeded := int(binary.BigEndian.Uint32(data[17:21]))
+		length := int(binary.BigEndian.Uint16(data[21:23]))
+		log.Printf("Deserialize health: %d | %d, mana: %d | %d", health, maxHealth, mana, maxMana)
 
 		// Rest of data is the encodedBoard
-		encodedBoard := data[19:length+19]
+		encodedBoard := data[23 : length+23]
 		return &BoardPacket{
 			version:      version,
 			code:         code,
 			Points:       points,
 			Health:       health,
 			MaxHealth:    maxHealth,
+			Mana:         mana,
+			MaxMana:      maxMana,
 			Level:        level,
 			Xp:           xp,
 			XpNeeded:     xpNeeded,
@@ -833,4 +838,3 @@ func DeSerialize(data []byte) (Packet, error) {
 		return nil, errors.New("unknown message type")
 	}
 }
-

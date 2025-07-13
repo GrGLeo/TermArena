@@ -8,6 +8,8 @@ pub struct BoardPacket {
     pub points: u16,
     pub health: u16,
     pub max_health: u16,
+    pub mana: u16,
+    pub max_mana: u16,
     pub level: u8,
     pub xp: u32,
     pub xp_needed: u32,
@@ -19,6 +21,8 @@ impl BoardPacket {
     pub fn new(
         health: u16,
         max_health: u16,
+        mana: u16,
+        max_mana: u16,
         level: u8,
         xp: u32,
         xp_needed: u32,
@@ -31,6 +35,8 @@ impl BoardPacket {
             points: 0,
             health,
             max_health,
+            mana,
+            max_mana,
             level,
             xp,
             xp_needed,
@@ -46,6 +52,8 @@ impl BoardPacket {
         buffer.put_u16(self.points);
         buffer.put_u16(self.health);
         buffer.put_u16(self.max_health);
+        buffer.put_u16(self.mana);
+        buffer.put_u16(self.max_mana);
         buffer.put_u8(self.level);
         buffer.put_u32(self.xp);
         buffer.put_u32(self.xp_needed);

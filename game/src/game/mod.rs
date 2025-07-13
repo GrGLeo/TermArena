@@ -557,6 +557,8 @@ impl GameManager {
             let board_packet = BoardPacket::new(
                 health.0,
                 health.1,
+                champion.stats.mana,
+                champion.stats.max_mana,
                 champion.level,
                 champion.xp,
                 xp_needed,

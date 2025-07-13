@@ -31,9 +31,9 @@ code 0: player in queue
 code 1: error putting player in queue
 */
 type LookRoomMsg struct {
-	Code int
-  RoomID string
-  RoomIP string
+	Code   int
+	RoomID string
+	RoomIP string
 }
 
 // GameStart is sent by the server once the number of player are matched
@@ -55,16 +55,17 @@ type EndGameMsg struct {
 // BoardMsg is used to transfer the board to game model
 type BoardMsg struct {
 	Points [2]int
-  Health [2]int
-  Level int
-  Xp [2]int
+	Health [2]int
+	Mana   [2]int
+	Level  int
+	Xp     [2]int
 	Board  [21][51]int
 }
 
 type DeltaMsg struct {
 	Points [2]int
 	Deltas [][3]int
-  TickID uint32
+	TickID uint32
 }
 
 // ConnectionMsg to pass the connection to meta model
