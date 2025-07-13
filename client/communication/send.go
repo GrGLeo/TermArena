@@ -74,6 +74,14 @@ func SendAction(conn *net.TCPConn, action int) error {
 	return err
 }
 
+func SendSpellSelectionPacket(conn *net.TCPConn, spell1, spell2 int) error {
+	log.Printf("Sending spell selection: %d, %d", spell1, spell2)
+	spellPacket := shared.NewSpellSelectionPacket(spell1, spell2)
+	data := spellPacket.Serialize()
+	_, err := conn.Write(data)
+	return err
+}
+
 func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 	buf := make([]byte, 1024)
 	for {

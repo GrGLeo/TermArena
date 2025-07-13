@@ -21,6 +21,7 @@ type LobbyModel struct {
 	conn                *net.TCPConn
 	looking             bool
 	width, height       int
+	SelectedSpells      [2]int
 }
 
 func NewLobbyModel(conn *net.TCPConn) LobbyModel {
@@ -77,6 +78,9 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "esc", "ctrl+c":
 			return m, tea.Quit
 		}
+	case SpellsSelectedMsg:
+		m.SelectedSpells = msg.SpellIDs
+		log.Printf("LobbyModel received selected spells: %v", m.SelectedSpells)
 	}
 
 	if m.tabSelected == 0 {

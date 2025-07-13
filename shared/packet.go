@@ -419,6 +419,38 @@ func (egp *EndGamePacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
+
+type SpellSelectionPacket struct {
+	version, code int
+	Spell1, Spell2 int
+}
+
+func NewSpellSelectionPacket(spell1, spell2 int) *SpellSelectionPacket {
+	return &SpellSelectionPacket{
+		version: 1,
+		code:    13,
+		Spell1:  spell1,
+		Spell2:  spell2,
+	}
+}
+
+func (ssp SpellSelectionPacket) Version() int {
+	return ssp.version
+}
+
+func (ssp SpellSelectionPacket) Code() int {
+	return ssp.code
+}
+
+func (ssp *SpellSelectionPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(ssp.version))
+	buf.WriteByte(byte(ssp.code))
+	buf.WriteByte(byte(ssp.Spell1))
+	buf.WriteByte(byte(ssp.Spell2))
+	return buf.Bytes()
+}
+
 /*
 GAME PACKETS
 */
@@ -784,7 +816,21 @@ func DeSerialize(data []byte) (Packet, error) {
 			Win:     win,
 		}, nil
 
+	case 13: // SpellSelectionPacket
+		if len(data) < 4 {
+			return nil, errors.New("invalid spell selection packet length")
+		}
+		spell1 := int(data[2])
+		spell2 := int(data[3])
+		return &SpellSelectionPacket{
+			version: version,
+			code:    code,
+			Spell1:  spell1,
+			Spell2:  spell2,
+		}, nil
+
 	default:
 		return nil, errors.New("unknown message type")
 	}
 }
+

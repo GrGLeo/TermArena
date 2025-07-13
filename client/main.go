@@ -133,6 +133,8 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				conn, err := communication.MakeConnection(msg.RoomIP)
 				if err == nil {
 					m.GameConnection = conn
+					// Send spell selection after successful game connection
+					communication.SendSpellSelectionPacket(m.GameConnection, m.LobbyModel.SelectedSpells[0], m.LobbyModel.SelectedSpells[1])
 					break
 				}
 			}
