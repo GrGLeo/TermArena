@@ -21,7 +21,14 @@
                 <option value="floor">Floor</option>
                 <option value="wall">Wall</option>
                 <option value="bush">Bush</option>
+                <option value="fill">Fill</option>
+                <option value="line">Line</option>
             </select>
+        </div>
+
+        <div class="brush-size">
+            <label for="brushSize">Brush Size:</label>
+            <input type="number" id="brushSize" value="1" min="1">
         </div>
 
         <div class="symmetry-toggle">
@@ -30,6 +37,16 @@
         </div>
 
         <button id="saveMapBtn">Save Map JSON</button>
+
+        <button id="drawDiagonalWallsBtn">Draw Diagonal Walls</button>
+
+        <div class="map-size-controls">
+            <label for="mapRows">Rows:</label>
+            <input type="number" id="mapRows" value="50" min="10">
+            <label for="mapCols">Cols:</label>
+            <input type="number" id="mapCols" value="50" min="10">
+            <button id="resizeMapBtn">Resize Map</button>
+        </div>
 
         <div class="zoom-controls">
             <label>Zoom:</label>
