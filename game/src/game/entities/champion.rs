@@ -1288,4 +1288,77 @@ mod tests {
         assert_eq!(champion.stats.attack_damage, 30);
         assert_eq!(champion.stats.armor, 9);
     }
+
+    #[test]
+    fn test_get_potential_target_attack_mode() {
+        let mut board = create_dummy_board(10, 10);
+        let champion_row = 5;
+        let champion_col = 5;
+        let player_id = 1;
+        let champion_team = Team::Red;
+
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(
+            player_id,
+            champion_team,
+            champion_row,
+            champion_col,
+            champion_stats,
+            spell_stats,
+        );
+        board.place_cell(
+            CellContent::Champion(player_id, champion_team),
+            champion_row as usize,
+            champion_col as usize,
+        );
+
+        let enemy_team = Team::Blue;
+
+        // Place a minion (closest enemy)
+        let minion_row = champion_row;
+        let minion_col = champion_col + 1;
+        let minion_content = CellContent::Minion(1, enemy_team);
+        board.place_cell(
+            minion_content.clone(),
+            minion_row as usize,
+            minion_col as usize,
+        );
+
+        // Place an enemy champion (further away than minion)
+        let enemy_champion_row = champion_row + 1;
+        let enemy_champion_col = champion_col + 1;
+        let enemy_champion_content = CellContent::Champion(2, enemy_team);
+        board.place_cell(
+            enemy_champion_content.clone(),
+            enemy_champion_row as usize,
+            enemy_champion_col as usize,
+        );
+
+        // Test with attack_mode = true (should target only champion)
+        champion.attack_mode = true;
+        let target_with_attack_mode = champion.get_potential_target(&board);
+        assert!(
+            target_with_attack_mode.is_some(),
+            "Should find a target when attack_mode is true"
+        );
+        assert_eq!(
+            target_with_attack_mode.unwrap().content,
+            Some(enemy_champion_content.clone()),
+            "Should target enemy champion when attack_mode is true"
+        );
+
+        // Test with attack_mode = false (should target closest enemy, which is minion)
+        champion.attack_mode = false;
+        let target_without_attack_mode = champion.get_potential_target(&board);
+        assert!(
+            target_without_attack_mode.is_some(),
+            "Should find a target when attack_mode is false"
+        );
+        assert_eq!(
+            target_without_attack_mode.unwrap().content,
+            Some(minion_content.clone()),
+            "Should target closest enemy (minion) when attack_mode is false"
+        );
+    }
 }
