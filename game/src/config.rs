@@ -47,6 +47,22 @@ pub struct TowerStats {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct NeutralMonster {
+    id: u8,
+    attack_damage: u8,
+    attack_speed_ms: u64,
+    health: u16,
+    armor: u8,
+    aggro_range_row: u8,
+    aggro_range_col: u8,
+    attack_range_row: u8,
+    attack_range_col: u8,
+    leash_range: u8,
+    xp_reward: u8,
+    respawn_timer_secs: u16,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct SpellStats {
     pub id: u8,
     pub mana_cost: u16,
@@ -71,6 +87,7 @@ pub struct GameConfig {
     pub champion: ChampionStats,
     pub minion: MinionStats,
     pub tower: TowerStats,
+    pub neutral_monsters: Vec<NeutralMonster>,
     #[serde(skip)]
     pub spells: HashMap<u8, SpellStats>,
 }
@@ -82,6 +99,7 @@ impl GameConfig {
 
         let spell_content = fs::read_to_string(spell_path)?;
         let spells_file: SpellFile = toml::from_str(&spell_content)?;
+        println!("{:?}",config.neutral_monsters);
 
         config.spells = spells_file
             .spell
