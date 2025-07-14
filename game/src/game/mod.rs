@@ -160,10 +160,16 @@ impl GameManager {
                 // We get the choosen spell
                 let mut selected_spell: HashMap<u8, Box<dyn Spell>> = HashMap::new();
                 if let Some(spell_stats) = self.config.spells.get(&spell1_id) {
-                    selected_spell.insert(spell1_id, spell::create_spell_from_id(spell1_id, spell_stats.clone()));
+                    selected_spell.insert(
+                        spell1_id,
+                        spell::create_spell_from_id(spell1_id, spell_stats.clone()),
+                    );
                 }
                 if let Some(spell_stats) = self.config.spells.get(&spell2_id) {
-                    selected_spell.insert(spell2_id, spell::create_spell_from_id(spell2_id, spell_stats.clone()));
+                    selected_spell.insert(
+                        spell2_id,
+                        spell::create_spell_from_id(spell2_id, spell_stats.clone()),
+                    );
                 }
                 let row = 199;
                 let col = 0;
@@ -219,6 +225,7 @@ impl GameManager {
             4 => Action::MoveRight,
             5 => Action::Action1,
             6 => Action::Action2,
+            7 => Action::AttackMode,
             _other => Action::InvalidAction,
         };
         self.player_action.insert(player_id, action);

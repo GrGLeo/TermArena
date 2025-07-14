@@ -22,7 +22,7 @@ type SpellSelectionModel struct {
 	FocusedIndex    int
 	SelectedIndices [2]int
 	ActiveSelection int // 0 or 1, for the next slot to fill
-	height, width int
+	height, width   int
 }
 
 func (m *SpellSelectionModel) SetDimension(height, width int) {
@@ -30,18 +30,16 @@ func (m *SpellSelectionModel) SetDimension(height, width int) {
 	m.width = width
 }
 
-// NewSpellSelection creates and initializes a new SpellSelectionModel.
 func NewSpellSelection(styles *Styles) SpellSelectionModel {
 	return SpellSelectionModel{
 		styles:          styles,
 		Spells:          availableSpells,
 		FocusedIndex:    0,
-		SelectedIndices: [2]int{-1, -1}, // -1 indicates no selection
+		SelectedIndices: [2]int{-1, -1},
 		ActiveSelection: 0,
 	}
 }
 
-// Init is the first command that is run when the model starts.
 func (m SpellSelectionModel) Init() tea.Cmd {
 	return nil
 }
@@ -50,7 +48,6 @@ type SpellsSelectedMsg struct {
 	SpellIDs [2]int
 }
 
-// Update handles all incoming messages and updates the model accordingly.
 func (m SpellSelectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -64,7 +61,6 @@ func (m SpellSelectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.FocusedIndex++
 			}
 		case key.Matches(msg, enterKey):
-			// Prevent selecting the same spell twice
 			if m.SelectedIndices[0] != m.FocusedIndex && m.SelectedIndices[1] != m.FocusedIndex {
 				m.SelectedIndices[m.ActiveSelection] = m.FocusedIndex
 				m.ActiveSelection = (m.ActiveSelection + 1) % 2
@@ -85,7 +81,6 @@ func (m SpellSelectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// View renders the UI for the spell selection screen.
 func (m SpellSelectionModel) View() string {
 	var left, right strings.Builder
 
@@ -111,30 +106,29 @@ func (m SpellSelectionModel) View() string {
 		}
 
 		left.WriteString(fmt.Sprintf("%s [%s] %s\n", cursor, selected, spellNameStyle.Render(spell.Name)))
-    }
+	}
 
-    // Right Panel: Details of the focused spell
-    if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Spells) {
-        right.WriteString(m.Spells[m.FocusedIndex].String())
-    }
+	// Right Panel: Details of the focused spell
+	if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Spells) {
+		right.WriteString(m.Spells[m.FocusedIndex].String())
+	}
 
-    // Calculate content height, assuming tabs take up 2 lines
+	// Calculate content height, assuming tabs take up 2 lines
+	optionsStyle := lipgloss.NewStyle().
+		Align(lipgloss.Left).
+		Padding(1, 0)
 
-    optionsStyle := lipgloss.NewStyle().
-        Align(lipgloss.Left).
-        Padding(1, 0)
+	instructionsStyle := lipgloss.NewStyle().
+		Align(lipgloss.Left).
+		Border(lipgloss.NormalBorder(), true, true, true, true).
+		BorderForeground(m.styles.BorderColor).
+		Padding(1, 0)
 
-    instructionsStyle := lipgloss.NewStyle().
-        Align(lipgloss.Left).
-        Border(lipgloss.NormalBorder(), true, true, true, true).
-        BorderForeground(m.styles.BorderColor).
-        Padding(1, 0)
+	layout := lipgloss.JoinHorizontal(
+		lipgloss.Center,
+		optionsStyle.Render(left.String()),
+		instructionsStyle.Render(right.String()),
+	)
 
-    layout := lipgloss.JoinHorizontal(
-        lipgloss.Center,
-        optionsStyle.Render(left.String()),
-        instructionsStyle.Render(right.String()),
-    )
-
-    return layout
+	return layout
 }
