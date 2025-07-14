@@ -1,8 +1,8 @@
 use crate::game::{ClientMessage, GameManager, PlayerId};
 use clap::Parser;
 use packet::action_packet::ActionPacket;
-use packet::start_packet::StartPacket;
 use packet::spell_selection_packet::SpellSelectionPacket;
+use packet::start_packet::StartPacket;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -37,7 +37,11 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
 
     // --- Initial Packet: Spell Selection ---
     let mut initial_packet_header = [0; 2]; // Read version and code
-    if buf_reader.read_exact(&mut initial_packet_header).await.is_err() {
+    if buf_reader
+        .read_exact(&mut initial_packet_header)
+        .await
+        .is_err()
+    {
         eprintln!("Error reading initial packet header from {:?}", addr);
         if let Err(e) = writer.shutdown().await {
             eprintln!("Error shutting down stream for {:?}: {}", addr, e);
@@ -48,7 +52,8 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
     let version = initial_packet_header[0];
     let code = initial_packet_header[1];
 
-    let (spell1, spell2) = if version == 1 && code == 13 { // Code for SpellSelectionPacket
+    let (spell1, spell2) = if version == 1 && code == 13 {
+        // Code for SpellSelectionPacket
         let mut spell_payload = [0; 2]; // Read spell1 and spell2
         if buf_reader.read_exact(&mut spell_payload).await.is_err() {
             eprintln!("Error reading spell payload from {:?}", addr);
@@ -59,7 +64,10 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
         }
         (spell_payload[0], spell_payload[1])
     } else {
-        eprintln!("Invalid initial packet from {:?}: Version={}, Code={}", addr, version, code);
+        eprintln!(
+            "Invalid initial packet from {:?}: Version={}, Code={}",
+            addr, version, code
+        );
         if let Err(e) = writer.shutdown().await {
             eprintln!("Error shutting down stream for {:?}: {}", addr, e);
         }
@@ -74,7 +82,10 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
         if let Some(id) = manager.add_player(spell1, spell2) {
             player_id = id;
             manager.client_channel.insert(id, tx);
-            println!("Player {} ({:?}) joined with spells {} and {}", id, addr, spell1, spell2);
+            println!(
+                "Player {} ({:?}) joined with spells {} and {}",
+                id, addr, spell1, spell2
+            );
         } else {
             println!("Rejecting connection from {:?}: Server is full.", addr);
             let rejection_msg = "Server is full. Try again later.\n";
@@ -188,8 +199,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind(&address).await?;
     println!("Server listening  on {}", address);
 
-    let config =
-        config::GameConfig::load("game/stats.toml", "game/spells.toml").expect("Failed to load game configuration");
+    let config = config::GameConfig::load("game/stats.toml", "game/spells.toml")
+        .expect("Failed to load game configuration");
     let game_manager = GameManager::new(config);
     let arc_gm = Arc::new(Mutex::new(game_manager));
     println!("GameManager created and wrapped.");

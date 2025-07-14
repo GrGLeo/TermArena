@@ -10,7 +10,7 @@ use crate::{
             projectile::GameplayEffect,
         },
         projectile_manager::ProjectileManager,
-        spell::{fireball::FireballSpell, freeze_wall::FreezeWallSpell, Spell},
+        spell::{Spell, fireball::FireballSpell, freeze_wall::FreezeWallSpell},
     },
 };
 
@@ -60,14 +60,7 @@ fn mock_freezewall_spell_stats() -> SpellStats {
 
 #[test]
 fn test_fireball_cast_creates_projectile() {
-    let mut champion = Champion::new(
-        1,
-        Team::Blue,
-        10,
-        10,
-        mock_champion_stats(),
-        HashMap::new(),
-    );
+    let mut champion = Champion::new(1, Team::Blue, 10, 10, mock_champion_stats(), HashMap::new());
     champion.direction = Direction::Right;
     let mut fireball_spell = FireballSpell::new(mock_fireball_spell_stats());
     let mut projectile_manager = ProjectileManager::new();
@@ -84,29 +77,24 @@ fn test_fireball_cast_creates_projectile() {
         // Starts one cell to the right of the champion
         assert_eq!(path[0], (10, 11), "Fireball start position is incorrect");
         // Ends `range` cells away
-        assert_eq!(*path.last().unwrap(), (10, 15), "Fireball end position is incorrect");
+        assert_eq!(
+            *path.last().unwrap(),
+            (10, 15),
+            "Fireball end position is incorrect"
+        );
     } else {
         panic!("Fireball should create a Straight path projectile");
     }
 
     assert_eq!(
         projectile.payloads,
-        vec![GameplayEffect::Damage(
-            (50.0 * 1.2 + 60.0) as u16
-        )]
+        vec![GameplayEffect::Damage((50.0 * 1.2 + 60.0) as u16)]
     );
 }
 
 #[test]
 fn test_fireball_cast_respects_cooldown() {
-    let mut champion = Champion::new(
-        1,
-        Team::Blue,
-        10,
-        10,
-        mock_champion_stats(),
-        HashMap::new(),
-    );
+    let mut champion = Champion::new(1, Team::Blue, 10, 10, mock_champion_stats(), HashMap::new());
     let mut fireball_spell = FireballSpell::new(mock_fireball_spell_stats());
     let mut projectile_manager = ProjectileManager::new();
 
@@ -121,14 +109,7 @@ fn test_fireball_cast_respects_cooldown() {
 
 #[test]
 fn test_fireball_cast_checks_mana() {
-    let mut champion = Champion::new(
-        1,
-        Team::Blue,
-        10,
-        10,
-        mock_champion_stats(),
-        HashMap::new(),
-    );
+    let mut champion = Champion::new(1, Team::Blue, 10, 10, mock_champion_stats(), HashMap::new());
     champion.stats.mana = 20; // Not enough mana
     let mut fireball_spell = FireballSpell::new(mock_fireball_spell_stats());
     let mut projectile_manager = ProjectileManager::new();
@@ -140,14 +121,7 @@ fn test_fireball_cast_checks_mana() {
 
 #[test]
 fn test_freezewall_cast_creates_multiple_projectiles() {
-    let mut champion = Champion::new(
-        1,
-        Team::Blue,
-        10,
-        10,
-        mock_champion_stats(),
-        HashMap::new(),
-    );
+    let mut champion = Champion::new(1, Team::Blue, 10, 10, mock_champion_stats(), HashMap::new());
     champion.direction = Direction::Up;
     let mut freezewall_spell = FreezeWallSpell::new(mock_freezewall_spell_stats());
     let mut projectile_manager = ProjectileManager::new();
@@ -156,7 +130,7 @@ fn test_freezewall_cast_creates_multiple_projectiles() {
 
     assert_eq!(projectile_manager.projectiles.len(), 3);
     let mut projectiles: Vec<_> = projectile_manager.projectiles.values().collect();
-    
+
     // Sort projectiles by their column for deterministic testing
     projectiles.sort_by_key(|p| {
         if let PathingLogic::Straight { path, .. } = &p.pathing {
@@ -175,19 +149,31 @@ fn test_freezewall_cast_creates_multiple_projectiles() {
     // Wall center is (9, 10), width is 3, so projectiles start at cols 9, 10, 11
     if let PathingLogic::Straight { path, .. } = &projectiles[0].pathing {
         assert_eq!(path[0], (9, 9), "Left projectile start position");
-        assert_eq!(*path.last().unwrap(), (6, 9), "Left projectile end position");
+        assert_eq!(
+            *path.last().unwrap(),
+            (6, 9),
+            "Left projectile end position"
+        );
     } else {
         panic!("FreezeWall should create a Straight path projectile");
     }
     if let PathingLogic::Straight { path, .. } = &projectiles[1].pathing {
         assert_eq!(path[0], (9, 10), "Center projectile start position");
-        assert_eq!(*path.last().unwrap(), (6, 10), "Center projectile end position");
+        assert_eq!(
+            *path.last().unwrap(),
+            (6, 10),
+            "Center projectile end position"
+        );
     } else {
         panic!("FreezeWall should create a Straight path projectile");
     }
     if let PathingLogic::Straight { path, .. } = &projectiles[2].pathing {
         assert_eq!(path[0], (9, 11), "Right projectile start position");
-        assert_eq!(*path.last().unwrap(), (6, 11), "Right projectile end position");
+        assert_eq!(
+            *path.last().unwrap(),
+            (6, 11),
+            "Right projectile end position"
+        );
     } else {
         panic!("FreezeWall should create a Straight path projectile");
     }
@@ -195,14 +181,7 @@ fn test_freezewall_cast_creates_multiple_projectiles() {
 
 #[test]
 fn test_freezewall_cast_respects_cooldown() {
-    let mut champion = Champion::new(
-        1,
-        Team::Blue,
-        10,
-        10,
-        mock_champion_stats(),
-        HashMap::new(),
-    );
+    let mut champion = Champion::new(1, Team::Blue, 10, 10, mock_champion_stats(), HashMap::new());
     let mut freezewall_spell = FreezeWallSpell::new(mock_freezewall_spell_stats());
     let mut projectile_manager = ProjectileManager::new();
 
@@ -217,14 +196,7 @@ fn test_freezewall_cast_respects_cooldown() {
 
 #[test]
 fn test_freezewall_cast_checks_mana() {
-    let mut champion = Champion::new(
-        1,
-        Team::Blue,
-        10,
-        10,
-        mock_champion_stats(),
-        HashMap::new(),
-    );
+    let mut champion = Champion::new(1, Team::Blue, 10, 10, mock_champion_stats(), HashMap::new());
     champion.stats.mana = 50; // Not enough mana
     let mut freezewall_spell = FreezeWallSpell::new(mock_freezewall_spell_stats());
     let mut projectile_manager = ProjectileManager::new();

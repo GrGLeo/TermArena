@@ -134,7 +134,7 @@ impl Minion {
 
     pub fn movement_phase(&mut self, board: &mut Board) -> Result<(), GameError> {
         if self.is_stunned() {
-            return Ok(())
+            return Ok(());
         }
         if is_adjacent_to_goal((self.row, self.col), self.current_path) {
             self.change_goal();
@@ -440,23 +440,44 @@ mod tests {
         minion.take_effect(vec![stun_effect]);
 
         // Assert minion is stunned
-        assert!(minion.is_stunned(), "Minion should be stunned after applying stun buff");
+        assert!(
+            minion.is_stunned(),
+            "Minion should be stunned after applying stun buff"
+        );
 
         let initial_row = minion.row;
         let initial_col = minion.col;
 
         // Assert stunned minion cannot move
         let move_result = minion.movement_phase(&mut board);
-        assert!(move_result.is_ok(), "Stunned minion should not be able to move");
-        assert_eq!(minion.row, initial_row, "Stunned minion's row should not change");
-        assert_eq!(minion.col, initial_col, "Stunned minion's col should not change");
+        assert!(
+            move_result.is_ok(),
+            "Stunned minion should not be able to move"
+        );
+        assert_eq!(
+            minion.row, initial_row,
+            "Stunned minion's row should not change"
+        );
+        assert_eq!(
+            minion.col, initial_col,
+            "Stunned minion's col should not change"
+        );
 
         // Assert stunned minion cannot attack
-        assert!(minion.can_attack().is_none(), "Stunned minion should not be able to attack");
+        assert!(
+            minion.can_attack().is_none(),
+            "Stunned minion should not be able to attack"
+        );
         // attack_phase should also do nothing
         minion.attack_phase(&mut board, &mut new_animations, &mut pending_effects);
-        assert!(new_animations.is_empty(), "Stunned minion attack_phase should not create animations");
-        assert!(pending_effects.is_empty(), "Stunned minion attack_phase should not create pending effects");
+        assert!(
+            new_animations.is_empty(),
+            "Stunned minion attack_phase should not create animations"
+        );
+        assert!(
+            pending_effects.is_empty(),
+            "Stunned minion attack_phase should not create pending effects"
+        );
     }
 
     #[test]
@@ -484,21 +505,38 @@ mod tests {
         minion.active_buffs = kept_buffs;
 
         // Assert minion is no longer stunned
-        assert!(!minion.is_stunned(), "Minion should not be stunned after buff expiration");
+        assert!(
+            !minion.is_stunned(),
+            "Minion should not be stunned after buff expiration"
+        );
 
         let initial_row = minion.row;
         let initial_col = minion.col;
 
         // Assert minion can now move
         // Place minion on board for movement test
-        board.place_cell(CellContent::Minion(minion.minion_id, minion.team_id), minion.row as usize, minion.col as usize);
+        board.place_cell(
+            CellContent::Minion(minion.minion_id, minion.team_id),
+            minion.row as usize,
+            minion.col as usize,
+        );
         let move_result = minion.movement_phase(&mut board);
-        assert!(move_result.is_ok(), "Unstunned minion should be able to move");
-        assert_ne!((minion.row, minion.col), (initial_row, initial_col), "Minion should have moved");
+        assert!(
+            move_result.is_ok(),
+            "Unstunned minion should be able to move"
+        );
+        assert_ne!(
+            (minion.row, minion.col),
+            (initial_row, initial_col),
+            "Minion should have moved"
+        );
 
         // Assert minion can now attack
         minion.last_attacked = Instant::now() - minion.stats.attack_speed - Duration::from_secs(1);
-        assert!(minion.can_attack().is_some(), "Unstunned minion should be able to attack");
+        assert!(
+            minion.can_attack().is_some(),
+            "Unstunned minion should be able to attack"
+        );
     }
 
     fn test_new_minion() {

@@ -365,10 +365,10 @@ mod tests {
 
     use super::*;
     use crate::config::{ChampionStats, SpellStats};
-    use crate::game::buffs::stun_buff::StunBuff;
-    use crate::game::spell::freeze_wall::FreezeWallSpell;
     use crate::game::BaseTerrain;
     use crate::game::Board;
+    use crate::game::buffs::stun_buff::StunBuff;
+    use crate::game::spell::freeze_wall::FreezeWallSpell;
 
     // Helper function to create a dummy board for tests that require one
     fn create_dummy_board(rows: usize, cols: usize) -> Board {

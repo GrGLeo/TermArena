@@ -1,0 +1,13 @@
+[timing_rules]
+game_tick_ms = 40
+minion_wave_interval_secs = 30
+
+[minion_rules]
+minions_per_wave = 6
+minion_kill_gold = 15
+
+[champion_rules]
+champion_respawn_base_time = 10
+champion_respawn_time_per_level = 2
+xp_gain_range = 5
+gold_gain_range = 5

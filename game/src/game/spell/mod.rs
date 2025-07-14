@@ -8,8 +8,8 @@ use super::{
 };
 use crate::config::SpellStats;
 
-pub mod freeze_wall;
 pub mod fireball;
+pub mod freeze_wall;
 
 pub struct ProjectileBlueprint {
     pub projectile_type: ProjectileType,
