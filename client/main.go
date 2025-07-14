@@ -170,7 +170,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			conn, err := communication.MakeConnection("8082")
 			if err != nil {
 				log.Println("Failed to make connection after game over: ", err.Error())
-        // TODO: add a retry mechanism as when we start the client
+				// TODO: add a retry mechanism as when we start the client
 				return m, tea.Quit
 			}
 			m.Connection = conn
