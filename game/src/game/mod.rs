@@ -25,7 +25,7 @@ use entities::{
 };
 use minion_manager::MinionManager;
 use projectile_manager::ProjectileManager;
-use spell::{freeze_wall::FreezeWallSpell, Spell};
+use spell::Spell;
 use tokio::sync::mpsc;
 
 use std::{

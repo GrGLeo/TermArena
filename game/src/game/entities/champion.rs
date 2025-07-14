@@ -347,8 +347,10 @@ impl HasBuff for Champion {
 mod tests {
 
     use super::*;
-    use crate::config::ChampionStats;
-    use crate::game::BaseTerrain; // Assuming BaseTerrain is needed for Board creation
+    use crate::config::{ChampionStats, SpellStats};
+    use crate::game::buffs::stun_buff::StunBuff;
+    use crate::game::spell::freeze_wall::FreezeWallSpell;
+    use crate::game::BaseTerrain;
     use crate::game::Board;
 
     // Helper function to create a dummy board for tests that require one
@@ -361,6 +363,7 @@ mod tests {
             attack_damage: 20,
             attack_speed_ms: 2500,
             health: 200,
+            mana: 100,
             armor: 5,
             xp_per_level: vec![
                 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115,
@@ -765,15 +768,19 @@ mod tests {
         let mut pm = ProjectileManager::new();
         let champion_stats = create_default_champion_stats();
         let spell_stat = SpellStats {
+            id: 0,
+            mana_cost: 10,
+            cooldown_secs: 5,
             range: 10,
             width: 5,
             speed: 1,
             base_damage: 20,
             damage_ratio: 0.8,
-            stun_duration: 5,
+            stun_duration: Some(5),
         };
-        let mut spell_stats: HashMap<String, SpellStats> = HashMap::new();
-        spell_stats.insert("freeze_wall".to_string(), spell_stat);
+        let mut spell_stats: HashMap<u8, Box<dyn Spell>> = HashMap::new();
+        let spell = Box::new(FreezeWallSpell::new(spell_stat));
+        spell_stats.insert(0, spell);
 
         let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats, spell_stats);
 
@@ -1141,9 +1148,10 @@ mod tests {
     fn test_champion_stun_application() {
         let champion_stats = create_default_champion_stats();
         let spell_stats = HashMap::new();
-        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats, spell_stats);
         let mut board = create_dummy_board(10, 10);
         let mut pm = ProjectileManager::new();
+        board.place_cell(CellContent::Champion(1, Team::Red), 2, 2);
 
         // Apply a stun buff
         let stun_duration_secs = 5;
@@ -1156,17 +1164,23 @@ mod tests {
             "Champion should be stunned after applying stun buff"
         );
 
+        let initial_row = champion.row;
+        let initial_col = champion.col;
+
         // Assert stunned champion cannot move
         let move_action = Action::MoveUp;
         let move_result = champion.take_action(&move_action, &mut board, &mut pm);
         assert!(
-            move_result.is_err(),
-            "Stunned champion should not be able to move"
+            move_result.is_ok(),
+            "take_action for a stunned champion should return Ok"
         );
         assert_eq!(
-            move_result.unwrap_err(),
-            GameError::IsStunned,
-            "Stunned champion move error should be GameError::IsStunned"
+            champion.row, initial_row,
+            "Stunned champion's row should not change"
+        );
+        assert_eq!(
+            champion.col, initial_col,
+            "Stunned champion's col should not change"
         );
 
         // Assert stunned champion cannot attack

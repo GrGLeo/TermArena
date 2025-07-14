@@ -47,3 +47,6 @@ pub fn create_spell_from_id(id: u8, stats: SpellStats) -> Box<dyn Spell> {
         _ => panic!("Unknown spell ID: {}", id),
     }
 }
+
+#[cfg(test)]
+mod tests;
