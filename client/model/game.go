@@ -28,6 +28,7 @@ type GameModel struct {
 	level          int
 	xp             [2]int
 	points         [2]int
+	attackMode     bool
 	dashed         bool
 	dashcooldown   time.Duration
 	dashStart      time.Time
@@ -101,14 +102,18 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			communication.SendAction(m.conn, 4)
 			return m, nil
 		case "q":
-			if !m.dashed {
-				communication.SendAction(m.conn, 5)
-				m.dashed = true
-				m.dashStart = time.Now()
-				return m, doTick()
-			}
+			communication.SendAction(m.conn, 5)
+			return m, nil
 		case "e":
 			communication.SendAction(m.conn, 6)
+			return m, nil
+		case "v":
+      if m.attackMode {
+        m.attackMode = false
+      } else {
+        m.attackMode = true
+      }
+			communication.SendAction(m.conn, 7)
 			return m, nil
 		}
 	case communication.CooldownTickMsg:
@@ -224,6 +229,7 @@ func (m GameModel) View() string {
 		builder.WriteString("\n") // New line at the end of each row
 	}
 
+
 	var healthBar string
 	if m.health[1] > 0 {
 		healthPercent := (float32(m.health[0]) / float32(m.health[1]))
@@ -271,13 +277,17 @@ func (m GameModel) View() string {
 		progressBar = m.progress.ViewAs(m.percent)
 	}
 	builder.WriteString(progressBar)
+  gameStyle := lipgloss.NewStyle().Border(lipgloss.NormalBorder(), m.attackMode).BorderForeground(lipgloss.Color("#ff0000"))
+
+
+
 
 	return lipgloss.Place(
 		m.width,
 		m.height,
 		lipgloss.Center,
 		lipgloss.Center,
-		builder.String(),
+		gameStyle.Render(builder.String()),
 	)
 }
 

@@ -31,6 +31,7 @@ pub enum Action {
     MoveRight,
     Action1,
     Action2,
+    AttackMode,
     InvalidAction,
 }
 
@@ -47,6 +48,7 @@ pub struct Champion {
     death_counter: u8,
     death_timer: Instant,
     last_attacked: Instant,
+    attack_mode: bool,
     stun_timer: Option<Instant>,
     pub row: u16,
     pub col: u16,
@@ -82,6 +84,7 @@ impl Champion {
             death_counter: 0,
             death_timer: Instant::now(),
             last_attacked: Instant::now(),
+            attack_mode: false,
             stun_timer: None,
             active_buffs: HashMap::new(),
             team_id,
@@ -160,6 +163,10 @@ impl Champion {
                     self.spells.insert(1, spell);
                     return Ok(());
                 }
+                return Ok(());
+            }
+            Action::AttackMode => {
+                self.attack_mode = !self.attack_mode;
                 return Ok(());
             }
             Action::InvalidAction => {
@@ -298,18 +305,28 @@ impl Fighter for Champion {
             })
             .filter_map(|(row, col, cell)| {
                 if let Some(content) = &cell.content {
-                    match content {
+                    let is_enemy = match content {
                         CellContent::Champion(_, team_id)
                         | CellContent::Tower(_, team_id)
                         | CellContent::Minion(_, team_id)
-                        | CellContent::Base(team_id) => {
-                            if *team_id != self.team_id {
+                        | CellContent::Base(team_id) => *team_id != self.team_id,
+                        _ => false,
+                    };
+
+                    if is_enemy {
+                        if self.attack_mode {
+                            // If attack_mode is true, only target champions
+                            if let CellContent::Champion(_, _) = content {
                                 Some((row, col, cell))
                             } else {
                                 None
                             }
+                        } else {
+                            // If attack_mode is false, target any enemy
+                            Some((row, col, cell))
                         }
-                        _ => None,
+                    } else {
+                        None
                     }
                 } else {
                     None

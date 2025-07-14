@@ -219,6 +219,7 @@ impl GameManager {
             4 => Action::MoveRight,
             5 => Action::Action1,
             6 => Action::Action2,
+            7 => Action::AttackMode,
             _other => Action::InvalidAction,
         };
         self.player_action.insert(player_id, action);
