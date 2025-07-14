@@ -2,6 +2,7 @@ use crate::game::{ClientMessage, GameManager, PlayerId};
 use clap::Parser;
 use packet::action_packet::ActionPacket;
 use packet::start_packet::StartPacket;
+use packet::spell_selection_packet::SpellSelectionPacket;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -30,51 +31,65 @@ struct CliArgs {
 
 async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mutex<GameManager>>) {
     println!("Handler task started for connection from: {:?}", addr);
-    let player_id_option: Option<PlayerId>;
 
-    // Create the player channel
+    let (reader, mut writer) = split(stream);
+    let mut buf_reader = BufReader::new(reader);
+
+    // --- Initial Packet: Spell Selection ---
+    let mut initial_packet_header = [0; 2]; // Read version and code
+    if buf_reader.read_exact(&mut initial_packet_header).await.is_err() {
+        eprintln!("Error reading initial packet header from {:?}", addr);
+        if let Err(e) = writer.shutdown().await {
+            eprintln!("Error shutting down stream for {:?}: {}", addr, e);
+        }
+        return;
+    }
+
+    let version = initial_packet_header[0];
+    let code = initial_packet_header[1];
+
+    let (spell1, spell2) = if version == 1 && code == 13 { // Code for SpellSelectionPacket
+        let mut spell_payload = [0; 2]; // Read spell1 and spell2
+        if buf_reader.read_exact(&mut spell_payload).await.is_err() {
+            eprintln!("Error reading spell payload from {:?}", addr);
+            if let Err(e) = writer.shutdown().await {
+                eprintln!("Error shutting down stream for {:?}: {}", addr, e);
+            }
+            return;
+        }
+        (spell_payload[0], spell_payload[1])
+    } else {
+        eprintln!("Invalid initial packet from {:?}: Version={}, Code={}", addr, version, code);
+        if let Err(e) = writer.shutdown().await {
+            eprintln!("Error shutting down stream for {:?}: {}", addr, e);
+        }
+        return;
+    };
+
+    let player_id: PlayerId;
     let (tx, mut rx) = mpsc::channel::<ClientMessage>(32);
+
     {
         let mut manager = game_manager.lock().await;
-        if let Some(id) = manager.add_player() {
-            player_id_option = Some(id);
+        if let Some(id) = manager.add_player(spell1, spell2) {
+            player_id = id;
             manager.client_channel.insert(id, tx);
-            println!("Player {} ({:?}) joined", id, addr);
+            println!("Player {} ({:?}) joined with spells {} and {}", id, addr, spell1, spell2);
         } else {
-            println!("Rejecting connection form {:?}: Server is full.", addr);
-            let mut stream = stream;
+            println!("Rejecting connection from {:?}: Server is full.", addr);
             let rejection_msg = "Server is full. Try again later.\n";
-            if let Err(e) = stream.write_all(rejection_msg.as_bytes()).await {
+            if let Err(e) = writer.write_all(rejection_msg.as_bytes()).await {
                 eprintln!("Error sending rejection message to {:?}: {}", addr, e);
             }
-            if let Err(e) = stream.shutdown().await {
+            if let Err(e) = writer.shutdown().await {
                 eprintln!("Error shutting down rejected stream for {:?}: {}", addr, e);
             }
             return;
         }
     }
 
-    let player_id = match player_id_option {
-        Some(id) => id,
-        None => {
-            eprintln!(
-                "Error failed to get player ID for {:?} after lock release.",
-                addr
-            );
-            let mut stream = stream;
-            if let Err(e) = stream.shutdown().await {
-                eprintln!(
-                    "Error shutting down  stream for {:?} after ID error: {}",
-                    addr, e
-                );
-            }
-            return;
-        }
-    };
-
     // -- Split Stream and Spawn Writer Task --
-    let (reader, mut writer) = split(stream);
-    let mut buf_reader = BufReader::new(reader);
+    // The reader and writer are already split from the initial read
     // Spawn a separate task that owns the 'writer' and listens on 'rx'
     let _ = spawn(async move {
         while let Some(message) = rx.recv().await {
@@ -174,7 +189,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Server listening  on {}", address);
 
     let config =
-        config::GameConfig::load("game/stats.toml").expect("Failed to load game configuration");
+        config::GameConfig::load("game/stats.toml", "game/spells.toml").expect("Failed to load game configuration");
     let game_manager = GameManager::new(config);
     let arc_gm = Arc::new(Mutex::new(game_manager));
     println!("GameManager created and wrapped.");

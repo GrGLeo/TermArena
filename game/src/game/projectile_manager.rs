@@ -258,6 +258,7 @@ mod tests {
             attack_damage: 50,
             attack_speed_ms: 1000,
             health: 500,
+            mana: 100,
             armor: 10,
             xp_per_level: vec![100, 200],
             level_up_health_increase: 50,

@@ -60,6 +60,8 @@ impl Minion {
             attack_speed: Duration::from_millis(minion_stats.attack_speed_ms),
             health: minion_stats.health,
             max_health: minion_stats.health,
+            mana: 0,
+            max_mana: 0,
             armor: minion_stats.armor,
         };
 
@@ -428,7 +430,7 @@ mod tests {
     fn test_minion_stun_application() {
         let minion_stats = create_default_minion_stats();
         let mut minion = Minion::new(1, Team::Blue, Lane::Mid, minion_stats);
-        let mut board = create_dummy_board(10, 10);
+        let mut board = create_dummy_board(200, 200);
         let mut new_animations = Vec::new();
         let mut pending_effects = Vec::new();
 
@@ -440,10 +442,14 @@ mod tests {
         // Assert minion is stunned
         assert!(minion.is_stunned(), "Minion should be stunned after applying stun buff");
 
+        let initial_row = minion.row;
+        let initial_col = minion.col;
+
         // Assert stunned minion cannot move
         let move_result = minion.movement_phase(&mut board);
-        assert!(move_result.is_err(), "Stunned minion should not be able to move");
-        assert_eq!(move_result.unwrap_err(), GameError::IsStunned, "Stunned minion move error should be GameError::IsStunned");
+        assert!(move_result.is_ok(), "Stunned minion should not be able to move");
+        assert_eq!(minion.row, initial_row, "Stunned minion's row should not change");
+        assert_eq!(minion.col, initial_col, "Stunned minion's col should not change");
 
         // Assert stunned minion cannot attack
         assert!(minion.can_attack().is_none(), "Stunned minion should not be able to attack");
@@ -457,7 +463,9 @@ mod tests {
     fn test_minion_stun_expiration() {
         let minion_stats = create_default_minion_stats();
         let mut minion = Minion::new(1, Team::Blue, Lane::Mid, minion_stats);
-        let mut board = create_dummy_board(10, 10);
+        let mut board = create_dummy_board(200, 200);
+        minion.row = 180;
+        minion.col = 10;
 
         // Apply a very short stun buff
         let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(0))); // Duration 0 for immediate expiration
@@ -478,11 +486,15 @@ mod tests {
         // Assert minion is no longer stunned
         assert!(!minion.is_stunned(), "Minion should not be stunned after buff expiration");
 
+        let initial_row = minion.row;
+        let initial_col = minion.col;
+
         // Assert minion can now move
         // Place minion on board for movement test
         board.place_cell(CellContent::Minion(minion.minion_id, minion.team_id), minion.row as usize, minion.col as usize);
         let move_result = minion.movement_phase(&mut board);
         assert!(move_result.is_ok(), "Unstunned minion should be able to move");
+        assert_ne!((minion.row, minion.col), (initial_row, initial_col), "Minion should have moved");
 
         // Assert minion can now attack
         minion.last_attacked = Instant::now() - minion.stats.attack_speed - Duration::from_secs(1);

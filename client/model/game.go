@@ -20,9 +20,11 @@ type GameModel struct {
 	gameClock      time.Duration
 	height, width  int
 	healthProgress progress.Model
+	manaProgress   progress.Model
 	xpProgress     progress.Model
 	progress       progress.Model
 	health         [2]int
+	mana           [2]int
 	level          int
 	xp             [2]int
 	points         [2]int
@@ -38,11 +40,13 @@ func NewGameModel(conn *net.TCPConn) GameModel {
 		"#FFD700", // Gold
 	)
 	redSolid := progress.WithSolidFill("#AB2C0F")
-	blueSolid := progress.WithSolidFill("#0000FF")
+	blueSolid := progress.WithSolidFill("#3E84D4")
+	purpleSolid := progress.WithSolidFill("#A51CC4")
 	return GameModel{
 		conn:           conn,
 		healthProgress: progress.New(redSolid),
-		xpProgress:     progress.New(blueSolid),
+		manaProgress:   progress.New(blueSolid),
+		xpProgress:     progress.New(purpleSolid),
 		progress:       progress.New(yellowGradient),
 		dashcooldown:   5 * time.Second,
 	}
@@ -68,6 +72,7 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		points := msg.Points
 		m.points = points
 		m.health = msg.Health
+		m.mana = msg.Mana
 		m.level = msg.Level
 		m.xp = msg.Xp
 		m.currentBoard = msg.Board
@@ -95,14 +100,14 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			communication.SendAction(m.conn, 4)
 			return m, nil
-		case " ":
+		case "q":
 			if !m.dashed {
 				communication.SendAction(m.conn, 5)
 				m.dashed = true
 				m.dashStart = time.Now()
 				return m, doTick()
 			}
-		case "j":
+		case "e":
 			communication.SendAction(m.conn, 6)
 			return m, nil
 		}
@@ -194,7 +199,6 @@ func (m GameModel) View() string {
 				builder.WriteString(TowerStyle.Render(" ")) // Render for tower
 			case 8:
 				builder.WriteString(bgStyle.Render("⍓")) // Render for dash
-				//builder.WriteString(bgStyle.Render("⣿")) // Render for dash
 			case 9:
 				builder.WriteString(bgStyle.Render("x")) // Render for dash
 			case 10:
@@ -207,6 +211,8 @@ func (m GameModel) View() string {
 				builder.WriteString(bgStyle.Render("⣀")) // Render for dash
 			case 14:
 				builder.WriteString(FreezeStyle.Render("𐙂")) // Render for freezing spell
+			case 15:
+				builder.WriteString(bgStyle.Render("𐁙")) // Render for freezing spell
 			case 100, 101, 102, 103, 104, 105, 106, 107: // Friendly minion health (1/8 to 8/8)
 				healthIndex := cell - 100
 				builder.WriteString(p1Style.Render(minionHealthChars[healthIndex]))
@@ -230,6 +236,20 @@ func (m GameModel) View() string {
 		healthBar,
 	)
 	builder.WriteString(healthHUD)
+	builder.WriteString("\n")
+
+	var manaBar string
+	if m.health[1] > 0 {
+		manaPercent := (float32(m.mana[0]) / float32(m.mana[1]))
+		manaBar = m.manaProgress.ViewAs(float64(manaPercent))
+	}
+	manaInfo := fmt.Sprintf("%d / %d", m.mana[0], m.mana[1])
+	manaHUD := lipgloss.JoinHorizontal(
+		lipgloss.Right,
+		manaInfo,
+		manaBar,
+	)
+	builder.WriteString(manaHUD)
 	builder.WriteString("\n")
 
 	var xpBar string

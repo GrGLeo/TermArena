@@ -74,6 +74,14 @@ func SendAction(conn *net.TCPConn, action int) error {
 	return err
 }
 
+func SendSpellSelectionPacket(conn *net.TCPConn, spell1, spell2 int) error {
+	log.Printf("Sending spell selection: %d, %d", spell1, spell2)
+	spellPacket := shared.NewSpellSelectionPacket(spell1, spell2)
+	data := spellPacket.Serialize()
+	_, err := conn.Write(data)
+	return err
+}
+
 func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 	buf := make([]byte, 1024)
 	for {
@@ -111,9 +119,10 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 				log.Print(err.Error())
 			}
 			health := [2]int{msg.Health, msg.MaxHealth}
+			mana := [2]int{msg.Mana, msg.MaxMana}
 			xp := [2]int{msg.Xp, msg.XpNeeded}
 			log.Printf("Sending BoardMsg: Health=%v, Level=%d, Xp=%v", health, msg.Level, xp)
-			msgs <- BoardMsg{Points: msg.Points, Health: health, Level: msg.Level, Xp: xp, Board: board}
+			msgs <- BoardMsg{Points: msg.Points, Health: health, Mana: mana, Level: msg.Level, Xp: xp, Board: board}
 		case *shared.DeltaPacket:
 			deltas := DecodeDeltas(msg.Deltas)
 			log.Printf("Sending DeltaMsg: TickID=%d, Deltas=%v", msg.TickID, deltas)

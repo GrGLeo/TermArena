@@ -41,6 +41,8 @@ impl Tower {
                 attack_speed: Duration::from_secs(tower_stats.attack_speed_secs),
                 health: tower_stats.health,
                 max_health: tower_stats.health,
+                mana: 0,
+                max_mana: 0,
                 armor: tower_stats.armor,
             },
             tower_stats,

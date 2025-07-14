@@ -8,6 +8,8 @@ pub struct BoardPacket {
     pub points: u16,
     pub health: u16,
     pub max_health: u16,
+    pub mana: u16,
+    pub max_mana: u16,
     pub level: u8,
     pub xp: u32,
     pub xp_needed: u32,
@@ -19,6 +21,8 @@ impl BoardPacket {
     pub fn new(
         health: u16,
         max_health: u16,
+        mana: u16,
+        max_mana: u16,
         level: u8,
         xp: u32,
         xp_needed: u32,
@@ -31,6 +35,8 @@ impl BoardPacket {
             points: 0,
             health,
             max_health,
+            mana,
+            max_mana,
             level,
             xp,
             xp_needed,
@@ -46,6 +52,8 @@ impl BoardPacket {
         buffer.put_u16(self.points);
         buffer.put_u16(self.health);
         buffer.put_u16(self.max_health);
+        buffer.put_u16(self.mana);
+        buffer.put_u16(self.max_mana);
         buffer.put_u8(self.level);
         buffer.put_u32(self.xp);
         buffer.put_u32(self.xp_needed);
@@ -65,6 +73,8 @@ mod tests {
         let encoded_board_data = vec![0, 1, 1, 2, 3, 1, 1]; // Sample encoded board data
         let health = 400;
         let max_health = 400;
+        let mana = 100;
+        let max_mana = 100;
         let level = 1;
         let xp = 0;
         let xp_needed = 35;
@@ -73,6 +83,8 @@ mod tests {
         let packet = BoardPacket::new(
             health,
             max_health,
+            mana,
+            max_mana,
             level,
             xp,
             xp_needed,
@@ -84,6 +96,8 @@ mod tests {
         assert_eq!(packet.points, 0); // Points should be 0 as per implementation
         assert_eq!(packet.health, 400);
         assert_eq!(packet.max_health, 400);
+        assert_eq!(packet.mana, 100);
+        assert_eq!(packet.max_mana, 100);
         assert_eq!(packet.level, 1);
         assert_eq!(packet.xp, 0);
         assert_eq!(packet.xp_needed, 35);
@@ -96,12 +110,16 @@ mod tests {
         let encoded_board_data = vec![0, 1, 1, 2, 3, 1, 1]; // Sample encoded board data
         let health = 300;
         let max_health = 400;
+        let mana = 100;
+        let max_mana = 100;
         let level = 1;
         let xp = 0;
         let xp_needed = 35;
         let packet = BoardPacket::new(
             health,
             max_health,
+            mana,
+            max_mana,
             level,
             xp,
             xp_needed,
@@ -117,6 +135,8 @@ mod tests {
         expected_buffer.put_u16(packet.points); // 0 (as BigEndian)
         expected_buffer.put_u16(packet.health); // 400 (as BigEndian)
         expected_buffer.put_u16(packet.max_health); // 400 (as BigEndian)
+        expected_buffer.put_u16(packet.mana); // 400 (as BigEndian)
+        expected_buffer.put_u16(packet.max_mana); // 400 (as BigEndian)
         expected_buffer.put_u8(packet.level);
         expected_buffer.put_u32(packet.xp);
         expected_buffer.put_u32(packet.xp_needed);

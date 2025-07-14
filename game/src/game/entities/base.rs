@@ -20,6 +20,8 @@ impl Base {
             attack_speed: std::time::Duration::from_secs(999),
             health: base_stats.health,
             max_health: base_stats.health,
+            mana: 0,
+            max_mana: 0,
             armor: base_stats.armor,
         };
 

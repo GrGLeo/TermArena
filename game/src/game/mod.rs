@@ -25,6 +25,7 @@ use entities::{
 };
 use minion_manager::MinionManager;
 use projectile_manager::ProjectileManager;
+use spell::Spell;
 use tokio::sync::mpsc;
 
 use std::{
@@ -150,12 +151,20 @@ impl GameManager {
         self.player_action.clear();
     }
 
-    pub fn add_player(&mut self) -> Option<PlayerId> {
+    pub fn add_player(&mut self, spell1_id: u8, spell2_id: u8) -> Option<PlayerId> {
         if self.players_count < self.max_players {
             self.players_count += 1;
             let player_id = self.players_count;
             // Assign Champion to player, and place it on the board
             {
+                // We get the choosen spell
+                let mut selected_spell: HashMap<u8, Box<dyn Spell>> = HashMap::new();
+                if let Some(spell_stats) = self.config.spells.get(&spell1_id) {
+                    selected_spell.insert(spell1_id, spell::create_spell_from_id(spell1_id, spell_stats.clone()));
+                }
+                if let Some(spell_stats) = self.config.spells.get(&spell2_id) {
+                    selected_spell.insert(spell2_id, spell::create_spell_from_id(spell2_id, spell_stats.clone()));
+                }
                 let row = 199;
                 let col = 0;
                 let champion = Champion::new(
@@ -164,7 +173,7 @@ impl GameManager {
                     row,
                     col,
                     self.config.champion.clone(),
-                    self.config.spells.clone(),
+                    selected_spell,
                 );
                 self.champions.insert(player_id, champion);
                 self.board.place_cell(
@@ -548,6 +557,8 @@ impl GameManager {
             let board_packet = BoardPacket::new(
                 health.0,
                 health.1,
+                champion.stats.mana,
+                champion.stats.max_mana,
                 champion.level,
                 champion.xp,
                 xp_needed,

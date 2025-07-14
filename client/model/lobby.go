@@ -13,26 +13,30 @@ import (
 )
 
 type LobbyModel struct {
-	styles         *Styles
-	tabSelected   int
-	queueModel    QueueModel
-	createModel   CreateModel
-	conn          *net.TCPConn
-	looking       bool
-	width, height int
+	styles              *Styles
+	tabSelected         int
+	queueModel          QueueModel
+	createModel         CreateModel
+	spellSelectionModel SpellSelectionModel
+	conn                *net.TCPConn
+	looking             bool
+	width, height       int
+	SelectedSpells      [2]int
 }
 
 func NewLobbyModel(conn *net.TCPConn) LobbyModel {
 	queueModel := NewQueueModel(conn)
 	createModel := NewCreateModel(conn)
 	s := DefaultStyles()
+	spellSelectionModel := NewSpellSelection(s)
 
 	return LobbyModel{
-		styles:       s,
-		tabSelected: 0,
-		queueModel:  queueModel,
-		createModel: createModel,
-		conn:        conn,
+		styles:              s,
+		tabSelected:         0,
+		queueModel:          queueModel,
+		createModel:         createModel,
+		spellSelectionModel: spellSelectionModel,
+		conn:                conn,
 	}
 }
 
@@ -47,6 +51,7 @@ func (m *LobbyModel) SetDimension(height, width int) {
 	m.width = width
 	m.queueModel.SetDimension(height, width)
 	m.createModel.SetDimension(height, width)
+	m.spellSelectionModel.SetDimension(height, width)
 }
 
 func (m *LobbyModel) SetLooking(search bool) {
@@ -54,7 +59,7 @@ func (m *LobbyModel) SetLooking(search bool) {
 }
 
 func (m LobbyModel) Init() tea.Cmd {
-	return nil
+	return m.spellSelectionModel.Init()
 }
 
 func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -67,15 +72,22 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "left":
-			m.tabSelected = (m.tabSelected - 1 + 2) % 2
+			m.tabSelected = (m.tabSelected - 1 + 3) % 3
 		case "right":
-			m.tabSelected = (m.tabSelected + 1) % 2
+			m.tabSelected = (m.tabSelected + 1) % 3
 		case "q", "esc", "ctrl+c":
 			return m, tea.Quit
 		}
+	case SpellsSelectedMsg:
+		m.SelectedSpells = msg.SpellIDs
+		log.Printf("LobbyModel received selected spells: %v", m.SelectedSpells)
 	}
 
 	if m.tabSelected == 0 {
+		var ssm tea.Model
+		ssm, cmd = m.spellSelectionModel.Update(msg)
+		m.spellSelectionModel = ssm.(SpellSelectionModel)
+	} else if m.tabSelected == 1 {
 		var qm tea.Model
 		qm, cmd = m.queueModel.Update(msg)
 		m.queueModel = qm.(QueueModel)
@@ -93,16 +105,26 @@ func (m LobbyModel) View() string {
 	var content string
 
 	// Render Tabs based on selection
-	loginTabStr := "Join a game"
-	createTabStr := "Create a game"
+	spellSelectionTabStr := "Spell Selection"
+	joinGameTabStr := "Join a game"
+	createGameTabStr := "Create a game"
+
+	tabs := []string{spellSelectionTabStr, joinGameTabStr, createGameTabStr}
+
+	for i, tab := range tabs {
+		if i == m.tabSelected {
+			renderedTabs = append(renderedTabs, m.styles.ActiveTab.Render(tab))
+		} else {
+			renderedTabs = append(renderedTabs, m.styles.InactiveTab.Render(tab))
+		}
+	}
+
 	if m.tabSelected == 0 {
-		renderedTabs = append(renderedTabs, m.styles.ActiveTab.Render(loginTabStr))
-		renderedTabs = append(renderedTabs, m.styles.InactiveTab.Render(createTabStr))
-		content = m.queueModel.View() // Get content from the active model
+		content = m.spellSelectionModel.View()
+	} else if m.tabSelected == 1 {
+		content = m.queueModel.View()
 	} else {
-		renderedTabs = append(renderedTabs, m.styles.InactiveTab.Render(loginTabStr))
-		renderedTabs = append(renderedTabs, m.styles.ActiveTab.Render(createTabStr))
-		content = m.createModel.View() // Get content from the active model
+		content = m.createModel.View()
 	}
 
 	// Join the individual tab strings horizontally
@@ -326,7 +348,7 @@ func (m CreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case communication.LookRoomMsg:
 		m.looking = true
 		m.roomID = msg.RoomID
-    log.Println(msg.RoomIP)
+		log.Println(msg.RoomIP)
 		return m, m.spinner.Tick
 	case tea.KeyMsg:
 		switch msg.Type {

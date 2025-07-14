@@ -6,6 +6,7 @@ armor = 10
 attack_damage = 20
 attack_speed_ms = 2500
 health = 200
+mana = 100
 armor = 5
 xp_per_level = [35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115] # Max level 18, so 17 levels to define XP for
 level_up_health_increase = 20
@@ -31,12 +32,3 @@ health = 400
 armor = 8
 attack_range_row = 7
 attack_range_col = 9
-
-[spells]
-[spells.freeze_wall]
-range = 10
-speed = 2
-width = 5
-damage_ratio = 0.2
-base_damage = 10
-stun_duration = 1
