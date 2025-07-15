@@ -5,6 +5,7 @@ pub mod buffs;
 pub mod cell;
 pub mod entities;
 pub mod minion_manager;
+pub mod monster_manager;
 pub mod projectile_manager;
 pub mod spell;
 

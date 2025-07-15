@@ -226,6 +226,7 @@ fn get_encoded_cell_value(cell: &Cell, minion_manager: &MinionManager) -> Encode
                 Team::Blue => EncodedCellValue::BaseBlue,
                 Team::Red => EncodedCellValue::BaseRed,
             },
+            CellContent::Monster(_) => EncodedCellValue::Monster,
         }
     } else {
         match cell.base {

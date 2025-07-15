@@ -47,19 +47,21 @@ pub struct TowerStats {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct NeutralMonster {
-    id: u8,
-    attack_damage: u8,
-    attack_speed_ms: u64,
-    health: u16,
-    armor: u8,
-    aggro_range_row: u8,
-    aggro_range_col: u8,
-    attack_range_row: u8,
-    attack_range_col: u8,
-    leash_range: u8,
-    xp_reward: u8,
-    respawn_timer_secs: u16,
+pub struct MonsterStats {
+    pub id: String,
+    pub spawn_row:  u16,
+    pub spawn_col: u16, 
+    pub attack_damage: u16,
+    pub attack_speed_ms: u64,
+    pub health: u16,
+    pub armor: u16,
+    pub aggro_range_row: u8,
+    pub aggro_range_col: u8,
+    pub attack_range_row: u8,
+    pub attack_range_col: u8,
+    pub leash_range: u8,
+    pub xp_reward: u8,
+    pub respawn_timer_secs: u16,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -87,7 +89,7 @@ pub struct GameConfig {
     pub champion: ChampionStats,
     pub minion: MinionStats,
     pub tower: TowerStats,
-    pub neutral_monsters: Vec<NeutralMonster>,
+    pub neutral_monsters: Vec<MonsterStats>,
     #[serde(skip)]
     pub spells: HashMap<u8, SpellStats>,
 }
