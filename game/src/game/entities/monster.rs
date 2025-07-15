@@ -21,7 +21,7 @@ pub struct Monster {
     pub state: MonsterState,
     pub target_champion_id: Option<PlayerId>,
     path: Option<VecDeque<(u16, u16)>>,
-    stats: Stats,
+    pub stats: Stats,
     last_attacked: Instant,
     stun_timer: Option<Instant>,
     pub active_buffs: HashMap<String, Box<dyn Buff>>,
@@ -62,12 +62,15 @@ impl Monster {
         }
     }
 
-    fn attach_target(&mut self, champion_id: PlayerId) {
+    pub fn attach_target(&mut self, player_id: PlayerId) {
         self.state = MonsterState::Aggro;
-        self.target_champion_id = Some(champion_id);
+        match self.target_champion_id {
+            Some(_) => {},
+            None => self.target_champion_id = Some(player_id),
+        }
     }
 
-    fn start_returning(&mut self, board: &Board) {
+    pub fn start_returning(&mut self, board: &Board) {
         self.state = MonsterState::Returning;
         self.target_champion_id = None;
         let mut path = find_path_on_board(board, (self.row, self.col), (self.spawn_row, self.spawn_col));
@@ -77,7 +80,7 @@ impl Monster {
         self.path = path;
     }
 
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.state = MonsterState::Idle;
         self.stats.health = self.stats.max_health;
         self.path = None;
@@ -85,7 +88,7 @@ impl Monster {
 }
 
 impl Fighter for Monster {
-    fn take_effect(&mut self, effects: Vec<super::projectile::GameplayEffect>) {
+    fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
         for effect in effects.into_iter() {
             match effect {
                 GameplayEffect::Damage(damage) => {

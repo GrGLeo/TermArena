@@ -101,7 +101,6 @@ impl GameConfig {
 
         let spell_content = fs::read_to_string(spell_path)?;
         let spells_file: SpellFile = toml::from_str(&spell_content)?;
-        println!("{:?}",config.neutral_monsters);
 
         config.spells = spells_file
             .spell
