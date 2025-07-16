@@ -20,7 +20,7 @@ pub struct Monster {
     pub monster_id: String,
     pub state: MonsterState,
     pub target_champion_id: Option<PlayerId>,
-    path: Option<VecDeque<(u16, u16)>>,
+    pub path: Option<VecDeque<(u16, u16)>>,
     pub stats: Stats,
     last_attacked: Instant,
     stun_timer: Option<Instant>,
@@ -30,6 +30,7 @@ pub struct Monster {
     pub col: u16,
     pub spawn_row: u16,
     pub spawn_col: u16,
+    pub leash_range: u8,
 }
 
 impl Monster {
@@ -59,6 +60,7 @@ impl Monster {
             col: monster_stats.spawn_col,
             spawn_row: monster_stats.spawn_row,
             spawn_col: monster_stats.spawn_col,
+            leash_range: monster_stats.leash_range,
         }
     }
 

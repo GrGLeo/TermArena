@@ -2,10 +2,12 @@ use crate::config::MonsterStats;
 use crate::game::entities::monster::Monster;
 use std::collections::HashMap;
 
+use super::algorithms::pathfinding::{find_path_on_board, is_adjacent_to_goal};
 use super::cell::MonsterId;
+use super::entities::monster::MonsterState;
 use super::entities::projectile::GameplayEffect;
 use super::entities::Fighter;
-use super::PlayerId;
+use super::{Board, Champion, PlayerId};
 
 pub struct MonsterManager {
     pub monster_definitions: HashMap<String, MonsterStats>,
@@ -43,6 +45,50 @@ impl MonsterManager {
         } else {
             // For now we do nothing
             ()
+        }
+    }
+
+    pub fn update(&mut self, board: &Board, champions: HashMap<PlayerId, Champion>) {
+        for (id, monster) in self.active_monsters.iter_mut() {
+            match monster.state {
+                MonsterState::Idle => {},
+                MonsterState::Aggro => {
+                    // 1. We check leash range
+                    let delta_row = monster.row.abs_diff(monster.spawn_row);
+                    let delta_col = monster.col.abs_diff(monster.spawn_col);
+                    if delta_row >= monster.leash_range as u16 || delta_col >= monster.leash_range as u16 {
+                        monster.start_returning(board);
+                    }
+
+                    // 2. We check enemy is in range
+                    if let Some(champion) = champions.get(monster.target_champion_id) {
+                        if is_adjacent_to_goal((monster.row, monster.col), (champion.row, champion.col)) {
+                            // We attack
+                        } else {
+                            // We check if a path to champion already exist
+                            if let Some(path) = monster.path {
+                                    if let Some(next_path) = path.pop_front() {
+                                        monster.row = next_path.0;
+                                        monster.col = next_path.1;
+                                    }
+                            } else {
+                                monster.path = find_path_on_board(board, (monster.row, monster.col), (champion.row, champion.col));
+                                if let Some(path) = monster.path {
+                                    if let Some(next_path) = path.pop_front() {
+                                        monster.row = next_path.0;
+                                        monster.col = next_path.1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+
+
+                },
+                MonsterState::Returning => {},
+                MonsterState::Dead => {},
+            }
         }
     }
 
@@ -237,6 +283,37 @@ mod tests {
         let monster = manager.active_monsters.get(&monster_id).unwrap();
         assert_eq!(monster.state, MonsterState::Returning, "Monster should be returning after being leashed");
         assert!(monster.target_champion_id.is_none(), "Monster target should be cleared when returning");
+    }
+
+    #[test]
+    fn test_update_moves_aggro_monster_towards_target() {
+        // Attack range is 1, Leash range is 10. Spawn is (10, 10)
+        let monster_defs = vec![create_test_monster_stats("wolf_red", 10, 10)];
+        let mut manager = MonsterManager::new(monster_defs);
+        manager.spawn_monster("wolf_red");
+        let monster_id = 1;
+        let attacker_id = 42;
+
+        let board = Board::new(100, 100);
+        let mut champions = HashMap::new();
+        // Place champion within leash range but outside attack range
+        champions.insert(attacker_id, create_champion(15, 10));
+
+        // Make monster aggro
+        manager.apply_effects_to_monster(&monster_id, vec![], attacker_id);
+        let monster = manager.active_monsters.get(&monster_id).unwrap();
+        let initial_pos = (monster.row, monster.col);
+        assert_eq!(initial_pos, (10, 10));
+
+        // Call the update loop
+        manager.update(&board, &champions);
+
+        // Verify the monster has moved one step towards the champion
+        let monster = manager.active_monsters.get(&monster_id).unwrap();
+        let new_pos = (monster.row, monster.col);
+        assert_ne!(new_pos, initial_pos, "Monster should have moved");
+        // The path should be straight down in this case
+        assert_eq!(new_pos, (11, 10), "Monster should move one step along the path to the target");
     }
 }
 
