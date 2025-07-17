@@ -22,7 +22,7 @@ pub struct Monster {
     pub target_champion_id: Option<PlayerId>,
     pub path: Option<VecDeque<(u16, u16)>>,
     pub stats: Stats,
-    last_attacked: Instant,
+    pub last_attacked: Instant,
     stun_timer: Option<Instant>,
     pub active_buffs: HashMap<String, Box<dyn Buff>>,
     pub death_time: Option<Instant>,
