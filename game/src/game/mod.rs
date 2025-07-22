@@ -274,6 +274,7 @@ impl GameManager {
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
         let mut pending_effects: Vec<(Option<PlayerId>, Target, Vec<GameplayEffect>)> = Vec::new();
+        let mut xp_rewards: Vec<(PlayerId, u8)> = Vec::new();
 
         // --- Game Logic ---
         // Buff checks on all entities
@@ -482,14 +483,22 @@ impl GameManager {
                 },
                 Target::Monster(id) => {
                     if let Some(..) = self.monster_manager.active_monsters.get_mut(&id) {
-                        println!("Monster attacker_id: {:?} | target: {:?} | effect: {:?}", attacker_id, target, effect);
                         if let Some(attacker) = attacker_id {
-                            self.monster_manager.apply_effects_to_monster(&id, effect, attacker);
+                            if let Some(reward) = self.monster_manager.apply_effects_to_monster(&id, effect, attacker) {
+                                xp_rewards.push(reward);
+                            }
+
                         }
                     }
                 }
             });
 
+        // Distribute XP from dead monster
+        for (player_id, xp_reward) in xp_rewards.into_iter() {
+            if let Some(champion) = self.champions.get_mut(&player_id) {
+                champion.add_xp(xp_reward as u32);
+            }
+        }
         // Distribute XP from dead minions
         for (minion_row, minion_col, minion_team) in self.dead_minion_positions.drain(..) {
             let mut champions_in_range = Vec::new();

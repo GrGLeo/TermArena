@@ -57,14 +57,16 @@ impl MonsterManager {
         monster_id: &MonsterId,
         effects: Vec<GameplayEffect>,
         player_id: PlayerId,
-    ) {
+    ) -> Option<(PlayerId, u8)> {
         if let Some(monster) = self.active_monsters.get_mut(monster_id) {
             monster.take_effect(effects);
             monster.attach_target(player_id);
-        } else {
-            // For now we do nothing
-            ()
+            if monster.stats.health == 0 {
+                let monster_def = self.monster_definitions.get(&monster.monster_id).unwrap();
+                return Some((player_id, monster_def.xp_reward));
+            }
         }
+        None
     }
 
     pub fn update(
