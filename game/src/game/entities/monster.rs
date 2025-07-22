@@ -68,6 +68,10 @@ impl Monster {
     }
 
     pub fn attach_target(&mut self, player_id: PlayerId) {
+        // A dead monster cannot aggro or acquire a target
+        if self.state == MonsterState::Dead {
+            return;
+        }
         self.state = MonsterState::Aggro;
         match self.target_champion_id {
             Some(_) => {},

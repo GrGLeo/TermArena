@@ -130,6 +130,8 @@ impl MonsterManager {
                                             monster.row as usize,
                                             monster.col as usize,
                                         );
+                                    } else {
+                                        monster.path = None;
                                     }
                                 }
                             }
@@ -288,7 +290,6 @@ mod tests {
             if let Some(content) = &cell.content {
                 assert_eq!(CellContent::Monster(1), *content)
             }
-
         }
 
         // Check that the next ID has been incremented

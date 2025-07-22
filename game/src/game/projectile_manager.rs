@@ -1,16 +1,16 @@
 use crate::game::spell::ProjectileType;
 
 use super::animation::{AnimationCommand, AnimationTrait};
-use super::cell::{CellAnimation, Team};
+use super::cell::{CellAnimation, MonsterId, Team};
 use super::entities::Target;
 use super::entities::minion::Minion;
+use super::entities::monster::Monster;
 use super::entities::projectile::{GameplayEffect, PathingLogic, Projectile};
 use super::entities::tower::Tower;
 use super::spell::ProjectileBlueprint;
 use super::{Board, CellContent, Champion, MinionId, PlayerId, TowerId};
 use std::collections::HashMap;
 
-#[derive(Debug)]
 pub struct ProjectileManager {
     pub projectiles: HashMap<u64, Projectile>,
     next_projectile_id: u64,
@@ -109,9 +109,10 @@ impl ProjectileManager {
         champions: &HashMap<PlayerId, Champion>,
         minions: &HashMap<MinionId, Minion>,
         towers: &HashMap<TowerId, Tower>,
-    ) -> (Vec<(Target, Vec<GameplayEffect>)>, Vec<AnimationCommand>) {
+        monsters: &HashMap<MonsterId, Monster>,
+    ) -> (Vec<(usize, Target, Vec<GameplayEffect>)>, Vec<AnimationCommand>) {
         let mut projectiles_to_remove: Vec<u64> = Vec::new();
-        let mut pending_effects: Vec<(Target, Vec<GameplayEffect>)> = Vec::new();
+        let mut pending_effects: Vec<(usize, Target, Vec<GameplayEffect>)> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
 
         for (id, projectile) in self.projectiles.iter_mut() {
@@ -137,6 +138,14 @@ impl ProjectileManager {
                     Target::Tower(id) => {
                         if let Some(tower) = towers.get(id) {
                             (tower.row, tower.col)
+                        } else {
+                            projectiles_to_remove.push(*id as u64);
+                            continue;
+                        }
+                    }
+                    Target::Monster(id) => {
+                        if let Some(monster) = monsters.get(id) {
+                            (monster.row, monster.col)
                         } else {
                             projectiles_to_remove.push(*id as u64);
                             continue;
@@ -172,28 +181,41 @@ impl ProjectileManager {
                             Some(CellContent::Champion(target_id, target_team)) => {
                                 hit_target = add_effects(
                                     &mut pending_effects,
+                                    projectile.owner_id as usize,
                                     Target::Champion(target_id),
                                     projectile.payloads.clone(),
                                     projectile.team_id,
-                                    target_team,
+                                    Some(target_team),
                                 )
                             }
                             Some(CellContent::Minion(target_id, target_team)) => {
                                 hit_target = add_effects(
                                     &mut pending_effects,
+                                    projectile.owner_id as usize,
                                     Target::Minion(target_id),
                                     projectile.payloads.clone(),
                                     projectile.team_id,
-                                    target_team,
+                                    Some(target_team),
+                                )
+                            }
+                            Some(CellContent::Monster(target_id)) => {
+                                hit_target = add_effects(
+                                    &mut pending_effects,
+                                    projectile.owner_id as usize,
+                                    Target::Monster(target_id),
+                                    projectile.payloads.clone(),
+                                    projectile.team_id,
+                                    None,
                                 )
                             }
                             Some(CellContent::Tower(target_id, target_team)) => {
                                 hit_target = add_effects(
                                     &mut pending_effects,
+                                    projectile.owner_id as usize,
                                     Target::Tower(target_id),
                                     projectile.payloads.clone(),
                                     projectile.team_id,
-                                    target_team,
+                                    Some(target_team),
                                 )
                             }
                             _ => {}
@@ -224,15 +246,21 @@ impl ProjectileManager {
 }
 
 fn add_effects(
-    pending_effects: &mut Vec<(Target, Vec<GameplayEffect>)>,
+    pending_effects: &mut Vec<(usize, Target, Vec<GameplayEffect>)>,
+    owner: usize,
     target: Target,
     payloads: Vec<GameplayEffect>,
-    team: Team,
-    target_team: Team,
+    projectile_team: Team,
+    target_team: Option<Team>,
 ) -> bool {
-    if team != target_team {
+    let is_enemy = match target_team {
+        Some(t_team) => projectile_team != t_team,
+        None => true, // Neutral targets (like monsters) are always enemies
+    };
+
+    if is_enemy {
         if !payloads.is_empty() {
-            pending_effects.push((target, payloads));
+            pending_effects.push((owner, target, payloads));
             return true;
         }
     }
@@ -242,9 +270,10 @@ fn add_effects(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ChampionStats, TowerStats};
-    use crate::game::cell::{CellAnimation, Team};
+    use crate::config::{ChampionStats, MonsterStats, TowerStats};
+    use crate::game::cell::{CellAnimation, MonsterId, Team};
     use crate::game::entities::champion::Champion;
+    use crate::game::entities::monster::Monster;
     use crate::game::entities::projectile::PathingLogic;
     use crate::game::entities::tower::Tower;
     use crate::game::{PlayerId, TowerId};
@@ -277,6 +306,25 @@ mod tests {
             armor: 20,
             attack_range_row: 7,
             attack_range_col: 9,
+        }
+    }
+
+    fn create_test_monster_stats(id: &str, spawn_row: u16, spawn_col: u16) -> MonsterStats {
+        MonsterStats {
+            id: id.to_string(),
+            spawn_row,
+            spawn_col,
+            health: 100,
+            armor: 5,
+            attack_damage: 10,
+            attack_range_row: 1,
+            attack_range_col: 1,
+            aggro_range_row: 8,
+            aggro_range_col: 8,
+            leash_range: 10,
+            xp_reward: 30,
+            respawn_timer_secs: 60,
+            attack_speed_ms: 1000,
         }
     }
 
@@ -361,6 +409,7 @@ mod tests {
         let champions = HashMap::<PlayerId, Champion>::new();
         let minions = HashMap::new();
         let towers = HashMap::<TowerId, Tower>::new();
+        let monsters = HashMap::<MonsterId, Monster>::new();
 
         manager.create_skillshot_projectile(
             101,
@@ -373,15 +422,14 @@ mod tests {
         );
 
         for _ in 0..3 {
-            let (pending_damages, _) =
-                manager.update_and_check_collisions(&board, &champions, &minions, &towers);
-            println!("{:?}", pending_damages);
+            let (pending_damages, _) = manager
+                .update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
             assert!(pending_damages.is_empty());
             assert_eq!(manager.projectiles.len(), 1);
         }
 
         let (pending_damages, _) =
-            manager.update_and_check_collisions(&board, &champions, &minions, &towers);
+            manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
         assert!(pending_damages.is_empty());
         assert!(manager.projectiles.is_empty());
     }
@@ -393,6 +441,7 @@ mod tests {
         let mut champions = HashMap::new();
         let minions = HashMap::new();
         let towers = HashMap::new();
+        let monsters = HashMap::new();
 
         let target_id = 202;
         let target_pos = (10, 12);
@@ -422,15 +471,12 @@ mod tests {
         );
 
         // Tick 1 & 2: Projectile moves closer
-        println!("{:?}", manager);
-        manager.update_and_check_collisions(&board, &champions, &minions, &towers);
-        println!("{:?}", manager);
-        manager.update_and_check_collisions(&board, &champions, &minions, &towers);
-        println!("{:?}", manager);
+        manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
+        manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
 
         // Tick 3: Projectile should hit the target
         let (damages, _) =
-            manager.update_and_check_collisions(&board, &champions, &minions, &towers);
+            manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
         assert_eq!(damages[0].0, Target::Champion(target_id));
         assert_eq!(damages[0].1.len(), 1);
         assert!(matches!(damages[0].1[0], GameplayEffect::Damage(50)));
@@ -444,6 +490,7 @@ mod tests {
         let champions = HashMap::new();
         let minions = HashMap::new();
         let mut towers = HashMap::new();
+        let monsters = HashMap::new();
 
         let target_id = 303 as TowerId;
         let target_pos = (0, 5);
@@ -472,13 +519,57 @@ mod tests {
         );
 
         // Tick 1, 2, 3: Move closer
-        manager.update_and_check_collisions(&board, &champions, &minions, &towers);
-        manager.update_and_check_collisions(&board, &champions, &minions, &towers);
+        manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
+        manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
         let (damages, _) =
-            manager.update_and_check_collisions(&board, &champions, &minions, &towers);
+            manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
 
         assert_eq!(damages.len(), 1);
         assert_eq!(damages[0].0, Target::Tower(target_id));
+        assert_eq!(damages[0].1.len(), 1);
+        assert!(matches!(damages[0].1[0], GameplayEffect::Damage(50)));
+        assert!(manager.projectiles.is_empty());
+    }
+
+    #[test]
+    fn test_update_projectile_hits_monster() {
+        let mut manager = ProjectileManager::new();
+        let mut board = create_dummy_board(20, 20);
+        let champions = HashMap::new();
+        let minions = HashMap::new();
+        let towers = HashMap::new();
+        let mut monsters = HashMap::new();
+
+        let target_id = 101 as MonsterId;
+        let target_pos = (10, 12);
+        let monster_stats = create_test_monster_stats("test_monster", target_pos.0, target_pos.1);
+        let target_monster = Monster::new(target_id, monster_stats);
+        monsters.insert(target_id, target_monster);
+        board.place_cell(
+            CellContent::Monster(target_id),
+            target_pos.0 as usize,
+            target_pos.1 as usize,
+        );
+
+        manager.create_skillshot_projectile(
+            101,
+            Team::Blue,
+            (10, 10),
+            target_pos,
+            1,
+            vec![GameplayEffect::Damage(50)],
+            CellAnimation::Projectile,
+        );
+
+        // Tick 1 & 2: Projectile moves closer
+        manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
+        manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
+
+        // Tick 3: Projectile should hit the target
+        let (damages, _) =
+            manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
+        assert_eq!(damages.len(), 1);
+        assert_eq!(damages[0].0, Target::Monster(target_id));
         assert_eq!(damages[0].1.len(), 1);
         assert!(matches!(damages[0].1[0], GameplayEffect::Damage(50)));
         assert!(manager.projectiles.is_empty());
@@ -491,6 +582,7 @@ mod tests {
         let mut champions = HashMap::new();
         let minions = HashMap::new();
         let towers = HashMap::new();
+        let monsters = HashMap::new();
 
         let target_id = 202;
         let target_champion = Champion::new(
@@ -514,7 +606,7 @@ mod tests {
         );
 
         // Tick 1: Projectile moves towards (10, 13)
-        manager.update_and_check_collisions(&board, &champions, &minions, &towers);
+        manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
         let proj1 = manager.projectiles.get(&0).unwrap();
         assert_eq!(proj1.current_position, (10, 11));
 
@@ -523,8 +615,9 @@ mod tests {
         champions.get_mut(&target_id).unwrap().col = 14;
 
         // Tick 2: Projectile should now move towards the new position (11, 14)
-        manager.update_and_check_collisions(&board, &champions, &minions, &towers);
+        manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
         let proj2 = manager.projectiles.get(&0).unwrap();
         assert_eq!(proj2.current_position, (11, 12)); // Moves diagonally
     }
 }
+

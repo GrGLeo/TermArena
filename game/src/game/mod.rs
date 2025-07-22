@@ -260,7 +260,7 @@ impl GameManager {
 
     pub fn game_tick(&mut self) -> HashMap<PlayerId, ClientMessage> {
         if let Some(start_time) = self.game_start_time {
-            if !self.initial_monsters_spawned && start_time.elapsed() >= Duration::from_secs(30) {
+            if !self.initial_monsters_spawned && start_time.elapsed() >= Duration::from_secs(5) {
                 self.monster_manager.spawn_initial_monsters(&mut self.board);
                 self.initial_monsters_spawned = true;
             }
@@ -447,8 +447,9 @@ impl GameManager {
                 &self.champions,
                 &self.minion_manager.minions,
                 &self.towers,
+                &self.monster_manager.active_monsters,
             );
-        pending_effects.extend(projectile_effects.into_iter().map(|(target, effects)| (None, target, effects)));
+        pending_effects.extend(projectile_effects.into_iter().map(|(owner, target, effects)| (Some(owner), target, effects)));
         animation_commands_executable.extend(projectile_commands);
 
         // 3. Apply dealt damages
@@ -480,8 +481,8 @@ impl GameManager {
                     Team::Blue => self.blue_base.take_effect(effect),
                 },
                 Target::Monster(id) => {
-                    println!("Found a Monster effects");
                     if let Some(..) = self.monster_manager.active_monsters.get_mut(&id) {
+                        println!("Monster attacker_id: {:?} | target: {:?} | effect: {:?}", attacker_id, target, effect);
                         if let Some(attacker) = attacker_id {
                             self.monster_manager.apply_effects_to_monster(&id, effect, attacker);
                         }
