@@ -10,6 +10,7 @@ use crate::game::cell::Team;
 pub mod base;
 pub mod champion;
 pub mod minion;
+pub mod monster;
 pub mod projectile;
 pub mod tower;
 
@@ -31,6 +32,7 @@ pub enum Target {
     Minion(MinionId),
     Champion(PlayerId),
     Base(Team),
+    Monster(MinionId),
 }
 
 #[derive(Debug)]
@@ -45,7 +47,7 @@ pub struct Stats {
 }
 
 pub trait Fighter {
-    fn take_effect(&mut self, effect: Vec<GameplayEffect>);
+    fn take_effect(&mut self, effects: Vec<GameplayEffect>);
     fn can_attack(&mut self) -> Option<AttackAction>;
     fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell>;
 }

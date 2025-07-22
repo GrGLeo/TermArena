@@ -2,6 +2,7 @@ use strum_macros::EnumIter;
 
 pub type PlayerId = usize;
 pub type MinionId = usize;
+pub type MonsterId = usize;
 pub type FlagId = usize;
 pub type TowerId = usize;
 
@@ -23,6 +24,7 @@ pub enum BaseTerrain {
 pub enum CellContent {
     Champion(PlayerId, Team),
     Minion(MinionId, Team),
+    Monster(MonsterId),
     Flag(FlagId, Team),
     Tower(TowerId, Team),
     Base(Team),
@@ -82,6 +84,7 @@ pub enum EncodedCellValue {
     ProjectileAnimation = 13,
     FreezeWallAnimation = 14,
     FireBallAnimation = 15,
+    Monster = 16,
     // Minion health values (100-115)
     MinionBlueHealth1 = 100,
     MinionBlueHealth2 = 101,
@@ -145,6 +148,7 @@ impl From<&Cell> for EncodedCellValue {
             match content {
                 CellContent::Champion(_, _) => EncodedCellValue::Champion,
                 CellContent::Minion(_, _) => EncodedCellValue::MinionPlaceholder, // Placeholder for now
+                CellContent::Monster(_) => EncodedCellValue::Monster,
                 CellContent::Flag(_, _) => EncodedCellValue::Flag,
                 CellContent::Tower(_, _) => EncodedCellValue::Tower,
                 CellContent::Base(team) => match team {

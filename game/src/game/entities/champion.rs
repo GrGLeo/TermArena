@@ -310,6 +310,7 @@ impl Fighter for Champion {
                         | CellContent::Tower(_, team_id)
                         | CellContent::Minion(_, team_id)
                         | CellContent::Base(team_id) => *team_id != self.team_id,
+                        CellContent::Monster(..) => true,
                         _ => false,
                     };
 
@@ -1360,5 +1361,51 @@ mod tests {
             Some(minion_content.clone()),
             "Should target closest enemy (minion) when attack_mode is false"
         );
+    }
+
+    #[test]
+    fn test_champion_can_attack_monster() {
+        let mut board = create_dummy_board(10, 10);
+        let champion_row = 5;
+        let champion_col = 5;
+        let player_id = 1;
+        let champion_team = Team::Red;
+
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(
+            player_id,
+            champion_team,
+            champion_row,
+            champion_col,
+            champion_stats,
+            spell_stats,
+        );
+        board.place_cell(
+            CellContent::Champion(player_id, champion_team),
+            champion_row as usize,
+            champion_col as usize,
+        );
+
+        // Place a monster in range
+        let monster_id = 1;
+        let monster_row = champion_row + 1;
+        let monster_col = champion_col;
+        board.place_cell(
+            CellContent::Monster(monster_id),
+            monster_row as usize,
+            monster_col as usize,
+        );
+
+        // Verify that the monster is a potential target
+        let target_cell_option = champion.get_potential_target(&board);
+        assert!(target_cell_option.is_some(), "Champion should be able to target a monster");
+        let target_cell = target_cell_option.unwrap();
+        assert_eq!(target_cell.content, Some(CellContent::Monster(monster_id)), "Target should be the monster");
+
+        // Verify that the champion can attack
+        champion.last_attacked = Instant::now() - champion.stats.attack_speed - Duration::from_secs(1); // Ensure cooldown is ready
+        let attack_action = champion.can_attack();
+        assert!(attack_action.is_some(), "Champion should be able to attack after targeting a monster");
     }
 }

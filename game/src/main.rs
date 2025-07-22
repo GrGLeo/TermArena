@@ -1,7 +1,6 @@
 use crate::game::{ClientMessage, GameManager, PlayerId};
 use clap::Parser;
 use packet::action_packet::ActionPacket;
-use packet::spell_selection_packet::SpellSelectionPacket;
 use packet::start_packet::StartPacket;
 use std::collections::HashMap;
 use std::net::SocketAddr;
