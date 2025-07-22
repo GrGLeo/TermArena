@@ -1,20 +1,18 @@
-use clap::builder::styling::Ansi256Color;
-
 use crate::config::MonsterStats;
 use crate::game::entities::monster::Monster;
 use std::collections::HashMap;
-use std::future::pending;
 
 use super::algorithms::pathfinding::{find_path_on_board, is_adjacent_to_goal};
-use super::animation::{self, AnimationTrait};
+use super::animation::AnimationTrait;
 use super::cell::MonsterId;
 use super::entities::monster::MonsterState;
 use super::entities::projectile::GameplayEffect;
 use super::entities::{AttackAction, Fighter, Target};
-use super::{Board, Champion, PlayerId};
+use super::{Board, CellContent, Champion, PlayerId};
 
 pub struct MonsterManager {
     pub monster_definitions: HashMap<String, MonsterStats>,
+
     pub active_monsters: HashMap<usize, Monster>,
     next_instance_id: MonsterId,
 }
@@ -32,13 +30,25 @@ impl MonsterManager {
         }
     }
 
-    pub fn spawn_monster(&mut self, name_id: &str) {
+    pub fn spawn_monster(&mut self, name_id: &str, board: &mut Board) {
         if let Some(monster_def) = self.monster_definitions.get(name_id) {
             let monster = Monster::new(self.next_instance_id, monster_def.clone());
+            board.place_cell(
+                CellContent::Monster(monster.id),
+                monster.row as usize,
+                monster.col as usize,
+            );
             self.active_monsters.insert(self.next_instance_id, monster);
             self.next_instance_id += 1;
         } else {
             ()
+        }
+    }
+
+    pub fn spawn_initial_monsters(&mut self, board: &mut Board) {
+        let definitions_to_spawn: Vec<_> = self.monster_definitions.keys().cloned().collect();
+        for def_id in definitions_to_spawn {
+            self.spawn_monster(&def_id, board);
         }
     }
 
@@ -59,12 +69,13 @@ impl MonsterManager {
 
     pub fn update(
         &mut self,
-        board: &Board,
+        board: &mut Board,
         champions: &HashMap<PlayerId, Champion>,
     ) -> (
         Vec<(Target, Vec<GameplayEffect>)>,
         Vec<Box<dyn AnimationTrait>>,
     ) {
+        println!("MonsterState: {:?}", self.active_monsters);
         let mut pending_damages: Vec<(Target, Vec<GameplayEffect>)> = Vec::new();
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
         let mut dead_monster: Vec<(MonsterId, String)> = Vec::new();
@@ -109,8 +120,16 @@ impl MonsterManager {
                                 }
                                 if let Some(path) = &mut monster.path {
                                     if let Some(next_path) = path.pop_front() {
+                                        let old_row = monster.row;
+                                        let old_col = monster.col;
                                         monster.row = next_path.0;
                                         monster.col = next_path.1;
+                                        board.move_cell(
+                                            old_row as usize,
+                                            old_col as usize,
+                                            monster.row as usize,
+                                            monster.col as usize,
+                                        );
                                     }
                                 }
                             }
@@ -123,8 +142,16 @@ impl MonsterManager {
                 MonsterState::Returning => {
                     if let Some(path) = &mut monster.path {
                         if let Some(p) = path.pop_front() {
+                            let old_row = monster.row;
+                            let old_col = monster.col;
                             monster.row = p.0;
                             monster.col = p.1;
+                            board.move_cell(
+                                old_row as usize,
+                                old_col as usize,
+                                monster.row as usize,
+                                monster.col as usize,
+                            );
                             if monster.row == monster.spawn_row && monster.col == monster.spawn_col
                             {
                                 monster.reset();
@@ -142,6 +169,7 @@ impl MonsterManager {
                     }
                 }
                 MonsterState::Dead => {
+                    board.clear_cell(monster.row as usize, monster.col as usize);
                     if monster.can_respawn() {
                         dead_monster.push((monster.id, monster.monster_id.clone()));
                     }
@@ -150,7 +178,7 @@ impl MonsterManager {
         }
         for (id, monster_id) in dead_monster.iter() {
             self.active_monsters.remove(id);
-            self.spawn_monster(monster_id);
+            self.spawn_monster(monster_id, board);
         }
         return (pending_damages, new_animations);
     }
@@ -244,9 +272,10 @@ mod tests {
     fn test_spawn_monster_creates_and_adds_monster() {
         let monster_defs = vec![create_test_monster_stats("wolf_red", 10, 10)];
         let mut manager = MonsterManager::new(monster_defs);
+        let mut board = Board::new(100, 100);
 
         // Spawn the monster
-        manager.spawn_monster("wolf_red");
+        manager.spawn_monster("wolf_red", &mut board);
 
         // Check that there is one active monster
         assert_eq!(
@@ -254,6 +283,13 @@ mod tests {
             1,
             "Should be one active monster"
         );
+        // Check that the cellcontent got correctly set
+        if let Some(cell) = board.get_cell(10, 10) {
+            if let Some(content) = &cell.content {
+                assert_eq!(CellContent::Monster(1), *content)
+            }
+
+        }
 
         // Check that the next ID has been incremented
         assert_eq!(manager.next_instance_id, 2, "Next instance ID should be 2");
@@ -292,7 +328,8 @@ mod tests {
     fn test_apply_effects_sets_aggro_on_idle_monster() {
         let monster_defs = vec![create_test_monster_stats("wolf_red", 10, 10)];
         let mut manager = MonsterManager::new(monster_defs);
-        manager.spawn_monster("wolf_red");
+        let mut board = Board::new(100, 100);
+        manager.spawn_monster("wolf_red", &mut board);
 
         let monster_id = 1;
         let attacker_id = 42; // Player's ID
@@ -314,7 +351,8 @@ mod tests {
     fn test_apply_effects_does_not_change_target_on_aggro_monster() {
         let monster_defs = vec![create_test_monster_stats("wolf_red", 10, 10)];
         let mut manager = MonsterManager::new(monster_defs);
-        manager.spawn_monster("wolf_red");
+        let mut board = Board::new(100, 100);
+        manager.spawn_monster("wolf_red", &mut board);
 
         let monster_id = 1;
         let attacker_1 = 42; // First attacker
@@ -348,11 +386,11 @@ mod tests {
         // Leash range in test stats is 10. Spawn is (10, 10).
         let monster_defs = vec![create_test_monster_stats("wolf_red", 10, 10)];
         let mut manager = MonsterManager::new(monster_defs);
-        manager.spawn_monster("wolf_red");
+        let mut board = Board::new(100, 100);
+        manager.spawn_monster("wolf_red", &mut board);
         let monster_id = 1;
         let attacker_id = 42;
 
-        let board = Board::new(100, 100);
         let mut champions = HashMap::new();
         champions.insert(attacker_id, create_champion(15, 15)); // Champion position is irrelevant for the leash calculation itself
 
@@ -370,7 +408,7 @@ mod tests {
         );
 
         // Call the update loop
-        manager.update(&board, &champions);
+        manager.update(&mut board, &champions);
 
         // Verify the monster is now returning because it's too far from its spawn
         let monster = manager.active_monsters.get(&monster_id).unwrap();
@@ -390,11 +428,11 @@ mod tests {
         // Attack range is 1, Leash range is 10. Spawn is (10, 10)
         let monster_defs = vec![create_test_monster_stats("wolf_red", 10, 10)];
         let mut manager = MonsterManager::new(monster_defs);
-        manager.spawn_monster("wolf_red");
+        let mut board = Board::new(100, 100);
+        manager.spawn_monster("wolf_red", &mut board);
         let monster_id = 1;
         let attacker_id = 42;
 
-        let board = Board::new(100, 100);
         let mut champions = HashMap::new();
         // Place champion within leash range but outside attack range
         champions.insert(attacker_id, create_champion(15, 10));
@@ -406,7 +444,7 @@ mod tests {
         assert_eq!(initial_pos, (10, 10));
 
         // Call the update loop
-        manager.update(&board, &champions);
+        manager.update(&mut board, &champions);
 
         // Verify the monster has moved one step towards the champion
         let monster = manager.active_monsters.get(&monster_id).unwrap();
@@ -425,11 +463,11 @@ mod tests {
         // Attack range is 1. Spawn is (10, 10).
         let monster_defs = vec![create_test_monster_stats("wolf_red", 10, 10)];
         let mut manager = MonsterManager::new(monster_defs);
-        manager.spawn_monster("wolf_red");
+        let mut board = Board::new(100, 100);
+        manager.spawn_monster("wolf_red", &mut board);
         let monster_id = 1;
         let attacker_id = 42;
 
-        let board = Board::new(100, 100);
         let mut champions = HashMap::new();
         // Place champion right next to the monster
         champions.insert(attacker_id, create_champion(10, 11));
@@ -441,7 +479,7 @@ mod tests {
         let initial_pos = (monster.row, monster.col);
 
         // Call the update loop
-        let (pending_effects, animation) = manager.update(&board, &mut champions);
+        let (pending_effects, animation) = manager.update(&mut board, &mut champions);
 
         // Verify the monster did NOT move
         let monster = manager.active_monsters.get(&monster_id).unwrap();
@@ -468,10 +506,10 @@ mod tests {
     fn test_update_moves_returning_monster_towards_spawn() {
         let monster_defs = vec![create_test_monster_stats("wolf_red", 10, 10)];
         let mut manager = MonsterManager::new(monster_defs);
-        manager.spawn_monster("wolf_red");
+        let mut board = Board::new(100, 100);
+        manager.spawn_monster("wolf_red", &mut board);
         let monster_id = 1;
 
-        let board = Board::new(100, 100);
         let mut champions = HashMap::new();
 
         // Manually put the monster in a returning state from a different position
@@ -483,7 +521,7 @@ mod tests {
         let initial_pos = (monster.row, monster.col);
 
         // Call the update loop
-        manager.update(&board, &mut champions);
+        manager.update(&mut board, &mut champions);
 
         // Verify the monster has moved one step towards its spawn diagonally
         let monster = manager.active_monsters.get(&monster_id).unwrap();
@@ -500,10 +538,10 @@ mod tests {
     fn test_update_resets_monster_when_it_reaches_spawn() {
         let monster_defs = vec![create_test_monster_stats("wolf_red", 10, 10)];
         let mut manager = MonsterManager::new(monster_defs);
-        manager.spawn_monster("wolf_red");
+        let mut board = Board::new(100, 100);
+        manager.spawn_monster("wolf_red", &mut board);
         let monster_id = 1;
 
-        let board = Board::new(100, 100);
         let mut champions = HashMap::new();
 
         // Manually put the monster in a returning state, right next to its spawn
@@ -515,12 +553,12 @@ mod tests {
             monster.stats.health = 50; // Make sure it needs healing
             monster.start_returning(&board);
         }
-        manager.update(&board, &champions);
+        manager.update(&mut board, &champions);
         let monster = manager.active_monsters.get_mut(&monster_id).unwrap();
         assert_eq!(monster.state, MonsterState::Returning);
 
         // Call the update loop
-        manager.update(&board, &mut champions);
+        manager.update(&mut board, &mut champions);
 
         // Verify the monster has been reset
         let monster = manager.active_monsters.get(&monster_id).unwrap();
@@ -548,10 +586,10 @@ mod tests {
     fn test_update_respawns_monster_when_ready() {
         let monster_defs = vec![create_test_monster_stats("wolf_red", 10, 10)];
         let mut manager = MonsterManager::new(monster_defs);
-        manager.spawn_monster("wolf_red");
+        let mut board = Board::new(100, 100);
+        manager.spawn_monster("wolf_red", &mut board);
         let monster_id = 1;
 
-        let board = Board::new(100, 100);
         let champions = HashMap::new();
 
         // Manually kill the monster and set its death time to be in the past
@@ -559,20 +597,35 @@ mod tests {
         let monster = manager.active_monsters.get_mut(&monster_id).unwrap();
         monster.state = MonsterState::Dead;
         let respawn_duration = monster.respawn_timer;
-        monster.death_time = Some(std::time::Instant::now() - respawn_duration - std::time::Duration::from_secs(1));
+        monster.death_time =
+            Some(std::time::Instant::now() - respawn_duration - std::time::Duration::from_secs(1));
 
         let next_id = manager.next_instance_id;
 
         // Call the update loop
-        manager.update(&board, &champions);
+        manager.update(&mut board, &champions);
 
         // The old monster should be gone, and a new one should exist.
-        assert!(manager.active_monsters.get(&monster_id).is_none(), "Old monster should be removed");
-        assert_eq!(manager.active_monsters.len(), 1, "There should be one active monster after respawn");
-        assert_eq!(manager.next_instance_id, next_id + 1, "Next instance ID should be incremented");
+        assert!(
+            manager.active_monsters.get(&monster_id).is_none(),
+            "Old monster should be removed"
+        );
+        assert_eq!(
+            manager.active_monsters.len(),
+            1,
+            "There should be one active monster after respawn"
+        );
+        assert_eq!(
+            manager.next_instance_id,
+            next_id + 1,
+            "Next instance ID should be incremented"
+        );
 
         // The new monster should exist with the next ID.
-        let new_monster = manager.active_monsters.get(&next_id).expect("New monster should exist with the next ID");
+        let new_monster = manager
+            .active_monsters
+            .get(&next_id)
+            .expect("New monster should exist with the next ID");
         assert_eq!(new_monster.state, MonsterState::Idle);
         assert_eq!(new_monster.stats.health, new_monster.stats.max_health);
     }

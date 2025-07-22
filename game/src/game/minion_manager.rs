@@ -164,7 +164,7 @@ impl MinionManager {
         &mut self,
         mut board: &mut Board,
         new_animations: &mut Vec<Box<dyn AnimationTrait>>,
-        pending_effects: &mut Vec<(Target, Vec<GameplayEffect>)>,
+        pending_effects: &mut Vec<(Option<super::PlayerId>, Target, Vec<GameplayEffect>)>,
     ) {
         self.minions.iter_mut().for_each(|(_, minion)| {
             minion.attack_phase(&mut board, new_animations, pending_effects);

@@ -32,6 +32,7 @@ pub enum Target {
     Minion(MinionId),
     Champion(PlayerId),
     Base(Team),
+    Monster(MinionId),
 }
 
 #[derive(Debug)]

@@ -25,6 +25,7 @@ use entities::{
     tower::{Tower, generate_tower_id},
 };
 use minion_manager::MinionManager;
+use monster_manager::MonsterManager;
 use projectile_manager::ProjectileManager;
 use spell::Spell;
 use tokio::sync::mpsc;
@@ -48,6 +49,7 @@ pub struct GameManager {
     red_base: Base,
     blue_base: Base,
     minion_manager: MinionManager,
+    monster_manager: MonsterManager,
     projectile_manager: ProjectileManager,
     animations: Vec<Box<dyn AnimationTrait>>,
     pub client_channel: HashMap<PlayerId, mpsc::Sender<ClientMessage>>,
@@ -55,6 +57,8 @@ pub struct GameManager {
     pub tick: u64,
     dead_minion_positions: Vec<(u16, u16, Team)>,
     config: GameConfig,
+    game_start_time: Option<Instant>,
+    initial_monsters_spawned: bool,
 }
 
 impl GameManager {
@@ -111,6 +115,7 @@ impl GameManager {
         }
 
         let minion_manager = MinionManager::new(config.minion.clone());
+        let monster_manager = MonsterManager::new(config.neutral_monsters.clone());
         let projectile_manager = ProjectileManager::new();
 
         GameManager {
@@ -124,12 +129,15 @@ impl GameManager {
             red_base,
             blue_base,
             minion_manager,
+            monster_manager,
             projectile_manager,
             animations: Vec::new(),
             client_channel: HashMap::new(),
             board,
             tick: 20,
             dead_minion_positions: Vec::new(),
+            game_start_time: None,
+            initial_monsters_spawned: false,
         }
     }
 
@@ -193,6 +201,7 @@ impl GameManager {
             // We check if we can start the game and send a Start to each player
             if self.players_count == self.max_players {
                 self.game_started = true;
+                self.game_start_time = Some(Instant::now());
                 self.minion_manager.wave_creation_time = Instant::now() + Duration::from_secs(30);
             }
             Some(player_id)
@@ -250,6 +259,13 @@ impl GameManager {
     }
 
     pub fn game_tick(&mut self) -> HashMap<PlayerId, ClientMessage> {
+        if let Some(start_time) = self.game_start_time {
+            if !self.initial_monsters_spawned && start_time.elapsed() >= Duration::from_secs(30) {
+                self.monster_manager.spawn_initial_monsters(&mut self.board);
+                self.initial_monsters_spawned = true;
+            }
+        }
+
         self.tick = self.tick.saturating_add(1);
         println!("---- Game Tick -----");
         self.print_game_state();
@@ -257,7 +273,7 @@ impl GameManager {
         let mut updates = HashMap::new();
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
-        let mut pending_effects: Vec<(Target, Vec<GameplayEffect>)> = Vec::new();
+        let mut pending_effects: Vec<(Option<PlayerId>, Target, Vec<GameplayEffect>)> = Vec::new();
 
         // --- Game Logic ---
         // Buff checks on all entities
@@ -320,7 +336,23 @@ impl GameManager {
                                         AttackAction::Melee { damage, animation } => {
                                             new_animations.push(animation);
                                             pending_effects.push((
+                                                Some(*player_id),
                                                 Target::Tower(*id),
+                                                vec![GameplayEffect::Damage(damage)],
+                                            ))
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                            CellContent::Monster(id) => {
+                                if let Some(attack) = champ.can_attack() {
+                                    match attack {
+                                        AttackAction::Melee { damage, animation } => {
+                                            new_animations.push(animation);
+                                            pending_effects.push((
+                                                Some(*player_id),
+                                                Target::Monster(*id),
                                                 vec![GameplayEffect::Damage(damage)],
                                             ))
                                         }
@@ -334,6 +366,7 @@ impl GameManager {
                                         AttackAction::Melee { damage, animation } => {
                                             new_animations.push(animation);
                                             pending_effects.push((
+                                                Some(*player_id),
                                                 Target::Minion(*id),
                                                 vec![GameplayEffect::Damage(damage)],
                                             ))
@@ -348,6 +381,7 @@ impl GameManager {
                                         AttackAction::Melee { damage, animation } => {
                                             new_animations.push(animation);
                                             pending_effects.push((
+                                                Some(*player_id),
                                                 Target::Champion(*id),
                                                 vec![GameplayEffect::Damage(damage)],
                                             ))
@@ -362,6 +396,7 @@ impl GameManager {
                                         AttackAction::Melee { damage, animation } => {
                                             new_animations.push(animation);
                                             pending_effects.push((
+                                                Some(*player_id),
                                                 Target::Base(*team),
                                                 vec![GameplayEffect::Damage(damage)],
                                             ))
@@ -396,6 +431,11 @@ impl GameManager {
             &mut pending_effects,
         );
 
+        // Monster turn
+        let (monster_effects, monster_animations) = self.monster_manager.update(&mut self.board, &self.champions);
+        pending_effects.extend(monster_effects.into_iter().map(|(target, effects)| (None, target, effects)));
+        new_animations.extend(monster_animations);
+
         // Tower turn
         // 1. Scan range
         // 2. attack closest enemy
@@ -408,13 +448,13 @@ impl GameManager {
                 &self.minion_manager.minions,
                 &self.towers,
             );
-        pending_effects.extend(projectile_effects);
+        pending_effects.extend(projectile_effects.into_iter().map(|(target, effects)| (None, target, effects)));
         animation_commands_executable.extend(projectile_commands);
 
         // 3. Apply dealt damages
         pending_effects
             .into_iter()
-            .for_each(|(target, effect)| match target {
+            .for_each(|(attacker_id, target, effect)| match target {
                 Target::Tower(id) => {
                     if let Some(tower) = self.towers.get_mut(&id) {
                         tower.take_effect(effect);
@@ -439,6 +479,14 @@ impl GameManager {
                     Team::Red => self.red_base.take_effect(effect),
                     Team::Blue => self.blue_base.take_effect(effect),
                 },
+                Target::Monster(id) => {
+                    println!("Found a Monster effects");
+                    if let Some(..) = self.monster_manager.active_monsters.get_mut(&id) {
+                        if let Some(attacker) = attacker_id {
+                            self.monster_manager.apply_effects_to_monster(&id, effect, attacker);
+                        }
+                    }
+                }
             });
 
         // Distribute XP from dead minions

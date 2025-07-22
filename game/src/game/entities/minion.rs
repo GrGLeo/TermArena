@@ -189,7 +189,7 @@ impl Minion {
         &mut self,
         board: &mut Board,
         new_animations: &mut Vec<Box<dyn AnimationTrait>>,
-        pending_effects: &mut Vec<(Target, Vec<GameplayEffect>)>,
+        pending_effects: &mut Vec<(Option<super::super::PlayerId>, Target, Vec<GameplayEffect>)>,
     ) {
         if self.is_stunned() {
             return;
@@ -203,6 +203,7 @@ impl Minion {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
                                     pending_effects.push((
+                                        None,
                                         Target::Tower(*id),
                                         vec![GameplayEffect::Damage(damage)],
                                     ))
@@ -217,6 +218,7 @@ impl Minion {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
                                     pending_effects.push((
+                                        None,
                                         Target::Minion(*id),
                                         vec![GameplayEffect::Damage(damage)],
                                     ))
@@ -231,6 +233,7 @@ impl Minion {
                                 AttackAction::Melee { damage, animation } => {
                                     new_animations.push(animation);
                                     pending_effects.push((
+                                        None,
                                         Target::Champion(*id),
                                         vec![GameplayEffect::Damage(damage)],
                                     ))

@@ -15,6 +15,7 @@ pub enum MonsterState {
     Dead,
 }
 
+#[derive(Debug)]
 pub struct Monster {
     pub id: MonsterId,
     pub monster_id: String,
