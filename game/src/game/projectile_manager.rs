@@ -477,9 +477,9 @@ mod tests {
         // Tick 3: Projectile should hit the target
         let (damages, _) =
             manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
-        assert_eq!(damages[0].0, Target::Champion(target_id));
-        assert_eq!(damages[0].1.len(), 1);
-        assert!(matches!(damages[0].1[0], GameplayEffect::Damage(50)));
+        assert_eq!(damages[0].1, Target::Champion(target_id));
+        assert_eq!(damages[0].2.len(), 1);
+        assert!(matches!(damages[0].2[0], GameplayEffect::Damage(50)));
         assert!(manager.projectiles.is_empty());
     }
 
@@ -525,9 +525,9 @@ mod tests {
             manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
 
         assert_eq!(damages.len(), 1);
-        assert_eq!(damages[0].0, Target::Tower(target_id));
-        assert_eq!(damages[0].1.len(), 1);
-        assert!(matches!(damages[0].1[0], GameplayEffect::Damage(50)));
+        assert_eq!(damages[0].1, Target::Tower(target_id));
+        assert_eq!(damages[0].2.len(), 1);
+        assert!(matches!(damages[0].2[0], GameplayEffect::Damage(50)));
         assert!(manager.projectiles.is_empty());
     }
 
@@ -569,9 +569,9 @@ mod tests {
         let (damages, _) =
             manager.update_and_check_collisions(&board, &champions, &minions, &towers, &monsters);
         assert_eq!(damages.len(), 1);
-        assert_eq!(damages[0].0, Target::Monster(target_id));
-        assert_eq!(damages[0].1.len(), 1);
-        assert!(matches!(damages[0].1[0], GameplayEffect::Damage(50)));
+        assert_eq!(damages[0].1, Target::Monster(target_id));
+        assert_eq!(damages[0].2.len(), 1);
+        assert!(matches!(damages[0].2[0], GameplayEffect::Damage(50)));
         assert!(manager.projectiles.is_empty());
     }
 
