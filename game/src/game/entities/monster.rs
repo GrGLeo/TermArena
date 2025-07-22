@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{config::MonsterStats, game::{algorithms::{pathfinding::find_path_on_board}, animation::melee::MeleeAnimation, buffs::Buff, cell::MonsterId, entities::AttackAction, Board, PlayerId}};
+use crate::{config::MonsterStats, errors::GameError, game::{algorithms::pathfinding::find_path_on_board, animation::melee::MeleeAnimation, buffs::Buff, cell::MonsterId, entities::AttackAction, Board, PlayerId}};
 
 use super::{projectile::GameplayEffect, reduced_damage, Fighter, Stats};
 
@@ -25,6 +25,7 @@ pub struct Monster {
     pub last_attacked: Instant,
     stun_timer: Option<Instant>,
     pub active_buffs: HashMap<String, Box<dyn Buff>>,
+    pub respawn_timer: Duration,
     pub death_time: Option<Instant>,
     pub row: u16,
     pub col: u16,
@@ -55,6 +56,7 @@ impl Monster {
             last_attacked: Instant::now(),
             stun_timer: None,
             active_buffs: HashMap::new(),
+            respawn_timer: Duration::from_secs(monster_stats.respawn_timer_secs as u64),
             death_time: None,
             row: monster_stats.spawn_row,
             col: monster_stats.spawn_col,
@@ -86,6 +88,19 @@ impl Monster {
         self.state = MonsterState::Idle;
         self.stats.health = self.stats.max_health;
         self.path = None;
+    }
+
+    pub fn can_respawn(&self) -> bool {
+        if let Some(death_timer) = self.death_time {
+            if death_timer.elapsed() > self.respawn_timer {
+                return true;
+            } else {
+                return false
+            }
+        } else {
+            // TODO: We need to return an error here, can timer should always be set.
+            return false
+        }
     }
 }
 
@@ -293,5 +308,25 @@ mod tests {
         assert_eq!(monster.state, MonsterState::Idle);
         assert!(monster.path.is_none(), "Path should be cleared on reset");
         assert_eq!(monster.stats.health, monster.stats.max_health, "Health should be fully restored");
+    }
+
+    #[test]
+    fn test_can_respawn_respects_timer() {
+        let monster_def = create_test_monster_def();
+        let mut monster = Monster::new(1, monster_def);
+
+        // Kill the monster
+        monster.state = MonsterState::Dead;
+        monster.death_time = Some(Instant::now());
+
+        // Immediately after death, it should not be able to respawn
+        assert!(!monster.can_respawn(), "Should not respawn immediately");
+
+        // Manually set the death time to be far in the past
+        let respawn_duration = monster.respawn_timer;
+        monster.death_time = Some(Instant::now() - respawn_duration - Duration::from_secs(1));
+
+        // Now it should be able to respawn
+        assert!(monster.can_respawn(), "Should be able to respawn after timer expires");
     }
 }

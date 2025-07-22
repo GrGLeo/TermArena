@@ -1,12 +1,16 @@
+use clap::builder::styling::Ansi256Color;
+
 use crate::config::MonsterStats;
 use crate::game::entities::monster::Monster;
 use std::collections::HashMap;
+use std::future::pending;
 
 use super::algorithms::pathfinding::{find_path_on_board, is_adjacent_to_goal};
+use super::animation::{self, AnimationTrait};
 use super::cell::MonsterId;
-use super::entities::Fighter;
 use super::entities::monster::MonsterState;
 use super::entities::projectile::GameplayEffect;
+use super::entities::{AttackAction, Fighter, Target};
 use super::{Board, Champion, PlayerId};
 
 pub struct MonsterManager {
@@ -53,7 +57,17 @@ impl MonsterManager {
         }
     }
 
-    pub fn update(&mut self, board: &Board, champions: &HashMap<PlayerId, Champion>) {
+    pub fn update(
+        &mut self,
+        board: &Board,
+        champions: &HashMap<PlayerId, Champion>,
+    ) -> (
+        Vec<(Target, Vec<GameplayEffect>)>,
+        Vec<Box<dyn AnimationTrait>>,
+    ) {
+        let mut pending_damages: Vec<(Target, Vec<GameplayEffect>)> = Vec::new();
+        let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
+        let mut dead_monster: Vec<(MonsterId, String)> = Vec::new();
         for monster in self.active_monsters.values_mut() {
             match monster.state {
                 MonsterState::Idle => {}
@@ -75,7 +89,16 @@ impl MonsterManager {
                                 (monster.row, monster.col),
                                 (champion.row, champion.col),
                             ) {
-                                // We attack
+                                if let Some(attack_action) = monster.can_attack() {
+                                    if let AttackAction::Melee { damage, animation } = attack_action
+                                    {
+                                        new_animations.push(animation);
+                                        pending_damages.push((
+                                            Target::Champion(champion_id),
+                                            vec![GameplayEffect::Damage(damage)],
+                                        ));
+                                    }
+                                }
                             } else {
                                 if monster.path.is_none() {
                                     monster.path = find_path_on_board(
@@ -118,9 +141,18 @@ impl MonsterManager {
                         }
                     }
                 }
-                MonsterState::Dead => {}
+                MonsterState::Dead => {
+                    if monster.can_respawn() {
+                        dead_monster.push((monster.id, monster.monster_id.clone()));
+                    }
+                }
             }
         }
+        for (id, monster_id) in dead_monster.iter() {
+            self.active_monsters.remove(id);
+            self.spawn_monster(monster_id);
+        }
+        return (pending_damages, new_animations);
     }
 }
 
@@ -409,7 +441,7 @@ mod tests {
         let initial_pos = (monster.row, monster.col);
 
         // Call the update loop
-        manager.update(&board, &mut champions);
+        let (pending_effects, animation) = manager.update(&board, &mut champions);
 
         // Verify the monster did NOT move
         let monster = manager.active_monsters.get(&monster_id).unwrap();
@@ -419,12 +451,17 @@ mod tests {
             "Monster should not move when in attack range"
         );
 
-        // Verify the champion took damage
-        let champion = champions.get(&attacker_id).unwrap();
         assert_eq!(
-            champion.stats.health, 190,
-            "Champion should have taken 10 damage"
+            pending_effects.len(),
+            1,
+            "An attack should generate 1 effect"
         );
+        assert_eq!(animation.len(), 1, "An attack should generate 1 animation");
+
+        let (target, effect) = &pending_effects[0];
+        assert_eq!(*target, Target::Champion(attacker_id));
+        assert_eq!(effect.len(), 1);
+        assert_eq!(effect[0], GameplayEffect::Damage(10))
     }
 
     #[test]
@@ -470,11 +507,16 @@ mod tests {
         let mut champions = HashMap::new();
 
         // Manually put the monster in a returning state, right next to its spawn
+        // We create a scope for the mutable borrow
+        {
+            let monster = manager.active_monsters.get_mut(&monster_id).unwrap();
+            monster.row = 11;
+            monster.col = 11;
+            monster.stats.health = 50; // Make sure it needs healing
+            monster.start_returning(&board);
+        }
+        manager.update(&board, &champions);
         let monster = manager.active_monsters.get_mut(&monster_id).unwrap();
-        monster.row = 11;
-        monster.col = 11;
-        monster.stats.health = 50; // Make sure it needs healing
-        monster.start_returning(&board);
         assert_eq!(monster.state, MonsterState::Returning);
 
         // Call the update loop
@@ -500,5 +542,38 @@ mod tests {
             monster.path.is_none(),
             "Path should be cleared after returning"
         );
+    }
+
+    #[test]
+    fn test_update_respawns_monster_when_ready() {
+        let monster_defs = vec![create_test_monster_stats("wolf_red", 10, 10)];
+        let mut manager = MonsterManager::new(monster_defs);
+        manager.spawn_monster("wolf_red");
+        let monster_id = 1;
+
+        let board = Board::new(100, 100);
+        let champions = HashMap::new();
+
+        // Manually kill the monster and set its death time to be in the past
+        // to ensure its `can_respawn()` method will return true.
+        let monster = manager.active_monsters.get_mut(&monster_id).unwrap();
+        monster.state = MonsterState::Dead;
+        let respawn_duration = monster.respawn_timer;
+        monster.death_time = Some(std::time::Instant::now() - respawn_duration - std::time::Duration::from_secs(1));
+
+        let next_id = manager.next_instance_id;
+
+        // Call the update loop
+        manager.update(&board, &champions);
+
+        // The old monster should be gone, and a new one should exist.
+        assert!(manager.active_monsters.get(&monster_id).is_none(), "Old monster should be removed");
+        assert_eq!(manager.active_monsters.len(), 1, "There should be one active monster after respawn");
+        assert_eq!(manager.next_instance_id, next_id + 1, "Next instance ID should be incremented");
+
+        // The new monster should exist with the next ID.
+        let new_monster = manager.active_monsters.get(&next_id).expect("New monster should exist with the next ID");
+        assert_eq!(new_monster.state, MonsterState::Idle);
+        assert_eq!(new_monster.stats.health, new_monster.stats.max_health);
     }
 }
