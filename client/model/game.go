@@ -147,6 +147,7 @@ func (m GameModel) View() string {
 	FreezeStyle := lipgloss.NewStyle().Background(lipgloss.Color("39"))
 	BaseBlueStyle := lipgloss.NewStyle().Background(lipgloss.Color("21"))
 	BaseRedStyle := lipgloss.NewStyle().Background(lipgloss.Color("196"))
+	MonsterStyle := lipgloss.NewStyle().Background(lipgloss.Color("208"))
 
 	BluePointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("21"))
 	RedPointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("34"))
@@ -219,7 +220,7 @@ func (m GameModel) View() string {
 			case 15:
 				builder.WriteString(bgStyle.Render("𐁙")) // Render for freezing spell
 			case 16:
-				builder.WriteString(bgStyle.Render("𐁙")) // Render for freezing spell
+				builder.WriteString(MonsterStyle.Render(" ")) // Render for monster
 			case 100, 101, 102, 103, 104, 105, 106, 107: // Friendly minion health (1/8 to 8/8)
 				healthIndex := cell - 100
 				builder.WriteString(p1Style.Render(minionHealthChars[healthIndex]))
