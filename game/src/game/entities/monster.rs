@@ -3,9 +3,16 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{config::MonsterStats, errors::GameError, game::{algorithms::pathfinding::find_path_on_board, animation::melee::MeleeAnimation, buffs::Buff, cell::MonsterId, entities::AttackAction, Board, PlayerId}};
+use crate::{
+    config::MonsterStats,
+    errors::GameError,
+    game::{
+        Board, PlayerId, algorithms::pathfinding::find_path_on_board,
+        animation::melee::MeleeAnimation, buffs::Buff, cell::MonsterId, entities::AttackAction,
+    },
+};
 
-use super::{projectile::GameplayEffect, reduced_damage, Fighter, Stats};
+use super::{Fighter, Stats, projectile::GameplayEffect, reduced_damage};
 
 #[derive(PartialEq, Debug)]
 pub enum MonsterState {
@@ -74,7 +81,7 @@ impl Monster {
         }
         self.state = MonsterState::Aggro;
         match self.target_champion_id {
-            Some(_) => {},
+            Some(_) => {}
             None => self.target_champion_id = Some(player_id),
         }
     }
@@ -82,7 +89,11 @@ impl Monster {
     pub fn start_returning(&mut self, board: &Board) {
         self.state = MonsterState::Returning;
         self.target_champion_id = None;
-        let mut path = find_path_on_board(board, (self.row, self.col), (self.spawn_row, self.spawn_col));
+        let mut path = find_path_on_board(
+            board,
+            (self.row, self.col),
+            (self.spawn_row, self.spawn_col),
+        );
         if let Some(ref mut p) = path {
             p.push_back((self.spawn_row, self.spawn_col));
         }
@@ -100,11 +111,11 @@ impl Monster {
             if death_timer.elapsed() > self.respawn_timer {
                 return true;
             } else {
-                return false
+                return false;
             }
         } else {
             // TODO: We need to return an error here, can timer should always be set.
-            return false
+            return false;
         }
     }
 }
@@ -122,8 +133,8 @@ impl Fighter for Monster {
                         self.death_time = Some(Instant::now());
                     }
                 }
-                GameplayEffect::Buff(..) => {
-                }
+                GameplayEffect::Heal(..) => {}
+                GameplayEffect::Buff(..) => {}
             };
         }
     }
@@ -141,16 +152,21 @@ impl Fighter for Monster {
         }
     }
 
-    fn get_potential_target<'a>(&self, _board: &'a crate::game::Board) -> Option<&'a crate::game::Cell> {
+    fn get_potential_target<'a>(
+        &self,
+        _board: &'a crate::game::Board,
+    ) -> Option<&'a crate::game::Cell> {
         // No need for monster
         unimplemented!()
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::{config::MonsterStats, game::{entities::AttackAction, Board}};
+    use crate::{
+        config::MonsterStats,
+        game::{Board, entities::AttackAction},
+    };
 
     use super::*;
     use std::time::Duration;
@@ -236,9 +252,12 @@ mod tests {
         assert_eq!(monster.stats.health, 0);
         assert_eq!(monster.state, MonsterState::Dead);
         assert!(monster.death_time.is_some(), "death_time should be set");
-        
+
         // Verify the target is cleared upon death
-        assert!(monster.target_champion_id.is_none(), "target should be cleared on death");
+        assert!(
+            monster.target_champion_id.is_none(),
+            "target should be cleared on death"
+        );
     }
 
     #[test]
@@ -251,7 +270,10 @@ mod tests {
         monster.last_attacked = Instant::now() - (cooldown + Duration::from_millis(100));
 
         let attack_action = monster.can_attack();
-        assert!(attack_action.is_some(), "Should be able to attack after cooldown");
+        assert!(
+            attack_action.is_some(),
+            "Should be able to attack after cooldown"
+        );
 
         if let Some(AttackAction::Melee { damage, .. }) = attack_action {
             assert_eq!(damage, 10); // From create_test_monster_def
@@ -281,10 +303,16 @@ mod tests {
 
         // Verify state change and target clearing
         assert_eq!(monster.state, MonsterState::Returning);
-        assert!(monster.target_champion_id.is_none(), "Target should be cleared");
+        assert!(
+            monster.target_champion_id.is_none(),
+            "Target should be cleared"
+        );
 
         // Verify a path has been calculated
-        assert!(monster.path.is_some(), "Path should be calculated on return");
+        assert!(
+            monster.path.is_some(),
+            "Path should be calculated on return"
+        );
         let path = monster.path.as_ref().unwrap();
         assert!(!path.is_empty(), "Path should not be empty");
 
@@ -312,7 +340,10 @@ mod tests {
         // Verify it's back to a pristine Idle state
         assert_eq!(monster.state, MonsterState::Idle);
         assert!(monster.path.is_none(), "Path should be cleared on reset");
-        assert_eq!(monster.stats.health, monster.stats.max_health, "Health should be fully restored");
+        assert_eq!(
+            monster.stats.health, monster.stats.max_health,
+            "Health should be fully restored"
+        );
     }
 
     #[test]
@@ -332,6 +363,9 @@ mod tests {
         monster.death_time = Some(Instant::now() - respawn_duration - Duration::from_secs(1));
 
         // Now it should be able to respawn
-        assert!(monster.can_respawn(), "Should be able to respawn after timer expires");
+        assert!(
+            monster.can_respawn(),
+            "Should be able to respawn after timer expires"
+        );
     }
 }

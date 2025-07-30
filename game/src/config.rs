@@ -76,6 +76,8 @@ pub struct SpellStats {
     pub base_damage: u16,
     #[serde(default)]
     pub stun_duration: Option<u8>,
+    #[serde(default)]
+    pub is_heal: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

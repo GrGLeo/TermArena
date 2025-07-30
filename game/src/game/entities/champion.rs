@@ -261,6 +261,9 @@ impl Fighter for Champion {
                         self.death_timer = Instant::now() + Duration::from_secs(timer);
                     }
                 }
+                GameplayEffect::Heal(heal_amount) => {
+                    self.stats.health = (self.stats.health + heal_amount).min(self.stats.max_health);
+                }
                 GameplayEffect::Buff(mut buff) => {
                     buff.on_apply(self);
                     self.active_buffs.insert(buff.id().to_string(), buff);

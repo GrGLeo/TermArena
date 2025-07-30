@@ -12,6 +12,7 @@ use super::Target;
 pub enum GameplayEffect {
     /// Applies a specified amount of damage to the target.
     Damage(u16),
+    Heal(u16),
     /// Applies a specific buff/debuff to the target
     Buff(Box<dyn Buff>),
 }
@@ -30,6 +31,7 @@ impl Clone for GameplayEffect {
     fn clone(&self) -> Self {
         match self {
             GameplayEffect::Damage(d) => GameplayEffect::Damage(*d),
+            GameplayEffect::Heal(h) => GameplayEffect::Heal(*h),
             GameplayEffect::Buff(b) => GameplayEffect::Buff(b.clone_box()),
         }
     }

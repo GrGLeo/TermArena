@@ -14,6 +14,7 @@ type Spell struct {
 	BaseDamage   int
 	DamageRatio  float32
 	StunDuration int
+	IsHeal       bool
 }
 
 // String returns a formatted string for the spell's stats.
@@ -57,6 +58,19 @@ var availableSpells = []Spell{
 		Speed:        3,
 		BaseDamage:   40,
 		DamageRatio:  0.6,
-		StunDuration: 0, // No stun
+		StunDuration: 0,
+	},
+	{
+		ID:           2,
+		Name:         "Healing Wave",
+		ManaCost:     40,
+		CooldownSecs: 15,
+		Range:        8,
+		Width:        3,
+		Speed:        1,
+		BaseDamage:   50,
+		DamageRatio:  0.3,
+		StunDuration: 0,
+		IsHeal:       true,
 	},
 }
