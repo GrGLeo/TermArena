@@ -18,3 +18,14 @@ width = 1
 speed = 1
 base_damage = 5
 damage_ratio = 0.4
+
+[[spell]]
+id = 2
+mana_cost = 40
+cooldown_secs = 15
+range = 8
+width = 3
+speed = 1
+base_damage = 50
+damage_ratio = 0.3
+is_heal = true

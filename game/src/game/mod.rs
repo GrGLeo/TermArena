@@ -170,13 +170,13 @@ impl GameManager {
                 let mut selected_spell: HashMap<u8, Box<dyn Spell>> = HashMap::new();
                 if let Some(spell_stats) = self.config.spells.get(&spell1_id) {
                     selected_spell.insert(
-                        spell1_id,
+                        0,
                         spell::create_spell_from_id(spell1_id, spell_stats.clone()),
                     );
                 }
                 if let Some(spell_stats) = self.config.spells.get(&spell2_id) {
                     selected_spell.insert(
-                        spell2_id,
+                        1,
                         spell::create_spell_from_id(spell2_id, spell_stats.clone()),
                     );
                 }

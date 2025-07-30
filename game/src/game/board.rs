@@ -206,6 +206,7 @@ fn get_encoded_cell_value(cell: &Cell, minion_manager: &MinionManager) -> Encode
             CellAnimation::Projectile => EncodedCellValue::ProjectileAnimation,
             CellAnimation::FreezeWall => EncodedCellValue::FreezeWallAnimation,
             CellAnimation::FireBall => EncodedCellValue::FireBallAnimation,
+            CellAnimation::Heal => EncodedCellValue::HealAnimation,
         }
     } else if let Some(content) = &cell.content {
         match content {

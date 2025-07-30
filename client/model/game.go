@@ -221,6 +221,8 @@ func (m GameModel) View() string {
 				builder.WriteString(bgStyle.Render("𐁙")) // Render for freezing spell
 			case 16:
 				builder.WriteString(MonsterStyle.Render(" ")) // Render for monster
+			case 17:
+				builder.WriteString(bgStyle.Render("i")) // Render for healing spell
 			case 100, 101, 102, 103, 104, 105, 106, 107: // Friendly minion health (1/8 to 8/8)
 				healthIndex := cell - 100
 				builder.WriteString(p1Style.Render(minionHealthChars[healthIndex]))

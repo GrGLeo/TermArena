@@ -10,6 +10,7 @@ use crate::config::SpellStats;
 
 pub mod fireball;
 pub mod freeze_wall;
+pub mod healing_wave;
 
 pub struct ProjectileBlueprint {
     pub projectile_type: ProjectileType,
@@ -44,6 +45,7 @@ pub fn create_spell_from_id(id: u8, stats: SpellStats) -> Box<dyn Spell> {
     match id {
         0 => Box::new(freeze_wall::FreezeWallSpell::new(stats)),
         1 => Box::new(fireball::FireballSpell::new(stats)),
+        2 => Box::new(healing_wave::HealingWaveSpell::new(stats)),
         _ => panic!("Unknown spell ID: {}", id),
     }
 }

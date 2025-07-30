@@ -253,18 +253,34 @@ fn add_effects(
     projectile_team: Team,
     target_team: Option<Team>,
 ) -> bool {
-    let is_enemy = match target_team {
-        Some(t_team) => projectile_team != t_team,
-        None => true, // Neutral targets (like monsters) are always enemies
+    if payloads.is_empty() {
+        return false;
+    }
+
+    let first_effect = &payloads[0];
+    let is_heal_payload = matches!(first_effect, GameplayEffect::Heal(_));
+
+    let is_ally = match target_team {
+        Some(t_team) => projectile_team == t_team,
+        None => false, // Neutral targets cannot be allies
     };
 
-    if is_enemy {
-        if !payloads.is_empty() {
-            pending_effects.push((owner, target, payloads));
-            return true;
-        }
+    let is_enemy = match target_team {
+        Some(t_team) => projectile_team != t_team,
+        None => true, // Neutral targets are always enemies
+    };
+
+    if is_heal_payload && is_ally {
+        pending_effects.push((owner, target, payloads));
+        return true;
     }
-    return false;
+    
+    if !is_heal_payload && is_enemy {
+        pending_effects.push((owner, target, payloads));
+        return true;
+    }
+
+    false
 }
 
 #[cfg(test)]
