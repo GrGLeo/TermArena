@@ -21,6 +21,7 @@ impl PartialEq for GameplayEffect {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Damage(l0), Self::Damage(r0)) => l0 == r0,
+            (Self::Heal(l0), Self::Heal(r0)) => l0 == r0,
             (Self::Buff(l0), Self::Buff(r0)) => l0.id() == r0.id(),
             _ => false,
         }

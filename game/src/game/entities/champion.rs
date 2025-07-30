@@ -798,6 +798,7 @@ mod tests {
             base_damage: 20,
             damage_ratio: 0.8,
             stun_duration: Some(5),
+            is_heal: Some(false),
         };
         let mut spell_stats: HashMap<u8, Box<dyn Spell>> = HashMap::new();
         let spell = Box::new(FreezeWallSpell::new(spell_stat));

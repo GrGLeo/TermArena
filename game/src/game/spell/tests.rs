@@ -41,6 +41,7 @@ fn mock_fireball_spell_stats() -> SpellStats {
         speed: 1,
         width: 1,
         stun_duration: None,
+        is_heal: Some(false),
     }
 }
 
@@ -55,6 +56,7 @@ fn mock_freezewall_spell_stats() -> SpellStats {
         speed: 1,
         width: 3,
         stun_duration: Some(2),
+        is_heal: Some(false),
     }
 }
 
@@ -134,8 +136,7 @@ fn test_freezewall_cast_creates_multiple_projectiles() {
     // Sort projectiles by their column for deterministic testing
     projectiles.sort_by_key(|p| {
         if let PathingLogic::Straight { path, .. } = &p.pathing {
-            path[0].1
-        } else {
+            path[0].1 } else {
             0
         }
     });
