@@ -1,5 +1,6 @@
 package model
 
+
 import (
 	"fmt"
 	"log"
@@ -13,6 +14,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+type GoToShopMsg struct{}
 
 type GameModel struct {
 	currentBoard   [21][51]int
@@ -84,10 +87,6 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		ApplyDeltas(msg.Deltas, &m.currentBoard)
 		return m, nil
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
-			return m, tea.Quit
-		}
 		switch msg.String() {
 		case "w":
 			communication.SendAction(m.conn, 1)
@@ -115,6 +114,10 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			communication.SendAction(m.conn, 7)
 			return m, nil
+		case "p":
+			return m, func() tea.Msg { return GoToShopMsg{} }
+		case "ctrl+c":
+			return m, tea.Quit
 		}
 	case communication.CooldownTickMsg:
 		var percent float64
