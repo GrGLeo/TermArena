@@ -115,7 +115,8 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			communication.SendAction(m.conn, 7)
 			return m, nil
 		case "p":
-			return m, func() tea.Msg { return GoToShopMsg{} }
+      communication.SendShopRequest(m.conn)
+      return m, nil
 		case "ctrl+c":
 			return m, tea.Quit
 		}

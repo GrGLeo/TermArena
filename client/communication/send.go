@@ -74,6 +74,14 @@ func SendAction(conn *net.TCPConn, action int) error {
 	return err
 }
 
+func SendShopRequest(conn *net.TCPConn) error {
+	log.Println("Sent shop request")
+	shopReqPacket := shared.NewShopRequestPacket()
+	data := shopReqPacket.Serialize()
+	_, err := conn.Write(data)
+	return err
+}
+
 func SendSpellSelectionPacket(conn *net.TCPConn, spell1, spell2 int) error {
 	log.Printf("Sending spell selection: %d, %d", spell1, spell2)
 	spellPacket := shared.NewSpellSelectionPacket(spell1, spell2)

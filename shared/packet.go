@@ -24,6 +24,12 @@ code 9: receive RLEboard
 code 10: receive Delta
 code 11: game close
 code 12: game end
+code 13: spell selection
+code 14: shop request
+code 15: shop response
+code 13: spell selection
+code 14: shop request
+code 15: shop response
 */
 
 type Packet interface {
@@ -486,6 +492,32 @@ func (ap ActionPacket) Serialize() []byte {
 	buf.WriteByte(byte(ap.action))
 	return buf.Bytes()
 
+}
+
+type ShopRequestPacket struct {
+	version, code int
+}
+
+func NewShopRequestPacket() *ShopRequestPacket {
+	return &ShopRequestPacket{
+		version: 1,
+		code:    14,
+	}
+}
+
+func (srp ShopRequestPacket) Version() int {
+	return srp.version
+}
+
+func (srp ShopRequestPacket) Code() int {
+	return srp.code
+}
+
+func (srp ShopRequestPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(srp.version))
+	buf.WriteByte(byte(srp.code))
+	return buf.Bytes()
 }
 
 type BoardPacket struct {
