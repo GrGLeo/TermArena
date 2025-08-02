@@ -94,6 +94,15 @@ impl Champion {
         }
     }
 
+    pub fn stats(&self) -> (u16, u16, u16, u16) {
+        (
+            self.stats.max_health,
+            self.stats.max_mana,
+            self.stats.attack_damage,
+            self.stats.armor,
+        )
+    }
+
     pub fn add_xp(&mut self, xp: u32) {
         self.xp += xp;
         while let Some(xp_needed) = self.xp_for_next_level() {
@@ -262,7 +271,8 @@ impl Fighter for Champion {
                     }
                 }
                 GameplayEffect::Heal(heal_amount) => {
-                    self.stats.health = (self.stats.health + heal_amount).min(self.stats.max_health);
+                    self.stats.health =
+                        (self.stats.health + heal_amount).min(self.stats.max_health);
                 }
                 GameplayEffect::Buff(mut buff) => {
                     buff.on_apply(self);
@@ -1403,13 +1413,24 @@ mod tests {
 
         // Verify that the monster is a potential target
         let target_cell_option = champion.get_potential_target(&board);
-        assert!(target_cell_option.is_some(), "Champion should be able to target a monster");
+        assert!(
+            target_cell_option.is_some(),
+            "Champion should be able to target a monster"
+        );
         let target_cell = target_cell_option.unwrap();
-        assert_eq!(target_cell.content, Some(CellContent::Monster(monster_id)), "Target should be the monster");
+        assert_eq!(
+            target_cell.content,
+            Some(CellContent::Monster(monster_id)),
+            "Target should be the monster"
+        );
 
         // Verify that the champion can attack
-        champion.last_attacked = Instant::now() - champion.stats.attack_speed - Duration::from_secs(1); // Ensure cooldown is ready
+        champion.last_attacked =
+            Instant::now() - champion.stats.attack_speed - Duration::from_secs(1); // Ensure cooldown is ready
         let attack_action = champion.can_attack();
-        assert!(attack_action.is_some(), "Champion should be able to attack after targeting a monster");
+        assert!(
+            attack_action.is_some(),
+            "Champion should be able to attack after targeting a monster"
+        );
     }
 }

@@ -149,9 +149,13 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
                     } else if packet.version == 1 && packet.code == 14 {
                         // TODO: there should be a better way to handle shop request packet
                         println!("Received shop request from: {} ({:?})", player_id, addr);
-                        let message = ShopResponsePacket::new().serialize();
                         let manager = game_manager.lock().await;
-                        manager.send_to_player(player_id, message).await;
+                        if let Some(champion) = manager.get_player_champ(&player_id) {
+                            let message = ShopResponsePacket::new(champion.stats()).serialize();
+                            manager.send_to_player(player_id, message).await;
+                        } else {
+                            println!("Player: {} champion not found", player_id);
+                        }
                         drop(manager);
                     } else {
                         eprintln!(

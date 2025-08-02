@@ -141,6 +141,10 @@ impl GameManager {
         }
     }
 
+    pub fn get_player_champ(&self, player_id: &usize) -> Option<&Champion> {
+        self.champions.get(player_id)
+    }
+
     pub fn print_game_state(&self) {
         println!(
             "Player connected: {}/{}",

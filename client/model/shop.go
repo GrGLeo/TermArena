@@ -19,10 +19,12 @@ var (
 
 // ShopModel manages the state of the shop UI.
 type ShopModel struct {
-	styles       *Styles
-	Items        []Item
-	FocusedIndex int
-	height, width int
+	styles               *Styles
+	Items                []Item
+	FocusedIndex         int
+	height, width        int
+	health, mana         int
+	attack_damage, armor int
 }
 
 func (m *ShopModel) SetDimension(height, width int) {
@@ -30,11 +32,15 @@ func (m *ShopModel) SetDimension(height, width int) {
 	m.width = width
 }
 
-func NewShopModel(styles *Styles) ShopModel {
+func NewShopModel(styles *Styles, health, mana, attack_damage, armor int) ShopModel {
 	return ShopModel{
 		styles:       styles,
 		Items:        availableItems,
 		FocusedIndex: 0,
+    health: health,
+    mana: mana,
+    attack_damage: attack_damage,
+    armor: armor,
 	}
 }
 
@@ -62,7 +68,7 @@ func (m ShopModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Items) {
 				selectedItem := m.Items[m.FocusedIndex]
 				fmt.Printf("Attempting to purchase: %s for %d gold ", selectedItem.Name, selectedItem.Cost)
-        // TODO: send a request to purchase item
+				// TODO: send a request to purchase item
 				// communication.SendPurchaseItemPacket(m.conn, selectedItem.ID)
 				return m, func() tea.Msg {
 					return ItemPurchasedMsg{ItemID: selectedItem.ID}
@@ -78,7 +84,7 @@ func (m ShopModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m ShopModel) View() string {
-	var left, right strings.Builder
+	var left, right, bottom strings.Builder
 
 	// Left Panel: List of available items
 	left.WriteString("Shop - Available Items \n")
@@ -104,6 +110,10 @@ func (m ShopModel) View() string {
 		right.WriteString(m.Items[m.FocusedIndex].String())
 	}
 
+  // Bottom Panel: Player stats
+  bottom.WriteString(fmt.Sprintf("Health: %d | Mana: %d | Attack damage: %d | Armor: %d", m.health, m.mana, m.attack_damage, m.armor))
+
+
 	optionsStyle := lipgloss.NewStyle().
 		Align(lipgloss.Left).
 		Padding(1, 0)
@@ -114,11 +124,23 @@ func (m ShopModel) View() string {
 		BorderForeground(m.styles.BorderColor).
 		Padding(1, 0)
 
-	layout := lipgloss.JoinHorizontal(
+	statsStyle := lipgloss.NewStyle().
+		Align(lipgloss.Left).
+		Border(lipgloss.NormalBorder(), true, false, false).
+		BorderForeground(m.styles.BorderColor).
+		Padding(1, 0)
+
+	baseLayout := lipgloss.JoinHorizontal(
 		lipgloss.Center,
 		optionsStyle.Render(left.String()),
 		detailsStyle.Render(right.String()),
 	)
+  
+  layout := lipgloss.JoinVertical(
+    lipgloss.Center,
+    baseLayout,
+    statsStyle.Render(bottom.String()),
+  )
 
 	return lipgloss.Place(
 		m.width,

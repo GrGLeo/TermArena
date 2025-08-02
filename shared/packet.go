@@ -524,12 +524,20 @@ func (srp ShopRequestPacket) Serialize() []byte {
 
 type ShopResponsePacket struct {
 	version, code int
+	Health        int
+	Mana          int
+	Attack_damage int
+	Armor         int
 }
 
-func NewShopResonsePacket() *ShopResponsePacket {
+func NewShopResponsePacket(health, mana, attack_damage, armor int) *ShopResponsePacket {
 	return &ShopResponsePacket{
-		version: 1,
-		code:    15,
+		version:       1,
+		code:          15,
+		Health:        health,
+		Mana:          mana,
+		Attack_damage: attack_damage,
+		Armor:         armor,
 	}
 }
 
@@ -895,9 +903,21 @@ func DeSerialize(data []byte) (Packet, error) {
 		}, nil
 
 	case 15:
+		if len(data) < 10 {
+			return nil, errors.New("invalid shop response packet length")
+		}
+		health := int(binary.BigEndian.Uint16(data[2:4]))
+		mana := int(binary.BigEndian.Uint16(data[4:6]))
+		attack_damage := int(binary.BigEndian.Uint16(data[6:8]))
+		armor := int(binary.BigEndian.Uint16(data[8:10]))
+
 		return &ShopResponsePacket{
-			version: version,
-			code:    code,
+			version:       version,
+			code:          code,
+			Health:        health,
+			Mana:          mana,
+			Attack_damage: attack_damage,
+			Armor:         armor,
 		}, nil
 
 	default:
