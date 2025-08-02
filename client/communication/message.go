@@ -47,6 +47,12 @@ type GameCloseMsg struct {
 	Code int
 }
 
+// GoToShop is sent after receiving a response from the game
+type GoToShopMsg struct{}
+
+// BackToGame is sent when the player press 'p' while in Shop
+type BackToGameMsg struct{}
+
 // EndGameMsg is sent when the game ends
 type EndGameMsg struct {
 	Win bool

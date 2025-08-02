@@ -15,8 +15,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type GoToShopMsg struct{}
-
 type GameModel struct {
 	currentBoard   [21][51]int
 	conn           *net.TCPConn

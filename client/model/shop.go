@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/GrGLeo/ctf/client/communication"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -45,8 +46,6 @@ type ItemPurchasedMsg struct {
 	ItemID int
 }
 
-type BackToGameMsg struct{}
-
 func (m ShopModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -60,11 +59,10 @@ func (m ShopModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.FocusedIndex++
 			}
 		case key.Matches(msg, shopEnterKey):
-			// Placeholder for purchasing logic
 			if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Items) {
 				selectedItem := m.Items[m.FocusedIndex]
 				fmt.Printf("Attempting to purchase: %s for %d gold ", selectedItem.Name, selectedItem.Cost)
-				// In a real scenario, you'd send a message to the server
+        // TODO: send a request to purchase item
 				// communication.SendPurchaseItemPacket(m.conn, selectedItem.ID)
 				return m, func() tea.Msg {
 					return ItemPurchasedMsg{ItemID: selectedItem.ID}
@@ -72,7 +70,7 @@ func (m ShopModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, shopBackKey):
 			return m, func() tea.Msg {
-				return BackToGameMsg{}
+				return communication.BackToGameMsg{}
 			}
 		}
 	}

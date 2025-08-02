@@ -1,6 +1,7 @@
 use crate::game::{ClientMessage, GameManager, PlayerId};
 use clap::Parser;
 use packet::action_packet::ActionPacket;
+use packet::shop_packet::ShopResponsePacket;
 use packet::start_packet::StartPacket;
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -135,13 +136,22 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
     println!("Listening for Player {} ({:?}) actions...", player_id, addr);
     loop {
         let mut packet_buffer = [0; 3];
+        
         match buf_reader.read_exact(&mut packet_buffer).await {
             Ok(3) => match ActionPacket::deserialize(&packet_buffer) {
                 Ok(packet) => {
+                    println!("Packet: {:?}", packet_buffer);
                     if packet.version == 1 && packet.code == 8 {
                         let mut manager = game_manager.lock().await;
                         manager.store_player_action(player_id, packet.action);
                         println!("Received action from: {} ({:?})", player_id, addr);
+                        drop(manager);
+                    } else if packet.version == 1 && packet.code == 14 {
+                        // TODO: there should be a better way to handle shop request packet
+                        println!("Received shop request from: {} ({:?})", player_id, addr);
+                        let message = ShopResponsePacket::new().serialize();
+                        let manager = game_manager.lock().await;
+                        manager.send_to_player(player_id, message).await;
                         drop(manager);
                     } else {
                         eprintln!(
@@ -164,8 +174,8 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
             }
             Ok(_n) => {
                 println!(
-                    "Incomplete read for player {} ({:?}), likely disconnected",
-                    player_id, addr
+                    "Incomplete read {:?} for player {} ({:?}), likely disconnected",
+                    packet_buffer, player_id, addr
                 );
                 break;
             }

@@ -77,7 +77,6 @@ impl MonsterManager {
         Vec<(Target, Vec<GameplayEffect>)>,
         Vec<Box<dyn AnimationTrait>>,
     ) {
-        println!("MonsterState: {:?}", self.active_monsters);
         let mut pending_damages: Vec<(Target, Vec<GameplayEffect>)> = Vec::new();
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
         let mut dead_monster: Vec<(MonsterId, String)> = Vec::new();

@@ -495,13 +495,14 @@ func (ap ActionPacket) Serialize() []byte {
 }
 
 type ShopRequestPacket struct {
-	version, code int
+	version, code, action int
 }
 
 func NewShopRequestPacket() *ShopRequestPacket {
 	return &ShopRequestPacket{
 		version: 1,
 		code:    14,
+		action:  0,
 	}
 }
 
@@ -514,6 +515,33 @@ func (srp ShopRequestPacket) Code() int {
 }
 
 func (srp ShopRequestPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(srp.version))
+	buf.WriteByte(byte(srp.code))
+	buf.WriteByte(byte(srp.action))
+	return buf.Bytes()
+}
+
+type ShopResponsePacket struct {
+	version, code int
+}
+
+func NewShopResonsePacket() *ShopResponsePacket {
+	return &ShopResponsePacket{
+		version: 1,
+		code:    15,
+	}
+}
+
+func (srp ShopResponsePacket) Version() int {
+	return srp.version
+}
+
+func (srp ShopResponsePacket) Code() int {
+	return srp.code
+}
+
+func (srp ShopResponsePacket) Serialize() []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(byte(srp.version))
 	buf.WriteByte(byte(srp.code))
@@ -864,6 +892,12 @@ func DeSerialize(data []byte) (Packet, error) {
 			code:    code,
 			Spell1:  spell1,
 			Spell2:  spell2,
+		}, nil
+
+	case 15:
+		return &ShopResponsePacket{
+			version: version,
+			code:    code,
 		}, nil
 
 	default:

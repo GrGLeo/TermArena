@@ -155,7 +155,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newmodel, cmd = m.GameModel.Update(msg)
 		m.GameModel = newmodel.(model.GameModel)
 		switch msg := msg.(type) {
-		case model.GoToShopMsg:
+		case communication.GoToShopMsg:
 			m.state = Shop
       m.ShopModel = model.NewShopModel(model.DefaultStyles())
       m.ShopModel.SetDimension(m.height, m.width)
@@ -170,7 +170,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case Shop:
 		switch msg := msg.(type) {
-		case model.BackToGameMsg:
+		case communication.BackToGameMsg:
 			m.state = Game
 			return m, nil
 		default:
@@ -207,6 +207,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m MetaModel) View() string {
+  log.Printf("Model state: %s/n", m.state)
 	switch m.state {
 	case Disconnect:
 		return m.WaitingModel.View()

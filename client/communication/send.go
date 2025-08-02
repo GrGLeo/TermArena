@@ -121,6 +121,9 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 		case *shared.GameClosePacket:
 			log.Printf("Sending GameCloseMsg: %+v", msg)
 			msgs <- GameCloseMsg{Code: msg.Success}
+    case *shared.ShopResponsePacket:
+      log.Println("Sending GoToShopMsg")
+      msgs <- GoToShopMsg{}
 		case *shared.BoardPacket:
 			board, err := DecodeRLE(msg.EncodedBoard)
 			if err != nil {
