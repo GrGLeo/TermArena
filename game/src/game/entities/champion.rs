@@ -105,6 +105,10 @@ impl Champion {
             self.gold
         )
     }
+    
+    pub fn add_gold(&mut self, gold: u16) {
+        self.gold += gold
+    }
 
     pub fn add_xp(&mut self, xp: u32) {
         self.xp += xp;

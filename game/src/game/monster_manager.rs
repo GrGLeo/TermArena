@@ -57,13 +57,13 @@ impl MonsterManager {
         monster_id: &MonsterId,
         effects: Vec<GameplayEffect>,
         player_id: PlayerId,
-    ) -> Option<(PlayerId, u8)> {
+    ) -> Option<(PlayerId, u8, u16)> {
         if let Some(monster) = self.active_monsters.get_mut(monster_id) {
             monster.take_effect(effects);
             monster.attach_target(player_id);
             if monster.stats.health == 0 {
                 let monster_def = self.monster_definitions.get(&monster.monster_id).unwrap();
-                return Some((player_id, monster_def.xp_reward));
+                return Some((player_id, monster_def.xp_reward, monster_def.gold_reward));
             }
         }
         None
@@ -211,6 +211,7 @@ mod tests {
             aggro_range_col: 8,
             leash_range: 10,
             xp_reward: 30,
+            gold_reward: 50,
             respawn_timer_secs: 60,
             attack_speed_ms: 1000,
         }

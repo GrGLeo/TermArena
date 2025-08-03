@@ -278,7 +278,7 @@ impl GameManager {
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
         let mut pending_effects: Vec<(Option<PlayerId>, Target, Vec<GameplayEffect>)> = Vec::new();
-        let mut xp_rewards: Vec<(PlayerId, u8)> = Vec::new();
+        let mut monster_rewards: Vec<(PlayerId, u8, u16)> = Vec::new();
 
         // --- Game Logic ---
         // Buff checks on all entities
@@ -489,7 +489,7 @@ impl GameManager {
                     if let Some(..) = self.monster_manager.active_monsters.get_mut(&id) {
                         if let Some(attacker) = attacker_id {
                             if let Some(reward) = self.monster_manager.apply_effects_to_monster(&id, effect, attacker) {
-                                xp_rewards.push(reward);
+                                monster_rewards.push(reward);
                             }
 
                         }
@@ -498,9 +498,10 @@ impl GameManager {
             });
 
         // Distribute XP from dead monster
-        for (player_id, xp_reward) in xp_rewards.into_iter() {
+        for (player_id, xp_reward, gold_reward) in monster_rewards.into_iter() {
             if let Some(champion) = self.champions.get_mut(&player_id) {
                 champion.add_xp(xp_reward as u32);
+                champion.add_gold(gold_reward as u16);
             }
         }
         // Distribute XP from dead minions
@@ -518,8 +519,10 @@ impl GameManager {
 
             if !champions_in_range.is_empty() {
                 let xp_per_champion = 5 / champions_in_range.len() as u32;
+                let gold_per_champion = 25 / champions_in_range.len() as u16;
                 for champion in champions_in_range {
                     champion.add_xp(xp_per_champion);
+                    champion.add_gold(gold_per_champion);
                 }
             }
         }
