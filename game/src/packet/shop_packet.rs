@@ -25,10 +25,11 @@ pub struct ShopResponsePacket {
     mana: u16,
     damage: u16,
     armor: u16,
+    gold: u16,
 }
 
 impl ShopResponsePacket {
-    pub fn new(stats: (u16, u16, u16, u16)) -> Self {
+    pub fn new(stats: (u16, u16, u16, u16, u16)) -> Self {
         ShopResponsePacket {
             version: 1,
             code: 15,
@@ -36,6 +37,7 @@ impl ShopResponsePacket {
             mana: stats.1,
             damage: stats.2,
             armor: stats.3,
+            gold: stats.4,
         }
     }
 
@@ -47,6 +49,7 @@ impl ShopResponsePacket {
         buffer.put_u16(self.mana);
         buffer.put_u16(self.damage);
         buffer.put_u16(self.armor);
+        buffer.put_u16(self.gold);
         buffer
     }
 }

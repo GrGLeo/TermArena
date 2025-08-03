@@ -528,9 +528,10 @@ type ShopResponsePacket struct {
 	Mana          int
 	Attack_damage int
 	Armor         int
+	Gold          int
 }
 
-func NewShopResponsePacket(health, mana, attack_damage, armor int) *ShopResponsePacket {
+func NewShopResponsePacket(health, mana, attack_damage, armor, gold int) *ShopResponsePacket {
 	return &ShopResponsePacket{
 		version:       1,
 		code:          15,
@@ -538,6 +539,7 @@ func NewShopResponsePacket(health, mana, attack_damage, armor int) *ShopResponse
 		Mana:          mana,
 		Attack_damage: attack_damage,
 		Armor:         armor,
+		Gold:          gold,
 	}
 }
 
@@ -903,13 +905,14 @@ func DeSerialize(data []byte) (Packet, error) {
 		}, nil
 
 	case 15:
-		if len(data) < 10 {
+		if len(data) < 12 {
 			return nil, errors.New("invalid shop response packet length")
 		}
 		health := int(binary.BigEndian.Uint16(data[2:4]))
 		mana := int(binary.BigEndian.Uint16(data[4:6]))
 		attack_damage := int(binary.BigEndian.Uint16(data[6:8]))
 		armor := int(binary.BigEndian.Uint16(data[8:10]))
+		gold := int(binary.BigEndian.Uint16(data[10:12]))
 
 		return &ShopResponsePacket{
 			version:       version,
@@ -918,6 +921,7 @@ func DeSerialize(data []byte) (Packet, error) {
 			Mana:          mana,
 			Attack_damage: attack_damage,
 			Armor:         armor,
+			Gold:          gold,
 		}, nil
 
 	default:

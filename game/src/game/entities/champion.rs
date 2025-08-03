@@ -40,6 +40,7 @@ pub struct Champion {
     pub player_id: PlayerId,
     pub team_id: Team,
     pub xp: u32,
+    pub gold: u16,
     pub level: u8,
     pub stats: Stats,
     champion_stats: ChampionStats,
@@ -80,6 +81,7 @@ impl Champion {
             champion_stats,
             spells,
             xp: 0,
+            gold: 0,
             level: 1,
             death_counter: 0,
             death_timer: Instant::now(),
@@ -94,12 +96,13 @@ impl Champion {
         }
     }
 
-    pub fn stats(&self) -> (u16, u16, u16, u16) {
+    pub fn stats(&self) -> (u16, u16, u16, u16, u16) {
         (
             self.stats.max_health,
             self.stats.max_mana,
             self.stats.attack_damage,
             self.stats.armor,
+            self.gold
         )
     }
 

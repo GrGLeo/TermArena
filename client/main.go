@@ -157,7 +157,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg := msg.(type) {
 		case communication.GoToShopMsg:
 			m.state = Shop
-			m.ShopModel = model.NewShopModel(model.DefaultStyles(), msg.Health, msg.Mana, msg.Attack_damage, msg.Armor)
+			m.ShopModel = model.NewShopModel(model.DefaultStyles(), msg.Health, msg.Mana, msg.Attack_damage, msg.Armor, msg.Gold)
 			m.ShopModel.SetDimension(m.height, m.width)
 			return m, m.ShopModel.Init()
 		case communication.GameCloseMsg:

@@ -25,6 +25,7 @@ type ShopModel struct {
 	height, width        int
 	health, mana         int
 	attack_damage, armor int
+	gold                 int
 }
 
 func (m *ShopModel) SetDimension(height, width int) {
@@ -32,15 +33,16 @@ func (m *ShopModel) SetDimension(height, width int) {
 	m.width = width
 }
 
-func NewShopModel(styles *Styles, health, mana, attack_damage, armor int) ShopModel {
+func NewShopModel(styles *Styles, health, mana, attack_damage, armor, gold int) ShopModel {
 	return ShopModel{
-		styles:       styles,
-		Items:        availableItems,
-		FocusedIndex: 0,
-    health: health,
-    mana: mana,
-    attack_damage: attack_damage,
-    armor: armor,
+		styles:        styles,
+		Items:         availableItems,
+		FocusedIndex:  0,
+		health:        health,
+		mana:          mana,
+		attack_damage: attack_damage,
+		armor:         armor,
+		gold:          gold,
 	}
 }
 
@@ -110,9 +112,9 @@ func (m ShopModel) View() string {
 		right.WriteString(m.Items[m.FocusedIndex].String())
 	}
 
-  // Bottom Panel: Player stats
-  bottom.WriteString(fmt.Sprintf("Health: %d | Mana: %d | Attack damage: %d | Armor: %d", m.health, m.mana, m.attack_damage, m.armor))
-
+	// Bottom Panel: Player stats
+	bottom.WriteString(fmt.Sprintf("Health: %d | Mana: %d | Attack damage: %d | Armor: %d", m.health, m.mana, m.attack_damage, m.armor))
+  bottom.WriteString(fmt.Sprintf("\nGold: %d", m.gold))
 
 	optionsStyle := lipgloss.NewStyle().
 		Align(lipgloss.Left).
@@ -135,12 +137,12 @@ func (m ShopModel) View() string {
 		optionsStyle.Render(left.String()),
 		detailsStyle.Render(right.String()),
 	)
-  
-  layout := lipgloss.JoinVertical(
-    lipgloss.Center,
-    baseLayout,
-    statsStyle.Render(bottom.String()),
-  )
+
+	layout := lipgloss.JoinVertical(
+		lipgloss.Center,
+		baseLayout,
+		statsStyle.Render(bottom.String()),
+	)
 
 	return lipgloss.Place(
 		m.width,

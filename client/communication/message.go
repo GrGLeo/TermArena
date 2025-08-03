@@ -48,11 +48,12 @@ type GameCloseMsg struct {
 }
 
 // GoToShop is sent after receiving a response from the game
-type GoToShopMsg struct{
-  Health int
-  Mana int
-  Attack_damage int
-  Armor int
+type GoToShopMsg struct {
+	Health        int
+	Mana          int
+	Attack_damage int
+	Armor         int
+	Gold          int
 }
 
 // BackToGame is sent when the player press 'p' while in Shop
