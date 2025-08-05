@@ -39,10 +39,10 @@ Used by the client to send login credentials to the authentication server.
 
 ```
 Byte Offset: 0       1       2       3       4         X       X+1     X+2    
-             +-------+-------+-------+-------+---------+-------+-------+----------------
+             +-------+-------+-------+-------+---------+-------+---------------+----------------
              |Version| Code  |  Username Len | Username        |  Password Len | Password ...
-             +-------+-------+-------+-------+---------+-------+-------+----------------
-Size (bytes):  1       1       2               (variable)        2       (variable)
+             +-------+-------+-------+-------+---------+-------+---------------+----------------
+Size (bytes):  1       1       2               (variable)        2                (variable)
 ```
 
 *   **Username Len (u16):** Length of the Username string in bytes.
@@ -122,9 +122,9 @@ Used by the server to signal the start of a game.
 
 ```
 Byte Offset: 0       1       2
-             +-------+-------+-------+
+             +-------+-------+--------+
              |Version| Code  | Success|
-             +-------+-------+-------+
+             +-------+-------+--------+
 Size (bytes):  1       1       1
 ```
 
@@ -176,6 +176,21 @@ Size (bytes):  1       1       1
 
 *   **Win (u8):** `1` if the client's team won, `0` if lost.
 
+#### SpellSelectionPacket (Code 13)
+
+Used by the client to send the selected spells to the game server.
+
+```
+Byte Offset: 0       1       2       3       4
+             +-------+-------+-------+-------+
+             |Version| Code  | Spell1| Spell2|
+             +-------+-------+-------+-------+
+Size (bytes):  1       1       1       1
+```
+
+*   **Spell1 (u8):** The ID of the first selected spell.
+*   **Spell2 (u8):** The ID of the second selected spell.
+
 ### Rust Game Server/Client Packets (`game/src/packet/`)
 
 These packets are used for communication between the Go client and the Rust game server. Note that some `Code` values are reused with different structures compared to the Go server/client packets.
@@ -199,16 +214,19 @@ Size (bytes):  1       1       1
 Used by the game server to send the player's view of the game board and their champion's status.
 
 ```
-Byte Offset: 0       1       2       3       4       5       6       7       8       9       10      11      12      13      14      15      16      17      18      19    
-             +-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+------
-             |Version| Code  |   Points      |    Health     |  Max Health   | Level |       XP      |     XP Needed |   Length      | Encoded Board Data ...
-             +-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+------
-Size (bytes):  1       1       2               2               2               1       4               4               2               (variable)
+Byte Offset: 0       1       2         3         4       5       6       7       8       9       10      11      12      13      14      15      16      17      18      19      20      21      22
+             +-------+-------+---------+---------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+------
+             |Version| Code  |Points[0]|Points[1]|    Health     |  Max Health   |     Mana      |   Max Mana    | Level |       XP      |     XP Needed |   Length      | Encoded Board Data ...
+             +-------+-------+---------+---------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+------
+Size (bytes):  1       1       1         1         2               2               2               2               1       4               4               2               (variable)
 ```
 
-*   **Points (u16):** Player's score or points (currently `0`).
+*   **Points[0] (u8):** Score for Team 0.
+*   **Points[1] (u8):** Score for Team 1.
 *   **Health (u16):** Current health of the player's champion.
 *   **Max Health (u16):** Maximum health of the player's champion.
+*   **Mana (u16):** Current mana of the player's champion.
+*   **Max Mana (u16):** Maximum mana of the player's champion.
 *   **Level (u8):** Current level of the player's champion.
 *   **XP (u32):** Current experience points of the player's champion.
 *   **XP Needed (u32):** Experience points needed for the next level.
@@ -232,6 +250,51 @@ Size (bytes):  1       1       1
 ```
 
 *   **Winner (u8):** `0` for Red Team, `1` for Blue Team.
+
+#### ShopRequestPacket (Code 14)
+
+Used by the client to request shop information from the game server.
+
+```
+Byte Offset: 0       1
+             +-------+-------+
+             |Version| Code  |
+             +-------+-------+
+Size (bytes):  1       1
+```
+
+#### ShopResponsePacket (Code 15)
+
+Used by the game server to send shop information to the client.
+
+```
+Byte Offset: 0       1       2       3       4       5       6       7       8       9       10      11      12      13      14      15      16      17      18      19      20      21      22      23
+             +-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+             |Version| Code  |    Health     |     Mana      |    Damage     |     Armor     |     Gold      |       Inventory (6 x u16)                                                                     |
+             +-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
+Size (bytes):  1       1       2               2               2               2               2               12 (6 * 2)
+```
+
+*   **Health (u16):** Player's current health.
+*   **Mana (u16):** Player's current mana.
+*   **Damage (u16):** Player's current attack damage.
+*   **Armor (u16):** Player's current armor.
+*   **Gold (u16):** Player's current gold.
+*   **Inventory (Vec<u16>):** A list of 6 item IDs representing the player's inventory.
+
+#### PurchaseItemPacket (Code 16)
+
+Used by the client to request purchasing an item from the shop.
+
+```
+Byte Offset: 0       1       2       3
+             +-------+-------+-------+-------+
+             |Version| Code  |    ItemID     |
+             +-------+-------+-------+-------+
+Size (bytes):  1       1       2
+```
+
+*   **ItemID (u16):** The ID of the item to purchase.
 
 
 
