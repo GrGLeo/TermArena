@@ -1,6 +1,6 @@
 use crate::game::{ClientMessage, GameManager, PlayerId};
 use clap::Parser;
-use packet::action_packet::ActionPacket;
+use packet::shop_packet::{PurchaseItemPacket, ShopResponsePacket};
 use packet::start_packet::StartPacket;
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -134,46 +134,78 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
     // -- Read Client Action loop --
     println!("Listening for Player {} ({:?}) actions...", player_id, addr);
     loop {
-        let mut packet_buffer = [0; 3];
-        match buf_reader.read_exact(&mut packet_buffer).await {
-            Ok(3) => match ActionPacket::deserialize(&packet_buffer) {
-                Ok(packet) => {
-                    if packet.version == 1 && packet.code == 8 {
-                        let mut manager = game_manager.lock().await;
-                        manager.store_player_action(player_id, packet.action);
-                        println!("Received action from: {} ({:?})", player_id, addr);
-                        drop(manager);
-                    } else {
-                        eprintln!(
-                            "Player {} send packet with invalid version/code: V={}, C={}",
-                            player_id, packet.version, packet.code
-                        );
+        let mut packet_header = [0; 2]; // Read version and code
+        if buf_reader.read_exact(&mut packet_header).await.is_err() {
+            eprintln!("Error reading packet header from {:?}", addr);
+            break;
+        }
+        println!("Packet header: {:?}", packet_header);
+
+        let version = packet_header[0];
+        let code = packet_header[1];
+
+        if version != 1 {
+            eprintln!("Invalid packet version from {:?}: {}", addr, version);
+            break;
+        }
+
+        match code {
+            8 => {
+                // Action Packet
+                let mut action_payload = [0; 1];
+                if buf_reader.read_exact(&mut action_payload).await.is_err() {
+                    eprintln!("Error reading action payload from {:?}", addr);
+                    break;
+                }
+                let mut manager = game_manager.lock().await;
+                manager.store_player_action(player_id, action_payload[0]);
+            }
+            14 => {
+                // Shop Request Packet
+                println!("Got a requests shop packet");
+                let manager = game_manager.lock().await;
+                if let Some(champion) = manager.get_champion(&player_id) {
+                    let message =
+                        ShopResponsePacket::new(champion.stats(), champion.get_inventory())
+                            .serialize();
+                    manager.send_to_player(player_id, message).await;
+                } else {
+                    println!("Player: {} champion not found", player_id);
+                }
+            }
+            16 => {
+                // Purchase Item Packet
+                let mut purchase_payload = [0; 2];
+                if buf_reader.read_exact(&mut purchase_payload).await.is_err() {
+                    eprintln!("Error reading purchase payload from {:?}", addr);
+                    break;
+                }
+                if let Ok(packet) = PurchaseItemPacket::deserialize(&purchase_payload) {
+                    let mut manager = game_manager.lock().await;
+                    if let Some(item) = manager
+                        .get_config()
+                        .items
+                        .get(&packet.item_id.into())
+                        .cloned()
+                    {
+                        if let Some(champion) = manager.get_mut_champion(&player_id) {
+                            if let Err(e) = champion.add_item(item) {
+                                eprintln!("Player {} failed to buy item: {}", player_id, e);
+                            } else {
+                                // Send back the updated champion stats
+                                let message = ShopResponsePacket::new(
+                                    champion.stats(),
+                                    champion.get_inventory(),
+                                )
+                                .serialize();
+                                manager.send_to_player(player_id, message).await;
+                            }
+                        }
                     }
                 }
-                Err(e) => {
-                    eprintln!("Player {} sent invalid packet format: {}", player_id, e);
-                }
-            },
-            Ok(0) => {
-                // Connection closed by client
-                println!(
-                    "Player {} ({:?}) disconnected (read 0 bytes)",
-                    player_id, addr
-                );
-                break;
             }
-            Ok(_n) => {
-                println!(
-                    "Incomplete read for player {} ({:?}), likely disconnected",
-                    player_id, addr
-                );
-                break;
-            }
-            Err(e) => {
-                println!(
-                    "Error reading action for player {} ({:?}): {}. Disconnecting.",
-                    player_id, addr, e
-                );
+            _ => {
+                eprintln!("Invalid packet code from {:?}: {}", addr, code);
                 break;
             }
         }
@@ -198,7 +230,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind(&address).await?;
     println!("Server listening  on {}", address);
 
-    let config = config::GameConfig::load("game/stats.toml", "game/spells.toml")
+    let config = config::GameConfig::load("game/stats.toml", "game/spells.toml", "game/items.toml")
         .expect("Failed to load game configuration");
     let game_manager = GameManager::new(config);
     let arc_gm = Arc::new(Mutex::new(game_manager));

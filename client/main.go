@@ -16,6 +16,7 @@ const (
 	Lobby      = "lobby"
 	Menu       = "menu"
 	Game       = "game"
+	Shop       = "shop"
 	GameOver   = "gameover"
 )
 
@@ -25,6 +26,7 @@ type MetaModel struct {
 	AuthModel      model.AuthModel
 	LobbyModel     model.LobbyModel
 	GameModel      model.GameModel
+	ShopModel      model.ShopModel
 	GameOverModel  model.GameOverModel
 	state          string
 	Username       string
@@ -104,6 +106,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.AnimationModel.SetDimension(m.height, m.width)
 			m.AuthModel.SetDimension(m.height, m.width)
 			m.GameModel.SetDimension(m.height, m.width)
+			m.ShopModel.SetDimension(m.height, m.width)
 		}
 
 	case Login:
@@ -149,15 +152,39 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case Game:
+		newmodel, cmd = m.GameModel.Update(msg)
+		m.GameModel = newmodel.(model.GameModel)
 		switch msg := msg.(type) {
+		case communication.GoToShopMsg:
+			m.state = Shop
+			m.ShopModel = model.NewShopModel(
+        model.DefaultStyles(),
+        msg.Health,
+        msg.Mana,
+        msg.Attack_damage,
+        msg.Armor,
+        msg.Gold,
+        msg.Inventory,
+        m.GameConnection,
+      )
+			m.ShopModel.SetDimension(m.height, m.width)
+			return m, m.ShopModel.Init()
 		case communication.GameCloseMsg:
 			m.state = GameOver
 			m.GameOverModel = model.NewGameOverModel(msg.Code)
 			m.GameOverModel.SetDimension(m.height, m.width)
 			return m, m.GameOverModel.Init()
 		default:
-			newmodel, cmd = m.GameModel.Update(msg)
-			m.GameModel = newmodel.(model.GameModel)
+			return m, cmd
+		}
+	case Shop:
+		switch msg := msg.(type) {
+		case communication.BackToGameMsg:
+			m.state = Game
+			return m, nil
+		default:
+			newmodel, cmd = m.ShopModel.Update(msg)
+			m.ShopModel = newmodel.(model.ShopModel)
 			return m, cmd
 		}
 	case GameOver:
@@ -189,6 +216,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m MetaModel) View() string {
+	log.Printf("Model state: %s/n", m.state)
 	switch m.state {
 	case Disconnect:
 		return m.WaitingModel.View()
@@ -200,6 +228,8 @@ func (m MetaModel) View() string {
 		return m.LobbyModel.View()
 	case Game:
 		return m.GameModel.View()
+	case Shop:
+		return m.ShopModel.View()
 	case GameOver:
 		return m.GameOverModel.View()
 	}

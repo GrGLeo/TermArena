@@ -18,4 +18,8 @@ pub enum GameError {
     GenerateIdError,
     #[error("Entity is stunned")]
     IsStunned,
+    #[error("Inventory is full")]
+    InventoryFull,
+    #[error("Not enough gold")]
+    NotEnoughGold,
 }

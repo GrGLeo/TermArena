@@ -24,6 +24,10 @@ code 9: receive RLEboard
 code 10: receive Delta
 code 11: game close
 code 12: game end
+code 13: spell selection
+code 14: shop request
+code 15: shop response
+code 16: purchase item
 */
 
 type Packet interface {
@@ -488,6 +492,111 @@ func (ap ActionPacket) Serialize() []byte {
 
 }
 
+type ShopRequestPacket struct {
+	version, code int
+}
+
+func NewShopRequestPacket() *ShopRequestPacket {
+	return &ShopRequestPacket{
+		version: 1,
+		code:    14,
+	}
+}
+
+func (srp ShopRequestPacket) Version() int {
+	return srp.version
+}
+
+func (srp ShopRequestPacket) Code() int {
+	return srp.code
+}
+
+func (srp ShopRequestPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(srp.version))
+	buf.WriteByte(byte(srp.code))
+	return buf.Bytes()
+}
+
+type ShopResponsePacket struct {
+	version, code int
+	Health        int
+	Mana          int
+	Attack_damage int
+	Armor         int
+	Gold          int
+	Inventory     []int
+}
+
+func NewShopResponsePacket(health, mana, attack_damage, armor, gold int, inventory []int) *ShopResponsePacket {
+	return &ShopResponsePacket{
+		version:       1,
+		code:          15,
+		Health:        health,
+		Mana:          mana,
+		Attack_damage: attack_damage,
+		Armor:         armor,
+		Gold:          gold,
+		Inventory:     inventory,
+	}
+}
+
+func (srp ShopResponsePacket) Version() int {
+	return srp.version
+}
+
+func (srp ShopResponsePacket) Code() int {
+	return srp.code
+}
+
+func (srp *ShopResponsePacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(srp.version))
+	buf.WriteByte(byte(srp.code))
+	binary.Write(&buf, binary.BigEndian, uint16(srp.Health))
+	binary.Write(&buf, binary.BigEndian, uint16(srp.Mana))
+	binary.Write(&buf, binary.BigEndian, uint16(srp.Attack_damage))
+	binary.Write(&buf, binary.BigEndian, uint16(srp.Armor))
+	binary.Write(&buf, binary.BigEndian, uint16(srp.Gold))
+	// Always write 6 inventory slots
+	for i := 0; i < 6; i++ {
+		if i < len(srp.Inventory) {
+			binary.Write(&buf, binary.BigEndian, uint16(srp.Inventory[i]))
+		} else {
+			binary.Write(&buf, binary.BigEndian, uint16(0)) // Empty slot
+		}
+	}
+	return buf.Bytes()
+}
+
+type PurchaseItemPacket struct {
+	version, code, ItemID int
+}
+
+func NewPurchaseItemPacket(itemID int) *PurchaseItemPacket {
+	return &PurchaseItemPacket{
+		version: 1,
+		code:    16,
+		ItemID:  itemID,
+	}
+}
+
+func (pip PurchaseItemPacket) Version() int {
+	return pip.version
+}
+
+func (pip PurchaseItemPacket) Code() int {
+	return pip.code
+}
+
+func (pip PurchaseItemPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(pip.version))
+	buf.WriteByte(byte(pip.code))
+	binary.Write(&buf, binary.BigEndian, uint16(pip.ItemID))
+	return buf.Bytes()
+}
+
 type BoardPacket struct {
 	version, code int
 	Points        [2]int
@@ -834,6 +943,48 @@ func DeSerialize(data []byte) (Packet, error) {
 			Spell2:  spell2,
 		}, nil
 
+	case 15:
+			if len(data) < 12 {
+				return nil, errors.New("invalid shop response packet length")
+			}
+			health := int(binary.BigEndian.Uint16(data[2:4]))
+			mana := int(binary.BigEndian.Uint16(data[4:6]))
+			attack_damage := int(binary.BigEndian.Uint16(data[6:8]))
+			armor := int(binary.BigEndian.Uint16(data[8:10]))
+			gold := int(binary.BigEndian.Uint16(data[10:12]))
+
+			// Read exactly 6 inventory items
+			var inventory []int
+			currentOffset := 12
+			for range 6 {
+				if len(data) < currentOffset+2 {
+					return nil, errors.New("invalid shop response packet length for inventory item")
+				}
+				itemID := int(binary.BigEndian.Uint16(data[currentOffset : currentOffset+2]))
+				inventory = append(inventory, itemID)
+				currentOffset += 2
+			}
+
+			return &ShopResponsePacket{
+				version:       version,
+				code:          code,
+				Health:        health,
+				Mana:          mana,
+				Attack_damage: attack_damage,
+				Armor:         armor,
+				Gold:          gold,
+				Inventory:     inventory,
+			}, nil
+	case 16:
+		if len(data) < 4 {
+			return nil, errors.New("invalid purchase item packet length")
+		}
+		itemID := int(binary.BigEndian.Uint16(data[2:4]))
+		return &PurchaseItemPacket{
+			version: version,
+			code:    code,
+			ItemID:  itemID,
+		}, nil
 	default:
 		return nil, errors.New("unknown message type")
 	}

@@ -74,6 +74,23 @@ func SendAction(conn *net.TCPConn, action int) error {
 	return err
 }
 
+func SendShopRequest(conn *net.TCPConn) error {
+	log.Println("Sent shop request")
+	shopReqPacket := shared.NewShopRequestPacket()
+	data := shopReqPacket.Serialize()
+	_, err := conn.Write(data)
+	return err
+}
+
+func SendPurchaseItemPacket(conn *net.TCPConn, itemID int) error {
+	log.Printf("Sending purchase item request for item ID: %d", itemID)
+	purchasePacket := shared.NewPurchaseItemPacket(itemID)
+	data := purchasePacket.Serialize()
+  log.Println(data)
+	_, err := conn.Write(data)
+	return err
+}
+
 func SendSpellSelectionPacket(conn *net.TCPConn, spell1, spell2 int) error {
 	log.Printf("Sending spell selection: %d, %d", spell1, spell2)
 	spellPacket := shared.NewSpellSelectionPacket(spell1, spell2)
@@ -113,6 +130,9 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 		case *shared.GameClosePacket:
 			log.Printf("Sending GameCloseMsg: %+v", msg)
 			msgs <- GameCloseMsg{Code: msg.Success}
+		case *shared.ShopResponsePacket:
+			log.Println("Sending GoToShopMsg")
+			msgs <- GoToShopMsg{Health: msg.Health, Mana: msg.Mana, Attack_damage: msg.Attack_damage, Armor: msg.Armor, Gold: msg.Gold, Inventory: msg.Inventory}
 		case *shared.BoardPacket:
 			board, err := DecodeRLE(msg.EncodedBoard)
 			if err != nil {

@@ -3,6 +3,13 @@ use std::fs;
 
 use serde::Deserialize;
 
+use crate::game::entities::item::Item;
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ItemFile {
+    pub items: Vec<Item>,
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct BaseStats {
     pub health: u16,
@@ -49,8 +56,8 @@ pub struct TowerStats {
 #[derive(Debug, Deserialize, Clone)]
 pub struct MonsterStats {
     pub id: String,
-    pub spawn_row:  u16,
-    pub spawn_col: u16, 
+    pub spawn_row: u16,
+    pub spawn_col: u16,
     pub attack_damage: u16,
     pub attack_speed_ms: u64,
     pub health: u16,
@@ -61,6 +68,7 @@ pub struct MonsterStats {
     pub attack_range_col: u8,
     pub leash_range: u8,
     pub xp_reward: u8,
+    pub gold_reward: u16,
     pub respawn_timer_secs: u16,
 }
 
@@ -94,10 +102,16 @@ pub struct GameConfig {
     pub neutral_monsters: Vec<MonsterStats>,
     #[serde(skip)]
     pub spells: HashMap<u8, SpellStats>,
+    #[serde(skip)]
+    pub items: HashMap<u32, Item>,
 }
 
 impl GameConfig {
-    pub fn load(config_path: &str, spell_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn load(
+        config_path: &str,
+        spell_path: &str,
+        items_path: &str,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let content = fs::read_to_string(config_path)?;
         let mut config: GameConfig = toml::from_str(&content)?;
 
@@ -108,6 +122,15 @@ impl GameConfig {
             .spell
             .into_iter()
             .map(|spell_conf| (spell_conf.id, spell_conf))
+            .collect();
+
+        let items_content = fs::read_to_string(items_path)?;
+        let items_file: ItemFile = toml::from_str(&items_content)?;
+
+        config.items = items_file
+            .items
+            .into_iter()
+            .map(|item| (item.id, item))
             .collect();
 
         Ok(config)

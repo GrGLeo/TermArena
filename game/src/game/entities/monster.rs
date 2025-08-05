@@ -5,7 +5,6 @@ use std::{
 
 use crate::{
     config::MonsterStats,
-    errors::GameError,
     game::{
         Board, PlayerId, algorithms::pathfinding::find_path_on_board,
         animation::melee::MeleeAnimation, buffs::Buff, cell::MonsterId, entities::AttackAction,
@@ -186,6 +185,7 @@ mod tests {
             aggro_range_col: 8,
             leash_range: 10,
             xp_reward: 30,
+            gold_reward: 50,
             respawn_timer_secs: 60,
             attack_speed_ms: 1,
         }

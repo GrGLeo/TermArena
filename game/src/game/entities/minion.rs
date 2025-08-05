@@ -300,7 +300,8 @@ impl Fighter for Minion {
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                 }
                 GameplayEffect::Heal(heal_amount) => {
-                    self.stats.health = (self.stats.health + heal_amount).min(self.stats.max_health);
+                    self.stats.health =
+                        (self.stats.health + heal_amount).min(self.stats.max_health);
                 }
                 GameplayEffect::Buff(mut buff) => {
                     buff.on_apply(self);

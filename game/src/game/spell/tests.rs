@@ -136,7 +136,8 @@ fn test_freezewall_cast_creates_multiple_projectiles() {
     // Sort projectiles by their column for deterministic testing
     projectiles.sort_by_key(|p| {
         if let PathingLogic::Straight { path, .. } = &p.pathing {
-            path[0].1 } else {
+            path[0].1
+        } else {
             0
         }
     });
