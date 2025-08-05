@@ -145,6 +145,14 @@ impl GameManager {
         self.champions.get(player_id)
     }
 
+    pub fn get_mut_champion(&mut self, player_id: &usize) -> Option<&mut Champion> {
+        self.champions.get_mut(player_id)
+    }
+
+    pub fn get_config(&self) -> &GameConfig {
+        &self.config
+    }
+
     pub fn print_game_state(&self) {
         println!(
             "Player connected: {}/{}",

@@ -602,13 +602,12 @@ mod pathfinding_tests {
             .collect();
 
         let max_ticks = 50; // Prevent infinite loops in case of issues
-        let mut all_reached = false;
 
         println!("--- Starting Dynamic Pathfinding Simulation ---");
 
         for tick in 0..max_ticks {
             println!("--- Tick {} ---", tick);
-            all_reached = true; // Assume all will reach this tick
+            let mut all_reached = true; // Assume all will reach this tick
 
             // Shuffle minions to avoid favoring those processed first
             use rand::rng;

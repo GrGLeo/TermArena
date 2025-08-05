@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/GrGLeo/ctf/client/communication"
@@ -26,6 +27,8 @@ type ShopModel struct {
 	health, mana         int
 	attack_damage, armor int
 	gold                 int
+	conn                 *net.TCPConn
+	inventory            []int
 }
 
 func (m *ShopModel) SetDimension(height, width int) {
@@ -33,7 +36,7 @@ func (m *ShopModel) SetDimension(height, width int) {
 	m.width = width
 }
 
-func NewShopModel(styles *Styles, health, mana, attack_damage, armor, gold int) ShopModel {
+func NewShopModel(styles *Styles, health, mana, attack_damage, armor, gold int, inventory []int, conn *net.TCPConn) ShopModel {
 	return ShopModel{
 		styles:        styles,
 		Items:         availableItems,
@@ -43,6 +46,8 @@ func NewShopModel(styles *Styles, health, mana, attack_damage, armor, gold int) 
 		attack_damage: attack_damage,
 		armor:         armor,
 		gold:          gold,
+		conn:          conn,
+		inventory:     inventory,
 	}
 }
 
@@ -56,6 +61,13 @@ type ItemPurchasedMsg struct {
 
 func (m ShopModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+  case communication.GoToShopMsg:
+    m.health = msg.Health
+    m.mana = msg.Mana
+    m.attack_damage = msg.Attack_damage
+    m.armor = msg.Armor
+    m.gold = msg.Gold
+    m.inventory = msg.Inventory
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, shopUpKey):
@@ -67,20 +79,23 @@ func (m ShopModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.FocusedIndex++
 			}
 		case key.Matches(msg, shopEnterKey):
-			if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Items) {
-				selectedItem := m.Items[m.FocusedIndex]
-				fmt.Printf("Attempting to purchase: %s for %d gold ", selectedItem.Name, selectedItem.Cost)
-				// TODO: send a request to purchase item
-				// communication.SendPurchaseItemPacket(m.conn, selectedItem.ID)
-				return m, func() tea.Msg {
-					return ItemPurchasedMsg{ItemID: selectedItem.ID}
+				if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Items) {
+					selectedItem := m.Items[m.FocusedIndex]
+					fmt.Printf("Attempting to purchase: %s for %d gold ", selectedItem.Name, selectedItem.Cost)
+					communication.SendPurchaseItemPacket(m.conn, selectedItem.ID)
 				}
-			}
 		case key.Matches(msg, shopBackKey):
 			return m, func() tea.Msg {
 				return communication.BackToGameMsg{}
 			}
 		}
+	case communication.UpdatePlayerStatsMsg:
+		m.health = msg.Health
+		m.mana = msg.Mana
+		m.attack_damage = msg.Attack_damage
+		m.armor = msg.Armor
+		m.gold = msg.Gold
+		m.inventory = msg.Inventory
 	}
 	return m, nil
 }
@@ -115,6 +130,24 @@ func (m ShopModel) View() string {
 	// Bottom Panel: Player stats
 	bottom.WriteString(fmt.Sprintf("Health: %d | Mana: %d | Attack damage: %d | Armor: %d", m.health, m.mana, m.attack_damage, m.armor))
   bottom.WriteString(fmt.Sprintf("\nGold: %d", m.gold))
+
+	// Display inventory
+	bottom.WriteString("\nInventory: ")
+	if len(m.inventory) == 0 {
+		bottom.WriteString("Empty")
+	} else {
+		var itemNames []string
+		for _, itemID := range m.inventory {
+			// Find item name by ID (assuming Item struct has a Name field and availableItems is accessible)
+			for _, item := range availableItems {
+				if item.ID == itemID {
+					itemNames = append(itemNames, item.Name)
+					break
+				}
+			}
+		}
+		bottom.WriteString(strings.Join(itemNames, ", "))
+	}
 
 	optionsStyle := lipgloss.NewStyle().
 		Align(lipgloss.Left).

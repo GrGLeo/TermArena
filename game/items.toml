@@ -1,0 +1,20 @@
+# In game/items.toml
+
+[[items]]
+id = 0
+name = "Sword of Power"
+cost = 300
+stats.attack_damage = 10
+
+[[items]]
+id = 1
+name = "Armor of Resilience"
+cost = 200
+stats.armor = 10
+
+[[items]]
+id = 2
+name = "Shield of Valor"
+cost = 200
+stats.armor = 5
+stats.health = 50

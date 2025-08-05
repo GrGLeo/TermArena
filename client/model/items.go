@@ -10,7 +10,7 @@ type Item struct {
 	Cost        int
 	Damage      int
 	Armor       int
-	// Add other item properties as needed (e.g., stat bonuses, effects)
+	Health      int
 }
 
 func (i Item) String() string {
@@ -26,34 +26,33 @@ func (i Item) String() string {
 	if i.Armor > 0 {
 		s += fmt.Sprintf("\nArmor: %d", i.Armor)
 	}
+	if i.Health > 0 {
+		s += fmt.Sprintf("\nHealth: %d", i.Health)
+	}
 	return s
 }
 
 var availableItems = []Item{
 	{
 		ID:          0,
-		Name:        "Health Potion",
-		Description: "Restores a small amount of health.",
-		Cost:        50,
-	},
-	{
-		ID:          1,
-		Name:        "Mana Potion",
-		Description: "Restores a small amount of mana.  ",
-		Cost:        50,
-	},
-	{
-		ID:          2,
 		Name:        "Sword of Power",
 		Description: "Increases attack damage.          ",
 		Cost:        200,
 		Damage:      10,
 	},
 	{
-		ID:          3,
+		ID:          1,
 		Name:        "Armor of Resilience",
 		Description: "Increases defense.                ",
 		Cost:        200,
 		Armor:       10,
+	},
+	{
+		ID:          2,
+		Name:        "Shield of Valor",
+		Description: "Increases both armor and health",
+		Cost:        200,
+		Armor:       5,
+		Health:      50,
 	},
 }

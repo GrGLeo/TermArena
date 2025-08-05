@@ -13,6 +13,7 @@ pub mod minion;
 pub mod monster;
 pub mod projectile;
 pub mod tower;
+pub mod item;
 
 pub enum AttackAction {
     Melee {

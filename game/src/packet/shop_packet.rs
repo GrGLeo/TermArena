@@ -1,5 +1,7 @@
 use bytes::BufMut;
 use bytes::BytesMut;
+use byteorder::{BigEndian, ReadBytesExt};
+use std::io::Cursor;
 
 pub struct ShopRequestPacket {
     pub version: u8,
@@ -26,10 +28,11 @@ pub struct ShopResponsePacket {
     damage: u16,
     armor: u16,
     gold: u16,
+    inventory: Vec<u16>,
 }
 
 impl ShopResponsePacket {
-    pub fn new(stats: (u16, u16, u16, u16, u16)) -> Self {
+    pub fn new(stats: (u16, u16, u16, u16, u16), inventory: Vec<u16>) -> Self {
         ShopResponsePacket {
             version: 1,
             code: 15,
@@ -38,6 +41,7 @@ impl ShopResponsePacket {
             damage: stats.2,
             armor: stats.3,
             gold: stats.4,
+            inventory,
         }
     }
 
@@ -50,6 +54,33 @@ impl ShopResponsePacket {
         buffer.put_u16(self.damage);
         buffer.put_u16(self.armor);
         buffer.put_u16(self.gold);
+        buffer.put_u8(self.inventory.len() as u8);
+        for item_id in &self.inventory {
+            buffer.put_u16(*item_id);
+        }
         buffer
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct PurchaseItemPacket {
+    pub version: u8,
+    pub code: u8,
+    pub item_id: u16,
+}
+
+impl PurchaseItemPacket {
+    pub fn deserialize(bytes: &[u8]) -> Result<Self, &'static str> {
+        if bytes.len() != 2 {
+            return Err("PurchaseItemPacket payload must be 2 bytes long");
+        }
+        let mut cursor = Cursor::new(bytes);
+        let item_id = cursor.read_u16::<BigEndian>().unwrap();
+
+        Ok(PurchaseItemPacket {
+            version: 1, // Version and code are handled in the main loop
+            code: 16,
+            item_id,
+        })
     }
 }

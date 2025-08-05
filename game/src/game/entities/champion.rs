@@ -11,6 +11,7 @@ use crate::game::projectile_manager::ProjectileManager;
 use crate::game::spell::Spell;
 use crate::game::{Board, cell::PlayerId};
 
+use super::item::Item;
 use super::projectile::GameplayEffect;
 use super::{AttackAction, Fighter, Stats, reduced_damage};
 use crate::config::ChampionStats;
@@ -51,6 +52,7 @@ pub struct Champion {
     last_attacked: Instant,
     attack_mode: bool,
     stun_timer: Option<Instant>,
+    inventory: [Option<Item>; 6],
     pub row: u16,
     pub col: u16,
     pub direction: Direction,
@@ -88,6 +90,7 @@ impl Champion {
             last_attacked: Instant::now(),
             attack_mode: false,
             stun_timer: None,
+            inventory: [None, None, None, None, None, None],
             active_buffs: HashMap::new(),
             team_id,
             row,
@@ -132,10 +135,68 @@ impl Champion {
 
     fn level_up(&mut self) {
         self.level += 1;
-        self.stats.max_health += self.champion_stats.level_up_health_increase;
-        self.stats.health += self.champion_stats.level_up_health_increase;
-        self.stats.attack_damage += self.champion_stats.level_up_attack_damage_increase;
-        self.stats.armor += self.champion_stats.level_up_armor_increase;
+        self.recalculate_stats();
+    }
+
+    pub fn add_item(&mut self, item: Item) -> Result<(), GameError> {
+        println!("Player inventory: {:?}", self.inventory);
+        if self.gold < item.cost as u16 {
+            return Err(GameError::NotEnoughGold);
+        }
+        for slot in &mut self.inventory {
+            if slot.is_none() {
+                self.gold -= item.cost as u16;
+                *slot = Some(item);
+                self.recalculate_stats();
+                return Ok(());
+            }
+        }
+        Err(GameError::InventoryFull)
+    }
+
+    pub fn get_inventory(&self) -> Vec<u16> {
+       let inventory: Vec<u16> = self.inventory.iter().flatten().map(|item| item.id as u16).collect();
+       inventory
+    }
+
+    pub fn recalculate_stats(&mut self) {
+        let old_max_health = self.stats.max_health;
+
+        // Reset to base stats for current level
+        let mut max_health = self.champion_stats.health;
+        let mut attack_damage = self.champion_stats.attack_damage;
+        let mut armor = self.champion_stats.armor;
+
+        if self.level > 1 {
+            let level_ups = (self.level - 1) as u16;
+            max_health += self.champion_stats.level_up_health_increase * level_ups;
+            attack_damage += self.champion_stats.level_up_attack_damage_increase * level_ups;
+            armor += self.champion_stats.level_up_armor_increase * level_ups;
+        }
+
+        // Add item stats
+        for item in self.inventory.iter().flatten() {
+            if let Some(ad) = item.stats.attack_damage {
+                attack_damage += ad as u16;
+            }
+            if let Some(h) = item.stats.health {
+                max_health += h as u16;
+            }
+            if let Some(a) = item.stats.armor {
+                armor += a as u16;
+            }
+        }
+
+        self.stats.attack_damage = attack_damage;
+        self.stats.armor = armor;
+        self.stats.max_health = max_health;
+
+        let max_health_diff = self.stats.max_health as i32 - old_max_health as i32;
+        if max_health_diff > 0 {
+            self.stats.health =
+                (self.stats.health as u32 + max_health_diff as u32) as u16;
+        }
+        self.stats.health = self.stats.health.min(self.stats.max_health);
     }
 
     pub fn take_action(
@@ -390,6 +451,8 @@ mod tests {
     use crate::game::Board;
     use crate::game::buffs::stun_buff::StunBuff;
     use crate::game::spell::freeze_wall::FreezeWallSpell;
+    use crate::game::entities::item::{Item, ItemStats};
+
 
     // Helper function to create a dummy board for tests that require one
     fn create_dummy_board(rows: usize, cols: usize) -> Board {
@@ -1287,6 +1350,7 @@ mod tests {
         );
     }
 
+    #[test]
     fn test_level_up() {
         let champion_stats = create_default_champion_stats();
         let spell_stats = HashMap::new();
@@ -1385,7 +1449,7 @@ mod tests {
     }
 
     #[test]
-    fn test_champion_can_attack_monster() {
+        fn test_champion_can_attack_monster() {
         let mut board = create_dummy_board(10, 10);
         let champion_row = 5;
         let champion_col = 5;
@@ -1439,5 +1503,150 @@ mod tests {
             attack_action.is_some(),
             "Champion should be able to attack after targeting a monster"
         );
+    }
+
+    #[test]
+    fn test_add_item_to_inventory() {
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+        champion.gold = 600;
+
+        let item1 = Item {
+            id: 1,
+            name: "Sword".to_string(),
+            cost: 300,
+            stats: ItemStats {
+                attack_damage: Some(10),
+                health: None,
+                armor: None,
+            },
+        };
+
+        let item2 = Item {
+            id: 2,
+            name: "Shield".to_string(),
+            cost: 200,
+            stats: ItemStats {
+                attack_damage: None,
+                health: Some(50),
+                armor: Some(5),
+            },
+        };
+
+        // Add first item
+        let result = champion.add_item(item1.clone());
+        assert!(result.is_ok());
+        assert_eq!(champion.inventory[0], Some(item1.clone()));
+        assert_eq!(champion.inventory[1], None);
+
+        // Add second item
+        let result = champion.add_item(item2.clone());
+        assert!(result.is_ok());
+        assert_eq!(champion.inventory[0], Some(item1.clone()));
+        assert_eq!(champion.inventory[1], Some(item2.clone()));
+
+        // Fill the inventory
+        for i in 2..6 {
+            let item = Item {
+                id: i as u32,
+                name: format!("Item {}", i),
+                cost: 10,
+                stats: ItemStats {
+                    attack_damage: None,
+                    health: None,
+                    armor: None,
+                },
+            };
+            champion.add_item(item.clone()).unwrap();
+        }
+
+        // Try to add another item to a full inventory
+        let extra_item = Item {
+            id: 7,
+            name: "Extra Item".to_string(),
+            cost: 10,
+            stats: ItemStats {
+                attack_damage: None,
+                health: None,
+                armor: None,
+            },
+        };
+        let result = champion.add_item(extra_item);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), GameError::InventoryFull);
+    }
+
+    #[test]
+    fn test_add_item_not_enough_gold() {
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+        champion.gold = 200;
+
+        let item = Item {
+            id: 1,
+            name: "Expensive Sword".to_string(),
+            cost: 300,
+            stats: ItemStats {
+                attack_damage: Some(10),
+                health: None,
+                armor: None,
+            },
+        };
+
+        let result = champion.add_item(item);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), GameError::NotEnoughGold);
+    }
+
+    #[test]
+    fn test_recalculate_stats_with_items_and_level_up() {
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+        champion.gold = 1000;
+
+        let item1 = Item {
+            id: 1,
+            name: "Sword".to_string(),
+            cost: 300,
+            stats: ItemStats {
+                attack_damage: Some(10),
+                health: None,
+                armor: None,
+            },
+        };
+
+        let item2 = Item {
+            id: 2,
+            name: "Shield".to_string(),
+            cost: 200,
+            stats: ItemStats {
+                attack_damage: None,
+                health: Some(50),
+                armor: Some(5),
+            },
+        };
+
+        // Add items and check stats
+        champion.add_item(item1).unwrap();
+        champion.add_item(item2).unwrap();
+
+        assert_eq!(champion.stats.attack_damage, 20 + 10);
+        assert_eq!(champion.stats.max_health, 200 + 50);
+        assert_eq!(champion.stats.armor, 5 + 5);
+
+        // Level up and check stats
+        champion.add_xp(35); // Level up to 2
+        assert_eq!(champion.level, 2);
+
+        let expected_health = 200 + 20 + 50; // Base + Level up + Item
+        let expected_attack_damage = 20 + 5 + 10; // Base + Level up + Item
+        let expected_armor = 5 + 2 + 5; // Base + Level up + Item
+
+        assert_eq!(champion.stats.max_health, expected_health);
+        assert_eq!(champion.stats.attack_damage, expected_attack_damage);
+        assert_eq!(champion.stats.armor, expected_armor);
     }
 }

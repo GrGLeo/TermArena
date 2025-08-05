@@ -54,6 +54,17 @@ type GoToShopMsg struct {
 	Attack_damage int
 	Armor         int
 	Gold          int
+	Inventory     []int
+}
+
+// UpdatePlayerStatsMsg is sent when the player buys an item
+type UpdatePlayerStatsMsg struct {
+	Health        int
+	Mana          int
+	Attack_damage int
+	Armor         int
+	Gold          int
+	Inventory     []int
 }
 
 // BackToGame is sent when the player press 'p' while in Shop
