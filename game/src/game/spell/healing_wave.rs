@@ -57,7 +57,8 @@ impl Spell for HealingWaveSpell {
 
         self.last_casted = Some(Instant::now());
 
-        let heal_amount = (caster_damage as f32 * self.stats.damage_ratio + self.stats.base_damage as f32) as u16;
+        let heal_amount =
+            (caster_damage as f32 * self.stats.damage_ratio + self.stats.base_damage as f32) as u16;
 
         let (proj_start_row, proj_start_col) = match caster.direction {
             Direction::Up => (caster.row.saturating_sub(1), caster.col),
@@ -132,14 +133,7 @@ mod tests {
             is_heal: Some(true),
         };
 
-        let mut champion = Champion::new(
-            1,
-            Team::Red,
-            5,
-            5,
-            champion_stats,
-            HashMap::new(),
-        );
+        let mut champion = Champion::new(1, Team::Red, 5, 5, champion_stats, HashMap::new());
         champion.stats.health = 100;
         champion.stats.mana = 100;
 

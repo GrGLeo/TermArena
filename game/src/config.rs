@@ -56,8 +56,8 @@ pub struct TowerStats {
 #[derive(Debug, Deserialize, Clone)]
 pub struct MonsterStats {
     pub id: String,
-    pub spawn_row:  u16,
-    pub spawn_col: u16, 
+    pub spawn_row: u16,
+    pub spawn_col: u16,
     pub attack_damage: u16,
     pub attack_speed_ms: u64,
     pub health: u16,

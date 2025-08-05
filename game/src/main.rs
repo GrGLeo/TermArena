@@ -1,6 +1,6 @@
 use crate::game::{ClientMessage, GameManager, PlayerId};
 use clap::Parser;
-use packet::shop_packet::{ShopResponsePacket, PurchaseItemPacket};
+use packet::shop_packet::{PurchaseItemPacket, ShopResponsePacket};
 use packet::start_packet::StartPacket;
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -165,7 +165,9 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
                 println!("Got a requests shop packet");
                 let manager = game_manager.lock().await;
                 if let Some(champion) = manager.get_champion(&player_id) {
-                    let message = ShopResponsePacket::new(champion.stats(), champion.get_inventory()).serialize();
+                    let message =
+                        ShopResponsePacket::new(champion.stats(), champion.get_inventory())
+                            .serialize();
                     manager.send_to_player(player_id, message).await;
                 } else {
                     println!("Player: {} champion not found", player_id);
@@ -180,13 +182,22 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
                 }
                 if let Ok(packet) = PurchaseItemPacket::deserialize(&purchase_payload) {
                     let mut manager = game_manager.lock().await;
-                    if let Some(item) = manager.get_config().items.get(&packet.item_id.into()).cloned() {
+                    if let Some(item) = manager
+                        .get_config()
+                        .items
+                        .get(&packet.item_id.into())
+                        .cloned()
+                    {
                         if let Some(champion) = manager.get_mut_champion(&player_id) {
                             if let Err(e) = champion.add_item(item) {
                                 eprintln!("Player {} failed to buy item: {}", player_id, e);
                             } else {
                                 // Send back the updated champion stats
-                                let message = ShopResponsePacket::new(champion.stats(), champion.get_inventory()).serialize();
+                                let message = ShopResponsePacket::new(
+                                    champion.stats(),
+                                    champion.get_inventory(),
+                                )
+                                .serialize();
                                 manager.send_to_player(player_id, message).await;
                             }
                         }

@@ -446,8 +446,14 @@ impl GameManager {
         );
 
         // Monster turn
-        let (monster_effects, monster_animations) = self.monster_manager.update(&mut self.board, &self.champions);
-        pending_effects.extend(monster_effects.into_iter().map(|(target, effects)| (None, target, effects)));
+        let (monster_effects, monster_animations) = self
+            .monster_manager
+            .update(&mut self.board, &self.champions);
+        pending_effects.extend(
+            monster_effects
+                .into_iter()
+                .map(|(target, effects)| (None, target, effects)),
+        );
         new_animations.extend(monster_animations);
 
         // Tower turn
@@ -463,7 +469,11 @@ impl GameManager {
                 &self.towers,
                 &self.monster_manager.active_monsters,
             );
-        pending_effects.extend(projectile_effects.into_iter().map(|(owner, target, effects)| (Some(owner), target, effects)));
+        pending_effects.extend(
+            projectile_effects
+                .into_iter()
+                .map(|(owner, target, effects)| (Some(owner), target, effects)),
+        );
         animation_commands_executable.extend(projectile_commands);
 
         // 3. Apply dealt damages
@@ -497,10 +507,12 @@ impl GameManager {
                 Target::Monster(id) => {
                     if let Some(..) = self.monster_manager.active_monsters.get_mut(&id) {
                         if let Some(attacker) = attacker_id {
-                            if let Some(reward) = self.monster_manager.apply_effects_to_monster(&id, effect, attacker) {
+                            if let Some(reward) = self
+                                .monster_manager
+                                .apply_effects_to_monster(&id, effect, attacker)
+                            {
                                 monster_rewards.push(reward);
                             }
-
                         }
                     }
                 }

@@ -110,7 +110,10 @@ impl ProjectileManager {
         minions: &HashMap<MinionId, Minion>,
         towers: &HashMap<TowerId, Tower>,
         monsters: &HashMap<MonsterId, Monster>,
-    ) -> (Vec<(usize, Target, Vec<GameplayEffect>)>, Vec<AnimationCommand>) {
+    ) -> (
+        Vec<(usize, Target, Vec<GameplayEffect>)>,
+        Vec<AnimationCommand>,
+    ) {
         let mut projectiles_to_remove: Vec<u64> = Vec::new();
         let mut pending_effects: Vec<(usize, Target, Vec<GameplayEffect>)> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
@@ -274,7 +277,7 @@ fn add_effects(
         pending_effects.push((owner, target, payloads));
         return true;
     }
-    
+
     if !is_heal_payload && is_enemy {
         pending_effects.push((owner, target, payloads));
         return true;
@@ -637,4 +640,3 @@ mod tests {
         assert_eq!(proj2.current_position, (11, 12)); // Moves diagonally
     }
 }
-

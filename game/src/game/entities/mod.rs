@@ -9,11 +9,11 @@ use crate::game::cell::Team;
 
 pub mod base;
 pub mod champion;
+pub mod item;
 pub mod minion;
 pub mod monster;
 pub mod projectile;
 pub mod tower;
-pub mod item;
 
 pub enum AttackAction {
     Melee {

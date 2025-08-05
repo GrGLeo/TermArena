@@ -1,6 +1,6 @@
+use byteorder::{BigEndian, ReadBytesExt};
 use bytes::BufMut;
 use bytes::BytesMut;
-use byteorder::{BigEndian, ReadBytesExt};
 use std::io::Cursor;
 
 pub struct ShopRequestPacket {
