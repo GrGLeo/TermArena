@@ -164,7 +164,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
                 // Shop Request Packet
                 println!("Got a requests shop packet");
                 let manager = game_manager.lock().await;
-                if let Some(champion) = manager.get_player_champ(&player_id) {
+                if let Some(champion) = manager.get_champion(&player_id) {
                     let message = ShopResponsePacket::new(champion.stats(), champion.get_inventory()).serialize();
                     manager.send_to_player(player_id, message).await;
                 } else {
