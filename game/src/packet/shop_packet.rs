@@ -54,9 +54,13 @@ impl ShopResponsePacket {
         buffer.put_u16(self.damage);
         buffer.put_u16(self.armor);
         buffer.put_u16(self.gold);
-        buffer.put_u8(self.inventory.len() as u8);
-        for item_id in &self.inventory {
-            buffer.put_u16(*item_id);
+        // Always write 6 inventory slots
+        for i in 0..6 {
+            if i < self.inventory.len() {
+                buffer.put_u16(self.inventory[i]);
+            } else {
+                buffer.put_u16(0); // Empty slot
+            }
         }
         buffer
     }

@@ -22,35 +22,41 @@ func (i Item) String() string {
 	)
 	if i.Damage > 0 {
 		s += fmt.Sprintf("\nDamage: %d", i.Damage)
-	}
+	} else {
+    s += fmt.Sprintf("\n")
+  }
 	if i.Armor > 0 {
 		s += fmt.Sprintf("\nArmor: %d", i.Armor)
-	}
+	} else {
+    s += fmt.Sprintf("\n")
+  }
 	if i.Health > 0 {
 		s += fmt.Sprintf("\nHealth: %d", i.Health)
-	}
+	} else {
+    s += fmt.Sprintf("\n")
+  }
 	return s
 }
 
 var availableItems = []Item{
 	{
-		ID:          0,
+		ID:          1,
 		Name:        "Sword of Power",
 		Description: "Increases attack damage.          ",
 		Cost:        200,
 		Damage:      10,
 	},
 	{
-		ID:          1,
+		ID:          2,
 		Name:        "Armor of Resilience",
 		Description: "Increases defense.                ",
 		Cost:        200,
 		Armor:       10,
 	},
 	{
-		ID:          2,
+		ID:          3,
 		Name:        "Shield of Valor",
-		Description: "Increases both armor and health",
+		Description: "Increases both armor and health   ",
 		Cost:        200,
 		Armor:       5,
 		Health:      50,

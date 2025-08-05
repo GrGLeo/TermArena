@@ -558,9 +558,13 @@ func (srp *ShopResponsePacket) Serialize() []byte {
 	binary.Write(&buf, binary.BigEndian, uint16(srp.Attack_damage))
 	binary.Write(&buf, binary.BigEndian, uint16(srp.Armor))
 	binary.Write(&buf, binary.BigEndian, uint16(srp.Gold))
-	buf.WriteByte(byte(len(srp.Inventory)))
-	for _, itemID := range srp.Inventory {
-		binary.Write(&buf, binary.BigEndian, uint16(itemID))
+	// Always write 6 inventory slots
+	for i := 0; i < 6; i++ {
+		if i < len(srp.Inventory) {
+			binary.Write(&buf, binary.BigEndian, uint16(srp.Inventory[i]))
+		} else {
+			binary.Write(&buf, binary.BigEndian, uint16(0)) // Empty slot
+		}
 	}
 	return buf.Bytes()
 }
@@ -948,14 +952,11 @@ func DeSerialize(data []byte) (Packet, error) {
 			attack_damage := int(binary.BigEndian.Uint16(data[6:8]))
 			armor := int(binary.BigEndian.Uint16(data[8:10]))
 			gold := int(binary.BigEndian.Uint16(data[10:12]))
-			
-			// Read inventory length
-			inventoryLen := int(data[12])
-			currentOffset := 13
-			
-			// Read inventory items
+
+			// Read exactly 6 inventory items
 			var inventory []int
-			for i := 0; i < inventoryLen; i++ {
+			currentOffset := 12
+			for i := 0; i < 6; i++ {
 				if len(data) < currentOffset+2 {
 					return nil, errors.New("invalid shop response packet length for inventory item")
 				}

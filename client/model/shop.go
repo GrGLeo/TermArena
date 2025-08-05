@@ -101,10 +101,10 @@ func (m ShopModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m ShopModel) View() string {
-	var left, right, bottom strings.Builder
+	var leftPanel, rightPanel, bottomPanel strings.Builder
 
 	// Left Panel: List of available items
-	left.WriteString("Shop - Available Items \n")
+	leftPanel.WriteString("Shop - Available Items \n")
 	for i, item := range m.Items {
 		selectedChar := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("205")).
@@ -119,62 +119,68 @@ func (m ShopModel) View() string {
 			itemNameStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true)
 		}
 
-		left.WriteString(fmt.Sprintf("%s %s \n", cursor, itemNameStyle.Render(item.Name)))
+		leftPanel.WriteString(fmt.Sprintf("%s %s \n", cursor, itemNameStyle.Render(item.Name)))
 	}
 
-	// Right Panel: Details of the focused item
-	if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Items) {
-		right.WriteString(m.Items[m.FocusedIndex].String())
-	}
-
-	// Bottom Panel: Player stats
-	bottom.WriteString(fmt.Sprintf("Health: %d | Mana: %d | Attack damage: %d | Armor: %d", m.health, m.mana, m.attack_damage, m.armor))
-  bottom.WriteString(fmt.Sprintf("\nGold: %d", m.gold))
-
-	// Display inventory
-	bottom.WriteString("\nInventory: ")
-	if len(m.inventory) == 0 {
-		bottom.WriteString("Empty")
-	} else {
-		var itemNames []string
-		for _, itemID := range m.inventory {
-			// Find item name by ID (assuming Item struct has a Name field and availableItems is accessible)
+	// Right Panel: Player Stats and Inventory
+	rightPanel.WriteString("Player Stats:\n")
+	rightPanel.WriteString(fmt.Sprintf("  Health: %d\n", m.health))
+	rightPanel.WriteString(fmt.Sprintf("  Mana: %d\n", m.mana))
+	rightPanel.WriteString(fmt.Sprintf("  Attack Damage: %d\n", m.attack_damage))
+	rightPanel.WriteString(fmt.Sprintf("  Armor: %d\n", m.armor))
+	rightPanel.WriteString(fmt.Sprintf("  Gold: %d\n", m.gold))
+	rightPanel.WriteString("  Inventory:\n")
+	for i := range 6 {
+		rightPanel.WriteString(fmt.Sprintf("    Slot %d: ", i+1))
+		if i < len(m.inventory) && m.inventory[i] != 0 {
+			found := false
 			for _, item := range availableItems {
-				if item.ID == itemID {
-					itemNames = append(itemNames, item.Name)
+				if item.ID == m.inventory[i] {
+					rightPanel.WriteString(item.Name + "\n")
+					found = true
 					break
 				}
 			}
+			if !found {
+				rightPanel.WriteString(fmt.Sprintf("Unknown Item (ID: %d)\n", m.inventory[i]))
+			}
+		} else {
+			rightPanel.WriteString("[Empty]\n")
 		}
-		bottom.WriteString(strings.Join(itemNames, ", "))
 	}
 
-	optionsStyle := lipgloss.NewStyle().
-		Align(lipgloss.Left).
-		Padding(1, 0)
+	// Bottom Panel: Details of the focused item
+	if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Items) {
+		bottomPanel.WriteString(m.Items[m.FocusedIndex].String())
+	} else {
+		bottomPanel.WriteString("Select an item to see its details.")
+	}
 
-	detailsStyle := lipgloss.NewStyle().
-		Align(lipgloss.Left).
-		Border(lipgloss.NormalBorder(), true, true, true, true).
-		BorderForeground(m.styles.BorderColor).
-		Padding(1, 0)
+	// Styles
+	leftPanelStyle := lipgloss.NewStyle().
+		Align(lipgloss.Left)
 
-	statsStyle := lipgloss.NewStyle().
+	rightPanelStyle := lipgloss.NewStyle().
+		Align(lipgloss.Left).
+		Border(lipgloss.NormalBorder(), false, false, false, true).
+		BorderForeground(m.styles.BorderColor)
+
+	bottomPanelStyle := lipgloss.NewStyle().
 		Align(lipgloss.Left).
 		Border(lipgloss.NormalBorder(), true, false, false).
-		BorderForeground(m.styles.BorderColor).
-		Padding(1, 0)
+		BorderForeground(m.styles.BorderColor)
 
-	baseLayout := lipgloss.JoinHorizontal(
-		lipgloss.Center,
-		optionsStyle.Render(left.String()),
-		detailsStyle.Render(right.String()),
+	// Layout
+	upperLayout := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		leftPanelStyle.Render(leftPanel.String()),
+		rightPanelStyle.Render(rightPanel.String()),
 	)
 
 	layout := lipgloss.JoinVertical(
 		lipgloss.Center,
-		baseLayout,
-		statsStyle.Render(bottom.String()),
+		upperLayout,
+		bottomPanelStyle.Render(bottomPanel.String()),
 	)
 
 	return lipgloss.Place(

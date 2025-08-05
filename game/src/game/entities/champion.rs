@@ -105,10 +105,10 @@ impl Champion {
             self.stats.max_mana,
             self.stats.attack_damage,
             self.stats.armor,
-            self.gold
+            self.gold,
         )
     }
-    
+
     pub fn add_gold(&mut self, gold: u16) {
         self.gold += gold
     }
@@ -155,8 +155,12 @@ impl Champion {
     }
 
     pub fn get_inventory(&self) -> Vec<u16> {
-       let inventory: Vec<u16> = self.inventory.iter().flatten().map(|item| item.id as u16).collect();
-       inventory
+        let inventory: Vec<u16> = self
+            .inventory
+            .iter()
+            .map(|opt_item| opt_item.as_ref().map_or(0, |item| item.id as u16))
+            .collect();
+        inventory
     }
 
     pub fn recalculate_stats(&mut self) {
@@ -193,8 +197,7 @@ impl Champion {
 
         let max_health_diff = self.stats.max_health as i32 - old_max_health as i32;
         if max_health_diff > 0 {
-            self.stats.health =
-                (self.stats.health as u32 + max_health_diff as u32) as u16;
+            self.stats.health = (self.stats.health as u32 + max_health_diff as u32) as u16;
         }
         self.stats.health = self.stats.health.min(self.stats.max_health);
     }
@@ -450,9 +453,8 @@ mod tests {
     use crate::game::BaseTerrain;
     use crate::game::Board;
     use crate::game::buffs::stun_buff::StunBuff;
-    use crate::game::spell::freeze_wall::FreezeWallSpell;
     use crate::game::entities::item::{Item, ItemStats};
-
+    use crate::game::spell::freeze_wall::FreezeWallSpell;
 
     // Helper function to create a dummy board for tests that require one
     fn create_dummy_board(rows: usize, cols: usize) -> Board {
@@ -1449,7 +1451,7 @@ mod tests {
     }
 
     #[test]
-        fn test_champion_can_attack_monster() {
+    fn test_champion_can_attack_monster() {
         let mut board = create_dummy_board(10, 10);
         let champion_row = 5;
         let champion_col = 5;
