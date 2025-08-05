@@ -956,7 +956,7 @@ func DeSerialize(data []byte) (Packet, error) {
 			// Read exactly 6 inventory items
 			var inventory []int
 			currentOffset := 12
-			for i := 0; i < 6; i++ {
+			for range 6 {
 				if len(data) < currentOffset+2 {
 					return nil, errors.New("invalid shop response packet length for inventory item")
 				}
