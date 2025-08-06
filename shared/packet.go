@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"log"
 	"net"
 
 	"github.com/GrGLeo/ctf/server/event"
@@ -695,38 +694,28 @@ func (dp *DeltaPacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
-// DeSerialize deserializes a byte slice into a specific Packet type based on the message code.
-// It supports multiple packet types: LoginPacket, RespPacket, ActionPacket, and BoardPacket.
+// DeSerialize deserializes a byte slice into a specific Packet type.
+// It determines the packet type based on the message code and returns the
+// parsed packet, the number of bytes consumed, and an error if the packet
+// is malformed or the data is incomplete.
 //
 // Parameters:
 // - data: A byte slice containing the serialized packet data.
 //
 // Returns:
-// - Packet: The deserialized Packet, which could be one of the supported types.
-// - error: An error if the data does not conform to the expected format or contains invalid values.
-//
-// The function performs the following steps:
-//
-// 1. Checks that the input data has at least 2 bytes for the version and code.
-//
-// 2. Validates the version, expecting it to be 1.
-//
-// 3. Reads the message code and parses the data accordingly:
-//   - For LoginPacket, it extracts the username and password.
-//   - For RespPacket, it returns a basic response packet.
-//   - For ActionPacket, it reads the action value.
-//   - For BoardPacket, it treats all remaining data as the encoded board.
-//
-// 4. Returns an error for unsupported or malformed packet types.
-func DeSerialize(data []byte) (Packet, error) {
+// - Packet: The deserialized Packet interface.
+// - int: The number of bytes consumed from the data slice to form the packet.
+// - error: An error if the data is malformed, the version is invalid, or if the
+//          data slice does not contain a complete packet.
+func DeSerialize(data []byte) (Packet, int, error) {
 	// Check minimum packet length (version + code)
 	if len(data) < 2 {
-		return nil, errors.New("invalid packet length")
+		return nil, 0, errors.New("incomplete packet header")
 	}
 
 	version := int(data[0])
 	if version != 1 {
-		return nil, errors.New("invalid version")
+		return nil, 0, errors.New("invalid version")
 	}
 
 	code := int(data[1])
@@ -735,130 +724,143 @@ func DeSerialize(data []byte) (Packet, error) {
 	switch code {
 	case 0: // LoginPacket
 		if len(data) < 4 {
-			return nil, errors.New("invalid login packet length")
+			return nil, 0, errors.New("incomplete packet")
 		}
-
-		// Username
-		usernameLen := binary.BigEndian.Uint16(data[2:4])
-		if len(data) < int(4+usernameLen) {
-			return nil, errors.New("invalid username length")
-		}
-		username := string(data[4 : 4+usernameLen])
-
-		// Password
+		usernameLen := int(binary.BigEndian.Uint16(data[2:4]))
 		pwStart := 4 + usernameLen
-		if len(data) < int(pwStart+2) {
-			return nil, errors.New("invalid packet length for password length")
+		if len(data) < pwStart+2 {
+			return nil, 0, errors.New("incomplete packet")
 		}
-		passwordLen := binary.BigEndian.Uint16(data[pwStart : pwStart+2])
-		if len(data) < int(pwStart+2+passwordLen) {
-			return nil, errors.New("invalid password length")
+		passwordLen := int(binary.BigEndian.Uint16(data[pwStart : pwStart+2]))
+		totalLen := pwStart + 2 + passwordLen
+		if len(data) < totalLen {
+			return nil, 0, errors.New("incomplete packet")
 		}
-		password := string(data[pwStart+2 : pwStart+2+passwordLen])
-
-		return &LoginPacket{
+		username := string(data[4:pwStart])
+		password := string(data[pwStart+2 : totalLen])
+		packet := &LoginPacket{
 			version:  version,
 			code:     code,
 			Username: username,
 			Password: password,
-		}, nil
+		}
+		return packet, totalLen, nil
 
-	case 1: // SigninPacket
+	case 1: // SignInPacket
 		if len(data) < 4 {
-			return nil, errors.New("invalid login packet length")
+			return nil, 0, errors.New("incomplete packet")
 		}
-
-		// Username
-		usernameLen := binary.BigEndian.Uint16(data[2:4])
-		if len(data) < int(4+usernameLen) {
-			return nil, errors.New("invalid username length")
-		}
-		username := string(data[4 : 4+usernameLen])
-
-		// Password
+		usernameLen := int(binary.BigEndian.Uint16(data[2:4]))
 		pwStart := 4 + usernameLen
-		if len(data) < int(pwStart+2) {
-			return nil, errors.New("invalid packet length for password length")
+		if len(data) < pwStart+2 {
+			return nil, 0, errors.New("incomplete packet")
 		}
-		passwordLen := binary.BigEndian.Uint16(data[pwStart : pwStart+2])
-		if len(data) < int(pwStart+2+passwordLen) {
-			return nil, errors.New("invalid password length")
+		passwordLen := int(binary.BigEndian.Uint16(data[pwStart : pwStart+2]))
+		totalLen := pwStart + 2 + passwordLen
+		if len(data) < totalLen {
+			return nil, 0, errors.New("incomplete packet")
 		}
-		password := string(data[pwStart+2 : pwStart+2+passwordLen])
-
-		return &SignInPacket{
+		username := string(data[4:pwStart])
+		password := string(data[pwStart+2 : totalLen])
+		packet := &SignInPacket{
 			version:  version,
 			code:     code,
 			Username: username,
 			Password: password,
-		}, nil
+		}
+		return packet, totalLen, nil
 
 	case 2: // RespPacket
-		if data[2] == 0 {
-			return &RespPacket{
-				version: version,
-				code:    code,
-				Success: false,
-			}, nil
-		} else {
-			return &RespPacket{
-				version: version,
-				code:    code,
-				Success: true,
-			}, nil
+		if len(data) < 3 {
+			return nil, 0, errors.New("incomplete packet")
 		}
+		packet := &RespPacket{
+			version: version,
+			code:    code,
+			Success: data[2] == 1,
+		}
+		return packet, 3, nil
 
-	case 3:
-		return &RoomRequestPacket{
+	case 3: // RoomRequestPacket
+		if len(data) < 3 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		packet := &RoomRequestPacket{
 			version:  version,
 			code:     code,
 			RoomType: int(data[2]),
-		}, nil
+		}
+		return packet, 3, nil
 
-	case 4:
-		return &RoomCreatePacket{
+	case 4: // RoomCreatePacket
+		if len(data) < 3 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		packet := &RoomCreatePacket{
 			version:  version,
 			code:     code,
 			RoomType: int(data[2]),
-		}, nil
+		}
+		return packet, 3, nil
 
-	case 5:
+	case 5: // RoomJoinPacket
+		// This packet has a variable length RoomID, assuming it's the rest of the packet
 		roomID := string(data[2:])
-		return &RoomJoinPacket{
+		packet := &RoomJoinPacket{
 			version: version,
 			code:    code,
 			RoomID:  roomID,
-		}, nil
+		}
+		return packet, len(data), nil
 
-	case 6:
-		return &LookRoomPacket{
+	case 6: // LookRoomPacket
+		// This packet has a variable length RoomIP
+		if len(data) < 8 { // 3 bytes header + 5 bytes RoomID
+			return nil, 0, errors.New("incomplete packet")
+		}
+		roomID := string(data[3:8])
+		roomIP := string(data[8:])
+		packet := &LookRoomPacket{
 			version: version,
 			code:    code,
 			Success: int(data[2]),
-			RoomID:  string(data[3:8]),
-			RoomIP:  string(data[8:]),
-		}, nil
+			RoomID:  roomID,
+			RoomIP:  roomIP,
+		}
+		return packet, len(data), nil
 
-	case 7:
-		return &GameStartPacket{
+	case 7: // GameStartPacket
+		if len(data) < 3 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		packet := &GameStartPacket{
 			version: version,
 			code:    code,
 			Success: int(data[2]),
-		}, nil
+		}
+		return packet, 3, nil
 
 	case 8: // ActionPacket
-		action := int(data[2])
-		return &ActionPacket{
+		if len(data) < 3 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		packet := &ActionPacket{
 			version: version,
 			code:    code,
-			action:  action,
-		}, nil
+			action:  int(data[2]),
+		}
+		return packet, 3, nil
 
 	case 9: // BoardPacket
-		// First two bytes are points
-		points := [2]int{}
-		points[0] = int(data[2])
-		points[1] = int(data[3])
+		if len(data) < 23 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		length := int(binary.BigEndian.Uint16(data[21:23]))
+		totalLen := 23 + length
+		if len(data) < totalLen {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		points := [2]int{int(data[2]), int(data[3])}
 		health := int(binary.BigEndian.Uint16(data[4:6]))
 		maxHealth := int(binary.BigEndian.Uint16(data[6:8]))
 		mana := int(binary.BigEndian.Uint16(data[8:10]))
@@ -866,12 +868,8 @@ func DeSerialize(data []byte) (Packet, error) {
 		level := int(data[12])
 		xp := int(binary.BigEndian.Uint32(data[13:17]))
 		xpNeeded := int(binary.BigEndian.Uint32(data[17:21]))
-		length := int(binary.BigEndian.Uint16(data[21:23]))
-		log.Printf("Deserialize health: %d | %d, mana: %d | %d", health, maxHealth, mana, maxMana)
-
-		// Rest of data is the encodedBoard
-		encodedBoard := data[23 : length+23]
-		return &BoardPacket{
+		encodedBoard := data[23:totalLen]
+		packet := &BoardPacket{
 			version:      version,
 			code:         code,
 			Points:       points,
@@ -884,108 +882,106 @@ func DeSerialize(data []byte) (Packet, error) {
 			XpNeeded:     xpNeeded,
 			Length:       length,
 			EncodedBoard: encodedBoard,
-		}, nil
+		}
+		return packet, totalLen, nil
 
-	case 10: // DeltasPacket
-		if len(data) < 6 {
-			return nil, errors.New("invalid deltas packet length")
+	case 10: // DeltaPacket
+		if len(data) < 10 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		deltaCount := int(binary.BigEndian.Uint16(data[8:10]))
+		totalLen := 10 + deltaCount*3
+		if len(data) < totalLen {
+			return nil, 0, errors.New("incomplete packet")
 		}
 		tickID := binary.BigEndian.Uint32(data[2:6])
-		points := [2]int{}
-		points[0] = int(data[6])
-		points[1] = int(data[7])
-		deltaCount := int(binary.BigEndian.Uint16(data[8:10]))
-		expectedLength := 10 + deltaCount*3
-		if len(data) < expectedLength {
-			return nil, errors.New("invalid deltas packet length")
-		}
+		points := [2]int{int(data[6]), int(data[7])}
 		deltas := make([][3]byte, deltaCount)
 		for i := range deltaCount {
 			start := 10 + i*3
-			end := start + 3
-			copy(deltas[i][:], data[start:end])
+			copy(deltas[i][:], data[start:start+3])
 		}
-
-		return &DeltaPacket{
+		packet := &DeltaPacket{
 			version: version,
 			code:    code,
-			Points:  points,
 			TickID:  tickID,
+			Points:  points,
 			Deltas:  deltas,
-		}, nil
+		}
+		return packet, totalLen, nil
 
 	case 11: // GameClosePacket
-		// Success 0: won 1: loose 2: error
-		return &GameClosePacket{
+		if len(data) < 3 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		packet := &GameClosePacket{
 			version: version,
 			code:    code,
 			Success: int(data[2]),
-		}, nil
+		}
+		return packet, 3, nil
 
 	case 12: // EndGamePacket
-		win := data[2] == 1
-		return &EndGamePacket{
+		if len(data) < 3 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		packet := &EndGamePacket{
 			version: version,
 			code:    code,
-			Win:     win,
-		}, nil
+			Win:     data[2] == 1,
+		}
+		return packet, 3, nil
 
 	case 13: // SpellSelectionPacket
 		if len(data) < 4 {
-			return nil, errors.New("invalid spell selection packet length")
+			return nil, 0, errors.New("incomplete packet")
 		}
-		spell1 := int(data[2])
-		spell2 := int(data[3])
-		return &SpellSelectionPacket{
+		packet := &SpellSelectionPacket{
 			version: version,
 			code:    code,
-			Spell1:  spell1,
-			Spell2:  spell2,
-		}, nil
+			Spell1:  int(data[2]),
+			Spell2:  int(data[3]),
+		}
+		return packet, 4, nil
 
-	case 15:
-			if len(data) < 12 {
-				return nil, errors.New("invalid shop response packet length")
-			}
-			health := int(binary.BigEndian.Uint16(data[2:4]))
-			mana := int(binary.BigEndian.Uint16(data[4:6]))
-			attack_damage := int(binary.BigEndian.Uint16(data[6:8]))
-			armor := int(binary.BigEndian.Uint16(data[8:10]))
-			gold := int(binary.BigEndian.Uint16(data[10:12]))
+	case 15: // ShopResponsePacket
+		if len(data) < 24 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		health := int(binary.BigEndian.Uint16(data[2:4]))
+		mana := int(binary.BigEndian.Uint16(data[4:6]))
+		attack_damage := int(binary.BigEndian.Uint16(data[6:8]))
+		armor := int(binary.BigEndian.Uint16(data[8:10]))
+		gold := int(binary.BigEndian.Uint16(data[10:12]))
+		var inventory []int
+		for i := range 6 {
+			start := 12 + i*2
+			inventory = append(inventory, int(binary.BigEndian.Uint16(data[start:start+2])))
+		}
+		packet := &ShopResponsePacket{
+			version:       version,
+			code:          code,
+			Health:        health,
+			Mana:          mana,
+			Attack_damage: attack_damage,
+			Armor:         armor,
+			Gold:          gold,
+			Inventory:     inventory,
+		}
+		return packet, 24, nil
 
-			// Read exactly 6 inventory items
-			var inventory []int
-			currentOffset := 12
-			for range 6 {
-				if len(data) < currentOffset+2 {
-					return nil, errors.New("invalid shop response packet length for inventory item")
-				}
-				itemID := int(binary.BigEndian.Uint16(data[currentOffset : currentOffset+2]))
-				inventory = append(inventory, itemID)
-				currentOffset += 2
-			}
-
-			return &ShopResponsePacket{
-				version:       version,
-				code:          code,
-				Health:        health,
-				Mana:          mana,
-				Attack_damage: attack_damage,
-				Armor:         armor,
-				Gold:          gold,
-				Inventory:     inventory,
-			}, nil
-	case 16:
+	case 16: // PurchaseItemPacket
 		if len(data) < 4 {
-			return nil, errors.New("invalid purchase item packet length")
+			return nil, 0, errors.New("incomplete packet")
 		}
-		itemID := int(binary.BigEndian.Uint16(data[2:4]))
-		return &PurchaseItemPacket{
+		packet := &PurchaseItemPacket{
 			version: version,
 			code:    code,
-			ItemID:  itemID,
-		}, nil
+			ItemID:  int(binary.BigEndian.Uint16(data[2:4])),
+		}
+		return packet, 4, nil
+
 	default:
-		return nil, errors.New("unknown message type")
+		return nil, 0, errors.New("unknown message type")
 	}
 }

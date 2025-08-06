@@ -1,11 +1,17 @@
 package manager
 
 import (
+	"strconv"
 	"sync"
 
 	"github.com/GrGLeo/ctf/server/event"
 	"github.com/GrGLeo/ctf/server/game"
 	"go.uber.org/zap"
+)
+
+var (
+	portCounter = 50053
+	portMutex   = &sync.Mutex{}
 )
 
 const (
@@ -73,22 +79,24 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 
 	// Solo rooms can be started immediately.
 	if maxPlayers == 1 {
-    StartGame("50053", "1")
-    return event.RoomSearchMessage{
-      Success: 0,
-      RoomIP: "50053",
-	}
+		portMutex.Lock()
+		port := portCounter
+		portCounter++
+		if portCounter > 50153 {
+			portCounter = 50053
+		}
+		portMutex.Unlock()
 
-    /*
-    LEGACY
-		newRoom := game.NewGameRoom(maxPlayers, rm.logger)
-		newRoom.AddPlayer(conn)
-		rm.mu.Lock()
-		rm.RoomStarted = append(rm.RoomStarted, newRoom)
-		rm.mu.Unlock()
-		go newRoom.StartGame()
-    return nil
-    */
+		portStr := strconv.Itoa(port)
+		StartGame(portStr, "1")
+		return event.RoomSearchMessage{
+			Success: 0,
+			RoomIP:  portStr,
+		}
+
+		/*
+		   LEGACY
+		*/
 	} else {
 		// For DUO and QUAD, lock for the entire process to avoid race conditions.
 		rm.mu.Lock()
