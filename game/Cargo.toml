@@ -15,7 +15,3 @@ serde_json = "1.0"
 strum = "0.27"
 strum_macros = "0.27"
 toml = "0.8"
-
-[[bin]]
-name = "client"
-path = "src/client.rs"
