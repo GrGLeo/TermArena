@@ -1,4 +1,4 @@
-.PHONY: all build clean run-auth run-game run-server run-client run-simulation test
+.PHONY: all build clean run-auth run-game run-server run-client run-simulation test package deploy
 
 all: build
 
@@ -14,11 +14,19 @@ build-game:
 
 build-server:
 	@echo "Building server..."
+	@mkdir -p bin
 	go build -o bin/server ./server
 
 build-client:
 	@echo "Building client..."
+	@mkdir -p bin
 	go build -o bin/client ./client
+
+package: build
+	@echo "Packaging application..."
+	@mkdir -p bin
+	@cp auth/target/release/auth bin/auth
+	@cp game/target/release/game bin/game
 
 run-auth:
 	@echo "Running auth service..."
@@ -46,6 +54,20 @@ test:
 
 clean:
 	@echo "Cleaning up build artifacts..."
-	rm -rf bin/server bin/client
+	rm -rf bin
 	cd auth && cargo clean
 	cd game && cargo clean
+
+deploy: package
+	@echo "Deploying to production..."
+	ssh leo@endurace.cloud "mkdir -p /home/leo/bin /home/leo/game/target/debug"
+	ssh leo@endurace.cloud "pkill auth || true"
+	ssh leo@endurace.cloud "pkill server || true"
+	ssh leo@endurace.cloud "pkill game || true"
+	scp bin/auth leo@endurace.cloud:/home/leo/bin/
+	scp bin/server leo@endurace.cloud:/home/leo/bin/
+	scp bin/game leo@endurace.cloud:/home/leo/game/target/debug/
+	scp game/spells.toml leo@endurace.cloud:/home/leo/game/
+	scp game/items.toml leo@endurace.cloud:/home/leo/game/
+	scp game/rules.toml leo@endurace.cloud:/home/leo/game/
+	scp game/stats.toml leo@endurace.cloud:/home/leo/game/

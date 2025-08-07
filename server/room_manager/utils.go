@@ -8,9 +8,9 @@ import (
 	"time"
 )
 
-func StartGame(ip, map_id string) error {
+func StartGame(ip, map_id, max_players string) error {
 	command := "./game/target/debug/game"
-	args := []string{"--port", ip, "--map", map_id}
+	args := []string{"--port", ip, "--map", map_id, "--max-players", max_players}
 	cmd := exec.Command(command, args...)
 
   FileId := rand.Intn(9999) + 1

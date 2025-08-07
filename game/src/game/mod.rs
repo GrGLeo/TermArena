@@ -62,7 +62,7 @@ pub struct GameManager {
 }
 
 impl GameManager {
-    pub fn new(config: GameConfig) -> Self {
+    pub fn new(config: GameConfig, max_players: u8) -> Self {
         println!("Initializing GameManager...");
         let file_path = "game/assets/map.json";
         let mut board = match Board::from_json(file_path) {
@@ -120,7 +120,7 @@ impl GameManager {
 
         GameManager {
             players_count: 0,
-            max_players: 1,
+            max_players: max_players as usize,
             game_started: false,
             config,
             player_action: HashMap::new(),
@@ -176,6 +176,15 @@ impl GameManager {
         if self.players_count < self.max_players {
             self.players_count += 1;
             let player_id = self.players_count;
+
+            let team_id = if player_id % 2 != 0 { Team::Blue } else { Team::Red };
+
+            let (row, col) = if team_id == Team::Blue {
+                (199, (player_id - 1) as u16 / 2)
+            } else {
+                (0, 199 - (player_id - 1) as u16 / 2)
+            };
+
             // Assign Champion to player, and place it on the board
             {
                 // We get the choosen spell
@@ -192,11 +201,9 @@ impl GameManager {
                         spell::create_spell_from_id(spell2_id, spell_stats.clone()),
                     );
                 }
-                let row = 199;
-                let col = 0;
                 let champion = Champion::new(
                     player_id,
-                    Team::Blue,
+                    team_id,
                     row,
                     col,
                     self.config.champion.clone(),
@@ -204,7 +211,7 @@ impl GameManager {
                 );
                 self.champions.insert(player_id, champion);
                 self.board.place_cell(
-                    cell::CellContent::Champion(player_id, Team::Blue),
+                    cell::CellContent::Champion(player_id, team_id),
                     row as usize,
                     col as usize,
                 );

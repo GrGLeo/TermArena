@@ -222,7 +222,7 @@ func (gr *GameRoom) ListenToConnection(conn *net.TCPConn) {
 			return
 		}
 		if n > 0 {
-			message, err := shared.DeSerialize(buffer[:n])
+			message, _, err := shared.DeSerialize(buffer[:n])
 			if err != nil {
 				gr.logger.Infow("Error deserializing packet", "ip", conn.RemoteAddr(), "error", err)
 			}

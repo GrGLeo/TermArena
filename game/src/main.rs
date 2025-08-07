@@ -26,6 +26,9 @@ struct CliArgs {
 
     #[arg(long = "map", value_name = "MAP_ID", value_parser = clap::value_parser!(u8))]
     map_id: Option<u8>,
+
+    #[arg(long = "max-players", value_name = "MAX_PLAYERS", value_parser = clap::value_parser!(u8), default_value_t = 1)]
+    max_players: u8,
 }
 
 async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mutex<GameManager>>) {
@@ -232,7 +235,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = config::GameConfig::load("game/stats.toml", "game/spells.toml", "game/items.toml")
         .expect("Failed to load game configuration");
-    let game_manager = GameManager::new(config);
+    let game_manager = GameManager::new(config, args.max_players);
     let arc_gm = Arc::new(Mutex::new(game_manager));
     println!("GameManager created and wrapped.");
 

@@ -8,7 +8,7 @@ import (
 
 	auth "github.com/GrGLeo/ctf/server/authentification"
 	"github.com/GrGLeo/ctf/server/event"
-	manager "github.com/GrGLeo/ctf/server/room_manager.go"
+	manager "github.com/GrGLeo/ctf/server/room_manager"
 
 	//"github.com/GrGLeo/ctf/server/game"
 	"github.com/GrGLeo/ctf/shared"
@@ -78,7 +78,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 			return // Exit if there's an error or if the client disconnects
 		}
 		if n > 0 {
-			message, err := shared.DeSerialize(buffer[:n])
+			message, _, err := shared.DeSerialize(buffer[:n])
 			if err != nil {
 				log.Infow("Error deserializing packet", "ip", conn.RemoteAddr(), "error", err)
 				continue

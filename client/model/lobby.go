@@ -170,7 +170,7 @@ func NewQueueModel(conn *net.TCPConn) QueueModel {
 	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
 	return QueueModel{
-		options:  []string{"Solo (1 player 1 bot vs 2 bots)", "2 players vs 2 bots", "2 players vs 2 players"},
+		options:  []string{"Sandbox (solo)", "Classic (4v4)", "Ranked (4v4)"},
 		selected: 0,
 		conn:     conn,
 		spinner:  sp,

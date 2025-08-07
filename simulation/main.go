@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"fmt"
 	"log"
 	"math/rand"
@@ -32,7 +31,7 @@ func main() {
 	serverPort := os.Args[2]
 
 	var wg sync.WaitGroup
-	for i := 0; i < clientCount; i++ {
+	for i := range clientCount {
 		wg.Add(1)
 		go runClient(&wg, i, serverPort)
 	}
@@ -99,7 +98,7 @@ func runClient(wg *sync.WaitGroup, clientID int, serverPort string) {
 	}
 
 	// 3. Send Room Request Packet
-	roomRequestPacket := shared.NewRoomRequestPacket(0) // 0 for public room
+	roomRequestPacket := shared.NewRoomRequestPacket(1)
 	_, err = conn.Write(roomRequestPacket.Serialize())
 	if err != nil {
 		log.Printf("Client %d: Failed to send room request packet: %v", clientID, err)
@@ -204,7 +203,7 @@ gameStartLoop:
 		for {
 			packet, bytesConsumed, err := shared.DeSerialize(gameBuf)
 			if err != nil {
-				if err.Error() == "incomplete packet header" || err.Error() == "incomplete login packet" || err.Error() == "incomplete signin packet" || err.Error() == "incomplete response packet" || err.Error() == "incomplete room request packet" || err.Error() == "incomplete room create packet" || err.Error() == "incomplete look room packet" || err.Error() == "incomplete game start packet" || err.Error() == "incomplete action packet" || err.Error() == "incomplete board packet" || err.Error() == "incomplete delta packet" || err.Error() == "incomplete game close packet" || err.Error() == "incomplete end game packet" || err.Error() == "incomplete spell selection packet" || err.Error() == "incomplete shop response packet" || err.Error() == "incomplete purchase item packet" {
+				if err.Error() == "incomplete packet header" || err.Error() == "incomplete packet" {
 					// Not enough data, wait for more
 					break
 				} else {

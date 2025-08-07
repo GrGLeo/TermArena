@@ -13,6 +13,7 @@ import (
 func MakeConnection(port string) (*net.TCPConn, error) {
 	serverIP := os.Getenv("SERVER_IP")
 	if serverIP == "" {
+		//serverIP = "localhost" // Default to localhost if not set
 		serverIP = "endurace.cloud" // Default to localhost if not set
 	}
 
