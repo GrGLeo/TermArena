@@ -201,7 +201,7 @@ mod tests {
             end_pos,
             1,
             vec![GameplayEffect::Damage(50)],
-            CellAnimation::Projectile,
+            CellAnimation::TowerHit,
         );
 
         assert_eq!(projectile.id, 1);
@@ -235,7 +235,7 @@ mod tests {
             target.clone(),
             2,
             vec![GameplayEffect::Damage(30)],
-            CellAnimation::Projectile,
+            CellAnimation::TowerHit,
         );
 
         assert_eq!(projectile.id, 2);
@@ -264,7 +264,7 @@ mod tests {
             end_pos,
             1, // speed = 1 tick per cell
             vec![GameplayEffect::Damage(10)],
-            CellAnimation::Projectile,
+            CellAnimation::TowerHit,
         );
 
         // Tick 1: Moves to (0, 0)
@@ -309,7 +309,7 @@ mod tests {
             target,
             1, // speed = 1 tick per cell
             vec![GameplayEffect::Damage(10)],
-            CellAnimation::Projectile,
+            CellAnimation::TowerHit,
         );
 
         // Tick 1: Target is at (10, 13). Projectile should move to (10, 11)
@@ -366,7 +366,7 @@ mod tests {
             end_pos,
             2, // speed = 2 ticks per cell
             vec![GameplayEffect::Damage(10)],
-            CellAnimation::Projectile,
+            CellAnimation::TowerHit,
         );
 
         // Tick 1: Not time to move yet. Redraws at (0,0)

@@ -1036,26 +1036,6 @@ mod tests {
             "scan_range should return None when only allies are in range"
         );
 
-        // Case 3: Non-entity content in range (e.g., Flag - although Flag is CellContent, it might not be a "target")
-        // Based on scan_range implementation, Flag and Champion/Minion/Tower on the same team are filtered out.
-        // Let's explicitly place a Flag of the same team to be sure.
-        let flag_id = 1;
-        let flag_row = champion_row;
-        let flag_col = champion_col + 1;
-        board.place_cell(
-            CellContent::Flag(flag_id, champion_team),
-            flag_row as usize,
-            flag_col as usize,
-        );
-        let target_flag_ally = champion.get_potential_target(&board);
-        assert!(
-            target_flag_ally.is_none(),
-            "scan_range should return None when only allied flags are in range"
-        );
-
-        // Clean up the board for next tests (optional in unit tests, but good practice)
-        board.clear_cell(ally_row as usize, ally_col as usize);
-        board.clear_cell(flag_row as usize, flag_col as usize);
     }
 
     #[test]

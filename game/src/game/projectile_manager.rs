@@ -358,7 +358,7 @@ mod tests {
             (20, 20),
             1,
             vec![GameplayEffect::Damage(50)],
-            CellAnimation::Projectile,
+            CellAnimation::TowerHit,
         );
         assert_eq!(manager.projectiles.len(), 1);
         let projectile = manager.projectiles.get(&0).unwrap();
@@ -375,7 +375,7 @@ mod tests {
             (5, 5),
             2,
             vec![GameplayEffect::Damage(30)],
-            CellAnimation::Projectile,
+            CellAnimation::TowerHit,
         );
         assert_eq!(manager.projectiles.len(), 1);
         let projectile = manager.projectiles.get(&0).unwrap();
@@ -394,7 +394,7 @@ mod tests {
             end_pos: (10, 10),
             speed: 2,
             payloads: vec![GameplayEffect::Damage(5)],
-            visual_cell_type: CellAnimation::Projectile,
+            visual_cell_type: CellAnimation::TowerHit,
         };
         manager.create_from_blueprint(blueprint);
         assert_eq!(manager.projectiles.len(), 1);
@@ -414,7 +414,7 @@ mod tests {
             end_pos: (10, 10),
             speed: 2,
             payloads: vec![GameplayEffect::Damage(5)],
-            visual_cell_type: CellAnimation::Projectile,
+            visual_cell_type: CellAnimation::TowerHit,
         };
         manager.create_from_blueprint(blueprint);
         assert_eq!(manager.projectiles.len(), 1);
@@ -438,7 +438,7 @@ mod tests {
             (2, 0),
             1,
             vec![GameplayEffect::Damage(10)],
-            CellAnimation::Projectile,
+            CellAnimation::TowerHit,
         );
 
         for _ in 0..3 {
@@ -487,7 +487,7 @@ mod tests {
             target_pos,
             1,
             vec![GameplayEffect::Damage(50)],
-            CellAnimation::Projectile,
+            CellAnimation::TowerHit,
         );
 
         // Tick 1 & 2: Projectile moves closer
@@ -535,7 +535,7 @@ mod tests {
             (0, 2),
             1,
             vec![GameplayEffect::Damage(50)],
-            CellAnimation::Projectile,
+            CellAnimation::TowerHit,
         );
 
         // Tick 1, 2, 3: Move closer
@@ -578,7 +578,7 @@ mod tests {
             target_pos,
             1,
             vec![GameplayEffect::Damage(50)],
-            CellAnimation::Projectile,
+            CellAnimation::TowerHit,
         );
 
         // Tick 1 & 2: Projectile moves closer
@@ -622,7 +622,7 @@ mod tests {
             (10, 10),
             1,
             vec![GameplayEffect::Damage(30)],
-            CellAnimation::Projectile,
+            CellAnimation::TowerHit,
         );
 
         // Tick 1: Projectile moves towards (10, 13)

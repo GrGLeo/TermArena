@@ -139,13 +139,11 @@ func (m GameModel) View() string {
 	log.Printf("Player Health: %d | %d\n", m.health[0], m.health[1])
 	// Define styles
 	bgStyle := lipgloss.NewStyle().Background(lipgloss.Color("0"))
-	p1Style := lipgloss.NewStyle().Background(lipgloss.Color("21"))
+	blueTeamStyle := lipgloss.NewStyle().Background(lipgloss.Color("4"))
+  redTeamStyle := lipgloss.NewStyle().Background(lipgloss.Color("1"))
 	TowerDest := lipgloss.NewStyle().Background(lipgloss.Color("91"))
 	bushStyle := lipgloss.NewStyle().Background(lipgloss.Color("34"))
-	p4Style := lipgloss.NewStyle().Background(lipgloss.Color("1"))
 	grayStyle := lipgloss.NewStyle().Background(lipgloss.Color("240"))
-	Flag1Style := lipgloss.NewStyle().Background(lipgloss.Color("201"))
-	TowerStyle := lipgloss.NewStyle().Background(lipgloss.Color("94"))
 	FreezeStyle := lipgloss.NewStyle().Background(lipgloss.Color("39"))
 	BaseBlueStyle := lipgloss.NewStyle().Background(lipgloss.Color("21"))
 	BaseRedStyle := lipgloss.NewStyle().Background(lipgloss.Color("196"))
@@ -192,45 +190,39 @@ func (m GameModel) View() string {
 			case 0:
 				builder.WriteString(grayStyle.Render(" ")) // Render gray for walls
 			case 1:
-				builder.WriteString(bgStyle.Render(" ")) // Render empty space for 1
+				builder.WriteString(bgStyle.Render(" ")) // Render empty space
 			case 2:
 				builder.WriteString(bushStyle.Render(" ")) // Render green for bush
-			case 3:
-				builder.WriteString(TowerDest.Render(" ")) // Render blue for player2
+      case 3:
+        builder.WriteString(blueTeamStyle.Render(" ")) // Render blue for team blue
 			case 4:
-				builder.WriteString(p1Style.Render(" ")) // Render blue for player1
-			case 5:
-				builder.WriteString(p4Style.Render(" ")) // Render blue for player4
+				builder.WriteString(redTeamStyle.Render(" ")) // Render red for team red
+      case 5:
+        builder.WriteString(bgStyle.Render("⍓")) // Render for tower
 			case 6:
-				builder.WriteString(Flag1Style.Render(" ")) // Render for flag1
+				builder.WriteString(TowerDest.Render(" ")) // Render purple for tower destroyed
 			case 7:
-				builder.WriteString(TowerStyle.Render(" ")) // Render for tower
+				builder.WriteString(BaseBlueStyle.Render(" ")) // Render for BaseBlue
 			case 8:
-				builder.WriteString(bgStyle.Render("⍓")) // Render for dash
+				builder.WriteString(BaseRedStyle.Render(" ")) // Render for BaseRed
 			case 9:
-				builder.WriteString(bgStyle.Render("x")) // Render for dash
+				builder.WriteString(MonsterStyle.Render(" ")) // Render for dash
 			case 10:
-				builder.WriteString(bgStyle.Render("𐙢")) // Render for dash
+				builder.WriteString(bgStyle.Render("x")) // Render for melee animation
 			case 11:
-				builder.WriteString(BaseBlueStyle.Render(" ")) // Render for base blue
+				builder.WriteString(bgStyle.Render("𐙢")) // Render for tower animation
 			case 12:
-				builder.WriteString(BaseRedStyle.Render(" ")) // Render for base red
+				builder.WriteString(FreezeStyle.Render("𐙂")) // Render for freeze spell
 			case 13:
-				builder.WriteString(bgStyle.Render("⣀")) // Render for dash
+				builder.WriteString(bgStyle.Render("𐁙")) // Render for base red
 			case 14:
-				builder.WriteString(FreezeStyle.Render("𐙂")) // Render for freezing spell
-			case 15:
-				builder.WriteString(bgStyle.Render("𐁙")) // Render for freezing spell
-			case 16:
-				builder.WriteString(MonsterStyle.Render(" ")) // Render for monster
-			case 17:
-				builder.WriteString(bgStyle.Render("i")) // Render for healing spell
+				builder.WriteString(bgStyle.Render("i")) // Render for dash
 			case 100, 101, 102, 103, 104, 105, 106, 107: // Friendly minion health (1/8 to 8/8)
 				healthIndex := cell - 100
-				builder.WriteString(p1Style.Render(minionHealthChars[healthIndex]))
+				builder.WriteString(blueTeamStyle.Render(minionHealthChars[healthIndex]))
 			case 108, 109, 110, 111, 112, 113, 114, 115: // Enemy minion health (1/8 to 8/8)
 				healthIndex := cell - 108
-				builder.WriteString(p4Style.Render(minionHealthChars[healthIndex]))
+				builder.WriteString(redTeamStyle.Render(minionHealthChars[healthIndex]))
 			}
 		}
 		builder.WriteString("\n") // New line at the end of each row
