@@ -1,11 +1,15 @@
-use crate::game::cell::Team;
+use crate::game::algorithms::bresenham::Bresenham;
+use crate::game::cell::{PlayerId, Team, TowerId};
+use crate::game::entities::champion::Champion;
+use crate::game::entities::tower::Tower;
 use crate::game::minion_manager::MinionManager;
-
-use super::cell::{BaseTerrain, Cell, CellAnimation, CellContent, EncodedCellValue};
 use serde::Deserialize;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
 use std::usize;
+
+use super::cell::{BaseTerrain, Cell, CellAnimation, CellContent, EncodedCellValue};
 
 #[derive(Deserialize)]
 struct BoardLayout {
@@ -135,7 +139,11 @@ impl Board {
         }
         // Adjust if view hit the bottom
         if max_row == grid_height - 1 {
-            min_row = (grid_height - view_height).max(0);
+            if grid_height > view_height {
+                min_row = (grid_height - view_height).max(0);
+            } else {
+                min_row = 0;
+            }
         }
 
         // Calculate potential min and max col
@@ -147,7 +155,11 @@ impl Board {
         }
         // Adjust if view hit the right
         if max_col == grid_width - 1 {
-            min_col = (grid_width - view_width).max(0);
+            if grid_width > view_width {
+                min_col = (grid_width - view_width).max(0);
+            } else {
+                min_col = 0;
+            }
         }
 
         self.grid[min_row as usize..=max_row as usize]
@@ -157,11 +169,75 @@ impl Board {
             .collect()
     }
 
+    fn add_vision_from_pos(
+        &self,
+        visible_cells: &mut HashSet<(u16, u16)>,
+        pos: (u16, u16),
+        vision_range: u16,
+    ) {
+        let (source_row, source_col) = pos;
+        let is_obstacle = |row: u16, col: u16, board: &Board| {
+            if let Some(cell) = board.get_cell(row as usize, col as usize) {
+                matches!(cell.base, BaseTerrain::Wall | BaseTerrain::Bush)
+            } else {
+                true
+            }
+        };
+
+        for r in (source_row.saturating_sub(vision_range))
+            ..=(source_row + vision_range).min(self.rows as u16 - 1)
+        {
+            for c in (source_col.saturating_sub(vision_range))
+                ..=(source_col + vision_range).min(self.cols as u16 - 1)
+            {
+                let path = Bresenham::new((source_row, source_col), (r, c));
+                let mut line_of_sight_blocked = false;
+                for (path_row, path_col) in path.skip(1) {
+                    if (path_row, path_col) == (r, c) {
+                        break;
+                    }
+                    if is_obstacle(path_row, path_col, self) {
+                        line_of_sight_blocked = true;
+                        break;
+                    }
+                }
+                if !line_of_sight_blocked {
+                    visible_cells.insert((r, c));
+                }
+            }
+        }
+    }
+
+    pub fn compute_visibility(
+        &self,
+        team: Team,
+        champions: &HashMap<PlayerId, Champion>,
+        towers: &HashMap<TowerId, Tower>,
+        minion_manager: &MinionManager,
+    ) -> HashSet<(u16, u16)> {
+        let mut visible_cells = HashSet::new();
+
+        for champion in champions.values().filter(|c| c.team_id == team) {
+            self.add_vision_from_pos(&mut visible_cells, (champion.row, champion.col), 10);
+        }
+
+        for tower in towers.values().filter(|t| t.team_id == team) {
+            self.add_vision_from_pos(&mut visible_cells, (tower.row, tower.col), 7);
+        }
+
+        for minion in minion_manager.minions.values().filter(|m| m.team_id == team) {
+            self.add_vision_from_pos(&mut visible_cells, (minion.row, minion.col), 7);
+        }
+
+        visible_cells
+    }
+
     pub fn run_length_encode(
         &self,
         player_row: u16,
         player_col: u16,
         minion_manager: &MinionManager,
+        visible_cells: &HashSet<(u16, u16)>,
     ) -> Vec<u8> {
         let flattened_grid: Vec<&Cell> = self
             .center_view(player_row, player_col, 21, 51)
@@ -176,14 +252,16 @@ impl Board {
 
         let mut current_cell_value: EncodedCellValue;
         if let Some(first_cell) = flattened_grid.get(0) {
-            current_cell_value = get_encoded_cell_value(first_cell, minion_manager);
+            current_cell_value =
+                get_encoded_cell_value(first_cell, minion_manager, visible_cells);
         } else {
             return Vec::new(); // Should not happen if flattened_grid is not empty
         }
         let mut count = 1;
 
         for i in 1..flattened_grid.len() {
-            let encoded_value = get_encoded_cell_value(flattened_grid[i], minion_manager);
+            let encoded_value =
+                get_encoded_cell_value(flattened_grid[i], minion_manager, visible_cells);
             if encoded_value == current_cell_value {
                 count += 1;
             } else {
@@ -198,7 +276,18 @@ impl Board {
     }
 }
 
-fn get_encoded_cell_value(cell: &Cell, minion_manager: &MinionManager) -> EncodedCellValue {
+fn get_encoded_cell_value(
+    cell: &Cell,
+    minion_manager: &MinionManager,
+    visible_cells: &HashSet<(u16, u16)>,
+) -> EncodedCellValue {
+    if !visible_cells.contains(&cell.position) {
+        return match cell.base {
+            BaseTerrain::Wall => EncodedCellValue::Wall,
+            BaseTerrain::Bush => EncodedCellValue::Bush,
+            _ => EncodedCellValue::Fog,
+        };
+    }
     if let Some(animation) = &cell.animation {
         match animation {
             CellAnimation::MeleeHit => EncodedCellValue::MeleeHitAnimation,
@@ -540,5 +629,100 @@ mod tests {
             expected_rle,
             "Run-length encoding did not match expected output"
         );
+    }
+
+    #[test]
+    fn test_compute_visibility() {
+        use crate::config::{ChampionStats, MinionStats};
+        use crate::game::entities::champion::Champion;
+        use std::collections::HashMap;
+
+        let mut board = Board::new(20, 20);
+        board.change_base(BaseTerrain::Wall, 5, 5);
+
+        let mut champions = HashMap::new();
+        let stats = ChampionStats {
+            health: 100,
+            mana: 100,
+            attack_damage: 10,
+            armor: 10,
+            attack_speed_ms: 1000,
+            xp_per_level: vec![100, 200, 300],
+            level_up_health_increase: 50,
+            level_up_attack_damage_increase: 5,
+            level_up_armor_increase: 2,
+            attack_range_row: 1,
+            attack_range_col: 1,
+        };
+        let champion1 = Champion::new(1, Team::Blue, 2, 2, stats.clone(), HashMap::new());
+        champions.insert(1, champion1);
+
+        let towers = HashMap::new();
+        let minion_stats = MinionStats {
+            health: 50,
+            attack_damage: 5,
+            attack_speed_ms: 1000,
+            armor: 5,
+            aggro_range_row: 5,
+            aggro_range_col: 5,
+            attack_range_row: 1,
+            attack_range_col: 1,
+        };
+        let minion_manager = MinionManager::new(minion_stats);
+
+        let visible_cells =
+            board.compute_visibility(Team::Blue, &champions, &towers, &minion_manager);
+
+        // Champion at (2,2) should see a 10x10 area around it.
+        // But (5,5) is a wall, so vision should be blocked beyond it.
+        assert!(visible_cells.contains(&(2, 2)));
+        assert!(visible_cells.contains(&(4, 4)));
+        assert!(!visible_cells.contains(&(6, 6))); // Blocked by wall at (5,5)
+
+        // Test shared vision
+        let champion2 = Champion::new(2, Team::Blue, 8, 8, stats.clone(), HashMap::new());
+        champions.insert(2, champion2);
+
+        let visible_cells =
+            board.compute_visibility(Team::Blue, &champions, &towers, &minion_manager);
+        assert!(visible_cells.contains(&(6, 6))); // Now visible because of champion2
+    }
+
+    #[test]
+    fn test_run_length_encode_with_fog() {
+        use crate::config::MinionStats;
+        use std::collections::HashSet;
+
+        let mut board = Board::new(10, 10);
+        board.change_base(BaseTerrain::Wall, 0, 1);
+        board.place_cell(CellContent::Champion(1, Team::Blue), 5, 5);
+
+        let minion_stats = MinionStats {
+            health: 50,
+            attack_damage: 5,
+            attack_speed_ms: 1000,
+            armor: 5,
+            aggro_range_row: 5,
+            aggro_range_col: 5,
+            attack_range_row: 1,
+            attack_range_col: 1,
+        };
+        let minion_manager = MinionManager::new(minion_stats);
+
+        let mut visible_cells = HashSet::new();
+        visible_cells.insert((0, 0));
+        visible_cells.insert((0, 1)); // Wall
+        visible_cells.insert((5, 5)); // Champion
+
+        let rle = board.run_length_encode(5, 5, &minion_manager, &visible_cells);
+        let rle_str = String::from_utf8(rle).unwrap();
+
+        // This is a simplified check. A more robust test would decode the RLE
+        // and verify the full board state.
+        // Expected: 1 Floor, 1 Wall, 8 Fog, ..., 1 Champion, ...
+        // 1:1|0:1|15:8|...
+        assert!(rle_str.contains("1:1|0:1")); // Visible floor and wall
+        assert!(rle_str.contains(&format!("{}:", EncodedCellValue::Fog as u8))); // Fog is present
+        assert!(rle_str.contains(&format!("{}:1", EncodedCellValue::ChampionBlue as u8))); // Champion is visible
     }
 }

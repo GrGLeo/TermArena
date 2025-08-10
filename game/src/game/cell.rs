@@ -84,6 +84,8 @@ pub enum EncodedCellValue {
     FreezeWallAnimation = 12,
     FireBallAnimation = 13,
     HealAnimation = 14,
+    Fog = 15,
+    FloorHidden = 16,
     // Minion health values (100-115)
     MinionBlueHealth1 = 100,
     MinionBlueHealth2 = 101,

@@ -648,10 +648,19 @@ impl GameManager {
 
         // --- Send per player there board view ---
         for (player_id, champion) in &self.champions {
+            let visible_cells = self.board.compute_visibility(
+                champion.team_id,
+                &self.champions,
+                &self.towers,
+                &self.minion_manager,
+            );
             // 1. Get player-specific board view
-            let board_rle_vec =
-                self.board
-                    .run_length_encode(champion.row, champion.col, &self.minion_manager);
+            let board_rle_vec = self.board.run_length_encode(
+                champion.row,
+                champion.col,
+                &self.minion_manager,
+                &visible_cells,
+            );
             // 2. Create the board packet
             let health = champion.get_health();
             let xp_needed = champion.xp_for_next_level().unwrap_or(0); // Get XP needed, 0 if max level
