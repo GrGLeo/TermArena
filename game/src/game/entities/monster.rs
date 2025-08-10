@@ -48,8 +48,10 @@ impl Monster {
             attack_speed: Duration::from_millis(monster_stats.attack_speed_ms),
             health: monster_stats.health,
             max_health: monster_stats.health,
+            hp_per_sec: 0.0,
             mana: 0,
             max_mana: 0,
+            mp_per_sec: 0.0,
             armor: monster_stats.armor,
         };
 

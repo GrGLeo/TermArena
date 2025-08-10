@@ -628,7 +628,7 @@ mod tests {
 
         let encoded_bytes = rle.join("|").into_bytes();
 
-        let expected_rle = "0:1|2:1|1:3|4:1|1:2|6:1|1:2|10:1";
+        let expected_rle = "0:1|3:1|1:3|5:1|1:2|7:1|1:2|11:1";
 
         assert_eq!(
             String::from_utf8(encoded_bytes).expect("Valid UTF-8 string"),
@@ -657,6 +657,8 @@ mod tests {
             level_up_health_increase: 50,
             level_up_attack_damage_increase: 5,
             level_up_armor_increase: 2,
+            health_per_sec: 0.0,
+            mana_per_sec: 0.0,
             attack_range_row: 1,
             attack_range_col: 1,
         };

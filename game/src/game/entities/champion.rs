@@ -47,6 +47,9 @@ pub struct Champion {
     champion_stats: ChampionStats,
     pub spells: HashMap<u8, Box<dyn Spell>>,
     pub active_buffs: HashMap<String, Box<dyn Buff>>,
+    last_regen: Instant,
+    health_regen_acc: f32,
+    mana_regen_acc: f32,
     death_counter: u8,
     death_timer: Instant,
     last_attacked: Instant,
@@ -67,13 +70,19 @@ impl Champion {
         champion_stats: ChampionStats,
         spells: HashMap<u8, Box<dyn Spell>>,
     ) -> Self {
+        // Calculate % regen to point regen
+        let hp_per_sec = champion_stats.health as f32 * champion_stats.health_per_sec;
+        let mp_per_sec = champion_stats.mana as f32 * champion_stats.mana_per_sec;
+
         let stats = Stats {
             attack_damage: champion_stats.attack_damage,
             attack_speed: Duration::from_millis(champion_stats.attack_speed_ms),
             health: champion_stats.health,
             max_health: champion_stats.health,
+            hp_per_sec,
             mana: champion_stats.mana,
             max_mana: champion_stats.mana,
+            mp_per_sec,
             armor: champion_stats.armor,
         };
 
@@ -92,6 +101,9 @@ impl Champion {
             stun_timer: None,
             inventory: [None, None, None, None, None, None],
             active_buffs: HashMap::new(),
+            last_regen: Instant::now(),
+            health_regen_acc: 0.0,
+            mana_regen_acc: 0.0,
             team_id,
             row,
             col,
@@ -173,6 +185,7 @@ impl Champion {
         let mut attack_damage = self.champion_stats.attack_damage;
         let mut attack_speed_ms = self.champion_stats.attack_speed_ms;
         let mut armor = self.champion_stats.armor;
+        let mut hp_per_sec = self.stats.hp_per_sec;
 
         if self.level > 1 {
             let level_ups = (self.level - 1) as u16;
@@ -198,6 +211,9 @@ impl Champion {
             if let Some(as_) = item.stats.attack_speed {
                 attack_speed_ms -= as_;
             }
+            if let Some(hr) = item.stats.health_regen {
+                hp_per_sec = self.stats.max_health as f32 * (self.champion_stats.health_per_sec + (self.champion_stats.health_per_sec * hr));
+            }
         }
 
         self.stats.attack_damage = attack_damage;
@@ -205,6 +221,7 @@ impl Champion {
         self.stats.armor = armor;
         self.stats.max_health = max_health;
         self.stats.max_mana = max_mana;
+        self.stats.hp_per_sec = hp_per_sec;
 
         let max_health_diff = self.stats.max_health as i32 - old_max_health as i32;
         if max_health_diff > 0 {
@@ -321,7 +338,7 @@ impl Champion {
             Team::Blue => {
                 self.row = 149;
                 self.col = 0;
-            },
+            }
             Team::Red => {
                 self.row = 0;
                 self.col = 149;
@@ -350,6 +367,26 @@ impl Champion {
     pub fn restore_max_health_mana(&mut self) {
         self.stats.health = self.stats.max_health;
         self.stats.mana = self.stats.max_mana;
+    }
+
+    pub fn regen_health_mana(&mut self) {
+        if self.last_regen.elapsed() >= Duration::from_secs(1) {
+            self.last_regen = Instant::now();
+            // Health regeneration
+            self.health_regen_acc += self.stats.hp_per_sec;
+            if self.health_regen_acc > 1.0 {
+                let health_to_add = self.health_regen_acc.trunc();
+                self.stats.health = (self.stats.health + health_to_add as u16).min(self.stats.max_health);
+                self.health_regen_acc -= health_to_add
+            }
+            // Mana regeneration
+            self.mana_regen_acc += self.stats.mp_per_sec;
+            if self.mana_regen_acc > 1.0 {
+                let mana_to_add = self.mana_regen_acc.trunc();
+                self.stats.mana = (self.stats.mana + mana_to_add as u16).min(self.stats.max_mana);
+                self.mana_regen_acc -= mana_to_add
+            }
+        }
     }
 }
 
@@ -500,6 +537,8 @@ mod tests {
             level_up_health_increase: 20,
             level_up_attack_damage_increase: 5,
             level_up_armor_increase: 2,
+            health_per_sec: 0.005,
+            mana_per_sec: 0.005,
             attack_range_row: 3,
             attack_range_col: 3,
         }
@@ -965,8 +1004,8 @@ mod tests {
         let initial_row = 10;
         let initial_col = 10;
         let player_id = 1;
-        let base_row = 197;
-        let base_col = 2;
+        let base_row = 0;
+        let base_col = 149;
 
         // Place champion at initial position
         let champion_stats = create_default_champion_stats();
@@ -1061,7 +1100,6 @@ mod tests {
             target_ally.is_none(),
             "scan_range should return None when only allies are in range"
         );
-
     }
 
     #[test]
@@ -1526,8 +1564,11 @@ mod tests {
             cost: 300,
             stats: ItemStats {
                 attack_damage: Some(10),
+                attack_speed: None,
                 health: None,
                 armor: None,
+                mana: None,
+                health_regen: None,
             },
         };
 
@@ -1537,8 +1578,11 @@ mod tests {
             cost: 200,
             stats: ItemStats {
                 attack_damage: None,
+                attack_speed: None,
                 health: Some(50),
                 armor: Some(5),
+                mana: None,
+                health_regen: None,
             },
         };
 
@@ -1562,8 +1606,11 @@ mod tests {
                 cost: 10,
                 stats: ItemStats {
                     attack_damage: None,
+                    attack_speed: None,
                     health: None,
                     armor: None,
+                    mana: None,
+                    health_regen: None,
                 },
             };
             champion.add_item(item.clone()).unwrap();
@@ -1576,8 +1623,11 @@ mod tests {
             cost: 10,
             stats: ItemStats {
                 attack_damage: None,
+                attack_speed: None,
                 health: None,
                 armor: None,
+                mana: None,
+                health_regen: None,
             },
         };
         let result = champion.add_item(extra_item);
@@ -1598,8 +1648,11 @@ mod tests {
             cost: 300,
             stats: ItemStats {
                 attack_damage: Some(10),
+                attack_speed: None,
                 health: None,
                 armor: None,
+                mana: None,
+                health_regen: None,
             },
         };
 
@@ -1621,8 +1674,11 @@ mod tests {
             cost: 300,
             stats: ItemStats {
                 attack_damage: Some(10),
+                attack_speed: None,
                 health: None,
                 armor: None,
+                mana: None,
+                health_regen: None,
             },
         };
 
@@ -1632,8 +1688,11 @@ mod tests {
             cost: 200,
             stats: ItemStats {
                 attack_damage: None,
+                attack_speed: None,
                 health: Some(50),
                 armor: Some(5),
+                mana: None,
+                health_regen: None,
             },
         };
 

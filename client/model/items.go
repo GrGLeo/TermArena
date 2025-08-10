@@ -45,6 +45,11 @@ var availableItems = []Item{
 	},
 	{
 		ID:   6,
+		Name: "Vial of Renewal",
+		Description: "Description: Increases health regeneration.\nCost: 150\nHealth regeneration increase: 100%",
+	},
+	{
+		ID:   7,
 		Name: "Shield of Valor",
 		Description: "Description: Increases armor and health.\nCost: 200\nArmor: 5\nHealth: 50",
 	},

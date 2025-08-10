@@ -312,6 +312,8 @@ mod tests {
             level_up_health_increase: 50,
             level_up_attack_damage_increase: 5,
             level_up_armor_increase: 2,
+            health_per_sec: 0.0,
+            mana_per_sec: 0.0,
             attack_range_row: 3,
             attack_range_col: 3,
         }
