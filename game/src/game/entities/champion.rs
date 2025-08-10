@@ -185,7 +185,7 @@ impl Champion {
         let mut attack_damage = self.champion_stats.attack_damage;
         let mut attack_speed_ms = self.champion_stats.attack_speed_ms;
         let mut armor = self.champion_stats.armor;
-        let mut hp_per_sec = self.stats.hp_per_sec;
+        let mut health_regen_bonus = 0.0;
 
         if self.level > 1 {
             let level_ups = (self.level - 1) as u16;
@@ -212,7 +212,7 @@ impl Champion {
                 attack_speed_ms -= as_;
             }
             if let Some(hr) = item.stats.health_regen {
-                hp_per_sec = self.stats.max_health as f32 * (self.champion_stats.health_per_sec + (self.champion_stats.health_per_sec * hr));
+                health_regen_bonus += hr;
             }
         }
 
@@ -221,7 +221,9 @@ impl Champion {
         self.stats.armor = armor;
         self.stats.max_health = max_health;
         self.stats.max_mana = max_mana;
-        self.stats.hp_per_sec = hp_per_sec;
+
+        let base_hp_per_sec = self.stats.max_health as f32 * self.champion_stats.health_per_sec;
+        self.stats.hp_per_sec = base_hp_per_sec * (1.0 + health_regen_bonus);
 
         let max_health_diff = self.stats.max_health as i32 - old_max_health as i32;
         if max_health_diff > 0 {
@@ -374,14 +376,15 @@ impl Champion {
             self.last_regen = Instant::now();
             // Health regeneration
             self.health_regen_acc += self.stats.hp_per_sec;
-            if self.health_regen_acc > 1.0 {
+            if self.health_regen_acc >= 1.0 {
                 let health_to_add = self.health_regen_acc.trunc();
-                self.stats.health = (self.stats.health + health_to_add as u16).min(self.stats.max_health);
+                self.stats.health =
+                    (self.stats.health + health_to_add as u16).min(self.stats.max_health);
                 self.health_regen_acc -= health_to_add
             }
             // Mana regeneration
             self.mana_regen_acc += self.stats.mp_per_sec;
-            if self.mana_regen_acc > 1.0 {
+            if self.mana_regen_acc >= 1.0 {
                 let mana_to_add = self.mana_regen_acc.trunc();
                 self.stats.mana = (self.stats.mana + mana_to_add as u16).min(self.stats.max_mana);
                 self.mana_regen_acc -= mana_to_add
@@ -1715,5 +1718,178 @@ mod tests {
         assert_eq!(champion.stats.max_health, expected_health);
         assert_eq!(champion.stats.attack_damage, expected_attack_damage);
         assert_eq!(champion.stats.armor, expected_armor);
+    }
+
+    #[test]
+    fn test_recalculate_stats_with_health_regen_item() {
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+        champion.gold = 1000;
+
+        let item = Item {
+            id: 6,
+            name: "Vial of Renewal".to_string(),
+            cost: 150,
+            stats: ItemStats {
+                attack_damage: None,
+                attack_speed: None,
+                health: None,
+                armor: None,
+                mana: None,
+                health_regen: Some(1.0),
+            },
+        };
+
+        champion.add_item(item).unwrap();
+
+        let base_hp_per_sec =
+            champion.stats.max_health as f32 * champion.champion_stats.health_per_sec;
+        let expected_hp_per_sec = base_hp_per_sec * 2.0; // 1.0 bonus = 100% increase
+
+        assert!((champion.stats.hp_per_sec - expected_hp_per_sec).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_recalculate_stats_with_multiple_health_regen_items() {
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+        champion.gold = 1000;
+
+        let item1 = Item {
+            id: 6,
+            name: "Vial of Renewal".to_string(),
+            cost: 150,
+            stats: ItemStats {
+                attack_damage: None,
+                attack_speed: None,
+                health: None,
+                armor: None,
+                mana: None,
+                health_regen: Some(1.0),
+            },
+        };
+        let item2 = Item {
+            id: 8,
+            name: "Another Vial".to_string(),
+            cost: 150,
+            stats: ItemStats {
+                attack_damage: None,
+                attack_speed: None,
+                health: None,
+                armor: None,
+                mana: None,
+                health_regen: Some(0.5),
+            },
+        };
+
+        champion.add_item(item1).unwrap();
+        champion.add_item(item2).unwrap();
+
+        let base_hp_per_sec =
+            champion.stats.max_health as f32 * champion.champion_stats.health_per_sec;
+        let expected_hp_per_sec = base_hp_per_sec * (1.0 + 1.0 + 0.5); // 1.0 base + 1.0 from item1 + 0.5 from item2
+
+        assert!((champion.stats.hp_per_sec - expected_hp_per_sec).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_recalculate_stats_with_health_and_regen_item() {
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+        champion.gold = 1000;
+
+        let item = Item {
+            id: 9,
+            name: "Magic Shield".to_string(),
+            cost: 350,
+            stats: ItemStats {
+                attack_damage: None,
+                attack_speed: None,
+                health: Some(50),
+                armor: Some(5),
+                mana: None,
+                health_regen: Some(1.0),
+            },
+        };
+
+        champion.add_item(item).unwrap();
+
+        let expected_max_health = 200 + 50;
+        assert_eq!(champion.stats.max_health, expected_max_health);
+
+        let base_hp_per_sec = expected_max_health as f32 * champion.champion_stats.health_per_sec;
+        let expected_hp_per_sec = base_hp_per_sec * (1.0 + 1.0);
+
+        assert!((champion.stats.hp_per_sec - expected_hp_per_sec).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_regen_health() {
+        use std::thread;
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+
+        // Base regen is 200 * 0.005 = 1 hp/sec
+        assert_eq!(champion.stats.hp_per_sec, 1.0);
+
+        champion.stats.health = 100;
+
+        thread::sleep(Duration::from_secs(1));
+        champion.regen_health_mana();
+        assert_eq!(champion.stats.health, 101);
+
+        // Test not exceeding max health
+        champion.stats.health = 199;
+        thread::sleep(Duration::from_secs(1));
+        champion.regen_health_mana();
+        assert_eq!(champion.stats.health, 200);
+
+        champion.regen_health_mana(); // Should do nothing as not enough time has passed
+        assert_eq!(champion.stats.health, 200);
+
+        thread::sleep(Duration::from_secs(1));
+        champion.regen_health_mana();
+        assert_eq!(champion.stats.health, 200); // Still at max
+    }
+
+    #[test]
+    fn test_fractional_health_regen() {
+        use std::thread;
+        let mut champion_stats = create_default_champion_stats();
+        champion_stats.health_per_sec = 0.0025; // 200 * 0.0025 = 0.5 hp/sec
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+
+        assert!((champion.stats.hp_per_sec - 0.5).abs() < f32::EPSILON);
+        champion.stats.health = 100;
+
+        thread::sleep(Duration::from_secs(1));
+        champion.regen_health_mana();
+        assert_eq!(champion.stats.health, 100); // 0.5 added to accumulator, not enough to add 1 health
+        assert!((champion.health_regen_acc - 0.5).abs() < f32::EPSILON);
+
+        thread::sleep(Duration::from_secs(1));
+        champion.regen_health_mana();
+        assert_eq!(champion.stats.health, 101); // acc becomes 1.0, adds 1 health, acc becomes 0
+        assert!(champion.health_regen_acc.abs() < f32::EPSILON);
+
+        // Test with 1.5 hp/sec
+        champion.stats.hp_per_sec = 1.5;
+        champion.stats.health = 100;
+        champion.health_regen_acc = 0.0;
+
+        thread::sleep(Duration::from_secs(1));
+        champion.regen_health_mana();
+        assert_eq!(champion.stats.health, 101); // acc becomes 1.5, adds 1, acc becomes 0.5
+        assert!((champion.health_regen_acc - 0.5).abs() < f32::EPSILON);
+
+        thread::sleep(Duration::from_secs(1));
+        champion.regen_health_mana();
+        assert_eq!(champion.stats.health, 103); // acc becomes 0.5 + 1.5 = 2.0, adds 2, acc becomes 0.0
+        assert!(champion.health_regen_acc.abs() < f32::EPSILON);
     }
 }
