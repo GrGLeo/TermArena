@@ -38,6 +38,7 @@ pub struct PathNode {
     g_cost: u16,
     h_cost: u16,
     f_cost: u16,
+    direction: (i8, i8),
 }
 
 impl Ord for PathNode {
@@ -60,7 +61,6 @@ pub fn find_path_on_board(
     start: (u16, u16),
     goal: (u16, u16),
 ) -> Option<VecDeque<(u16, u16)>> {
-    const MAX_DEPTH: usize = 100;
     if start == goal {
         let mut path = VecDeque::new();
         path.push_front(start);
@@ -86,6 +86,7 @@ pub fn find_path_on_board(
         g_cost: start_node_g_cost,
         h_cost: start_node_h_cost,
         f_cost: start_node_f_cost,
+        direction: (0, 0),
     };
 
     open_set.push(start_node);
@@ -96,7 +97,7 @@ pub fn find_path_on_board(
             continue;
         }
 
-        if is_adjacent_to_goal(current_node.position, goal) || parents.len() >= MAX_DEPTH {
+        if is_adjacent_to_goal(current_node.position, goal) {
             let mut path = VecDeque::new();
             let mut current_pos = current_node.position;
             while current_pos != start {
@@ -119,44 +120,32 @@ pub fn find_path_on_board(
                 continue;
             }
 
-            let tentative_g_cost = current_node.g_cost + 1;
+            let direction = (
+                (neighbor_pos.0 as i16 - current_node.position.0 as i16) as i8,
+                (neighbor_pos.1 as i16 - current_node.position.1 as i16) as i8,
+            );
 
-            match g_costs.get(&neighbor_pos) {
-                Some(existing_g_cost) => {
-                    if tentative_g_cost < *existing_g_cost {
-                        parents.insert(neighbor_pos, current_node.position);
-                        g_costs.insert(neighbor_pos, tentative_g_cost);
+            let mut tentative_g_cost = current_node.g_cost + 1;
+            if direction == current_node.direction {
+                tentative_g_cost -= 1;
+            }
 
-                        let neighbor_h_cost =
-                            calculate_heuristic(neighbor_pos.0, neighbor_pos.1, goal.0, goal.1);
-                        let neighbor_f_cost = tentative_g_cost + neighbor_h_cost;
+            if tentative_g_cost < *g_costs.get(&neighbor_pos).unwrap_or(&u16::MAX) {
+                parents.insert(neighbor_pos, current_node.position);
+                g_costs.insert(neighbor_pos, tentative_g_cost);
 
-                        let neighbor_node = PathNode {
-                            position: neighbor_pos,
-                            g_cost: tentative_g_cost,
-                            h_cost: neighbor_h_cost,
-                            f_cost: neighbor_f_cost,
-                        };
-                        open_set.push(neighbor_node);
-                    } else {
-                    }
-                }
-                None => {
-                    parents.insert(neighbor_pos, current_node.position);
-                    g_costs.insert(neighbor_pos, tentative_g_cost);
+                let neighbor_h_cost =
+                    calculate_heuristic(neighbor_pos.0, neighbor_pos.1, goal.0, goal.1);
+                let neighbor_f_cost = tentative_g_cost + neighbor_h_cost;
 
-                    let neighbor_h_cost =
-                        calculate_heuristic(neighbor_pos.0, neighbor_pos.1, goal.0, goal.1);
-                    let neighbor_f_cost = tentative_g_cost + neighbor_h_cost;
-
-                    let neighbor_node = PathNode {
-                        position: neighbor_pos,
-                        g_cost: tentative_g_cost,
-                        h_cost: neighbor_h_cost,
-                        f_cost: neighbor_f_cost,
-                    };
-                    open_set.push(neighbor_node);
-                }
+                let neighbor_node = PathNode {
+                    position: neighbor_pos,
+                    g_cost: tentative_g_cost,
+                    h_cost: neighbor_h_cost,
+                    f_cost: neighbor_f_cost,
+                    direction,
+                };
+                open_set.push(neighbor_node);
             }
         }
     }
