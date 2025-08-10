@@ -295,6 +295,7 @@ impl GameManager {
         self.tick = self.tick.saturating_add(1);
         println!("---- Game Tick -----");
         self.print_game_state();
+        println!("Base Blue: {:?} | Base Red {:?}", self.blue_base, self.red_base);
 
         let mut updates = HashMap::new();
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();

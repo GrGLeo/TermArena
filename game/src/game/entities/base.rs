@@ -7,6 +7,7 @@ use crate::game::entities::{Fighter, Stats};
 use super::AttackAction;
 use super::projectile::GameplayEffect;
 
+#[derive(Debug)]
 pub struct Base {
     pub team: Team,
     pub stats: Stats,
