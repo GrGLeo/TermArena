@@ -76,14 +76,16 @@ impl GameManager {
         // Tower placement
         {
             let placement = vec![
-                (196, 150),
-                (39, 7),
-                (115, 82),
-                (191, 79),
-                (120, 8),
-                (148, 67),
+                (147, 32),
+                (120, 30),
+                (117, 2),
+                (144, 74),
+                (113, 41),
+                (90, 6),
+                (148, 120),
+                (89, 57),
+                (27, 3),
             ];
-            // Bottom t1
             placement.into_iter().for_each(|place| {
                 let id = generate_tower_id().unwrap();
                 let tower_blue = Tower::new(id, Team::Blue, place.0, place.1, config.tower.clone());
@@ -96,20 +98,20 @@ impl GameManager {
             });
         }
 
-        let red_base = Base::new(Team::Red, (190, 10), config.base.clone());
-        let blue_base = Base::new(Team::Blue, (10, 190), config.base.clone());
+        let blue_base = Base::new(Team::Blue, (145, 4), config.base.clone());
+        let red_base = Base::new(Team::Red, (4, 143), config.base.clone());
 
         for i in 0..3 {
             for j in 0..3 {
                 board.place_cell(
                     CellContent::Base(Team::Blue),
-                    (red_base.position.0 + i) as usize,
-                    (red_base.position.1 + j) as usize,
+                    (blue_base.position.0 + i) as usize,
+                    (blue_base.position.1 + j) as usize,
                 );
                 board.place_cell(
                     CellContent::Base(Team::Red),
-                    (blue_base.position.0 + i) as usize,
-                    (blue_base.position.1 + j) as usize,
+                    (red_base.position.0 + i) as usize,
+                    (red_base.position.1 + j) as usize,
                 );
             }
         }
@@ -180,9 +182,9 @@ impl GameManager {
             let team_id = if player_id % 2 != 0 { Team::Blue } else { Team::Red };
 
             let (row, col) = if team_id == Team::Blue {
-                (199, (player_id - 1) as u16 / 2)
+                (149, (player_id - 1) as u16 / 2)
             } else {
-                (0, 199 - (player_id - 1) as u16 / 2)
+                (0, 149 - (player_id - 1) as u16 / 2)
             };
 
             // Assign Champion to player, and place it on the board
@@ -426,7 +428,6 @@ impl GameManager {
                                     }
                                 }
                             }
-                            _ => break,
                         }
                     }
                     None => break,

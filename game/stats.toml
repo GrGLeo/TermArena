@@ -35,8 +35,8 @@ attack_range_col = 9
 
 [[neutral_monsters]]
 id = "wolf_blue"
-spawn_row = 126
-spawn_col = 49
+spawn_row = 91
+spawn_col = 30
 attack_damage = 8
 attack_speed_ms = 2000
 health = 40
@@ -52,8 +52,8 @@ respawn_timer_secs = 90
 
 [[neutral_monsters]]
 id = "wolf_red"
-spawn_row = 49
-spawn_col = 126
+spawn_row = 60
+spawn_col = 119
 attack_damage = 8
 attack_speed_ms = 2000
 health = 40
@@ -69,8 +69,8 @@ respawn_timer_secs = 90
 
 [[neutral_monsters]]
 id = "golem_blue"
-spawn_row = 173 
-spawn_col = 110
+spawn_row = 135 
+spawn_col = 95
 attack_damage = 15
 attack_speed_ms = 3500
 health = 40
@@ -86,8 +86,8 @@ respawn_timer_secs = 90
 
 [[neutral_monsters]]
 id = "golem_red"
-spawn_row = 110
-spawn_col = 173
+spawn_row = 16
+spawn_col = 154
 attack_damage = 15
 attack_speed_ms = 3500
 health = 40

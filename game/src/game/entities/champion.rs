@@ -83,7 +83,7 @@ impl Champion {
             champion_stats,
             spells,
             xp: 0,
-            gold: 0,
+            gold: 350,
             level: 1,
             death_counter: 0,
             death_timer: Instant::now(),
@@ -300,8 +300,16 @@ impl Champion {
     pub fn place_at_base(&mut self, board: &mut Board) {
         let old_row = self.row;
         let old_col = self.col;
-        self.row = 197;
-        self.col = 2;
+        match self.team_id {
+            Team::Blue => {
+                self.row = 149;
+                self.col = 0;
+            },
+            Team::Red => {
+                self.row = 0;
+                self.col = 149;
+            }
+        }
         board.move_cell(
             old_row as usize,
             old_col as usize,
