@@ -203,14 +203,16 @@ fn get_encoded_cell_value(cell: &Cell, minion_manager: &MinionManager) -> Encode
         match animation {
             CellAnimation::MeleeHit => EncodedCellValue::MeleeHitAnimation,
             CellAnimation::TowerHit => EncodedCellValue::TowerHitAnimation,
-            CellAnimation::Projectile => EncodedCellValue::ProjectileAnimation,
             CellAnimation::FreezeWall => EncodedCellValue::FreezeWallAnimation,
             CellAnimation::FireBall => EncodedCellValue::FireBallAnimation,
             CellAnimation::Heal => EncodedCellValue::HealAnimation,
         }
     } else if let Some(content) = &cell.content {
         match content {
-            CellContent::Champion(_, _) => EncodedCellValue::Champion,
+            CellContent::Champion(_, team) => match team {
+                Team::Blue => EncodedCellValue::ChampionBlue,
+                Team::Red => EncodedCellValue::ChampionRed,
+            }
             CellContent::Minion(minion_id, team) => {
                 if let Some(minion) = minion_manager.minions.get(minion_id) {
                     let health_percentage =
@@ -221,7 +223,6 @@ fn get_encoded_cell_value(cell: &Cell, minion_manager: &MinionManager) -> Encode
                     EncodedCellValue::MinionPlaceholder
                 }
             }
-            CellContent::Flag(_, _) => EncodedCellValue::Flag,
             CellContent::Tower(_, _) => EncodedCellValue::Tower,
             CellContent::Base(team) => match team {
                 Team::Blue => EncodedCellValue::BaseBlue,
@@ -532,7 +533,7 @@ mod tests {
 
         let encoded_bytes = rle.join("|").into_bytes();
 
-        let expected_rle = "0:1|2:1|1:3|4:1|1:2|3:1|1:2|9:1";
+        let expected_rle = "0:1|2:1|1:3|4:1|1:2|6:1|1:2|10:1";
 
         assert_eq!(
             String::from_utf8(encoded_bytes).expect("Valid UTF-8 string"),

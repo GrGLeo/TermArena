@@ -25,7 +25,6 @@ pub enum CellContent {
     Champion(PlayerId, Team),
     Minion(MinionId, Team),
     Monster(MonsterId),
-    Flag(FlagId, Team),
     Tower(TowerId, Team),
     Base(Team),
 }
@@ -36,7 +35,6 @@ pub enum CellAnimation {
     TowerHit,
     FreezeWall,
     FireBall,
-    Projectile,
     Heal,
 }
 
@@ -74,19 +72,18 @@ pub enum EncodedCellValue {
     Wall = 0,
     Floor = 1,
     Bush = 2,
-    TowerDestroyed = 3,
-    Champion = 4,
-    Flag = 7,
-    Tower = 8,
-    MeleeHitAnimation = 9,
-    TowerHitAnimation = 10,
-    BaseBlue = 11,
-    BaseRed = 12,
-    ProjectileAnimation = 13,
-    FreezeWallAnimation = 14,
-    FireBallAnimation = 15,
-    Monster = 16,
-    HealAnimation = 17,
+    ChampionBlue = 3,
+    ChampionRed = 4,
+    Tower = 5,
+    TowerDestroyed = 6,
+    BaseBlue = 7,
+    BaseRed = 8,
+    Monster = 9,
+    MeleeHitAnimation = 10,
+    TowerHitAnimation = 11,
+    FreezeWallAnimation = 12,
+    FireBallAnimation = 13,
+    HealAnimation = 14,
     // Minion health values (100-115)
     MinionBlueHealth1 = 100,
     MinionBlueHealth2 = 101,
@@ -142,17 +139,18 @@ impl From<&Cell> for EncodedCellValue {
             match animation {
                 CellAnimation::MeleeHit => EncodedCellValue::MeleeHitAnimation,
                 CellAnimation::TowerHit => EncodedCellValue::TowerHitAnimation,
-                CellAnimation::Projectile => EncodedCellValue::ProjectileAnimation,
                 CellAnimation::FreezeWall => EncodedCellValue::FreezeWallAnimation,
                 CellAnimation::FireBall => EncodedCellValue::FireBallAnimation,
                 CellAnimation::Heal => EncodedCellValue::HealAnimation,
             }
         } else if let Some(content) = &cell.content {
             match content {
-                CellContent::Champion(_, _) => EncodedCellValue::Champion,
+                CellContent::Champion(_, team) => match team {
+                    Team::Blue => EncodedCellValue::ChampionBlue,
+                    Team::Red => EncodedCellValue::ChampionRed,
+                }
                 CellContent::Minion(_, _) => EncodedCellValue::MinionPlaceholder, // Placeholder for now
                 CellContent::Monster(_) => EncodedCellValue::Monster,
-                CellContent::Flag(_, _) => EncodedCellValue::Flag,
                 CellContent::Tower(_, _) => EncodedCellValue::Tower,
                 CellContent::Base(team) => match team {
                     Team::Blue => EncodedCellValue::BaseBlue,
@@ -291,7 +289,7 @@ mod tests {
         };
         assert_eq!(
             EncodedCellValue::from(&champion_cell),
-            EncodedCellValue::Champion
+            EncodedCellValue::ChampionRed
         );
 
         let minion_cell = Cell {
@@ -305,13 +303,6 @@ mod tests {
             EncodedCellValue::MinionPlaceholder
         );
 
-        let flag_cell = Cell {
-            position: dummy_position, // Added position
-            base: BaseTerrain::Bush,  // Base shouldn't matter when content is present
-            content: Some(CellContent::Flag(1, Team::Red)),
-            animation: None,
-        };
-        assert_eq!(EncodedCellValue::from(&flag_cell), EncodedCellValue::Flag);
 
         let tower_cell = Cell {
             position: dummy_position,          // Added position
