@@ -9,8 +9,8 @@ pub mod monster_manager;
 pub mod projectile_manager;
 pub mod spell;
 
-use crate::config::GameConfig;
 use crate::packet::board_packet::BoardPacket;
+use crate::{config::GameConfig, packet::end_game_packet::EndGamePacket};
 use animation::{AnimationCommand, AnimationTrait};
 pub use board::Board;
 use buffs::Buff;
@@ -295,7 +295,10 @@ impl GameManager {
         self.tick = self.tick.saturating_add(1);
         println!("---- Game Tick -----");
         self.print_game_state();
-        println!("Base Blue: {:?} | Base Red {:?}", self.blue_base, self.red_base);
+        println!(
+            "Base Blue: {:?} | Base Red {:?}",
+            self.blue_base, self.red_base
+        );
 
         let mut updates = HashMap::new();
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
@@ -633,19 +636,40 @@ impl GameManager {
         // Check for win condition
         if self.red_base.stats.health <= 0 {
             println!("Sending EndGamePacket: Red base destroyed, Blue team wins!");
-            let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Red);
-            println!("EndGamePacket: {:?}", packet);
-            let serialized_packet = packet.serialize();
             for (player_id, _) in &self.client_channel {
+                let packet: EndGamePacket;
+                if let Some(champion) = self.get_champion(player_id) {
+                    if champion.team_id == Team::Red {
+                        packet = EndGamePacket::new(false);
+                    } else {
+                        packet = EndGamePacket::new(true);
+                    }
+                } else {
+                    // If champion is not found fot the player, we continue and send to the next
+                    // player
+                    continue;
+                }
+                println!("EndGamePacket: {:?}", packet);
+                let serialized_packet = packet.serialize();
                 self.send_to_player(*player_id, BytesMut::from(&serialized_packet[..]));
             }
             std::process::exit(0);
         } else if self.blue_base.stats.health <= 0 {
-            println!("Sending EndGamePacket: Blue base destroyed, Red team wins!");
-            let packet = crate::packet::end_game_packet::EndGamePacket::new(Team::Blue);
-            println!("EndGamePacket: {:?}", packet);
-            let serialized_packet = packet.serialize();
             for (player_id, _) in &self.client_channel {
+                let packet: EndGamePacket;
+                if let Some(champion) = self.get_champion(player_id) {
+                    if champion.team_id == Team::Red {
+                        packet = EndGamePacket::new(true);
+                    } else {
+                        packet = EndGamePacket::new(false);
+                    }
+                } else {
+                    // If champion is not found fot the player, we continue and send to the next
+                    // player
+                    continue;
+                }
+                println!("EndGamePacket: {:?}", packet);
+                let serialized_packet = packet.serialize();
                 self.send_to_player(*player_id, BytesMut::from(&serialized_packet[..]));
             }
             std::process::exit(0);
