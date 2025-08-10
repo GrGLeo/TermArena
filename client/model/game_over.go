@@ -38,9 +38,9 @@ func (m GameOverModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m GameOverModel) View() string {
 	var s string
 	if m.win == 0 {
-		s = "You Win!"
-	} else {
 		s = "You Lose!"
+	} else {
+		s = "You Win!"
 	}
 
 	return lipgloss.Place(

@@ -139,6 +139,7 @@ func (m GameModel) View() string {
 	log.Printf("Player Health: %d | %d\n", m.health[0], m.health[1])
 	// Define styles
 	bgStyle := lipgloss.NewStyle().Background(lipgloss.Color("0"))
+	fogStyle := lipgloss.NewStyle().Background(lipgloss.Color("235"))
   blueTeamStyle := lipgloss.NewStyle().Background(lipgloss.Color("4"))
   redTeamStyle := lipgloss.NewStyle().Background(lipgloss.Color("1"))
   baseBlueStyle := lipgloss.NewStyle().Background(lipgloss.Color("21"))
@@ -193,30 +194,32 @@ func (m GameModel) View() string {
 			case 1:
 				builder.WriteString(bgStyle.Render(" ")) // Render empty space
 			case 2:
+				builder.WriteString(fogStyle.Render(" ")) // Render empty space
+			case 3:
 				builder.WriteString(bushStyle.Render(" ")) // Render green for bush
-      case 3:
+      case 4:
         builder.WriteString(blueTeamStyle.Render(" ")) // Render blue for team blue
-			case 4:
+			case 5:
 				builder.WriteString(redTeamStyle.Render(" ")) // Render red for team red
-      case 5:
+      case 6:
         builder.WriteString(bgStyle.Render("⍓")) // Render for tower
-			case 6:
-				builder.WriteString(towerDest.Render(" ")) // Render purple for tower destroyed
 			case 7:
-				builder.WriteString(baseBlueStyle.Render(" ")) // Render for BaseBlue
+				builder.WriteString(towerDest.Render(" ")) // Render purple for tower destroyed
 			case 8:
-				builder.WriteString(baseRedStyle.Render(" ")) // Render for BaseRed
+				builder.WriteString(baseBlueStyle.Render(" ")) // Render for BaseBlue
 			case 9:
-				builder.WriteString(monsterStyle.Render(" ")) // Render for monster 
+				builder.WriteString(baseRedStyle.Render(" ")) // Render for BaseRed
 			case 10:
-				builder.WriteString(bgStyle.Render("x")) // Render for melee animation
+				builder.WriteString(monsterStyle.Render(" ")) // Render for monster 
 			case 11:
-				builder.WriteString(bgStyle.Render("𐙢")) // Render for tower animation
+				builder.WriteString(bgStyle.Render("x")) // Render for melee animation
 			case 12:
-				builder.WriteString(freezeStyle.Render("𐙂")) // Render for freeze spell
+				builder.WriteString(bgStyle.Render("𐙢")) // Render for tower animation
 			case 13:
-				builder.WriteString(bgStyle.Render("𐁙")) // Render for fireball
+				builder.WriteString(freezeStyle.Render("𐙂")) // Render for freeze spell
 			case 14:
+				builder.WriteString(bgStyle.Render("𐁙")) // Render for fireball
+			case 15:
 				builder.WriteString(healStyle.Render("𐫱")) // Render for heal spell
 			case 100, 101, 102, 103, 104, 105, 106, 107: // Friendly minion health (1/8 to 8/8)
 				healthIndex := cell - 100

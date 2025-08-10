@@ -7,14 +7,15 @@ use crate::game::entities::{Fighter, Stats};
 use super::AttackAction;
 use super::projectile::GameplayEffect;
 
+#[derive(Debug)]
 pub struct Base {
     pub team: Team,
     pub stats: Stats,
-    pub position: (i32, i32),
+    pub position: (u16, u16),
 }
 
 impl Base {
-    pub fn new(team: Team, position: (i32, i32), base_stats: BaseStats) -> Self {
+    pub fn new(team: Team, position: (u16, u16), base_stats: BaseStats) -> Self {
         let stats = Stats {
             attack_damage: 0,
             attack_speed: std::time::Duration::from_secs(999),

@@ -1,12 +1,10 @@
-use crate::game::cell::Team;
-
 #[derive(Debug)]
 pub struct EndGamePacket {
-    pub winner: Team,
+    pub winner: bool,
 }
 
 impl EndGamePacket {
-    pub fn new(winner: Team) -> Self {
+    pub fn new(winner: bool) -> Self {
         EndGamePacket { winner }
     }
 
@@ -14,10 +12,7 @@ impl EndGamePacket {
         let mut bytes = Vec::new();
         bytes.push(1);
         bytes.push(12);
-        bytes.push(match self.winner {
-            Team::Red => 0,
-            Team::Blue => 1,
-        });
+        bytes.push(self.winner as u8);
         bytes
     }
 }
