@@ -132,16 +132,15 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LobbyModel = newmodel.(model.LobbyModel)
 		switch msg := msg.(type) {
 		case communication.LookRoomMsg:
-			for {
-				conn, err := communication.MakeConnection(msg.RoomIP)
-				if err == nil {
-					m.GameConnection = conn
-					// Send spell selection after successful game connection
-					communication.SendSpellSelectionPacket(m.GameConnection, m.LobbyModel.SelectedSpells[0], m.LobbyModel.SelectedSpells[1])
-					break
-				}
-			}
+			return m, communication.AttemptGameConnection(msg.RoomIP)
+		case communication.GameConnectionMsg:
+			m.GameConnection = msg.Conn
+			communication.SendSpellSelectionPacket(m.GameConnection, m.LobbyModel.SelectedSpells[0], m.LobbyModel.SelectedSpells[1])
 			go communication.ListenForPackets(m.GameConnection, m.msgs)
+			return m, nil
+		case communication.GameConnectionFailedMsg:
+			log.Println("Failed to connect to game server after multiple attempts.")
+			return m, nil
 		case communication.GameStartMsg:
 			m.state = Game
 			m.GameModel = model.NewGameModel(m.GameConnection)
@@ -158,15 +157,15 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case communication.GoToShopMsg:
 			m.state = Shop
 			m.ShopModel = model.NewShopModel(
-        model.DefaultStyles(),
-        msg.Health,
-        msg.Mana,
-        msg.Attack_damage,
-        msg.Armor,
-        msg.Gold,
-        msg.Inventory,
-        m.GameConnection,
-      )
+				model.DefaultStyles(),
+				msg.Health,
+				msg.Mana,
+				msg.Attack_damage,
+				msg.Armor,
+				msg.Gold,
+				msg.Inventory,
+				m.GameConnection,
+			)
 			m.ShopModel.SetDimension(m.height, m.width)
 			return m, m.ShopModel.Init()
 		case communication.GameCloseMsg:
@@ -194,17 +193,23 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.GameConnection.Close()
 				m.GameConnection = nil
 			}
+
+			// Attempt to reconnect to the lobby server silently
 			conn, err := communication.MakeConnection("8082")
 			if err != nil {
-				log.Println("Failed to make connection after game over: ", err.Error())
-				// TODO: add a retry mechanism as when we start the client
-				return m, tea.Quit
+				// If reconnect fails, fall back to the Disconnect screen for robust retries
+				log.Println("Failed to reconnect to lobby server, falling back to disconnect screen:", err)
+				m.state = Disconnect
+				return m, m.Init()
 			}
+
+			// If successful, set the new connection and start a new packet listener
 			m.Connection = conn
+			go communication.ListenForPackets(m.Connection, m.msgs)
+
 			m.state = Lobby
 			m.LobbyModel = model.NewLobbyModel(m.Connection)
 			m.LobbyModel.SetDimension(m.height, m.width)
-			go communication.ListenForPackets(m.Connection, m.msgs)
 			return m, m.LobbyModel.Init()
 		default:
 			newmodel, cmd = m.GameOverModel.Update(msg)

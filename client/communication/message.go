@@ -96,6 +96,14 @@ type ConnectionMsg struct {
 	Conn *net.TCPConn
 }
 
+// GameConnectionMsg is used to pass the game connection to meta model
+type GameConnectionMsg struct {
+	Conn *net.TCPConn
+}
+
+// GameConnectionFailedMsg is used to signal that the game connection failed
+type GameConnectionFailedMsg struct{}
+
 // GamePacketMsg is a default message send, but isn't handle yet
 type GamePacketMsg struct {
 	Packet []byte

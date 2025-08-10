@@ -5,10 +5,26 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"github.com/GrGLeo/ctf/shared"
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+
+func AttemptGameConnection(roomIP string) tea.Cmd {
+	return func() tea.Msg {
+		for i := range 5 { // Retry 5 times
+			conn, err := MakeConnection(roomIP)
+			if err == nil {
+				return GameConnectionMsg{Conn: conn}
+			}
+			log.Printf("Failed to connect to game server at %s (attempt %d/5): %s", roomIP, i+1, err)
+			time.Sleep(1 * time.Second)
+		}
+		return GameConnectionFailedMsg{}
+	}
+}
 
 func MakeConnection(port string) (*net.TCPConn, error) {
 	serverIP := os.Getenv("SERVER_IP")
