@@ -165,10 +165,13 @@ impl Champion {
 
     pub fn recalculate_stats(&mut self) {
         let old_max_health = self.stats.max_health;
+        let old_max_mana = self.stats.max_mana;
 
         // Reset to base stats for current level
         let mut max_health = self.champion_stats.health;
+        let mut max_mana = self.champion_stats.mana;
         let mut attack_damage = self.champion_stats.attack_damage;
+        let mut attack_speed_ms = self.champion_stats.attack_speed_ms;
         let mut armor = self.champion_stats.armor;
 
         if self.level > 1 {
@@ -186,20 +189,34 @@ impl Champion {
             if let Some(h) = item.stats.health {
                 max_health += h as u16;
             }
+            if let Some(m) = item.stats.mana {
+                max_mana += m as u16;
+            }
             if let Some(a) = item.stats.armor {
                 armor += a as u16;
+            }
+            if let Some(as_) = item.stats.attack_speed {
+                attack_speed_ms -= as_;
             }
         }
 
         self.stats.attack_damage = attack_damage;
+        self.stats.attack_speed = Duration::from_millis(attack_speed_ms);
         self.stats.armor = armor;
         self.stats.max_health = max_health;
+        self.stats.max_mana = max_mana;
 
         let max_health_diff = self.stats.max_health as i32 - old_max_health as i32;
         if max_health_diff > 0 {
             self.stats.health = (self.stats.health as u32 + max_health_diff as u32) as u16;
         }
         self.stats.health = self.stats.health.min(self.stats.max_health);
+
+        let max_mana_diff = self.stats.max_mana as i32 - old_max_mana as i32;
+        if max_mana_diff > 0 {
+            self.stats.mana = (self.stats.mana as u32 + max_mana_diff as u32) as u16;
+        }
+        self.stats.mana = self.stats.mana.min(self.stats.max_mana);
     }
 
     pub fn take_action(
@@ -330,8 +347,9 @@ impl Champion {
         (self.stats.health, self.stats.max_health)
     }
 
-    pub fn put_at_max_health(&mut self) {
+    pub fn restore_max_health_mana(&mut self) {
         self.stats.health = self.stats.max_health;
+        self.stats.mana = self.stats.max_mana;
     }
 }
 

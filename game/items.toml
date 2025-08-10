@@ -14,6 +14,24 @@ stats.armor = 10
 
 [[items]]
 id = 3
+name = "Health Stone"
+cost = 400
+stats.health = 50
+
+[[items]]
+id = 4
+name = "Mana Pendant"
+cost = 400
+stats.mana = 25
+
+[[items]]
+id = 5
+name = "Dagger"
+cost = 200
+stats.attack_speed = 200
+
+[[items]]
+id = 6
 name = "Shield of Valor"
 cost = 200
 stats.armor = 5

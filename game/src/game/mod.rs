@@ -342,7 +342,7 @@ impl GameManager {
             // 0. Check death and replace
             // BUG: Champ dead can still move but is replace each tick
             if champ.is_dead() {
-                champ.put_at_max_health();
+                champ.restore_max_health_mana();
                 champ.place_at_base(&mut self.board);
                 continue;
             }
