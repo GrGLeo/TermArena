@@ -60,8 +60,10 @@ impl Minion {
             attack_speed: Duration::from_millis(minion_stats.attack_speed_ms),
             health: minion_stats.health,
             max_health: minion_stats.health,
+            hp_per_sec: 0.0,
             mana: 0,
             max_mana: 0,
+            mp_per_sec: 0.0,
             armor: minion_stats.armor,
         };
 
@@ -759,7 +761,7 @@ mod tests {
         minion.row = initial_row;
         minion.col = initial_col;
         minion.change_goal();
-        let expected_minion_path = (196, 150);
+        let expected_minion_path = (145, 78);
         assert_eq!(
             minion.current_path, expected_minion_path,
             "Incorrect goal was set"
@@ -779,7 +781,7 @@ mod tests {
         minion.row = initial_row;
         minion.col = initial_col;
         minion.change_goal();
-        let expected_minion_path = (120, 8);
+        let expected_minion_path = (9, 4);
         assert_eq!(
             minion.current_path, expected_minion_path,
             "Incorrect goal was set"

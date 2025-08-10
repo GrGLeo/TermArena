@@ -27,6 +27,8 @@ pub struct ChampionStats {
     pub level_up_health_increase: u16,
     pub level_up_attack_damage_increase: u16,
     pub level_up_armor_increase: u16,
+    pub health_per_sec: f32,
+    pub mana_per_sec: f32,
     pub attack_range_row: u16,
     pub attack_range_col: u16,
 }

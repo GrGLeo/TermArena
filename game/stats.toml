@@ -12,6 +12,8 @@ xp_per_level = [35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 11
 level_up_health_increase = 20
 level_up_attack_damage_increase = 5
 level_up_armor_increase = 2
+health_per_sec = 0.0025
+mana_per_sec = 0.0025
 attack_range_row = 3
 attack_range_col = 3
 

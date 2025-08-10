@@ -342,11 +342,14 @@ impl GameManager {
             // 0. Check death and replace
             // BUG: Champ dead can still move but is replace each tick
             if champ.is_dead() {
-                champ.put_at_max_health();
+                champ.restore_max_health_mana();
                 champ.place_at_base(&mut self.board);
                 continue;
             }
-            // 1. Iterate through player action
+            // 1. Apply regeneration
+            champ.regen_health_mana();
+
+            // 2. Iterate through player action
             if let Some(action) = self.player_action.get(&player_id) {
                 if let Err(e) =
                     champ.take_action(action, &mut self.board, &mut self.projectile_manager)
@@ -355,7 +358,7 @@ impl GameManager {
                 }
             }
 
-            // 2. auto_attack
+            // 3. auto_attack
             if let Some(enemy) = champ.get_potential_target(&self.board) {
                 match &enemy.content {
                     Some(content) => {

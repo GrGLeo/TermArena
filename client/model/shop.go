@@ -81,7 +81,7 @@ func (m ShopModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, shopEnterKey):
 				if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Items) {
 					selectedItem := m.Items[m.FocusedIndex]
-					fmt.Printf("Attempting to purchase: %s for %d gold ", selectedItem.Name, selectedItem.Cost)
+					fmt.Printf("Attempting to purchase: %s", selectedItem.Name)
 					communication.SendPurchaseItemPacket(m.conn, selectedItem.ID)
 				}
 		case key.Matches(msg, shopBackKey):
