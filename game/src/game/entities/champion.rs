@@ -78,7 +78,7 @@ pub enum Action {
 pub struct Champion {
     pub player_id: PlayerId,
     pub team_id: Team,
-    pub xp: u32,
+    pub xp: u16,
     pub gold: u16,
     pub level: u8,
     pub stats: Stats,
@@ -165,7 +165,7 @@ impl Champion {
         self.gold += gold
     }
 
-    pub fn add_xp(&mut self, xp: u32) {
+    pub fn add_xp(&mut self, xp: u16) {
         self.xp += xp;
         while let Some(xp_needed) = self.xp_for_next_level() {
             if self.xp >= xp_needed {
@@ -177,7 +177,7 @@ impl Champion {
         }
     }
 
-    pub fn xp_for_next_level(&self) -> Option<u32> {
+    pub fn xp_for_next_level(&self) -> Option<u16> {
         if (self.level as usize - 1) < self.champion_stats.xp_per_level.len() {
             Some(self.champion_stats.xp_per_level[self.level as usize - 1])
         } else {
@@ -425,6 +425,16 @@ impl Champion {
 
     pub fn get_health(&self) -> (u16, u16) {
         (self.stats.health, self.stats.max_health)
+    }
+
+    pub fn get_cast_info(&self) -> (u16, u16) {
+        if let Some(cast) = &self.current_cast {
+            let elapsed = cast.start_time.elapsed().as_millis() as u16;
+            let duration = cast.cast_time.as_millis() as u16;
+            return (elapsed, duration);
+        } else {
+            return (0, 0);
+        }
     }
 
     pub fn restore_max_health_mana(&mut self) {

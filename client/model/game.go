@@ -1,6 +1,5 @@
 package model
 
-
 import (
 	"fmt"
 	"log"
@@ -28,11 +27,11 @@ type GameModel struct {
 	mana           [2]int
 	level          int
 	xp             [2]int
-	points         [2]int
+	casting        [2]int
 	attackMode     bool
-	dashed         bool
-	dashcooldown   time.Duration
-	dashStart      time.Time
+	recall         bool
+	recallDuration time.Duration
+	recallStart    time.Time
 	percent        float64
 }
 
@@ -50,7 +49,7 @@ func NewGameModel(conn *net.TCPConn) GameModel {
 		manaProgress:   progress.New(blueSolid),
 		xpProgress:     progress.New(purpleSolid),
 		progress:       progress.New(yellowGradient),
-		dashcooldown:   5 * time.Second,
+		recallDuration: 6 * time.Second,
 	}
 }
 
@@ -71,8 +70,7 @@ func (m *GameModel) SetConnection(conn *net.TCPConn) {
 func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case communication.BoardMsg:
-		points := msg.Points
-		m.points = points
+		m.casting = msg.Casting
 		m.health = msg.Health
 		m.mana = msg.Mana
 		m.level = msg.Level
@@ -81,7 +79,7 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case communication.DeltaMsg:
 		m.gameClock = time.Duration(50*int(msg.TickID)) * time.Millisecond
 		points := msg.Points
-		m.points = points
+		m.casting = points
 		ApplyDeltas(msg.Deltas, &m.currentBoard)
 		return m, nil
 	case tea.KeyMsg:
@@ -112,22 +110,24 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			communication.SendAction(m.conn, 7)
 			return m, nil
-    case "b":
-      communication.SendAction(m.conn, 8)
+		case "b":
+			m.recall = true
+			m.recallStart = time.Now()
+			communication.SendAction(m.conn, 8)
 		case "p":
-      communication.SendShopRequest(m.conn)
-      return m, nil
+			communication.SendShopRequest(m.conn)
+			return m, nil
 		case "ctrl+c":
 			return m, tea.Quit
 		}
 	case communication.CooldownTickMsg:
 		var percent float64
-		if m.dashed {
-			elapsed := time.Since(m.dashStart)
-			percent = float64(elapsed) / float64(m.dashcooldown)
+		if m.recall {
+			elapsed := time.Since(m.recallStart)
+			percent = float64(elapsed) / float64(m.recallDuration)
 			if percent >= 1.0 {
 				percent = 0
-				m.dashed = false
+				m.recall = false
 			}
 		}
 		m.percent = percent
@@ -137,22 +137,21 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m GameModel) View() string {
-	log.Println(m.points)
 	log.Printf("Player Health: %d | %d\n", m.health[0], m.health[1])
 	// Define styles
 	bgStyle := lipgloss.NewStyle().Background(lipgloss.Color("0"))
 	fgStyle := lipgloss.NewStyle().Background(lipgloss.Color("0")).Foreground(lipgloss.Color("#5665B8"))
 	fogStyle := lipgloss.NewStyle().Background(lipgloss.Color("235"))
-  blueTeamStyle := lipgloss.NewStyle().Background(lipgloss.Color("4"))
-  redTeamStyle := lipgloss.NewStyle().Background(lipgloss.Color("1"))
-  baseBlueStyle := lipgloss.NewStyle().Background(lipgloss.Color("21"))
-  baseRedStyle := lipgloss.NewStyle().Background(lipgloss.Color("196"))
-  monsterStyle := lipgloss.NewStyle().Background(lipgloss.Color("208"))
+	blueTeamStyle := lipgloss.NewStyle().Background(lipgloss.Color("4"))
+	redTeamStyle := lipgloss.NewStyle().Background(lipgloss.Color("1"))
+	baseBlueStyle := lipgloss.NewStyle().Background(lipgloss.Color("21"))
+	baseRedStyle := lipgloss.NewStyle().Background(lipgloss.Color("196"))
+	monsterStyle := lipgloss.NewStyle().Background(lipgloss.Color("208"))
 	towerDest := lipgloss.NewStyle().Background(lipgloss.Color("91"))
 	bushStyle := lipgloss.NewStyle().Background(lipgloss.Color("34"))
 	grayStyle := lipgloss.NewStyle().Background(lipgloss.Color("240"))
 	freezeStyle := lipgloss.NewStyle().Background(lipgloss.Color("39"))
-  healStyle := lipgloss.NewStyle().Background(lipgloss.Color("30"))
+	healStyle := lipgloss.NewStyle().Background(lipgloss.Color("30"))
 
 	BluePointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("21"))
 	RedPointStyle := lipgloss.NewStyle().Background(lipgloss.Color("255")).Foreground(lipgloss.Color("34"))
@@ -163,8 +162,8 @@ func (m GameModel) View() string {
 	var builder strings.Builder
 
 	// Construct score board
-	bluePoints := strconv.Itoa(m.points[0])
-	redPoints := strconv.Itoa(m.points[1])
+	bluePoints := strconv.Itoa(m.casting[0])
+	redPoints := strconv.Itoa(m.casting[1])
 	blueStr := BluePointStyle.Render(bluePoints)
 	redStr := RedPointStyle.Render(redPoints)
 	splitStr := HudStyle.Render(" | ")
@@ -200,12 +199,12 @@ func (m GameModel) View() string {
 				builder.WriteString(fogStyle.Render(" ")) // Render empty space
 			case 3:
 				builder.WriteString(bushStyle.Render(" ")) // Render green for bush
-      case 4:
-        builder.WriteString(blueTeamStyle.Render(" ")) // Render blue for team blue
+			case 4:
+				builder.WriteString(blueTeamStyle.Render(" ")) // Render blue for team blue
 			case 5:
 				builder.WriteString(redTeamStyle.Render(" ")) // Render red for team red
-      case 6:
-        builder.WriteString(bgStyle.Render("⍓")) // Render for tower
+			case 6:
+				builder.WriteString(bgStyle.Render("⍓")) // Render for tower
 			case 7:
 				builder.WriteString(towerDest.Render(" ")) // Render purple for tower destroyed
 			case 8:
@@ -213,7 +212,7 @@ func (m GameModel) View() string {
 			case 9:
 				builder.WriteString(baseRedStyle.Render(" ")) // Render for BaseRed
 			case 10:
-				builder.WriteString(monsterStyle.Render(" ")) // Render for monster 
+				builder.WriteString(monsterStyle.Render(" ")) // Render for monster
 			case 11:
 				builder.WriteString(fgStyle.Render("x")) // Render for melee animation one
 			case 12:
