@@ -112,6 +112,8 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			communication.SendAction(m.conn, 7)
 			return m, nil
+    case "b":
+      communication.SendAction(m.conn, 8)
 		case "p":
       communication.SendShopRequest(m.conn)
       return m, nil
@@ -139,6 +141,7 @@ func (m GameModel) View() string {
 	log.Printf("Player Health: %d | %d\n", m.health[0], m.health[1])
 	// Define styles
 	bgStyle := lipgloss.NewStyle().Background(lipgloss.Color("0"))
+	fgStyle := lipgloss.NewStyle().Background(lipgloss.Color("0")).Foreground(lipgloss.Color("#5665B8"))
 	fogStyle := lipgloss.NewStyle().Background(lipgloss.Color("235"))
   blueTeamStyle := lipgloss.NewStyle().Background(lipgloss.Color("4"))
   redTeamStyle := lipgloss.NewStyle().Background(lipgloss.Color("1"))
@@ -212,14 +215,16 @@ func (m GameModel) View() string {
 			case 10:
 				builder.WriteString(monsterStyle.Render(" ")) // Render for monster 
 			case 11:
-				builder.WriteString(bgStyle.Render("x")) // Render for melee animation
+				builder.WriteString(fgStyle.Render("x")) // Render for melee animation one
 			case 12:
-				builder.WriteString(bgStyle.Render("𐙢")) // Render for tower animation
+				builder.WriteString(fgStyle.Render("+")) // Render for melee animation two
 			case 13:
-				builder.WriteString(freezeStyle.Render("𐙂")) // Render for freeze spell
+				builder.WriteString(bgStyle.Render("𐙢")) // Render for tower animation
 			case 14:
-				builder.WriteString(bgStyle.Render("𐁙")) // Render for fireball
+				builder.WriteString(freezeStyle.Render("𐙂")) // Render for freeze spell
 			case 15:
+				builder.WriteString(bgStyle.Render("𐁙")) // Render for fireball
+			case 16:
 				builder.WriteString(healStyle.Render("𐫱")) // Render for heal spell
 			case 100, 101, 102, 103, 104, 105, 106, 107: // Friendly minion health (1/8 to 8/8)
 				healthIndex := cell - 100

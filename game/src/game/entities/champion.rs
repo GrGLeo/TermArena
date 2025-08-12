@@ -33,8 +33,10 @@ pub enum Action {
     Action1,
     Action2,
     AttackMode,
+    Recall,
     InvalidAction,
 }
+
 
 #[derive(Debug)]
 pub struct Champion {
@@ -283,6 +285,10 @@ impl Champion {
             }
             Action::AttackMode => {
                 self.attack_mode = !self.attack_mode;
+                return Ok(());
+            }
+            Action::Recall => {
+                self.place_at_base(board);
                 return Ok(());
             }
             Action::InvalidAction => {

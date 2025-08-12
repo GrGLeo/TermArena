@@ -261,6 +261,7 @@ impl GameManager {
             5 => Action::Action1,
             6 => Action::Action2,
             7 => Action::AttackMode,
+            8 => Action::Recall,
             _other => Action::InvalidAction,
         };
         self.player_action.insert(player_id, action);
@@ -367,7 +368,11 @@ impl GameManager {
                             CellContent::Tower(id, _) => {
                                 if let Some(attack) = champ.can_attack() {
                                     match attack {
-                                        AttackAction::Melee { damage, animation } => {
+                                        AttackAction::Melee {
+                                            damage,
+                                            mut animation,
+                                        } => {
+                                            animation.attach_target(*id);
                                             new_animations.push(animation);
                                             pending_effects.push((
                                                 Some(*player_id),
@@ -382,7 +387,11 @@ impl GameManager {
                             CellContent::Monster(id) => {
                                 if let Some(attack) = champ.can_attack() {
                                     match attack {
-                                        AttackAction::Melee { damage, animation } => {
+                                        AttackAction::Melee {
+                                            damage,
+                                            mut animation,
+                                        } => {
+                                            animation.attach_target(*id);
                                             new_animations.push(animation);
                                             pending_effects.push((
                                                 Some(*player_id),
@@ -397,7 +406,11 @@ impl GameManager {
                             CellContent::Minion(id, _) => {
                                 if let Some(attack) = champ.can_attack() {
                                     match attack {
-                                        AttackAction::Melee { damage, animation } => {
+                                        AttackAction::Melee {
+                                            damage,
+                                            mut animation,
+                                        } => {
+                                            animation.attach_target(*id);
                                             new_animations.push(animation);
                                             pending_effects.push((
                                                 Some(*player_id),
@@ -412,7 +425,11 @@ impl GameManager {
                             CellContent::Champion(id, _) => {
                                 if let Some(attack) = champ.can_attack() {
                                     match attack {
-                                        AttackAction::Melee { damage, animation } => {
+                                        AttackAction::Melee {
+                                            damage,
+                                            mut animation,
+                                        } => {
+                                            animation.attach_target(*id);
                                             new_animations.push(animation);
                                             pending_effects.push((
                                                 Some(*player_id),
@@ -601,7 +618,10 @@ impl GameManager {
                     }
                 }
             } else {
-                // Owner is gone, animation should finish and clear in its last frame
+                // As a last resort we clear the animation to avoid dangling animation
+                if let Some((row, col)) = anim.get_last_drawn_pos() {
+                    animation_commands_executable.push(AnimationCommand::Clear { row, col })
+                }
             }
         }
         kept_animations.extend(new_animations);

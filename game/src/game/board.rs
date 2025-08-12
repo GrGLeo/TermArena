@@ -298,7 +298,8 @@ fn get_encoded_cell_value(
     }
     if let Some(animation) = &cell.animation {
         match animation {
-            CellAnimation::MeleeHit => EncodedCellValue::MeleeHitAnimation,
+            CellAnimation::MeleeHitOne => EncodedCellValue::MeleeHitAnimationOne,
+            CellAnimation::MeleeHitTwo => EncodedCellValue::MeleeHitAnimationTwo,
             CellAnimation::TowerHit => EncodedCellValue::TowerHitAnimation,
             CellAnimation::FreezeWall => EncodedCellValue::FreezeWallAnimation,
             CellAnimation::FireBall => EncodedCellValue::FireBallAnimation,

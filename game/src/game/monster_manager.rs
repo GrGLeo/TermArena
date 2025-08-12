@@ -102,8 +102,9 @@ impl MonsterManager {
                                 (champion.row, champion.col),
                             ) {
                                 if let Some(attack_action) = monster.can_attack() {
-                                    if let AttackAction::Melee { damage, animation } = attack_action
+                                    if let AttackAction::Melee { damage, mut animation } = attack_action
                                     {
+                                        animation.attach_target(champion_id);
                                         new_animations.push(animation);
                                         pending_damages.push((
                                             Target::Champion(champion_id),

@@ -202,7 +202,8 @@ impl Minion {
                     CellContent::Tower(id, _) => {
                         if let Some(attack) = self.can_attack() {
                             match attack {
-                                AttackAction::Melee { damage, animation } => {
+                                AttackAction::Melee { damage, mut animation } => {
+                                    animation.attach_target(*id);
                                     new_animations.push(animation);
                                     pending_effects.push((
                                         None,
@@ -217,7 +218,8 @@ impl Minion {
                     CellContent::Minion(id, _) => {
                         if let Some(attack) = self.can_attack() {
                             match attack {
-                                AttackAction::Melee { damage, animation } => {
+                                AttackAction::Melee { damage, mut animation } => {
+                                    animation.attach_target(*id);
                                     new_animations.push(animation);
                                     pending_effects.push((
                                         None,
@@ -247,7 +249,8 @@ impl Minion {
                     CellContent::Champion(id, _) => {
                         if let Some(attack) = self.can_attack() {
                             match attack {
-                                AttackAction::Melee { damage, animation } => {
+                                AttackAction::Melee { damage, mut animation } => {
+                                    animation.attach_target(*id);
                                     new_animations.push(animation);
                                     pending_effects.push((
                                         None,

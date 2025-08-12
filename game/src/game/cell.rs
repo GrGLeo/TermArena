@@ -31,7 +31,8 @@ pub enum CellContent {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CellAnimation {
-    MeleeHit,
+    MeleeHitOne,
+    MeleeHitTwo,
     TowerHit,
     FreezeWall,
     FireBall,
@@ -80,11 +81,12 @@ pub enum EncodedCellValue {
     BaseBlue = 8,
     BaseRed = 9,
     Monster = 10,
-    MeleeHitAnimation = 11,
-    TowerHitAnimation = 12,
-    FreezeWallAnimation = 13,
-    FireBallAnimation = 14,
-    HealAnimation = 15,
+    MeleeHitAnimationOne = 11,
+    MeleeHitAnimationTwo = 12,
+    TowerHitAnimation = 13,
+    FreezeWallAnimation = 14,
+    FireBallAnimation = 15,
+    HealAnimation = 16,
     // Minion health values (100-115)
     MinionBlueHealth1 = 100,
     MinionBlueHealth2 = 101,
@@ -138,7 +140,8 @@ impl From<&Cell> for EncodedCellValue {
     fn from(cell: &Cell) -> Self {
         if let Some(animation) = &cell.animation {
             match animation {
-                CellAnimation::MeleeHit => EncodedCellValue::MeleeHitAnimation,
+                CellAnimation::MeleeHitOne => EncodedCellValue::MeleeHitAnimationOne,
+                CellAnimation::MeleeHitTwo => EncodedCellValue::MeleeHitAnimationTwo,
                 CellAnimation::TowerHit => EncodedCellValue::TowerHitAnimation,
                 CellAnimation::FreezeWall => EncodedCellValue::FreezeWallAnimation,
                 CellAnimation::FireBall => EncodedCellValue::FireBallAnimation,
