@@ -320,11 +320,11 @@ mod tests {
             position: dummy_position,                           // Added position
             base: BaseTerrain::Floor, // Base shouldn't matter when animation is present
             content: Some(CellContent::Champion(1, Team::Red)), // Content shouldn't matter when animation is present
-            animation: Some(CellAnimation::MeleeHit),
+            animation: Some(CellAnimation::MeleeHitOne),
         };
         assert_eq!(
             EncodedCellValue::from(&melee_animation_cell),
-            EncodedCellValue::MeleeHitAnimation
+            EncodedCellValue::MeleeHitAnimationOne
         );
 
         let tower_hit_animation_cell = Cell {

@@ -121,7 +121,7 @@ mod tests {
             } => {
                 assert_eq!(row, target_row);
                 assert_eq!(col, target_col);
-                assert_eq!(animation_type, CellAnimation::MeleeHit);
+                assert_eq!(animation_type, CellAnimation::MeleeHitOne);
                 assert_eq!(
                     animation.get_last_drawn_pos(),
                     Some((target_row, target_col))
@@ -140,7 +140,7 @@ mod tests {
             } => {
                 assert_eq!(row, target_row);
                 assert_eq!(col, target_col);
-                assert_eq!(animation_type, CellAnimation::TowerHit);
+                assert_eq!(animation_type, CellAnimation::MeleeHitTwo);
                 assert_eq!(
                     animation.get_last_drawn_pos(),
                     Some((target_row, target_col))

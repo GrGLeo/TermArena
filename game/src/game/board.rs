@@ -397,7 +397,7 @@ mod tests {
         let mut board = Board::new(5, 5);
         let row = 3;
         let col = 4;
-        let animation = CellAnimation::MeleeHit;
+        let animation = CellAnimation::MeleeHitOne;
 
         // Place animation
         board.place_animation(animation.clone(), row, col);
@@ -592,7 +592,7 @@ mod tests {
         board.change_base(BaseTerrain::Wall, 0, 0);
         board.change_base(BaseTerrain::Bush, 0, 1);
         board.place_cell(CellContent::Champion(1, Team::Red), 1, 1);
-        board.place_animation(CellAnimation::MeleeHit, 2, 3);
+        board.place_animation(CellAnimation::MeleeHitOne, 2, 3);
         board.change_base(BaseTerrain::TowerDestroyed, 2, 0);
 
         // Set player position and view dimensions to cover the entire small board
