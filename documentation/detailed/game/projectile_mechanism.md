@@ -56,3 +56,84 @@ The projectile mechanism is tightly integrated into the main game loop, managed 
     - The `animation_commands_executable` from the `ProjectileManager` are added to the overall list of animation commands. These commands are then processed to update the game board's visual state, ensuring that projectile movement is correctly rendered to the client. The `GameManager` also handles clearing the previous frame's animation for all active animations, including projectiles, before processing their next frame.
 
 This integration ensures that projectiles are dynamic, interactive elements within the game, allowing for a richer and more strategic gameplay experience.
+
+---
+
+## How to Implement a New Projectile Type
+
+To add a new type of projectile (e.g., a "Piercing Shot" that passes through minions but stops at champions), you would primarily modify the collision detection logic.
+
+1.  **Add a Projectile Type Enum**:
+    - It's good practice to create an enum to distinguish between different projectile behaviors. You could add this to `projectile.rs`.
+
+    ```rust
+    // in game/src/game/entities/projectile.rs
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub enum ProjectileType {
+        Standard,    // Stops on first hit
+        Piercing,    // Passes through minions, stops on champion
+    }
+    ```
+
+2.  **Add the Type to the `Projectile` Struct**:
+    - Add a field to the `Projectile` struct to hold its type.
+
+    ```rust
+    // in game/src/game/entities/projectile.rs
+    pub struct Projectile {
+        // ... existing fields
+        pub projectile_type: ProjectileType,
+    }
+    ```
+
+3.  **Update Projectile Creation**:
+    - In `ProjectileManager`, modify the creation functions (e.g., `create_skillshot_projectile`) to accept a `ProjectileType`.
+
+    ```rust
+    // in game/src/game/projectile_manager.rs
+    pub fn create_skillshot_projectile(
+        &mut self,
+        // ... other params
+        projectile_type: ProjectileType,
+    ) {
+        // ... create projectile and set its type
+    }
+    ```
+
+4.  **Modify Collision Logic**:
+    - The core of the change is in `ProjectileManager::update_and_check_collisions`. You would modify the collision loop to handle the new logic.
+
+    ```rust
+    // in game/src/game/projectile_manager.rs
+    // Inside update_and_check_collisions loop...
+
+    let mut hit_target = false;
+    // ... collision checks for minions, champions etc.
+
+    if let Some(collided_entity) = check_for_collision() { // Your collision check logic
+        match projectile.projectile_type {
+            ProjectileType::Standard => {
+                // Apply payload and mark projectile for removal
+                apply_payload(collided_entity);
+                hit_target = true;
+            },
+            ProjectileType::Piercing => {
+                if is_champion(collided_entity) {
+                    // Stop on champions
+                    apply_payload(collided_entity);
+                    hit_target = true;
+                } else {
+                    // Apply payload but DON'T stop
+                    apply_payload(collided_entity);
+                    // hit_target remains false, so the projectile continues
+                }
+            }
+        }
+    }
+
+    if hit_target || projectile_reached_end_of_path {
+        // Mark projectile for removal
+    }
+    ```
+
+By structuring your projectiles with a type enum and handling the collision logic accordingly, you can easily extend the system with many different kinds of skillshots.

@@ -69,3 +69,101 @@ The lifecycle of every buff is managed centrally within the main game loop to en
     - When an entity attempts to perform an action, its internal logic checks its state. For example, `Minion::movement_phase()` and `Champion::take_action()` both check `self.is_stunned()` at the beginning. If the entity is stunned, the action is prevented.
 
 This "take, filter, and replace" cycle ensures that buffs are managed safely and efficiently, providing a robust and extensible foundation for status effects in the game.
+
+---
+
+## How to Implement a New Buff
+
+To add a new buff (e.g., a "Slow" effect that reduces movement speed), follow these steps:
+
+1.  **Create the Buff Struct**:
+    - In the `game/src/game/buffs/` directory, create a new file (e.g., `slow_buff.rs`).
+    - Define a new struct (e.g., `SlowBuff`) and implement the `Buff` trait for it.
+
+    ```rust
+    // in slow_buff.rs
+    use super::{Buff, HasBuff};
+    use std::time::{Duration, Instant};
+
+    #[derive(Debug)]
+    pub struct SlowBuff {
+        pub duration_remaining: Duration,
+        pub applied_at: Instant,
+    }
+
+    impl Buff for SlowBuff {
+        fn id(&self) -> &'static str { "Slow" }
+
+        fn on_apply(&self, target: &mut dyn HasBuff) {
+            target.set_slowed(true); // A new method you'll add to HasBuff
+        }
+
+        fn on_tick(&mut self, _target: &mut dyn HasBuff) -> bool {
+            // Return true if expired
+            self.applied_at.elapsed() >= self.duration_remaining
+        }
+
+        fn on_remove(&self, target: &mut dyn HasBuff) {
+            target.set_slowed(false);
+        }
+    }
+    ```
+
+2.  **Update the `HasBuff` Trait**:
+    - Open `game/src/game/buffs/mod.rs`.
+    - Add methods to the `HasBuff` trait to manage the new effect's state.
+
+    ```rust
+    // in buffs/mod.rs
+    pub trait HasBuff: Send + Sync {
+        // ... existing methods ...
+        fn is_slowed(&self) -> bool;
+        fn set_slowed(&mut self, is_slowed: bool);
+    }
+    ```
+
+3.  **Implement the Trait for Entities**:
+    - Open `game/src/game/entities/champion.rs` and `minion.rs`.
+    - Add a new field to track the slowed state (e.g., `is_slowed: bool`).
+    - Implement the new `is_slowed` and `set_slowed` methods for both `Champion` and `Minion`.
+
+    ```rust
+    // Example for Champion
+    impl HasBuff for Champion {
+        // ...
+        fn is_slowed(&self) -> bool { self.is_slowed }
+        fn set_slowed(&mut self, is_slowed: bool) { self.is_slowed = is_slowed; }
+    }
+    ```
+
+4.  **Enforce the Effect**:
+    - In the game logic, check for the new state where it matters. For a slow, you would modify the movement logic.
+
+    ```rust
+    // Example in Champion::move_in_direction
+    fn move_in_direction(&mut self, direction: Direction) {
+        if self.is_stunned() { return; } // Existing check
+
+        let move_speed = if self.is_slowed() { 2.0 } else { 1.0 }; // Apply slow effect
+        // ... apply movement with modified speed ...
+    }
+    ```
+
+5.  **Add the Buff to the `GameplayEffect` Enum**:
+    - Finally, update `game/src/game/gameplay_effect.rs` to allow the new buff to be passed as an effect.
+
+    ```rust
+    // in gameplay_effect.rs
+    pub enum GameplayEffect {
+        Damage(u16),
+        Buff(BuffType),
+        // ...
+    }
+
+    pub enum BuffType {
+        Stun,
+        Slow, // Add new buff type
+    }
+    ```
+    - You will also need to update the logic that creates the `Box<dyn Buff>` from the `BuffType` enum, likely where `GameplayEffect::Buff` is processed.
+

@@ -1,6 +1,6 @@
-# Go Server
+ Go Server
 
-The Go server acts as the central orchestrator of the CTF game. It is responsible for managing client connections, handling authentication, and coordinating game rooms.
+The Go server acts as the central orchestrator of the TermArena game. It is responsible for managing client connections, handling authentication, and coordinating game rooms.
 
 ## Key Responsibilities
 
