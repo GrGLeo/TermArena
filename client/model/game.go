@@ -22,7 +22,7 @@ type GameModel struct {
 	healthProgress progress.Model
 	manaProgress   progress.Model
 	xpProgress     progress.Model
-	progress       progress.Model
+	castingProgress       progress.Model
 	health         [2]int
 	mana           [2]int
 	level          int
@@ -48,7 +48,7 @@ func NewGameModel(conn *net.TCPConn) GameModel {
 		healthProgress: progress.New(redSolid),
 		manaProgress:   progress.New(blueSolid),
 		xpProgress:     progress.New(purpleSolid),
-		progress:       progress.New(yellowGradient),
+		castingProgress:       progress.New(yellowGradient),
 		recallDuration: 6 * time.Second,
 	}
 }
@@ -60,7 +60,7 @@ func (m GameModel) Init() tea.Cmd {
 func (m *GameModel) SetDimension(height, width int) {
 	m.height = height
 	m.width = width
-	m.progress.Width = 51
+	m.castingProgress.Width = 51
 }
 
 func (m *GameModel) SetConnection(conn *net.TCPConn) {
@@ -251,7 +251,7 @@ func (m GameModel) View() string {
 	builder.WriteString("\n")
 
 	var manaBar string
-	if m.health[1] > 0 {
+	if m.mana[1] > 0 {
 		manaPercent := (float32(m.mana[0]) / float32(m.mana[1]))
 		manaBar = m.manaProgress.ViewAs(float64(manaPercent))
 	}
@@ -278,11 +278,15 @@ func (m GameModel) View() string {
 	builder.WriteString(xpHUD)
 	builder.WriteString("\n")
 
-	var progressBar string
-	if m.percent != 0.0 {
-		progressBar = m.progress.ViewAs(m.percent)
-	}
-	builder.WriteString(progressBar)
+	var castBar string
+	if m.casting[1] > 0 {
+    castPercent := min(float64(m.casting[0]) / float64(m.casting[1]), 1.0)
+    castBar = m.castingProgress.ViewAs(castPercent)
+    builder.WriteString(castBar)
+    builder.WriteString("\n")
+	} else {
+    builder.WriteString("\n")
+  }
 	gameStyle := lipgloss.NewStyle().Border(lipgloss.NormalBorder(), m.attackMode).BorderForeground(lipgloss.Color("#ff0000"))
 
 	return lipgloss.Place(
