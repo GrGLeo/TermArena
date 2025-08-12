@@ -23,7 +23,7 @@ pub struct ChampionStats {
     pub health: u16,
     pub mana: u16,
     pub armor: u16,
-    pub xp_per_level: Vec<u32>,
+    pub xp_per_level: Vec<u16>,
     pub level_up_health_increase: u16,
     pub level_up_attack_damage_increase: u16,
     pub level_up_armor_increase: u16,

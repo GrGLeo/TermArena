@@ -5,34 +5,38 @@ use bytes::BytesMut;
 pub struct BoardPacket {
     pub version: u8,
     pub code: u8,
-    pub points: u16,
+    pub cast_time: u16,
+    pub cast_duration: u16,
     pub health: u16,
     pub max_health: u16,
     pub mana: u16,
     pub max_mana: u16,
     pub level: u8,
-    pub xp: u32,
-    pub xp_needed: u32,
+    pub xp: u16,
+    pub xp_needed: u16,
     pub length: u16,
     pub encoded_board: Vec<u8>,
 }
 
 impl BoardPacket {
     pub fn new(
+        cast_time: u16,
+        cast_duration: u16,
         health: u16,
         max_health: u16,
         mana: u16,
         max_mana: u16,
         level: u8,
-        xp: u32,
-        xp_needed: u32,
+        xp: u16,
+        xp_needed: u16,
         encoded_board: Vec<u8>,
     ) -> Self {
         let length = encoded_board.len().try_into().unwrap();
         BoardPacket {
             version: 1,
             code: 9,
-            points: 0,
+            cast_time,
+            cast_duration,
             health,
             max_health,
             mana,
@@ -49,14 +53,15 @@ impl BoardPacket {
         let mut buffer = BytesMut::new();
         buffer.put_u8(self.version);
         buffer.put_u8(self.code);
-        buffer.put_u16(self.points);
+        buffer.put_u16(self.cast_time);
+        buffer.put_u16(self.cast_duration);
         buffer.put_u16(self.health);
         buffer.put_u16(self.max_health);
         buffer.put_u16(self.mana);
         buffer.put_u16(self.max_mana);
         buffer.put_u8(self.level);
-        buffer.put_u32(self.xp);
-        buffer.put_u32(self.xp_needed);
+        buffer.put_u16(self.xp);
+        buffer.put_u16(self.xp_needed);
         buffer.put_u16(self.length);
         buffer.extend_from_slice(&self.encoded_board);
         buffer
@@ -71,6 +76,8 @@ mod tests {
     #[test]
     fn test_board_packet_new() {
         let encoded_board_data = vec![0, 1, 1, 2, 3, 1, 1]; // Sample encoded board data
+        let cast_time = 1000;
+        let cast_duration = 2000;
         let health = 400;
         let max_health = 400;
         let mana = 100;
@@ -81,6 +88,8 @@ mod tests {
         let expected_length = encoded_board_data.len() as u16;
 
         let packet = BoardPacket::new(
+            cast_time,
+            cast_duration,
             health,
             max_health,
             mana,
@@ -93,7 +102,8 @@ mod tests {
 
         assert_eq!(packet.version, 1);
         assert_eq!(packet.code, 9);
-        assert_eq!(packet.points, 0); // Points should be 0 as per implementation
+        assert_eq!(packet.cast_time, cast_time);
+        assert_eq!(packet.cast_duration, cast_duration);
         assert_eq!(packet.health, 400);
         assert_eq!(packet.max_health, 400);
         assert_eq!(packet.mana, 100);
@@ -108,6 +118,8 @@ mod tests {
     #[test]
     fn test_board_packet_serialize() {
         let encoded_board_data = vec![0, 1, 1, 2, 3, 1, 1]; // Sample encoded board data
+        let cast_time = 1000;
+        let cast_duration = 2000;
         let health = 300;
         let max_health = 400;
         let mana = 100;
@@ -116,6 +128,8 @@ mod tests {
         let xp = 0;
         let xp_needed = 35;
         let packet = BoardPacket::new(
+            cast_time,
+            cast_duration,
             health,
             max_health,
             mana,
@@ -130,18 +144,19 @@ mod tests {
 
         // Manually construct the expected byte buffer
         let mut expected_buffer = BytesMut::new();
-        expected_buffer.put_u8(packet.version); // 1
-        expected_buffer.put_u8(packet.code); // 9
-        expected_buffer.put_u16(packet.points); // 0 (as BigEndian)
-        expected_buffer.put_u16(packet.health); // 400 (as BigEndian)
-        expected_buffer.put_u16(packet.max_health); // 400 (as BigEndian)
-        expected_buffer.put_u16(packet.mana); // 400 (as BigEndian)
-        expected_buffer.put_u16(packet.max_mana); // 400 (as BigEndian)
+        expected_buffer.put_u8(packet.version);
+        expected_buffer.put_u8(packet.code);
+        expected_buffer.put_u16(packet.cast_time);
+        expected_buffer.put_u16(packet.cast_duration);
+        expected_buffer.put_u16(packet.health);
+        expected_buffer.put_u16(packet.max_health);
+        expected_buffer.put_u16(packet.mana);
+        expected_buffer.put_u16(packet.max_mana);
         expected_buffer.put_u8(packet.level);
-        expected_buffer.put_u32(packet.xp);
-        expected_buffer.put_u32(packet.xp_needed);
-        expected_buffer.put_u16(packet.length); // encoded_board_data.len() as u16 (as BigEndian)
-        expected_buffer.extend_from_slice(&packet.encoded_board); // [0, 1, 1, 2, 3, 1, 1]
+        expected_buffer.put_u16(packet.xp);
+        expected_buffer.put_u16(packet.xp_needed);
+        expected_buffer.put_u16(packet.length);
+        expected_buffer.extend_from_slice(&packet.encoded_board);
 
         assert_eq!(
             serialized_buffer, expected_buffer,

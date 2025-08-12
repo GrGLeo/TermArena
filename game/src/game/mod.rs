@@ -17,6 +17,7 @@ use buffs::Buff;
 use bytes::BytesMut;
 use cell::Team;
 pub use cell::{BaseTerrain, Cell, CellContent, MinionId, PlayerId, TowerId};
+use entities::champion::{self, Ability, Castable};
 pub use entities::champion::{Action, Champion};
 use entities::{
     AttackAction, Fighter, Target,
@@ -359,6 +360,24 @@ impl GameManager {
                 }
             }
 
+            // Handling casting ability
+            if let Some(cast) = &champ.current_cast {
+                if cast.start_time.elapsed() >= cast.cast_time {
+                    match &cast.action {
+                        Castable::Ability(Ability::Recall) => {
+                            champ.place_at_base(&mut self.board);
+                        }
+                        Castable::Spell(_) => {
+                            //TODO: Handle spell casting
+                        }
+                    }
+                    champ.current_cast = None;
+                } else {
+                    // We skip the rest of champion loop while casting
+                    continue;
+                }
+            }
+
             // 3. auto_attack
             if let Some(enemy) = champ.get_potential_target(&self.board) {
                 match &enemy.content {
@@ -557,7 +576,7 @@ impl GameManager {
         // Distribute XP from dead monster
         for (player_id, xp_reward, gold_reward) in monster_rewards.into_iter() {
             if let Some(champion) = self.champions.get_mut(&player_id) {
-                champion.add_xp(xp_reward as u32);
+                champion.add_xp(xp_reward as u16);
                 champion.add_gold(gold_reward as u16);
             }
         }
@@ -575,7 +594,7 @@ impl GameManager {
             }
 
             if !champions_in_range.is_empty() {
-                let xp_per_champion = 5 / champions_in_range.len() as u32;
+                let xp_per_champion = 5 / champions_in_range.len() as u16;
                 let gold_per_champion = 25 / champions_in_range.len() as u16;
                 for champion in champions_in_range {
                     champion.add_xp(xp_per_champion);
@@ -720,9 +739,12 @@ impl GameManager {
                 &visible_cells,
             );
             // 2. Create the board packet
+            let cast_info = champion.get_cast_info();
             let health = champion.get_health();
             let xp_needed = champion.xp_for_next_level().unwrap_or(0); // Get XP needed, 0 if max level
             let board_packet = BoardPacket::new(
+                cast_info.0,
+                cast_info.1,
                 health.0,
                 health.1,
                 champion.stats.mana,

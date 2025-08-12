@@ -169,11 +169,12 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 				if err != nil {
 					log.Print(err.Error())
 				}
+        casting := [2]int{msg.CastTime, msg.CastDuration}
 				health := [2]int{msg.Health, msg.MaxHealth}
 				mana := [2]int{msg.Mana, msg.MaxMana}
 				xp := [2]int{msg.Xp, msg.XpNeeded}
-				log.Printf("Sending BoardMsg: Health=%v, Level=%d, Xp=%v", health, msg.Level, xp)
-				msgs <- BoardMsg{Points: msg.Points, Health: health, Mana: mana, Level: msg.Level, Xp: xp, Board: board}
+        log.Printf("Sending BoardMsg: Casting=%v, Health=%v, Level=%d, Xp=%v", casting, health, msg.Level, xp)
+				msgs <- BoardMsg{Casting: casting, Health: health, Mana: mana, Level: msg.Level, Xp: xp, Board: board}
 			case *shared.DeltaPacket:
 				deltas := DecodeDeltas(msg.Deltas)
 				log.Printf("Sending DeltaMsg: TickID=%d, Deltas=%v", msg.TickID, deltas)

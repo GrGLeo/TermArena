@@ -77,7 +77,7 @@ type EndGameMsg struct {
 
 // BoardMsg is used to transfer the board to game model
 type BoardMsg struct {
-	Points [2]int
+	Casting [2]int
 	Health [2]int
 	Mana   [2]int
 	Level  int

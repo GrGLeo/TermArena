@@ -558,7 +558,7 @@ func (srp *ShopResponsePacket) Serialize() []byte {
 	binary.Write(&buf, binary.BigEndian, uint16(srp.Armor))
 	binary.Write(&buf, binary.BigEndian, uint16(srp.Gold))
 	// Always write 6 inventory slots
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		if i < len(srp.Inventory) {
 			binary.Write(&buf, binary.BigEndian, uint16(srp.Inventory[i]))
 		} else {
@@ -598,7 +598,8 @@ func (pip PurchaseItemPacket) Serialize() []byte {
 
 type BoardPacket struct {
 	version, code int
-	Points        [2]int
+	CastTime      int
+	CastDuration  int
 	Health        int
 	MaxHealth     int
 	Mana          int
@@ -610,17 +611,20 @@ type BoardPacket struct {
 	EncodedBoard  []byte
 }
 
-func NewBoardPacket(health, maxHealth, level, xp, xpNeeded, length int, points [2]int, encodedBoard []byte) *BoardPacket {
+func NewBoardPacket(castTime, castDuration, health, maxHealth, mana, maxMana, level, xp, xpNeeded int, encodedBoard []byte) *BoardPacket {
 	return &BoardPacket{
 		version:      1,
 		code:         9,
-		Points:       points,
+		CastTime:     castTime,
+		CastDuration: castDuration,
 		Health:       health,
 		MaxHealth:    maxHealth,
+		Mana:         mana,
+		MaxMana:      maxMana,
 		Level:        level,
 		Xp:           xp,
 		XpNeeded:     xpNeeded,
-		Length:       length,
+		Length:       len(encodedBoard),
 		EncodedBoard: encodedBoard,
 	}
 }
@@ -637,11 +641,16 @@ func (bp *BoardPacket) Serialize() []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(byte(bp.version))
 	buf.WriteByte(byte(bp.code))
-	buf.WriteByte(byte(bp.Points[0]))
-	buf.WriteByte(byte(bp.Points[1]))
-	buf.WriteByte(byte(bp.Health))
-	buf.WriteByte(byte(bp.MaxHealth))
-	buf.WriteByte(byte(bp.Length))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.CastTime))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.CastDuration))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.Health))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.MaxHealth))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.Mana))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.MaxMana))
+	buf.WriteByte(byte(bp.Level))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.Xp))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.XpNeeded))
+	binary.Write(&buf, binary.BigEndian, uint16(len(bp.EncodedBoard)))
 	buf.Write(bp.EncodedBoard)
 	return buf.Bytes()
 }
@@ -703,10 +712,10 @@ func (dp *DeltaPacket) Serialize() []byte {
 // - data: A byte slice containing the serialized packet data.
 //
 // Returns:
-// - Packet: The deserialized Packet interface.
-// - int: The number of bytes consumed from the data slice to form the packet.
-// - error: An error if the data is malformed, the version is invalid, or if the
-//          data slice does not contain a complete packet.
+//   - Packet: The deserialized Packet interface.
+//   - int: The number of bytes consumed from the data slice to form the packet.
+//   - error: An error if the data is malformed, the version is invalid, or if the
+//     data slice does not contain a complete packet.
 func DeSerialize(data []byte) (Packet, int, error) {
 	// Check minimum packet length (version + code)
 	if len(data) < 2 {
@@ -852,27 +861,29 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		return packet, 3, nil
 
 	case 9: // BoardPacket
-		if len(data) < 23 {
+		if len(data) < 21 { // header size
 			return nil, 0, errors.New("incomplete packet")
 		}
-		length := int(binary.BigEndian.Uint16(data[21:23]))
-		totalLen := 23 + length
+		length := int(binary.BigEndian.Uint16(data[19:21]))
+		totalLen := 21 + length
 		if len(data) < totalLen {
 			return nil, 0, errors.New("incomplete packet")
 		}
-		points := [2]int{int(data[2]), int(data[3])}
-		health := int(binary.BigEndian.Uint16(data[4:6]))
-		maxHealth := int(binary.BigEndian.Uint16(data[6:8]))
-		mana := int(binary.BigEndian.Uint16(data[8:10]))
-		maxMana := int(binary.BigEndian.Uint16(data[10:12]))
-		level := int(data[12])
-		xp := int(binary.BigEndian.Uint32(data[13:17]))
-		xpNeeded := int(binary.BigEndian.Uint32(data[17:21]))
-		encodedBoard := data[23:totalLen]
+		castTime := int(binary.BigEndian.Uint16(data[2:4]))
+		castDuration := int(binary.BigEndian.Uint16(data[4:6]))
+		health := int(binary.BigEndian.Uint16(data[6:8]))
+		maxHealth := int(binary.BigEndian.Uint16(data[8:10]))
+		mana := int(binary.BigEndian.Uint16(data[10:12]))
+		maxMana := int(binary.BigEndian.Uint16(data[12:14]))
+		level := int(data[14])
+		xp := int(binary.BigEndian.Uint16(data[15:17]))
+		xpNeeded := int(binary.BigEndian.Uint16(data[17:19]))
+		encodedBoard := data[21:totalLen]
 		packet := &BoardPacket{
 			version:      version,
 			code:         code,
-			Points:       points,
+			CastTime:     castTime,
+			CastDuration: castDuration,
 			Health:       health,
 			MaxHealth:    maxHealth,
 			Mana:         mana,
