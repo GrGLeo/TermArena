@@ -22,4 +22,6 @@ pub enum GameError {
     InventoryFull,
     #[error("Not enough gold")]
     NotEnoughGold,
+    #[error("Champion is busy")]
+    ChampionBusy
 }

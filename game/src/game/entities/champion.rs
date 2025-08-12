@@ -24,6 +24,42 @@ pub enum Direction {
     Right,
 }
 
+// Casting mechanism
+#[derive(Debug, Clone)]
+pub enum Ability {
+    Recall,
+}
+
+pub enum Castable {
+    Spell(Box<dyn Spell>),
+    Ability(Ability),
+}
+
+impl Clone for Castable {
+    fn clone(&self) -> Self {
+        match self {
+            Castable::Spell(spell) => Castable::Spell(spell.clone_box()),
+            Castable::Ability(ability) => Castable::Ability(ability.clone()),
+        }
+    }
+}
+
+impl std::fmt::Debug for Castable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Castable::Spell(spell) => write!(f, "Castable::Spell(id: {})", spell.id()),
+            Castable::Ability(ability) => write!(f, "Castable::Ability({:?}", ability),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Cast {
+    pub start_time: Instant,
+    pub cast_time: Duration,
+    pub action: Castable,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum Action {
     MoveUp,
@@ -48,6 +84,7 @@ pub struct Champion {
     pub stats: Stats,
     champion_stats: ChampionStats,
     pub spells: HashMap<u8, Box<dyn Spell>>,
+    pub current_cast: Option<Cast>,
     pub active_buffs: HashMap<String, Box<dyn Buff>>,
     last_regen: Instant,
     health_regen_acc: f32,
@@ -93,6 +130,7 @@ impl Champion {
             stats,
             champion_stats,
             spells,
+            current_cast: None,
             xp: 0,
             gold: 350,
             level: 1,
@@ -268,6 +306,9 @@ impl Champion {
                 return self.move_champion(board, 0, 1);
             }
             Action::Action1 => {
+                if self.current_cast.is_some() {
+                    return Err(GameError::ChampionBusy);
+                }
                 if let Some(mut spell) = self.spells.remove(&0) {
                     spell.cast(self, self.stats.attack_damage, projectile_manager);
                     self.spells.insert(0, spell);
@@ -276,6 +317,9 @@ impl Champion {
                 return Ok(());
             }
             Action::Action2 => {
+                if self.current_cast.is_some() {
+                    return Err(GameError::ChampionBusy);
+                }
                 if let Some(mut spell) = self.spells.remove(&1) {
                     spell.cast(self, self.stats.attack_damage, projectile_manager);
                     self.spells.insert(1, spell);
@@ -283,12 +327,19 @@ impl Champion {
                 }
                 return Ok(());
             }
-            Action::AttackMode => {
-                self.attack_mode = !self.attack_mode;
+            Action::Recall => {
+                if self.current_cast.is_some() {
+                    return Err(GameError::ChampionBusy);
+                }
+                self.current_cast = Some(Cast{
+                    start_time: Instant::now(),
+                    cast_time: Duration::from_secs(6),
+                    action: Castable::Ability(Ability::Recall)
+                });
                 return Ok(());
             }
-            Action::Recall => {
-                self.place_at_base(board);
+            Action::AttackMode => {
+                self.attack_mode = !self.attack_mode;
                 return Ok(());
             }
             Action::InvalidAction => {
@@ -304,6 +355,10 @@ impl Champion {
         d_row: isize,
         d_col: isize,
     ) -> Result<(), GameError> {
+        // Champion moving cancel any cast
+        if self.current_cast.is_some() {
+            self.current_cast = None;
+        }
         let new_row = if d_row < 0 {
             self.row.saturating_sub(d_row.unsigned_abs() as u16)
         } else {

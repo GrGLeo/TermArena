@@ -17,6 +17,7 @@ use buffs::Buff;
 use bytes::BytesMut;
 use cell::Team;
 pub use cell::{BaseTerrain, Cell, CellContent, MinionId, PlayerId, TowerId};
+use entities::champion::{self, Ability, Castable};
 pub use entities::champion::{Action, Champion};
 use entities::{
     AttackAction, Fighter, Target,
@@ -356,6 +357,24 @@ impl GameManager {
                     champ.take_action(action, &mut self.board, &mut self.projectile_manager)
                 {
                     println!("Error on player action: {}", e);
+                }
+            }
+
+            // Handling casting ability
+            if let Some(cast) = &champ.current_cast {
+                if cast.start_time.elapsed() >= cast.cast_time {
+                    match &cast.action {
+                        Castable::Ability(Ability::Recall) => {
+                            champ.place_at_base(&mut self.board);
+                        }
+                        Castable::Spell(_) => {
+                            //TODO: Handle spell casting
+                        }
+                    }
+                    champ.current_cast = None;
+                } else {
+                    // We skip the rest of champion loop while casting
+                    continue;
                 }
             }
 
