@@ -287,6 +287,7 @@ impl GameManager {
     }
 
     pub fn game_tick(&mut self) -> HashMap<PlayerId, ClientMessage> {
+        let start_tick = Instant::now();
         if let Some(start_time) = self.game_start_time {
             if !self.initial_monsters_spawned && start_time.elapsed() >= Duration::from_secs(5) {
                 self.monster_manager.spawn_initial_monsters(&mut self.board);
@@ -758,6 +759,7 @@ impl GameManager {
             // 3. Store the serialized packet to be sent later
             updates.insert(*player_id, serialized_packet);
         }
+        println!("Tick duration: {:?}", start_tick.elapsed());
         println!("--------------------");
         updates
     }

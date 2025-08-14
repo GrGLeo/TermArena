@@ -20,37 +20,42 @@ func (i Item) String() string {
 var availableItems = []Item{
 	{
 		ID:   1,
-		Name: "Sword of Power",
-		Description: "Description: Increases attack damage.\nCost: 200\nDamage: 10",
+		Name: "Simple Sword",
+		Description: "Cost: 350\nDamage: 10",
 	},
 	{
 		ID:   2,
-		Name: "Armor of Resilience",
-		Description: "Description: Increases defense.\nCost: 200\nArmor: 10",
+		Name: "Leather Armor",
+		Description: "Cost: 300\nArmor: 10",
 	},
 	{
 		ID:   3,
 		Name: "Health Stone",
-		Description: "Description: Increases health.\nCost: 400\nHealth: 50",
+		Description: "Cost: 400\nHealth: 50",
 	},
 	{
 		ID:   4,
 		Name: "Mana Pendant",
-		Description: "Description: Increases mana.\nCost: 400\nMana: 25",
+		Description: "Cost: 400\nMana: 25",
 	},
 	{
 		ID:   5,
 		Name: "Dagger",
-		Description: "Description: Increases attack speed.\nCost: 200\nAttack Speed: 200",
+		Description: "Cost: 200\nAttack Speed: 200",
 	},
 	{
 		ID:   6,
 		Name: "Vial of Renewal",
-		Description: "Description: Increases health regeneration.\nCost: 150\nHealth regeneration increase: 100%",
+		Description: "Cost: 150\nHealth regeneration increase: 100%",
 	},
 	{
 		ID:   7,
 		Name: "Shield of Valor",
-		Description: "Description: Increases armor and health.\nCost: 200\nArmor: 5\nHealth: 50",
+    Description: "Cost: 800\nUpgrade Cost: 200\nHealth: 80\nArmor: 15\nRequired: 'Leather Armor | Health Stone'",
 	},
+  {
+    ID: 8,
+    Name: "Double-edged Sword",
+    Description: "Cost: 800\nUpgrade Cost: 100\nDamage: 25\nRequired: 2x'Simple Sword'",
+  },
 }

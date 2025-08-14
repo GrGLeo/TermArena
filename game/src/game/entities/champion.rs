@@ -73,7 +73,6 @@ pub enum Action {
     InvalidAction,
 }
 
-
 #[derive(Debug)]
 pub struct Champion {
     pub player_id: PlayerId,
@@ -192,18 +191,98 @@ impl Champion {
 
     pub fn add_item(&mut self, item: Item) -> Result<(), GameError> {
         println!("Player inventory: {:?}", self.inventory);
-        if self.gold < item.cost as u16 {
-            return Err(GameError::NotEnoughGold);
-        }
-        for slot in &mut self.inventory {
-            if slot.is_none() {
-                self.gold -= item.cost as u16;
-                *slot = Some(item);
-                self.recalculate_stats();
-                return Ok(());
+
+        // Case 1: Item has crafting requirements
+        if let Some(required_ids) = &item.required {
+            // Ensure crafting_cost is present for craftable items
+            let crafting_cost = if let Some(cost) = item.crafting_cost {
+                cost as u16
+            } else {
+                // This should not be reached when an item with requirement is added
+                // crafting cost should be included.
+                // TODO: Validate config when loaded ?
+                return Err(GameError::InvalidInput("Craftable item missing crafting_cost".to_string()));
+            };
+
+            // Check if player has enough gold for crafting
+            if self.gold < crafting_cost {
+                return Err(GameError::NotEnoughGold);
             }
+
+            let mut available_inventory_slots: Vec<(usize, u32)> = self
+                .inventory
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, slot)| slot.as_ref().map(|item| (idx, item.id)))
+                .collect();
+
+            let mut indices_to_remove: Vec<usize> = Vec::new();
+            let mut all_requirements_met = true;
+
+            for &req_id_u8 in required_ids {
+                let req_id = req_id_u8 as u32;
+                if let Some(pos) = available_inventory_slots
+                    .iter()
+                    .position(|&(_, id)| id == req_id)
+                {
+                    let (original_idx, _) = available_inventory_slots.remove(pos);
+                    indices_to_remove.push(original_idx);
+                } else {
+                    all_requirements_met = false;
+                    break;
+                }
+            }
+
+            if all_requirements_met {
+                // Crafting is possible.
+                self.gold -= crafting_cost;
+
+                // Remove required items from the actual inventory.
+                for &idx in &indices_to_remove {
+                    self.inventory[idx] = None;
+                }
+
+                // Add the new item to an empty slot.
+                for slot in &mut self.inventory {
+                    if slot.is_none() {
+                        *slot = Some(item);
+                        self.recalculate_stats();
+                        return Ok(());
+                    }
+                }
+                // This should ideally not be reached if we removed items and created space.
+                return Err(GameError::InventoryFull); // Should be unreachable if logic is sound
+            } else {
+                // Check if player has enough gold for direct purchase (buyout cost)
+                if self.gold < item.cost as u16 {
+                    return Err(GameError::NotEnoughGold);
+                }
+
+                // Find an empty slot for direct purchase
+                for slot in &mut self.inventory {
+                    if slot.is_none() {
+                        self.gold -= item.cost as u16;
+                        *slot = Some(item);
+                        self.recalculate_stats();
+                        return Ok(());
+                    }
+                }
+                return Err(GameError::InventoryFull);
+            }
+        } else {
+            if self.gold < item.cost as u16 {
+                return Err(GameError::NotEnoughGold);
+            }
+            for slot in &mut self.inventory {
+                if slot.is_none() {
+                    self.gold -= item.cost as u16;
+                    *slot = Some(item);
+                    self.recalculate_stats();
+                    return Ok(());
+                }
+            }
+            Err(GameError::InventoryFull)
         }
-        Err(GameError::InventoryFull)
     }
 
     pub fn get_inventory(&self) -> Vec<u16> {
@@ -1636,6 +1715,8 @@ mod tests {
             id: 1,
             name: "Sword".to_string(),
             cost: 300,
+            crafting_cost: None,
+            required: None,
             stats: ItemStats {
                 attack_damage: Some(10),
                 attack_speed: None,
@@ -1650,6 +1731,8 @@ mod tests {
             id: 2,
             name: "Shield".to_string(),
             cost: 200,
+            crafting_cost: None,
+            required: None,
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
@@ -1678,6 +1761,8 @@ mod tests {
                 id: i as u32,
                 name: format!("Item {}", i),
                 cost: 10,
+                crafting_cost: None,
+                required: None,
                 stats: ItemStats {
                     attack_damage: None,
                     attack_speed: None,
@@ -1695,6 +1780,8 @@ mod tests {
             id: 7,
             name: "Extra Item".to_string(),
             cost: 10,
+            crafting_cost: None,
+            required: None,
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
@@ -1720,6 +1807,8 @@ mod tests {
             id: 1,
             name: "Expensive Sword".to_string(),
             cost: 300,
+            crafting_cost: None,
+            required: None,
             stats: ItemStats {
                 attack_damage: Some(10),
                 attack_speed: None,
@@ -1746,6 +1835,8 @@ mod tests {
             id: 1,
             name: "Sword".to_string(),
             cost: 300,
+            crafting_cost: None,
+            required: None,
             stats: ItemStats {
                 attack_damage: Some(10),
                 attack_speed: None,
@@ -1760,6 +1851,8 @@ mod tests {
             id: 2,
             name: "Shield".to_string(),
             cost: 200,
+            crafting_cost: None,
+            required: None,
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
@@ -1802,6 +1895,8 @@ mod tests {
             id: 6,
             name: "Vial of Renewal".to_string(),
             cost: 150,
+            crafting_cost: None,
+            required: None,
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
@@ -1832,6 +1927,8 @@ mod tests {
             id: 6,
             name: "Vial of Renewal".to_string(),
             cost: 150,
+            crafting_cost: None,
+            required: None,
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
@@ -1845,6 +1942,8 @@ mod tests {
             id: 8,
             name: "Another Vial".to_string(),
             cost: 150,
+            crafting_cost: None,
+            required: None,
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
@@ -1876,6 +1975,8 @@ mod tests {
             id: 9,
             name: "Magic Shield".to_string(),
             cost: 350,
+            crafting_cost: None,
+            required: None,
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
@@ -1962,5 +2063,113 @@ mod tests {
         champion.regen_health_mana();
         assert_eq!(champion.stats.health, 103); // acc becomes 0.5 + 1.5 = 2.0, adds 2, acc becomes 0.0
         assert!(champion.health_regen_acc.abs() < f32::EPSILON);
+    }
+
+    // Helper function to create a basic Item for testing
+    fn create_test_item(
+        id: u32,
+        name: &str,
+        cost: u32,
+        crafting_cost: Option<u32>,
+        required: Option<Vec<u32>>,
+    ) -> Item {
+        Item {
+            id,
+            name: name.to_string(),
+            cost,
+            crafting_cost,
+            required,
+            stats: ItemStats {
+                attack_damage: None,
+                attack_speed: None,
+                health: None,
+                armor: None,
+                mana: None,
+                health_regen: None,
+            },
+        }
+    }
+
+    #[test]
+    fn test_add_item_crafting_not_enough_gold_and_missing_items() {
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+        champion.gold = 50; // Not enough for crafting (100) or buyout (700)
+
+        let sword_of_power = create_test_item(1, "Sword of Power", 300, None, None);
+        // Add one sword, but two are required
+        champion.inventory[0] = Some(sword_of_power.clone());
+
+        let double_edged_sword = create_test_item(
+            8,
+            "Double-edged Sword",
+            700,
+            Some(100),
+            Some(vec![1, 1]),
+        );
+
+        let result = champion.add_item(double_edged_sword);
+        assert!(result.is_err());
+        // Expecting NotEnoughGold because gold check happens before missing items check for buyout
+        assert_eq!(result.unwrap_err(), GameError::NotEnoughGold);
+        // Inventory should remain unchanged
+        assert_eq!(champion.inventory[0], Some(sword_of_power));
+        assert_eq!(champion.gold, 50);
+    }
+
+    #[test]
+    fn test_add_item_crafting_success() {
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+        champion.gold = 200; // Enough for crafting cost (100)
+
+        let sword_of_power_1 = create_test_item(1, "Sword of Power", 300, None, None);
+        let sword_of_power_2 = create_test_item(1, "Sword of Power", 300, None, None);
+        // Add two swords to inventory
+        champion.inventory[0] = Some(sword_of_power_1);
+        champion.inventory[1] = Some(sword_of_power_2);
+
+        let double_edged_sword = create_test_item(
+            8,
+            "Double-edged Sword",
+            700,
+            Some(100),
+            Some(vec![1, 1]),
+        );
+        let expected_gold_after_craft = champion.gold - double_edged_sword.crafting_cost.unwrap() as u16;
+
+        let result = champion.add_item(double_edged_sword.clone());
+        assert!(result.is_ok());
+        // Inventory should contain the crafted item, and required items should be removed
+        assert_eq!(champion.inventory[0], Some(double_edged_sword));
+        assert_eq!(champion.inventory[1], None);
+        assert_eq!(champion.gold, expected_gold_after_craft);
+    }
+
+    #[test]
+    fn test_add_item_buyout_success_without_required_items() {
+        let champion_stats = create_default_champion_stats();
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
+        champion.gold = 800; // Enough for buyout cost (700)
+
+        // No required items in inventory
+
+        let double_edged_sword = create_test_item(
+            8,
+            "Double-edged Sword",
+            700,
+            Some(100),
+            Some(vec![1, 1]),
+        );
+        let expected_gold_after_buyout = champion.gold - double_edged_sword.cost as u16;
+
+        let result = champion.add_item(double_edged_sword.clone());
+        assert!(result.is_ok());
+        // Inventory should contain the item, and gold should be reduced by buyout cost
+        assert_eq!(champion.inventory[0], Some(double_edged_sword));
+        assert_eq!(champion.gold, expected_gold_after_buyout);
     }
 }

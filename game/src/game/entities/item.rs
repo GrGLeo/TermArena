@@ -5,6 +5,8 @@ pub struct Item {
     pub id: u32,
     pub name: String,
     pub cost: u32,
+    pub crafting_cost: Option<u32>,
+    pub required: Option<Vec<u32>>,
     pub stats: ItemStats,
 }
 
