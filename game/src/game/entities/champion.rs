@@ -198,8 +198,9 @@ impl Champion {
             let crafting_cost = if let Some(cost) = item.crafting_cost {
                 cost as u16
             } else {
-                // This should ideally be caught earlier, e.g., during config loading or item creation.
-                // For now, return an error.
+                // This should not be reached when an item with requirement is added
+                // crafting cost should be included.
+                // TODO: Validate config when loaded ?
                 return Err(GameError::InvalidInput("Craftable item missing crafting_cost".to_string()));
             };
 
@@ -252,10 +253,6 @@ impl Champion {
                 // This should ideally not be reached if we removed items and created space.
                 return Err(GameError::InventoryFull); // Should be unreachable if logic is sound
             } else {
-                // Requirements not met.
-                // The user's request implies that if requirements are not met,
-                // the player can still buy it for the full price.
-
                 // Check if player has enough gold for direct purchase (buyout cost)
                 if self.gold < item.cost as u16 {
                     return Err(GameError::NotEnoughGold);
@@ -273,7 +270,6 @@ impl Champion {
                 return Err(GameError::InventoryFull);
             }
         } else {
-            // Case 2: Item has no crafting requirements (normal purchase)
             if self.gold < item.cost as u16 {
                 return Err(GameError::NotEnoughGold);
             }
