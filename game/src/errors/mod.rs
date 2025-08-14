@@ -23,5 +23,7 @@ pub enum GameError {
     #[error("Not enough gold")]
     NotEnoughGold,
     #[error("Champion is busy")]
-    ChampionBusy
+    ChampionBusy,
+    #[error("Missing required items for crafting")]
+    MissingRequiredItems,
 }

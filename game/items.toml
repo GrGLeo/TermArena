@@ -42,3 +42,11 @@ name = "Shield of Valor"
 cost = 200
 stats.armor = 5
 stats.health = 50
+
+[[items]]
+id = 8
+name = "Double-edged Sword"
+cost = 700
+crafting_cost = 100
+required = [1, 1]
+stats.attack_damage = 25
