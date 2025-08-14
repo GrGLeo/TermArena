@@ -8,3 +8,4 @@ GEMINI.md
 *.jsonl
 *.json
 Dockerfile
+ttk_calculator.py

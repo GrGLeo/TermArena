@@ -20,13 +20,13 @@ func (i Item) String() string {
 var availableItems = []Item{
 	{
 		ID:   1,
-		Name: "Sword of Power",
-		Description: "Cost: 300\nDamage: 10",
+		Name: "Simple Sword",
+		Description: "Cost: 350\nDamage: 10",
 	},
 	{
 		ID:   2,
-		Name: "Armor of Resilience",
-		Description: "Cost: 200\nArmor: 10",
+		Name: "Leather Armor",
+		Description: "Cost: 300\nArmor: 10",
 	},
 	{
 		ID:   3,
@@ -51,11 +51,11 @@ var availableItems = []Item{
 	{
 		ID:   7,
 		Name: "Shield of Valor",
-		Description: "Cost: 200\nArmor: 5\nHealth: 50",
+    Description: "Cost: 800\nUpgrade Cost: 200\nHealth: 80\nArmor: 15\nRequired: 'Leather Armor | Health Stone'",
 	},
   {
     ID: 8,
     Name: "Double-edged Sword",
-    Description: "Cost: 700\nUpgrade Cost: 100\nDamage:25\nRequired: 2x'Simple Sword'",
+    Description: "Cost: 800\nUpgrade Cost: 100\nDamage: 25\nRequired: 2x'Simple Sword'",
   },
 }
