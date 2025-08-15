@@ -109,14 +109,9 @@ impl Monster {
 
     pub fn can_respawn(&self) -> bool {
         if let Some(death_timer) = self.death_time {
-            if death_timer.elapsed() > self.respawn_timer {
-                return true;
-            } else {
-                return false;
-            }
+            death_timer.elapsed() > self.respawn_timer
         } else {
-            // TODO: We need to return an error here, can timer should always be set.
-            return false;
+            false
         }
     }
 }

@@ -14,6 +14,7 @@ pub struct MonsterManager {
     pub monster_definitions: HashMap<String, MonsterStats>,
 
     pub active_monsters: HashMap<usize, Monster>,
+    pub respawning_monsters: Vec<Monster>,
     next_instance_id: MonsterId,
 }
 
@@ -26,6 +27,7 @@ impl MonsterManager {
         MonsterManager {
             monster_definitions,
             active_monsters: HashMap::new(),
+            respawning_monsters: Vec::new(),
             next_instance_id: 1,
         }
     }
@@ -79,7 +81,7 @@ impl MonsterManager {
     ) {
         let mut pending_damages: Vec<(Target, Vec<GameplayEffect>)> = Vec::new();
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
-        let mut dead_monster: Vec<(MonsterId, String)> = Vec::new();
+        let mut dead_monster_ids: Vec<MonsterId> = Vec::new();
         for monster in self.active_monsters.values_mut() {
             match monster.state {
                 MonsterState::Idle => {}
@@ -173,17 +175,36 @@ impl MonsterManager {
                     }
                 }
                 MonsterState::Dead => {
-                    board.clear_cell(monster.row as usize, monster.col as usize);
-                    if monster.can_respawn() {
-                        dead_monster.push((monster.id, monster.monster_id.clone()));
-                    }
+                    dead_monster_ids.push(monster.id);
                 }
             }
         }
-        for (id, monster_id) in dead_monster.iter() {
-            self.active_monsters.remove(id);
-            self.spawn_monster(monster_id, board);
+
+        for id in dead_monster_ids {
+            if let Some(monster) = self.active_monsters.remove(&id) {
+                board.clear_cell(monster.row as usize, monster.col as usize);
+                self.respawning_monsters.push(monster);
+            }
         }
+
+        let mut still_respawning = Vec::new();
+        for mut monster in self.respawning_monsters.drain(..) {
+            if monster.can_respawn() {
+                monster.reset();
+                monster.row = monster.spawn_row;
+                monster.col = monster.spawn_col;
+                board.place_cell(
+                    CellContent::Monster(monster.id),
+                    monster.row as usize,
+                    monster.col as usize,
+                );
+                self.active_monsters.insert(monster.id, monster);
+            } else {
+                still_respawning.push(monster);
+            }
+        }
+        self.respawning_monsters = still_respawning;
+
         return (pending_damages, new_animations);
     }
 }
