@@ -37,6 +37,7 @@ pub struct Minion {
     minion_stats: MinionStats,
     current_path: MinionPath,
     minion_path: Vec<MinionPath>,
+    mvt_cooldown: bool,
     checkpoint: usize,
     last_attacked: Instant,
     stun_timer: Option<Instant>,
@@ -114,6 +115,7 @@ impl Minion {
             minion_stats,
             current_path: path,
             minion_path: paths,
+            mvt_cooldown: false,
             checkpoint: 0,
             last_attacked: Instant::now(),
             stun_timer: None,
@@ -138,6 +140,13 @@ impl Minion {
         if self.is_stunned() {
             return Ok(());
         }
+        // We check if minion mvt is on cd
+        if self.mvt_cooldown {
+            self.mvt_cooldown = false;
+            return Ok(());
+        }
+        // If not we set the cooldown
+        self.mvt_cooldown = true;
         if is_adjacent_to_goal((self.row, self.col), self.current_path) {
             self.change_goal();
         }

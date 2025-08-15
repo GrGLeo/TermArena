@@ -3,17 +3,13 @@ use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 
 pub fn get_valid_neighbors(board: &Board, row: u16, col: u16) -> Vec<(u16, u16)> {
     let mut valid_neighbors: Vec<(u16, u16)> = Vec::new();
-    for i in -1..=1 {
-        for j in -1..=1 {
-            if i == 0 && j == 0 {
-                continue;
-            }
-            let neighbors_row = row as isize + i;
-            let neighbors_col = col as isize + j;
-            if let Some(cell) = board.get_cell(neighbors_row as usize, neighbors_col as usize) {
-                if cell.is_passable() {
-                    valid_neighbors.push((neighbors_row as u16, neighbors_col as u16))
-                }
+    let mvt = [(-1, 0), (1, 0), (0, -1), (0, 1)];
+    for m in mvt {
+        let neighbors_row = row as isize + m.0;
+        let neighbors_col = col as isize + m.1;
+        if let Some(cell) = board.get_cell(neighbors_row as usize, neighbors_col as usize) {
+            if cell.is_passable() {
+                valid_neighbors.push((neighbors_row as u16, neighbors_col as u16))
             }
         }
     }
