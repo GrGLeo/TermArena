@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::Add;
 use std::time::{Duration, Instant};
 use std::usize;
 
@@ -162,6 +163,10 @@ impl Champion {
 
     pub fn add_gold(&mut self, gold: u16) {
         self.gold += gold
+    }
+
+    pub fn add_health(&mut self, hp: u8) {
+        self.stats.health.add(hp as u16).min(self.stats.max_health);
     }
 
     pub fn add_xp(&mut self, xp: u16) {

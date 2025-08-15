@@ -6,8 +6,7 @@ use std::{
 use crate::{
     config::MonsterStats,
     game::{
-        Board, PlayerId, algorithms::pathfinding::find_path_on_board,
-        animation::melee::MeleeAnimation, buffs::Buff, cell::MonsterId, entities::AttackAction,
+        algorithms::pathfinding::find_path_on_board, animation::melee::MeleeAnimation, buffs::{Buff, HasBuff}, cell::MonsterId, entities::AttackAction, Board, PlayerId
     },
 };
 
@@ -130,7 +129,10 @@ impl Fighter for Monster {
                     }
                 }
                 GameplayEffect::Heal(..) => {}
-                GameplayEffect::Buff(..) => {}
+                GameplayEffect::Buff(mut buff) => {
+                    buff.on_apply(self);
+                    self.active_buffs.insert(buff.id().to_string(), buff);
+                }
             };
         }
     }
@@ -154,6 +156,25 @@ impl Fighter for Monster {
     ) -> Option<&'a crate::game::Cell> {
         // No need for monster
         unimplemented!()
+    }
+}
+
+impl HasBuff for Monster {
+    fn is_stunned(&self) -> bool {
+        self.stun_timer
+            .map_or(false, |timer_end| Instant::now() < timer_end)
+    }
+
+    fn set_stunned(&mut self, stunned: bool, duration: Option<Duration>) {
+        if stunned {
+            if let Some(dur) = duration {
+                self.stun_timer = Some(Instant::now() + dur);
+            } else {
+                self.stun_timer = Some(Instant::now() + Duration::from_secs(1));
+            }
+        } else {
+            self.stun_timer = None;
+        }
     }
 }
 
