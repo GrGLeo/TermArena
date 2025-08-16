@@ -307,7 +307,7 @@ impl GameManager {
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
         let mut pending_effects: Vec<(Option<PlayerId>, Target, Vec<GameplayEffect>)> = Vec::new();
-        let mut monster_rewards: Vec<(PlayerId, u8, u16)> = Vec::new();
+        let mut monster_rewards: Vec<(PlayerId, u8, u16, u8, Option<Box<dyn Buff>>)> = Vec::new();
 
         // --- Game Logic ---
         // Buff checks on all entities
@@ -575,10 +575,15 @@ impl GameManager {
             });
 
         // Distribute XP from dead monster
-        for (player_id, xp_reward, gold_reward) in monster_rewards.into_iter() {
+        for (player_id, xp_reward, gold_reward, health_reward, buff_reward) in monster_rewards.into_iter() {
             if let Some(champion) = self.champions.get_mut(&player_id) {
                 champion.add_xp(xp_reward as u16);
                 champion.add_gold(gold_reward as u16);
+                champion.add_health(health_reward);
+                if let Some(mut buff) = buff_reward {
+                    buff.on_apply(champion);
+                    champion.active_buffs.insert(buff.id().to_string(), buff);
+                }
             }
         }
         // Distribute XP from dead minions
@@ -759,6 +764,7 @@ impl GameManager {
             // 3. Store the serialized packet to be sent later
             updates.insert(*player_id, serialized_packet);
         }
+        println!("Champion placement: {:?}", self.champions);
         println!("Tick duration: {:?}", start_tick.elapsed());
         println!("--------------------");
         updates

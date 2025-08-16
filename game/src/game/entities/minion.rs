@@ -62,9 +62,11 @@ impl Minion {
             health: minion_stats.health,
             max_health: minion_stats.health,
             hp_per_sec: 0.0,
+            health_regen_acc: 0.0,
             mana: 0,
             max_mana: 0,
             mp_per_sec: 0.0,
+            mana_regen_acc: 0.0,
             armor: minion_stats.armor,
         };
 
@@ -399,6 +401,10 @@ impl Fighter for Minion {
 }
 
 impl HasBuff for Minion {
+    fn get_stats_mut(&mut self) -> &mut Stats {
+        return &mut self.stats
+    }
+
     fn is_stunned(&self) -> bool {
         self.stun_timer
             .map_or(false, |timer_end| Instant::now() < timer_end)

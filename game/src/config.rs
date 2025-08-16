@@ -71,6 +71,8 @@ pub struct MonsterStats {
     pub leash_range: u8,
     pub xp_reward: u8,
     pub gold_reward: u16,
+    pub health_reward: u8,
+    pub buff_reward: Option<String>,
     pub respawn_timer_secs: u16,
 }
 

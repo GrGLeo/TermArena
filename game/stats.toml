@@ -48,8 +48,9 @@ aggro_range_col = 10
 attack_range_row = 3
 attack_range_col = 3
 leash_range = 20
-xp_reward = 50
-gold_reward = 75
+xp_reward = 15
+gold_reward = 50
+health_reward = 30
 respawn_timer_secs = 90
 
 [[neutral_monsters]]
@@ -65,8 +66,9 @@ aggro_range_col = 10
 attack_range_row = 3
 attack_range_col = 3
 leash_range = 20
-xp_reward = 50
-gold_reward = 75
+xp_reward = 15
+gold_reward = 50
+health_reward = 30
 respawn_timer_secs = 90
 
 [[neutral_monsters]]
@@ -82,8 +84,9 @@ aggro_range_col = 10
 attack_range_row = 3
 attack_range_col = 3
 leash_range = 20
-xp_reward = 50
+xp_reward = 20
 gold_reward = 75
+health_reward = 30
 respawn_timer_secs = 90
 
 [[neutral_monsters]]
@@ -99,6 +102,155 @@ aggro_range_col = 10
 attack_range_row = 3
 attack_range_col = 3
 leash_range = 20
-xp_reward = 50
+xp_reward = 20
 gold_reward = 75
+health_reward = 30
+respawn_timer_secs = 90
+
+[[neutral_monsters]]
+id = "red_buff_blue"
+spawn_row = 118
+spawn_col = 79
+attack_damage = 12
+attack_speed_ms = 3000
+health = 175
+armor = 8
+aggro_range_row = 10
+aggro_range_col = 10
+attack_range_row = 3
+attack_range_col = 3
+leash_range = 20
+xp_reward = 25
+gold_reward = 150
+health_reward = 30
+buff_reward = "red_buff"
+respawn_timer_secs = 180
+
+[[neutral_monsters]]
+id = "red_buff_red"
+spawn_row = 33
+spawn_col = 70
+attack_damage = 12
+attack_speed_ms = 3000
+health = 175
+armor = 8
+aggro_range_row = 10
+aggro_range_col = 10
+attack_range_row = 3
+attack_range_col = 3
+leash_range = 20
+xp_reward = 25
+gold_reward = 150
+health_reward = 30
+buff_reward = "red_buff"
+respawn_timer_secs = 180
+
+[[neutral_monsters]]
+id = "corbin_blue"
+spawn_row = 90
+spawn_col = 71
+attack_damage = 4
+attack_speed_ms = 1500
+health = 125
+armor = 6
+aggro_range_row = 10
+aggro_range_col = 10
+attack_range_row = 3
+attack_range_col = 3
+leash_range = 20
+xp_reward = 15
+gold_reward = 50
+health_reward = 30
+respawn_timer_secs = 90
+
+[[neutral_monsters]]
+id = "corbin_red"
+spawn_row = 60
+spawn_col = 78
+attack_damage = 4
+attack_speed_ms = 1500
+health = 125
+armor = 6
+aggro_range_row = 10
+aggro_range_col = 10
+attack_range_row = 3
+attack_range_col = 3
+leash_range = 20
+xp_reward = 15
+gold_reward = 50
+health_reward = 30
+respawn_timer_secs = 90
+
+[[neutral_monsters]]
+id = "blue_buff_blue"
+spawn_row = 65
+spawn_col = 34
+attack_damage = 4
+attack_speed_ms = 2200
+health = 160
+armor = 8
+aggro_range_row = 10
+aggro_range_col = 10
+attack_range_row = 3
+attack_range_col = 3
+leash_range = 20
+xp_reward = 25
+gold_reward = 150
+health_reward = 30
+buff_reward = "blue_buff"
+respawn_timer_secs = 180
+
+[[neutral_monsters]]
+id = "blue_buff_red"
+spawn_row = 83
+spawn_col = 115
+attack_damage = 4
+attack_speed_ms = 2200
+health = 160
+armor = 8
+aggro_range_row = 10
+aggro_range_col = 10
+attack_range_row = 3
+attack_range_col = 3
+leash_range = 20
+xp_reward = 25
+gold_reward = 150
+health_reward = 30
+buff_reward = "blue_buff"
+respawn_timer_secs = 180
+
+[[neutral_monsters]]
+id = "frog_blue"
+spawn_row = 60
+spawn_col = 12
+attack_damage = 7
+attack_speed_ms = 2000
+health = 120
+armor = 8
+aggro_range_row = 10
+aggro_range_col = 10
+attack_range_row = 3
+attack_range_col = 3
+leash_range = 20
+xp_reward = 20
+gold_reward = 75
+health_reward = 30
+respawn_timer_secs = 90
+
+[[neutral_monsters]]
+id = "frog_red"
+spawn_row = 89
+spawn_col = 136
+attack_damage = 7
+attack_speed_ms = 2000
+health = 120
+armor = 8
+aggro_range_row = 10
+aggro_range_col = 10
+attack_range_row = 3
+attack_range_col = 3
+leash_range = 20
+xp_reward = 20
+gold_reward = 75
+health_reward = 30
 respawn_timer_secs = 90

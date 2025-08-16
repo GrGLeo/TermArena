@@ -43,6 +43,8 @@ pub struct Stats {
     pub health: u16,
     pub max_health: u16,
     pub hp_per_sec: f32,
+    pub health_regen_acc: f32,
+    pub mana_regen_acc: f32,
     pub mana: u16,
     pub max_mana: u16,
     pub mp_per_sec: f32,

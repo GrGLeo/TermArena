@@ -279,7 +279,6 @@ impl Board {
             }
         }
         rle.push(format!("{}:{}", current_cell_value as u8, count));
-        println!("Encoded board: {}", rle.join("|"));
         rle.join("|").into_bytes()
     }
 }

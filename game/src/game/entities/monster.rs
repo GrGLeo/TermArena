@@ -6,8 +6,7 @@ use std::{
 use crate::{
     config::MonsterStats,
     game::{
-        Board, PlayerId, algorithms::pathfinding::find_path_on_board,
-        animation::melee::MeleeAnimation, buffs::Buff, cell::MonsterId, entities::AttackAction,
+        algorithms::pathfinding::find_path_on_board, animation::melee::MeleeAnimation, buffs::{Buff, HasBuff}, cell::MonsterId, entities::AttackAction, Board, PlayerId
     },
 };
 
@@ -49,9 +48,11 @@ impl Monster {
             health: monster_stats.health,
             max_health: monster_stats.health,
             hp_per_sec: 0.0,
+            health_regen_acc: 0.0,
             mana: 0,
             max_mana: 0,
             mp_per_sec: 0.0,
+            mana_regen_acc: 0.0,
             armor: monster_stats.armor,
         };
 
@@ -130,7 +131,10 @@ impl Fighter for Monster {
                     }
                 }
                 GameplayEffect::Heal(..) => {}
-                GameplayEffect::Buff(..) => {}
+                GameplayEffect::Buff(mut buff) => {
+                    buff.on_apply(self);
+                    self.active_buffs.insert(buff.id().to_string(), buff);
+                }
             };
         }
     }
@@ -154,6 +158,29 @@ impl Fighter for Monster {
     ) -> Option<&'a crate::game::Cell> {
         // No need for monster
         unimplemented!()
+    }
+}
+
+impl HasBuff for Monster {
+    fn get_stats_mut(&mut self) -> &mut Stats {
+        return &mut self.stats
+    }
+
+    fn is_stunned(&self) -> bool {
+        self.stun_timer
+            .map_or(false, |timer_end| Instant::now() < timer_end)
+    }
+
+    fn set_stunned(&mut self, stunned: bool, duration: Option<Duration>) {
+        if stunned {
+            if let Some(dur) = duration {
+                self.stun_timer = Some(Instant::now() + dur);
+            } else {
+                self.stun_timer = Some(Instant::now() + Duration::from_secs(1));
+            }
+        } else {
+            self.stun_timer = None;
+        }
     }
 }
 
@@ -183,6 +210,8 @@ mod tests {
             leash_range: 10,
             xp_reward: 30,
             gold_reward: 50,
+            health_reward: 50,
+            buff_reward: None,
             respawn_timer_secs: 60,
             attack_speed_ms: 1,
         }
