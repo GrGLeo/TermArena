@@ -28,6 +28,7 @@ use entities::{
 use minion_manager::MinionManager;
 use monster_manager::MonsterManager;
 use projectile_manager::ProjectileManager;
+use rayon::prelude::*;
 use spell::Spell;
 use tokio::sync::mpsc;
 
@@ -35,7 +36,8 @@ use std::{
     collections::HashMap,
     mem::take,
     time::{Duration, Instant},
-    usize, vec,
+    usize,
+    vec,
 };
 
 pub type ClientMessage = BytesMut;
@@ -303,7 +305,6 @@ impl GameManager {
             self.blue_base, self.red_base
         );
 
-        let mut updates = HashMap::new();
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
         let mut pending_effects: Vec<(Option<PlayerId>, Target, Vec<GameplayEffect>)> = Vec::new();
@@ -311,33 +312,31 @@ impl GameManager {
 
         // --- Game Logic ---
         // Buff checks on all entities
-        // Champions
-        for (_, champ) in self.champions.iter_mut() {
-            let current_buff = take(&mut champ.active_buffs);
-            let mut kept_buff: HashMap<String, Box<dyn Buff>> = HashMap::new();
-            for (id, mut buff) in current_buff.into_iter() {
-                if buff.on_tick(champ) {
+        self.champions.par_iter_mut().for_each(|(_, champ)| {
+            let current_buffs = take(&mut champ.active_buffs);
+            let mut kept_buffs = HashMap::new();
+            for (id, mut buff) in current_buffs.into_iter() {
+                if !buff.on_tick(champ) {
+                    kept_buffs.insert(id, buff);
+                } else {
                     buff.on_remove(champ);
-                } else {
-                    kept_buff.insert(id, buff);
                 }
             }
-            champ.active_buffs = kept_buff;
-        }
+            champ.active_buffs = kept_buffs;
+        });
 
-        // Minions
-        for (_, minion) in self.minion_manager.minions.iter_mut() {
-            let current_buff = take(&mut minion.active_buffs);
-            let mut kept_buff: HashMap<String, Box<dyn Buff>> = HashMap::new();
-            for (id, mut buff) in current_buff.into_iter() {
-                if buff.on_tick(minion) {
-                    buff.on_remove(minion);
+        self.minion_manager.minions.par_iter_mut().for_each(|(_, minion)| {
+            let current_buffs = take(&mut minion.active_buffs);
+            let mut kept_buffs = HashMap::new();
+            for (id, mut buff) in current_buffs.into_iter() {
+                if !buff.on_tick(minion) {
+                    kept_buffs.insert(id, buff);
                 } else {
-                    kept_buff.insert(id, buff);
+                    buff.on_remove(minion);
                 }
             }
-            minion.active_buffs = kept_buff;
-        }
+            minion.active_buffs = kept_buffs;
+        });
 
         // --- Turn ---
         // Player turn
@@ -724,46 +723,51 @@ impl GameManager {
         }
 
         // --- Send per player there board view ---
-        for (player_id, champion) in &self.champions {
-            let base = if champion.team_id == Team::Blue {
-                &self.blue_base
-            } else {
-                &self.red_base
-            };
-            let visible_cells = self.board.compute_visibility(
-                champion.team_id,
-                &self.champions,
-                base,
-                &self.towers,
-                &self.minion_manager,
-            );
-            // 1. Get player-specific board view
-            let board_rle_vec = self.board.run_length_encode(
-                champion.row,
-                champion.col,
-                &self.minion_manager,
-                &visible_cells,
-            );
-            // 2. Create the board packet
-            let cast_info = champion.get_cast_info();
-            let health = champion.get_health();
-            let xp_needed = champion.xp_for_next_level().unwrap_or(0); // Get XP needed, 0 if max level
-            let board_packet = BoardPacket::new(
-                cast_info.0,
-                cast_info.1,
-                health.0,
-                health.1,
-                champion.stats.mana,
-                champion.stats.max_mana,
-                champion.level,
-                champion.xp,
-                xp_needed,
-                board_rle_vec,
-            );
-            let serialized_packet = board_packet.serialize();
-            // 3. Store the serialized packet to be sent later
-            updates.insert(*player_id, serialized_packet);
-        }
+        let updates: HashMap<PlayerId, ClientMessage> = self
+            .champions
+            .par_iter()
+            .map(|(player_id, champion)| {
+                let base = if champion.team_id == Team::Blue {
+                    &self.blue_base
+                } else {
+                    &self.red_base
+                };
+                let visible_cells = self.board.compute_visibility(
+                    champion.team_id,
+                    &self.champions,
+                    base,
+                    &self.towers,
+                    &self.minion_manager,
+                );
+                // 1. Get player-specific board view
+                let board_rle_vec = self.board.run_length_encode(
+                    champion.row,
+                    champion.col,
+                    &self.minion_manager,
+                    &visible_cells,
+                );
+                // 2. Create the board packet
+                let cast_info = champion.get_cast_info();
+                let health = champion.get_health();
+                let xp_needed = champion.xp_for_next_level().unwrap_or(0); // Get XP needed, 0 if max level
+                let board_packet = BoardPacket::new(
+                    cast_info.0,
+                    cast_info.1,
+                    health.0,
+                    health.1,
+                    champion.stats.mana,
+                    champion.stats.max_mana,
+                    champion.level,
+                    champion.xp,
+                    xp_needed,
+                    board_rle_vec,
+                );
+                let serialized_packet = board_packet.serialize();
+                // 3. Store the serialized packet to be sent later
+                (*player_id, serialized_packet)
+            })
+            .collect();
+
         println!("Champion placement: {:?}", self.champions);
         println!("Tick duration: {:?}", start_tick.elapsed());
         println!("--------------------");

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math/rand"
@@ -14,11 +15,27 @@ import (
 	"github.com/GrGLeo/ctf/shared"
 )
 
-var totalActions, totalPacketsReceived int64
+type ClientStats struct {
+	ClientID         int
+	ActionsSent      int64
+	PacketsReceived  int64
+	ConnectionErrors int64
+	LoginErrors      int64
+	RoomErrors       int64
+	GameServerErrors int64
+	ActionErrors     int64
+	ReadErrors       int64
+	WriteErrors      int64
+	DecodeErrors     int64
+	TotalLatency     time.Duration
+	MaxLatency       time.Duration
+	MinLatency       time.Duration
+	LatencyCount     int64
+}
 
 func main() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: go run main.go <client_count> <server_port>")
+	if len(os.Args) < 5 {
+		fmt.Println("Usage: go run main.go <client_count> <server_port> <duration_in_seconds> <game_type>")
 		return
 	}
 
@@ -30,31 +47,73 @@ func main() {
 
 	serverPort := os.Args[2]
 
-	var wg sync.WaitGroup
-	for i := range clientCount {
-		wg.Add(1)
-		go runClient(&wg, i, serverPort)
+	duration, err := time.ParseDuration(os.Args[3] + "s")
+	if err != nil {
+		fmt.Println("Invalid duration")
+		return
 	}
 
-	go func() {
-		ticker := time.NewTicker(1 * time.Minute)
-		defer ticker.Stop()
-		for range ticker.C {
-			log.Printf("Total actions sent: %d, Total packets received: %d", atomic.LoadInt64(&totalActions), atomic.LoadInt64(&totalPacketsReceived))
-			atomic.StoreInt64(&totalActions, 0)
-			atomic.StoreInt64(&totalPacketsReceived, 0)
-		}
-	}()
+	gameType, err := strconv.Atoi(os.Args[4])
+	if err != nil {
+		fmt.Println("Invalid game type")
+		return
+	}
+
+	stats := make([]*ClientStats, clientCount)
+	var wg sync.WaitGroup
+	ctx, cancel := context.WithCancel(context.Background())
+
+	for i := range clientCount {
+		wg.Add(1)
+		stats[i] = &ClientStats{ClientID: i, MinLatency: time.Hour}
+		go runClient(ctx, &wg, i, serverPort, stats[i], gameType)
+	}
+
+	log.Printf("Simulation started for %v.", duration)
+	time.Sleep(duration)
+	cancel()
+	log.Println("Simulation finished. Waiting for clients to exit...")
 
 	wg.Wait()
+
+	printSummary(stats)
 }
 
-func runClient(wg *sync.WaitGroup, clientID int, serverPort string) {
+func printSummary(stats []*ClientStats) {
+	var totalActions, totalPackets, totalErrors, totalLatencyCount int64
+	var totalLatency time.Duration
+
+	log.Println("--- Simulation Summary ---")
+	for _, s := range stats {
+		totalActions += s.ActionsSent
+		totalPackets += s.PacketsReceived
+		totalErrors += s.ConnectionErrors + s.LoginErrors + s.RoomErrors + s.GameServerErrors + s.ActionErrors + s.ReadErrors + s.WriteErrors + s.DecodeErrors
+		totalLatency += s.TotalLatency
+		totalLatencyCount += s.LatencyCount
+
+		avgLatency := time.Duration(0)
+		if s.LatencyCount > 0 {
+			avgLatency = s.TotalLatency / time.Duration(s.LatencyCount)
+		}
+		log.Printf("Client %d: Actions: %d, Packets Rcvd: %d, Errors: %d, Avg Latency: %v, Min Latency: %v, Max Latency: %v",
+			s.ClientID, s.ActionsSent, s.PacketsReceived, s.ConnectionErrors+s.LoginErrors+s.RoomErrors+s.GameServerErrors+s.ActionErrors+s.ReadErrors+s.WriteErrors+s.DecodeErrors, avgLatency, s.MinLatency, s.MaxLatency)
+	}
+
+	avgTotalLatency := time.Duration(0)
+	if totalLatencyCount > 0 {
+		avgTotalLatency = totalLatency / time.Duration(totalLatencyCount)
+	}
+	log.Println("--- Global ---")
+	log.Printf("Total Actions: %d, Total Packets Rcvd: %d, Total Errors: %d, Average Latency: %v",
+		totalActions, totalPackets, totalErrors, avgTotalLatency)
+}
+
+func runClient(ctx context.Context, wg *sync.WaitGroup, clientID int, serverPort string, stats *ClientStats, gameType int) {
 	defer wg.Done()
 
 	serverIP := os.Getenv("SERVER_IP")
-	if len(os.Args) > 3 {
-		serverIP = os.Args[3]
+	if len(os.Args) > 5 {
+		serverIP = os.Args[5]
 	} else if serverIP == "" {
 		serverIP = "localhost"
 	}
@@ -62,6 +121,7 @@ func runClient(wg *sync.WaitGroup, clientID int, serverPort string) {
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", serverIP, serverPort))
 	if err != nil {
 		log.Printf("Client %d: Failed to connect to server: %v", clientID, err)
+		stats.ConnectionErrors++
 		return
 	}
 	defer conn.Close()
@@ -73,6 +133,7 @@ func runClient(wg *sync.WaitGroup, clientID int, serverPort string) {
 	_, err = conn.Write(loginPacket.Serialize())
 	if err != nil {
 		log.Printf("Client %d: Failed to send login packet: %v", clientID, err)
+		stats.WriteErrors++
 		return
 	}
 
@@ -81,12 +142,14 @@ func runClient(wg *sync.WaitGroup, clientID int, serverPort string) {
 	n, err := conn.Read(buf)
 	if err != nil {
 		log.Printf("Client %d: Failed to read login response: %v", clientID, err)
+		stats.ReadErrors++
 		return
 	}
 
 	packet, _, err := shared.DeSerialize(buf[:n])
 	if err != nil {
 		log.Printf("Client %d: Failed to deserialize login response: %v", clientID, err)
+		stats.DecodeErrors++
 		return
 	}
 
@@ -94,14 +157,16 @@ func runClient(wg *sync.WaitGroup, clientID int, serverPort string) {
 		log.Printf("Client %d: Login successful", clientID)
 	} else {
 		log.Printf("Client %d: Login failed", clientID)
+		stats.LoginErrors++
 		return
 	}
 
 	// 3. Send Room Request Packet
-	roomRequestPacket := shared.NewRoomRequestPacket(1)
+	roomRequestPacket := shared.NewRoomRequestPacket(gameType)
 	_, err = conn.Write(roomRequestPacket.Serialize())
 	if err != nil {
 		log.Printf("Client %d: Failed to send room request packet: %v", clientID, err)
+		stats.WriteErrors++
 		return
 	}
 
@@ -109,18 +174,21 @@ func runClient(wg *sync.WaitGroup, clientID int, serverPort string) {
 	n, err = conn.Read(buf)
 	if err != nil {
 		log.Printf("Client %d: Failed to read room info: %v", clientID, err)
+		stats.ReadErrors++
 		return
 	}
 
 	packet, _, err = shared.DeSerialize(buf[:n])
 	if err != nil {
 		log.Printf("Client %d: Failed to deserialize room info: %v", clientID, err)
+		stats.DecodeErrors++
 		return
 	}
 
 	lookRoomPacket, ok := packet.(*shared.LookRoomPacket)
 	if !ok || lookRoomPacket.Success != 0 {
 		log.Printf("Client %d: Failed to get room info", clientID)
+		stats.RoomErrors++
 		return
 	}
 
@@ -130,6 +198,7 @@ func runClient(wg *sync.WaitGroup, clientID int, serverPort string) {
 	gameConn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", serverIP, lookRoomPacket.RoomIP))
 	if err != nil {
 		log.Printf("Client %d: Failed to connect to game server: %v", clientID, err)
+		stats.GameServerErrors++
 		return
 	}
 	defer gameConn.Close()
@@ -141,6 +210,7 @@ func runClient(wg *sync.WaitGroup, clientID int, serverPort string) {
 	_, err = gameConn.Write(spellSelectionPacket.Serialize())
 	if err != nil {
 		log.Printf("Client %d: Failed to send spell selection packet: %v", clientID, err)
+		stats.WriteErrors++
 		return
 	}
 
@@ -151,24 +221,26 @@ func runClient(wg *sync.WaitGroup, clientID int, serverPort string) {
 	var gameStarted bool
 gameStartLoop:
 	for {
-		n, err := gameConn.Read(tempBuf)
-		if err != nil {
-			log.Printf("Client %d: Failed to read from game server while waiting for start: %v", clientID, err)
+		select {
+		case <-ctx.Done():
 			return
-		}
-		gameBuf = append(gameBuf, tempBuf[:n]...)
+		default:
+			n, err := gameConn.Read(tempBuf)
+			if err != nil {
+				log.Printf("Client %d: Failed to read from game server while waiting for start: %v", clientID, err)
+				stats.ReadErrors++
+				return
+			}
+			gameBuf = append(gameBuf, tempBuf[:n]...)
 
-		// A GameStartPacket is 3 bytes long (version, code, success)
-		if len(gameBuf) >= 3 {
-			// Check if it's a GameStartPacket (code 7)
-			if gameBuf[1] == 7 {
+			if len(gameBuf) >= 3 && gameBuf[1] == 7 {
 				log.Printf("Client %d: Received GameStartPacket. Starting to send actions.", clientID)
 				gameStarted = true
-				gameBuf = gameBuf[3:] // Consume the packet from the buffer
+				gameBuf = gameBuf[3:]
 				break gameStartLoop
-			} else {
+			} else if len(gameBuf) >= 3 {
 				log.Printf("Client %d: Received unexpected packet with code %d while waiting for start. Discarding buffer.", clientID, gameBuf[1])
-				gameBuf = gameBuf[:0] // Clear buffer and wait for a clean packet
+				gameBuf = gameBuf[:0]
 			}
 		}
 	}
@@ -179,49 +251,65 @@ gameStartLoop:
 	}
 
 	// 8. Send Random Actions and Read Board Packets
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
 	for {
-		action := rand.Intn(4) + 1 // 1 to 4
-		actionPacket := shared.NewActionPacket(action)
-		_, err := gameConn.Write(actionPacket.Serialize())
-		if err != nil {
-			log.Printf("Client %d: Failed to send action packet: %v", clientID, err)
+		select {
+		case <-ctx.Done():
 			return
-		}
-		atomic.AddInt64(&totalActions, 1)
-
-		// Read response from game server
-		n, err := gameConn.Read(tempBuf)
-		if err != nil {
-			log.Printf("Client %d: Failed to read from game server: %v", clientID, err)
-			return
-		}
-		if n > 0 {
-			gameBuf = append(gameBuf, tempBuf[:n]...)
-		}
-
-		// Process all complete packets in the buffer
-		for {
-			packet, bytesConsumed, err := shared.DeSerialize(gameBuf)
+		case <-ticker.C:
+			action := rand.Intn(4) + 1 // 1 to 4
+			actionPacket := shared.NewActionPacket(action)
+			startTime := time.Now()
+			_, err := gameConn.Write(actionPacket.Serialize())
 			if err != nil {
-				if err.Error() == "incomplete packet header" || err.Error() == "incomplete packet" {
-					// Not enough data, wait for more
-					break
+				log.Printf("Client %d: Failed to send action packet: %v", clientID, err)
+				stats.ActionErrors++
+				continue
+			}
+			atomic.AddInt64(&stats.ActionsSent, 1)
+
+			n, err := gameConn.Read(tempBuf)
+			if err != nil {
+				log.Printf("Client %d: Failed to read from game server: %v", clientID, err)
+				stats.ReadErrors++
+				continue
+			}
+			if n > 0 {
+				gameBuf = append(gameBuf, tempBuf[:n]...)
+			}
+
+			for {
+				packet, bytesConsumed, err := shared.DeSerialize(gameBuf)
+				if err != nil {
+					if err.Error() == "incomplete packet header" || err.Error() == "incomplete packet" {
+						break
+					} else {
+						log.Printf("Client %d: Error deserializing packet: %v", clientID, err)
+						stats.DecodeErrors++
+						gameBuf = nil
+						continue
+					}
+				}
+
+				gameBuf = gameBuf[bytesConsumed:]
+
+				if _, ok := packet.(*shared.BoardPacket); ok {
+					latency := time.Since(startTime)
+					stats.TotalLatency += latency
+					if latency > stats.MaxLatency {
+						stats.MaxLatency = latency
+					}
+					if latency < stats.MinLatency {
+						stats.MinLatency = latency
+					}
+					stats.LatencyCount++
+					atomic.AddInt64(&stats.PacketsReceived, 1)
 				} else {
-					log.Printf("Client %d: Error deserializing packet: %v", clientID, err)
-					// Discard the buffer to prevent getting stuck on a bad packet
-					gameBuf = nil
-					continue
+					log.Printf("Client %d: Did not receive BoardPacket, but got %T", clientID, packet)
 				}
 			}
-
-			gameBuf = gameBuf[bytesConsumed:]
-
-			if _, ok := packet.(*shared.BoardPacket); ok {
-				atomic.AddInt64(&totalPacketsReceived, 1)
-			} else {
-				log.Printf("Client %d: Did not receive BoardPacket, but got %T", clientID, packet)
-			}
 		}
-		time.Sleep(1 * time.Second)
 	}
 }
