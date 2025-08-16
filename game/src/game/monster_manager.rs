@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use super::algorithms::pathfinding::{find_path_on_board, is_adjacent_to_goal};
 use super::animation::AnimationTrait;
+use super::buffs::{create_buff, Buff};
 use super::cell::MonsterId;
 use super::entities::monster::MonsterState;
 use super::entities::projectile::GameplayEffect;
@@ -59,13 +60,17 @@ impl MonsterManager {
         monster_id: &MonsterId,
         effects: Vec<GameplayEffect>,
         player_id: PlayerId,
-    ) -> Option<(PlayerId, u8, u16, u8)> {
+    ) -> Option<(PlayerId, u8, u16, u8, Option<Box<dyn Buff>>)> {
         if let Some(monster) = self.active_monsters.get_mut(monster_id) {
             monster.take_effect(effects);
             monster.attach_target(player_id);
             if monster.stats.health == 0 {
                 let monster_def = self.monster_definitions.get(&monster.monster_id).unwrap();
-                return Some((player_id, monster_def.xp_reward, monster_def.gold_reward, monster_def.health_reward));
+                let mut buff_reward: Option<Box<dyn Buff>> = None;
+                if let Some(buff_name) = &monster_def.buff_reward {
+                    buff_reward = create_buff(buff_name);
+                } 
+                return Some((player_id, monster_def.xp_reward, monster_def.gold_reward, monster_def.health_reward, buff_reward));
             }
         }
         None

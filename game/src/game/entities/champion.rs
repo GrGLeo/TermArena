@@ -648,6 +648,9 @@ impl Fighter for Champion {
 }
 
 impl HasBuff for Champion {
+    fn get_stats_mut(&self) -> &mut Stats {
+        
+    }
     fn is_stunned(&self) -> bool {
         self.stun_timer
             .map_or(false, |timer_end| Instant::now() < timer_end)

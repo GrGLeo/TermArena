@@ -176,6 +176,9 @@ impl HasBuff for Monster {
             self.stun_timer = None;
         }
     }
+
+    fn update_health_regen(&mut self,_gain: bool, _amount: u8) {
+    }
 }
 
 #[cfg(test)]
