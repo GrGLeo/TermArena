@@ -1,8 +1,10 @@
 pub mod stun_buff;
 pub mod health_buff;
+pub mod mana_buff;
 use std::{fmt::Debug, time::Duration};
 
 use health_buff::RedBuff;
+use mana_buff::BlueBuff;
 
 use super::entities::Stats;
 
@@ -26,6 +28,7 @@ pub trait Buff: Send + Sync + Debug {
 pub fn create_buff(buff_name: &str) -> Option<Box<dyn Buff>> {
     match buff_name {
         "red_buff" => Some(Box::new(RedBuff::new(120))),
+        "blue_buff" => Some(Box::new(BlueBuff::new(120))),
         _ => {
             None
         }

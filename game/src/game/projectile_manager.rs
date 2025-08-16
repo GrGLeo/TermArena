@@ -345,6 +345,8 @@ mod tests {
             leash_range: 10,
             xp_reward: 30,
             gold_reward: 30,
+            health_reward: 50,
+            buff_reward: None,
             respawn_timer_secs: 60,
             attack_speed_ms: 1000,
         }
