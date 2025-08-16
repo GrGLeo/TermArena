@@ -22,9 +22,11 @@ impl Base {
             health: base_stats.health,
             max_health: base_stats.health,
             hp_per_sec: 0.0,
+            health_regen_acc: 0.0,
             mana: 0,
             max_mana: 0,
             mp_per_sec: 0.0,
+            mana_regen_acc: 0.0,
             armor: base_stats.armor,
         };
 

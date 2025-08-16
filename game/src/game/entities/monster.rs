@@ -48,9 +48,11 @@ impl Monster {
             health: monster_stats.health,
             max_health: monster_stats.health,
             hp_per_sec: 0.0,
+            health_regen_acc: 0.0,
             mana: 0,
             max_mana: 0,
             mp_per_sec: 0.0,
+            mana_regen_acc: 0.0,
             armor: monster_stats.armor,
         };
 
@@ -160,6 +162,10 @@ impl Fighter for Monster {
 }
 
 impl HasBuff for Monster {
+    fn get_stats_mut(&mut self) -> &mut Stats {
+        return &mut self.stats
+    }
+
     fn is_stunned(&self) -> bool {
         self.stun_timer
             .map_or(false, |timer_end| Instant::now() < timer_end)
@@ -175,9 +181,6 @@ impl HasBuff for Monster {
         } else {
             self.stun_timer = None;
         }
-    }
-
-    fn update_health_regen(&mut self,_gain: bool, _amount: u8) {
     }
 }
 
@@ -207,6 +210,8 @@ mod tests {
             leash_range: 10,
             xp_reward: 30,
             gold_reward: 50,
+            health_reward: 50,
+            buff_reward: None,
             respawn_timer_secs: 60,
             attack_speed_ms: 1,
         }

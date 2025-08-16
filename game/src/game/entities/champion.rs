@@ -87,8 +87,6 @@ pub struct Champion {
     pub current_cast: Option<Cast>,
     pub active_buffs: HashMap<String, Box<dyn Buff>>,
     last_regen: Instant,
-    health_regen_acc: f32,
-    mana_regen_acc: f32,
     death_counter: u8,
     death_timer: Instant,
     last_attacked: Instant,
@@ -119,8 +117,10 @@ impl Champion {
             health: champion_stats.health,
             max_health: champion_stats.health,
             hp_per_sec,
+            health_regen_acc: 0.0,
             mana: champion_stats.mana,
             max_mana: champion_stats.mana,
+            mana_regen_acc: 0.0,
             mp_per_sec,
             armor: champion_stats.armor,
         };
@@ -142,8 +142,6 @@ impl Champion {
             inventory: [None, None, None, None, None, None],
             active_buffs: HashMap::new(),
             last_regen: Instant::now(),
-            health_regen_acc: 0.0,
-            mana_regen_acc: 0.0,
             team_id,
             row,
             col,
@@ -530,19 +528,19 @@ impl Champion {
         if self.last_regen.elapsed() >= Duration::from_secs(1) {
             self.last_regen = Instant::now();
             // Health regeneration
-            self.health_regen_acc += self.stats.hp_per_sec;
-            if self.health_regen_acc >= 1.0 {
-                let health_to_add = self.health_regen_acc.trunc();
+            self.stats.health_regen_acc += self.stats.hp_per_sec;
+            if self.stats.health_regen_acc >= 1.0 {
+                let health_to_add = self.stats.health_regen_acc.trunc();
                 self.stats.health =
                     (self.stats.health + health_to_add as u16).min(self.stats.max_health);
-                self.health_regen_acc -= health_to_add
+                self.stats.health_regen_acc -= health_to_add
             }
             // Mana regeneration
-            self.mana_regen_acc += self.stats.mp_per_sec;
-            if self.mana_regen_acc >= 1.0 {
-                let mana_to_add = self.mana_regen_acc.trunc();
+            self.stats.mana_regen_acc += self.stats.mp_per_sec;
+            if self.stats.mana_regen_acc >= 1.0 {
+                let mana_to_add = self.stats.mana_regen_acc.trunc();
                 self.stats.mana = (self.stats.mana + mana_to_add as u16).min(self.stats.max_mana);
-                self.mana_regen_acc -= mana_to_add
+                self.stats.mana_regen_acc -= mana_to_add
             }
         }
     }
@@ -616,7 +614,6 @@ impl Fighter for Champion {
                         | CellContent::Minion(_, team_id)
                         | CellContent::Base(team_id) => *team_id != self.team_id,
                         CellContent::Monster(..) => true,
-                        _ => false,
                     };
 
                     if is_enemy {
@@ -648,9 +645,10 @@ impl Fighter for Champion {
 }
 
 impl HasBuff for Champion {
-    fn get_stats_mut(&self) -> &mut Stats {
-        
+    fn get_stats_mut(&mut self) -> &mut Stats {
+        return &mut self.stats
     }
+
     fn is_stunned(&self) -> bool {
         self.stun_timer
             .map_or(false, |timer_end| Instant::now() < timer_end)
@@ -2050,27 +2048,27 @@ mod tests {
         thread::sleep(Duration::from_secs(1));
         champion.regen_health_mana();
         assert_eq!(champion.stats.health, 100); // 0.5 added to accumulator, not enough to add 1 health
-        assert!((champion.health_regen_acc - 0.5).abs() < f32::EPSILON);
+        assert!((champion.stats.health_regen_acc - 0.5).abs() < f32::EPSILON);
 
         thread::sleep(Duration::from_secs(1));
         champion.regen_health_mana();
         assert_eq!(champion.stats.health, 101); // acc becomes 1.0, adds 1 health, acc becomes 0
-        assert!(champion.health_regen_acc.abs() < f32::EPSILON);
+        assert!(champion.stats.health_regen_acc.abs() < f32::EPSILON);
 
         // Test with 1.5 hp/sec
         champion.stats.hp_per_sec = 1.5;
         champion.stats.health = 100;
-        champion.health_regen_acc = 0.0;
+        champion.stats.health_regen_acc = 0.0;
 
         thread::sleep(Duration::from_secs(1));
         champion.regen_health_mana();
         assert_eq!(champion.stats.health, 101); // acc becomes 1.5, adds 1, acc becomes 0.5
-        assert!((champion.health_regen_acc - 0.5).abs() < f32::EPSILON);
+        assert!((champion.stats.health_regen_acc - 0.5).abs() < f32::EPSILON);
 
         thread::sleep(Duration::from_secs(1));
         champion.regen_health_mana();
         assert_eq!(champion.stats.health, 103); // acc becomes 0.5 + 1.5 = 2.0, adds 2, acc becomes 0.0
-        assert!(champion.health_regen_acc.abs() < f32::EPSILON);
+        assert!(champion.stats.health_regen_acc.abs() < f32::EPSILON);
     }
 
     // Helper function to create a basic Item for testing

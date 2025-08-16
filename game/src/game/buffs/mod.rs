@@ -7,7 +7,7 @@ use health_buff::RedBuff;
 use super::entities::Stats;
 
 pub trait HasBuff {
-    fn get_stats_mut(&self) -> &mut Stats;
+    fn get_stats_mut(&mut self) -> &mut Stats;
 
     // StunBuff
     fn is_stunned(&self) -> bool;
