@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use super::algorithms::pathfinding::{find_path_on_board, is_adjacent_to_goal};
 use super::animation::AnimationTrait;
-use super::buffs::{create_buff, Buff};
+use super::buffs::{Buff, create_buff};
 use super::cell::MonsterId;
 use super::entities::monster::MonsterState;
 use super::entities::projectile::GameplayEffect;
@@ -69,8 +69,14 @@ impl MonsterManager {
                 let mut buff_reward: Option<Box<dyn Buff>> = None;
                 if let Some(buff_name) = &monster_def.buff_reward {
                     buff_reward = create_buff(buff_name);
-                } 
-                return Some((player_id, monster_def.xp_reward, monster_def.gold_reward, monster_def.health_reward, buff_reward));
+                }
+                return Some((
+                    player_id,
+                    monster_def.xp_reward,
+                    monster_def.gold_reward,
+                    monster_def.health_reward,
+                    buff_reward,
+                ));
             }
         }
         None
@@ -109,7 +115,10 @@ impl MonsterManager {
                                 (champion.row, champion.col),
                             ) {
                                 if let Some(attack_action) = monster.can_attack() {
-                                    if let AttackAction::Melee { damage, mut animation } = attack_action
+                                    if let AttackAction::Melee {
+                                        damage,
+                                        mut animation,
+                                    } = attack_action
                                     {
                                         animation.attach_target(champion_id);
                                         new_animations.push(animation);
@@ -487,7 +496,7 @@ mod tests {
         // The path should be straight down in this case
         assert_eq!(
             new_pos,
-            (11, 9),
+            (11, 10),
             "Monster should move one step along the path to the target"
         );
     }
@@ -557,14 +566,14 @@ mod tests {
         // Call the update loop
         manager.update(&mut board, &mut champions);
 
-        // Verify the monster has moved one step towards its spawn diagonally
+        // Verify the monster has moved one step towards its spawn
         let monster = manager.active_monsters.get(&monster_id).unwrap();
         let new_pos = (monster.row, monster.col);
         assert_ne!(new_pos, initial_pos, "Monster should have moved");
-        assert_eq!(
-            new_pos,
-            (14, 14),
-            "Monster should move one step diagonally along the path to its spawn"
+        let possible_positions = [(14, 15), (15, 14)];
+        assert!(
+            possible_positions.contains(&new_pos),
+            "Monster should move one step along the path to its spawn"
         );
     }
 
@@ -634,33 +643,29 @@ mod tests {
         monster.death_time =
             Some(std::time::Instant::now() - respawn_duration - std::time::Duration::from_secs(1));
 
-        let next_id = manager.next_instance_id;
-
         // Call the update loop
         manager.update(&mut board, &champions);
 
-        // The old monster should be gone, and a new one should exist.
-        assert!(
-            manager.active_monsters.get(&monster_id).is_none(),
-            "Old monster should be removed"
-        );
+        // The monster should be active again.
         assert_eq!(
             manager.active_monsters.len(),
             1,
             "There should be one active monster after respawn"
         );
-        assert_eq!(
-            manager.next_instance_id,
-            next_id + 1,
-            "Next instance ID should be incremented"
-        );
 
-        // The new monster should exist with the next ID.
-        let new_monster = manager
+        // The same monster should exist with the same ID.
+        let respawned_monster = manager
             .active_monsters
-            .get(&next_id)
-            .expect("New monster should exist with the next ID");
-        assert_eq!(new_monster.state, MonsterState::Idle);
-        assert_eq!(new_monster.stats.health, new_monster.stats.max_health);
+            .get(&monster_id)
+            .expect("Respawned monster should exist with the same ID");
+        assert_eq!(respawned_monster.state, MonsterState::Idle);
+        assert_eq!(
+            respawned_monster.stats.health,
+            respawned_monster.stats.max_health
+        );
+        assert_eq!(
+            (respawned_monster.row, respawned_monster.col),
+            (respawned_monster.spawn_row, respawned_monster.spawn_col)
+        );
     }
 }

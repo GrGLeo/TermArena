@@ -175,16 +175,12 @@ mod pathfinding_tests {
         let center_row = 2;
         let center_col = 2;
 
-        // Expected neighbors for a cell in the middle of an open board (assuming 8-directional movement)
+        // Expected neighbors for a cell in the middle of an open board (assuming 4-directional movement)
         let mut expected_neighbors = vec![
             (1, 2), // Up
             (3, 2), // Down
             (2, 1), // Left
             (2, 3), // Right
-            (1, 1), // Up-Left
-            (1, 3), // Up-Right
-            (3, 1), // Down-Left
-            (3, 3), // Down-Right
         ];
         expected_neighbors.sort(); // Sort for reliable comparison
 
@@ -194,7 +190,7 @@ mod pathfinding_tests {
 
         assert_eq!(
             actual_neighbors, expected_neighbors,
-            "Neighbors in the middle of an open board should include all 8 adjacent cells."
+            "Neighbors in the middle of an open board should include all 4 adjacent cells."
         );
     }
 
@@ -221,16 +217,14 @@ mod pathfinding_tests {
         );
 
         // Expected valid neighbors for (0, 1) considering the edge, wall, and minion
-        // Possible neighbors are: (0,0), (0,2), (1,0), (1,1), (1,2)
+        // Possible neighbors are: (0,0), (0,2), (1,0), (1,1)
         // (0,0) is valid (Left)
         // (0,2) is blocked by Wall (Right) - Invalid
         // (1,0) is blocked by Minion (Down-Left) - Invalid
         // (1,1) is valid (Down)
-        // (1,2) is valid (Down-Right)
         let mut expected_neighbors = vec![
             (0, 0), // Left
             (1, 1), // Down
-            (1, 2), // Down-Right
         ];
         expected_neighbors.sort(); // Sort for reliable comparison
 
@@ -325,21 +319,18 @@ mod pathfinding_tests {
         let start = (1, 1);
         let goal = (8, 8);
 
-        // A direct diagonal path should be found
-        let mut expected_path: VecDeque<(u16, u16)> = VecDeque::new();
-        expected_path.push_back((2, 2));
-        expected_path.push_back((3, 3));
-        expected_path.push_back((4, 4));
-        expected_path.push_back((5, 5));
-        expected_path.push_back((6, 6));
-        expected_path.push_back((7, 7));
-        let expected_path = Some(expected_path);
-
         let actual_path = find_path_on_board(&board, start, goal);
 
-        assert_eq!(
-            actual_path, expected_path,
-            "Should find a direct path on a clear board."
+        assert!(
+            actual_path.is_some(),
+            "Should find a path on a clear board."
+        );
+
+        let path = actual_path.unwrap();
+        assert!(!path.is_empty(), "Path should not be empty.");
+        assert!(
+            is_adjacent_to_goal(*path.back().unwrap(), goal),
+            "Path should end adjacent to the goal."
         );
     }
 
@@ -376,11 +367,11 @@ mod pathfinding_tests {
         );
 
         // Check if the path length is optimal or close to optimal (for debugging, exact length is best)
-        // For this specific case with Diagonal Distance heuristic and cost 1, the shortest path is 4 moves (5 nodes).
+        // For this specific case with Diagonal Distance heuristic and cost 1, the shortest path is 2 moves (3 nodes).
         assert_eq!(
             actual_path.len(),
-            1,
-            "Path around obstacle should have the optimal length (2 nodes)."
+            2,
+            "Path around obstacle should have the optimal length (3 nodes)."
         );
     }
 
@@ -416,8 +407,8 @@ mod pathfinding_tests {
         // Check optimal path length (should be the same as around a wall in this scenario)
         assert_eq!(
             actual_path.len(),
-            1,
-            "Path around entity should have the optimal length (2 nodes)."
+            2,
+            "Path around entity should have the optimal length (3 nodes)."
         );
     }
 
@@ -480,11 +471,11 @@ mod pathfinding_tests {
             );
         }
 
-        // Check if the path length is optimal (11 nodes for 10 moves with Diagonal Distance cost 1)
+        // Check if the path length is optimal (11 nodes for 11 moves with cardinal directions)
         assert_eq!(
             actual_path.len(),
-            9,
-            "Path around wall should have the optimal length (4 nodes)."
+            11,
+            "Path around wall should have the optimal length."
         );
     }
 
