@@ -6,11 +6,13 @@ edition = "2024"
 [dependencies]
 tonic = "0.11"
 prost = "0.12"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-argon2 = "0.5"
+tokio-rusqlite = "0.6.0"
+rusqlite = { version = "0.32.0", features = ["bundled"] }
 rand = "0.8"
+rsa = { version = "0.9.6", features = ["sha2"] }
+sha2 = "0.10.8"
 
 [build-dependencies]
 tonic-build = "0.11"

@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -18,6 +19,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+type keyResultMsg struct {
+	key       *rsa.PrivateKey
+	publicKey []byte
+	isNewUser bool
+	err       error
+}
 
 type Styles struct {
 	BorderColor    lipgloss.Color
@@ -112,7 +120,7 @@ func NewAuthModel(conn *net.TCPConn) AuthModel {
 	styles := DefaultStyles()
 
 	tiUser := textinput.New()
-  tiUser.Focus()
+	tiUser.Focus()
 	tiUser.Placeholder = "Username"
 	tiUser.CharLimit = 32
 	tiUser.Width = 20
@@ -133,6 +141,29 @@ func (m *AuthModel) SetConn(conn *net.TCPConn) {
 func (m *AuthModel) SetDimension(height, width int) {
 	m.width = width
 	m.height = height
+}
+
+func (m *AuthModel) logKeyForDebug() {
+	if m.currentKey == nil {
+		log.Println("DEBUG: m.currentKey is nil")
+		return
+	}
+
+	// Marshal the key into a DER-encoded format
+	privateKeyDER, err := x509.MarshalPKCS8PrivateKey(m.currentKey)
+	if err != nil {
+		log.Printf("DEBUG: Failed to marshal key for logging: %v", err)
+		return
+	}
+
+	// Wrap the DER data in a PEM block
+	privateKeyPEM := &pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: privateKeyDER,
+	}
+
+	// Encode to memory and print
+	log.Printf("DEBUG: Current Key:\n%s", string(pem.EncodeToMemory(privateKeyPEM)))
 }
 
 func (m AuthModel) Init() tea.Cmd {
@@ -160,23 +191,51 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err != nil {
 						// KEY NOT FOUND
 						// Generate a new key pair
-						privKey, pubKeyBytes, _ := generateAndSaveKeys(username)
-						m.currentKey = privKey
-						communication.SendRegisterRequestPacket(m.conn, username, *pubKeyBytes)
+						privKey, pubKeyBytes, genErr := generateAndSaveKeys(username)
+						return keyResultMsg{
+							key:       privKey,
+							publicKey: *pubKeyBytes,
+							isNewUser: true,
+							err:       genErr,
+						}
 					} else {
 						// KEY FOUND
-						m.currentKey = key
-						communication.SendLoginChallengeRequestPacket(m.conn, username)
+						return keyResultMsg{
+							key:       key,
+							isNewUser: false,
+							err:       nil,
+						}
 					}
-					return nil
 				}
-      default: 
-        m.usernameInput, cmd = m.usernameInput.Update(msg)
-        cmds = append(cmds, cmd)
+			default:
+				m.usernameInput, cmd = m.usernameInput.Update(msg)
+				cmds = append(cmds, cmd)
 			}
 		}
-		// --- Handle Messages From Server ---
+  case keyResultMsg:
+		if msg.err != nil {
+			m.state = stateError
+			m.statusMessage = "Error handling key: " + msg.err.Error()
+			return m, nil
+		}
+
+		// Key was loaded/generated successfully, store it on the model.
+		m.currentKey = msg.key
+		username := m.usernameInput.Value()
+
+		if msg.isNewUser {
+			m.statusMessage = "New user detected. Registering..."
+			communication.SendRegisterRequestPacket(m.conn, username, msg.publicKey)
+		} else {
+			m.statusMessage = "Existing user. Requesting challenge..."
+			m.logKeyForDebug()
+			communication.SendLoginChallengeRequestPacket(m.conn, username)
+		}
+		return m, nil
+
+	// --- Handle Messages From Server ---
 	case communication.RegistrationResultMsg:
+		log.Print("Hello")
 		if !msg.Success {
 			m.state = stateError
 			m.statusMessage = "Registration failed: " + msg.Message
@@ -196,6 +255,12 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case communication.ChallengeReceivedMsg:
 		m.statusMessage = "Challenge received. Signing..."
+		if m.currentKey == nil {
+			log.Print("Error m.currentkey is nil")
+		} else {
+			log.Printf("This should not be called")
+		}
+		m.logKeyForDebug()
 		signedChallenge, err := signChallenge(m.currentKey, msg.Challenge)
 		if err != nil {
 			m.state = stateError
@@ -214,7 +279,7 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-  return m, tea.Batch(cmds...)
+	return m, tea.Batch(cmds...)
 
 }
 
@@ -229,92 +294,95 @@ func (m AuthModel) View() string {
 		m.statusMessage,
 	)
 	return lipgloss.Place(
-    m.width,
-    m.height,
-    lipgloss.Center,
-    lipgloss.Center,
-    content,
-  )
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		content,
+	)
 
 }
 
 func loadKey(username string) (*rsa.PrivateKey, error) {
-  keyFile, err := getKeyPath(username)
-  if err != nil {
-    return nil, err
-  }
-  pemData, err := os.ReadFile(keyFile)
-  if err != nil {
-    return nil, err
-  }
-  block, _ := pem.Decode(pemData)
-  if block == nil || block.Type != "PRIVATE KEY" {
-    return nil, errors.New("failed to decode PEM block containing private Key")
-  }
-  priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-  if err != nil {
-    return nil, err
-  }
-  privateKey, ok := priv.(*rsa.PrivateKey)
-  if !ok {
-    return nil, errors.New("key is not an RSA private key")
-  }
-  return privateKey, nil
+	keyFile, err := getKeyPath(username)
+	if err != nil {
+		return nil, err
+	}
+	pemData, err := os.ReadFile(keyFile)
+	if err != nil {
+		return nil, err
+	}
+	block, _ := pem.Decode(pemData)
+	if block == nil || block.Type != "PRIVATE KEY" {
+		return nil, errors.New("failed to decode PEM block containing private Key")
+	}
+	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	privateKey, ok := priv.(*rsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("key is not an RSA private key")
+	}
+	return privateKey, nil
 }
 
 func generateAndSaveKeys(username string) (*rsa.PrivateKey, *[]byte, error) {
-  privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-  if err != nil {
-    return nil, nil, err
-  }
-  privateKeyDer, err := x509.MarshalPKCS8PrivateKey(privateKey)
-  if err != nil {
-    return nil, nil, err
-  }
-  privateKeyPem := &pem.Block{
-    Type:"PRIVATE KEY",
-    Bytes: privateKeyDer,
-  }
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, nil, err
+	}
+	privateKeyDer, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	privateKeyPem := &pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: privateKeyDer,
+	}
 
-  keyFile, err := getKeyPath(username)
-  if err != nil {
-    return nil, nil, err
-  }
-  file, err := os.Create(keyFile)
-  if err != nil {
-    return nil, nil, err
-  }
-  defer file.Close()
-  if err := pem.Encode(file, privateKeyPem); err != nil {
-    return nil, nil, err
-  }
+	keyFile, err := getKeyPath(username)
+	if err != nil {
+		return nil, nil, err
+	}
+	file, err := os.Create(keyFile)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer file.Close()
+	if err := pem.Encode(file, privateKeyPem); err != nil {
+		return nil, nil, err
+	}
 
-  publicKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
-  if err != nil {
-    return nil, nil, err
-  }
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	return privateKey, &publicKeyBytes, nil
 }
 
 func signChallenge(key *rsa.PrivateKey, challenge []byte) ([]byte, error) {
-  hashed := sha256.Sum256(challenge)
-  signature, err := rsa.SignPKCS1v15(rand.Reader, key, crypto.SHA256, hashed[:])
-  if err != nil {
-    return nil, err
-  }
-  return signature, nil
+	if key == nil {
+		log.Print("Error key is nil")
+	}
+	hashed := sha256.Sum256(challenge)
+	signature, err := rsa.SignPKCS1v15(rand.Reader, key, crypto.SHA256, hashed[:])
+	if err != nil {
+		return nil, err
+	}
+	return signature, nil
 }
 
 func getKeyPath(username string) (string, error) {
-  homeDir, err := os.UserHomeDir()
-  if err != nil {
-    return "", err
-  }
-  dirPath := filepath.Join(homeDir, ".config", "term_arena", "keys")
-  if err := os.MkdirAll(dirPath, 0700); err != nil {
-    return "", err
-  }
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	dirPath := filepath.Join(homeDir, ".config", "term_arena", "keys")
+	if err := os.MkdirAll(dirPath, 0700); err != nil {
+		return "", err
+	}
 
-  return filepath.Join(dirPath, fmt.Sprintf("%s.key", username)), nil
+	return filepath.Join(dirPath, fmt.Sprintf("%s.key", username)), nil
 }
