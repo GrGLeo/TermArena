@@ -54,7 +54,23 @@ type Packet interface {
 
 func CreateMessage(packet Packet, conn *net.TCPConn) (event.Message, error) {
 	switch pkt := packet.(type) {
-	// TODO: Implement message creation for new auth packets if needed
+	case *RegisterRequestPacket:
+		return event.RegisterRequestMessage{
+			Username:  pkt.Username,
+			PublicKey: pkt.PublicKey,
+			Conn:      conn,
+		}, nil
+	case *LoginChallengeRequestPacket:
+		return event.LoginChallengeRequestMessage{
+			Username: pkt.Username,
+			Conn:     conn,
+		}, nil
+	case *AuthRequestPacket:
+		return event.AuthRequestMessage{
+			Username:        pkt.Username,
+			SignedChallenge: pkt.SignedChallenge,
+			Conn:            conn,
+		}, nil
 	case *RoomRequestPacket:
 		return event.RoomRequestMessage{
 			RoomType: pkt.RoomType,

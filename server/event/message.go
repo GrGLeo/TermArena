@@ -10,52 +10,48 @@ type Message interface {
 	Validate() error
 }
 
-type LoginMessage struct {
-	Username string
-	Password string
+type RegisterRequestMessage struct {
+  Username string
+  PublicKey []byte
+  Conn *net.TCPConn
 }
 
-func (lm LoginMessage) Type() string {
-	return "login"
+func (rrm RegisterRequestMessage) Type() string {
+  return "register"
 }
 
-func (lm LoginMessage) Validate() error {
-	if lm.Username == "" || lm.Password == "" {
-		return errors.New("Username and Password are required")
-	}
-	return nil
+func (rrm RegisterRequestMessage) Validate() error {
+  return nil
 }
 
-type SignInMessage struct {
-	Username string
-	Password string
+type LoginChallengeRequestMessage struct {
+  Username string
+  Conn *net.TCPConn
 }
 
-func (sm SignInMessage) Type() string {
-	return "signin"
+func (lcrm LoginChallengeRequestMessage) Type() string {
+  return "login-challenge"
 }
 
-func (sm SignInMessage) Validate() error {
-	if sm.Username == "" || sm.Password == "" {
-		return errors.New("Username and Password are required")
-	}
-	return nil
+func (lcrm LoginChallengeRequestMessage) Validate() error {
+  return nil
 }
 
-type AuthMessage struct {
-	Success int
+type AuthRequestMessage struct {
+  Username string
+  SignedChallenge []byte
+  Conn *net.TCPConn
 }
 
-func (am AuthMessage) Type() string {
-	return "auth"
+func (arm AuthRequestMessage) Type() string {
+  return "authentificate"
 }
 
-func (am AuthMessage) Validate() error {
-	if am.Success != 0 {
-		return errors.New("Wrong credential")
-	}
-	return nil
+func (arm AuthRequestMessage) Validate() error {
+  return nil
 }
+
+
 
 type RoomRequestMessage struct {
 	RoomType int

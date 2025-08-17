@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v3.21.12
-// source: auth/auth.proto
+// source: proto/auth/auth.proto
 
 package auth
 
@@ -19,205 +19,189 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	LoginService_Authentificate_FullMethodName = "/auth.LoginService/Authentificate"
+	AuthService_Register_FullMethodName          = "/auth.AuthService/Register"
+	AuthService_GetLoginChallenge_FullMethodName = "/auth.AuthService/GetLoginChallenge"
+	AuthService_Authentificate_FullMethodName    = "/auth.AuthService/Authentificate"
 )
 
-// LoginServiceClient is the client API for LoginService service.
+// AuthServiceClient is the client API for AuthService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type LoginServiceClient interface {
-	Authentificate(ctx context.Context, in *AuthentificationRequest, opts ...grpc.CallOption) (*AuthentificationResponse, error)
+//
+// The main authentification service
+type AuthServiceClient interface {
+	// Handles registration for new users
+	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
+	// Get a unique challenge for a user who want to log in
+	GetLoginChallenge(ctx context.Context, in *GetLoginChallengeRequest, opts ...grpc.CallOption) (*GetLoginChallengeResponse, error)
+	// Sends the signed challenge to the server to complete the login
+	Authentificate(ctx context.Context, in *AuthentificateRequest, opts ...grpc.CallOption) (*AuthentificateResponse, error)
 }
 
-type loginServiceClient struct {
+type authServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewLoginServiceClient(cc grpc.ClientConnInterface) LoginServiceClient {
-	return &loginServiceClient{cc}
+func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
+	return &authServiceClient{cc}
 }
 
-func (c *loginServiceClient) Authentificate(ctx context.Context, in *AuthentificationRequest, opts ...grpc.CallOption) (*AuthentificationResponse, error) {
+func (c *authServiceClient) Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AuthentificationResponse)
-	err := c.cc.Invoke(ctx, LoginService_Authentificate_FullMethodName, in, out, cOpts...)
+	out := new(RegisterResponse)
+	err := c.cc.Invoke(ctx, AuthService_Register_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// LoginServiceServer is the server API for LoginService service.
-// All implementations must embed UnimplementedLoginServiceServer
-// for forward compatibility.
-type LoginServiceServer interface {
-	Authentificate(context.Context, *AuthentificationRequest) (*AuthentificationResponse, error)
-	mustEmbedUnimplementedLoginServiceServer()
+func (c *authServiceClient) GetLoginChallenge(ctx context.Context, in *GetLoginChallengeRequest, opts ...grpc.CallOption) (*GetLoginChallengeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetLoginChallengeResponse)
+	err := c.cc.Invoke(ctx, AuthService_GetLoginChallenge_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
-// UnimplementedLoginServiceServer must be embedded to have
+func (c *authServiceClient) Authentificate(ctx context.Context, in *AuthentificateRequest, opts ...grpc.CallOption) (*AuthentificateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AuthentificateResponse)
+	err := c.cc.Invoke(ctx, AuthService_Authentificate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// AuthServiceServer is the server API for AuthService service.
+// All implementations must embed UnimplementedAuthServiceServer
+// for forward compatibility.
+//
+// The main authentification service
+type AuthServiceServer interface {
+	// Handles registration for new users
+	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
+	// Get a unique challenge for a user who want to log in
+	GetLoginChallenge(context.Context, *GetLoginChallengeRequest) (*GetLoginChallengeResponse, error)
+	// Sends the signed challenge to the server to complete the login
+	Authentificate(context.Context, *AuthentificateRequest) (*AuthentificateResponse, error)
+	mustEmbedUnimplementedAuthServiceServer()
+}
+
+// UnimplementedAuthServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedLoginServiceServer struct{}
+type UnimplementedAuthServiceServer struct{}
 
-func (UnimplementedLoginServiceServer) Authentificate(context.Context, *AuthentificationRequest) (*AuthentificationResponse, error) {
+func (UnimplementedAuthServiceServer) Register(context.Context, *RegisterRequest) (*RegisterResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
+}
+func (UnimplementedAuthServiceServer) GetLoginChallenge(context.Context, *GetLoginChallengeRequest) (*GetLoginChallengeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLoginChallenge not implemented")
+}
+func (UnimplementedAuthServiceServer) Authentificate(context.Context, *AuthentificateRequest) (*AuthentificateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Authentificate not implemented")
 }
-func (UnimplementedLoginServiceServer) mustEmbedUnimplementedLoginServiceServer() {}
-func (UnimplementedLoginServiceServer) testEmbeddedByValue()                      {}
+func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
+func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
 
-// UnsafeLoginServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to LoginServiceServer will
+// UnsafeAuthServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AuthServiceServer will
 // result in compilation errors.
-type UnsafeLoginServiceServer interface {
-	mustEmbedUnimplementedLoginServiceServer()
+type UnsafeAuthServiceServer interface {
+	mustEmbedUnimplementedAuthServiceServer()
 }
 
-func RegisterLoginServiceServer(s grpc.ServiceRegistrar, srv LoginServiceServer) {
-	// If the following call pancis, it indicates UnimplementedLoginServiceServer was
+func RegisterAuthServiceServer(s grpc.ServiceRegistrar, srv AuthServiceServer) {
+	// If the following call pancis, it indicates UnimplementedAuthServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&LoginService_ServiceDesc, srv)
+	s.RegisterService(&AuthService_ServiceDesc, srv)
 }
 
-func _LoginService_Authentificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AuthentificationRequest)
+func _AuthService_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LoginServiceServer).Authentificate(ctx, in)
+		return srv.(AuthServiceServer).Register(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: LoginService_Authentificate_FullMethodName,
+		FullMethod: AuthService_Register_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LoginServiceServer).Authentificate(ctx, req.(*AuthentificationRequest))
+		return srv.(AuthServiceServer).Register(ctx, req.(*RegisterRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// LoginService_ServiceDesc is the grpc.ServiceDesc for LoginService service.
+func _AuthService_GetLoginChallenge_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLoginChallengeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).GetLoginChallenge(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_GetLoginChallenge_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).GetLoginChallenge(ctx, req.(*GetLoginChallengeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_Authentificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AuthentificateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).Authentificate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_Authentificate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).Authentificate(ctx, req.(*AuthentificateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var LoginService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "auth.LoginService",
-	HandlerType: (*LoginServiceServer)(nil),
+var AuthService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "auth.AuthService",
+	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Register",
+			Handler:    _AuthService_Register_Handler,
+		},
+		{
+			MethodName: "GetLoginChallenge",
+			Handler:    _AuthService_GetLoginChallenge_Handler,
+		},
 		{
 			MethodName: "Authentificate",
-			Handler:    _LoginService_Authentificate_Handler,
+			Handler:    _AuthService_Authentificate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "auth/auth.proto",
-}
-
-const (
-	CreateService_Signin_FullMethodName = "/auth.CreateService/Signin"
-)
-
-// CreateServiceClient is the client API for CreateService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type CreateServiceClient interface {
-	Signin(ctx context.Context, in *SigninRequest, opts ...grpc.CallOption) (*SigninResponse, error)
-}
-
-type createServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewCreateServiceClient(cc grpc.ClientConnInterface) CreateServiceClient {
-	return &createServiceClient{cc}
-}
-
-func (c *createServiceClient) Signin(ctx context.Context, in *SigninRequest, opts ...grpc.CallOption) (*SigninResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SigninResponse)
-	err := c.cc.Invoke(ctx, CreateService_Signin_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// CreateServiceServer is the server API for CreateService service.
-// All implementations must embed UnimplementedCreateServiceServer
-// for forward compatibility.
-type CreateServiceServer interface {
-	Signin(context.Context, *SigninRequest) (*SigninResponse, error)
-	mustEmbedUnimplementedCreateServiceServer()
-}
-
-// UnimplementedCreateServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedCreateServiceServer struct{}
-
-func (UnimplementedCreateServiceServer) Signin(context.Context, *SigninRequest) (*SigninResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Signin not implemented")
-}
-func (UnimplementedCreateServiceServer) mustEmbedUnimplementedCreateServiceServer() {}
-func (UnimplementedCreateServiceServer) testEmbeddedByValue()                       {}
-
-// UnsafeCreateServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to CreateServiceServer will
-// result in compilation errors.
-type UnsafeCreateServiceServer interface {
-	mustEmbedUnimplementedCreateServiceServer()
-}
-
-func RegisterCreateServiceServer(s grpc.ServiceRegistrar, srv CreateServiceServer) {
-	// If the following call pancis, it indicates UnimplementedCreateServiceServer was
-	// embedded by pointer and is nil.  This will cause panics if an
-	// unimplemented method is ever invoked, so we test this at initialization
-	// time to prevent it from happening at runtime later due to I/O.
-	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
-		t.testEmbeddedByValue()
-	}
-	s.RegisterService(&CreateService_ServiceDesc, srv)
-}
-
-func _CreateService_Signin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SigninRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CreateServiceServer).Signin(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: CreateService_Signin_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CreateServiceServer).Signin(ctx, req.(*SigninRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// CreateService_ServiceDesc is the grpc.ServiceDesc for CreateService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var CreateService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "auth.CreateService",
-	HandlerType: (*CreateServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Signin",
-			Handler:    _CreateService_Signin_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "auth/auth.proto",
+	Metadata: "proto/auth/auth.proto",
 }
