@@ -33,6 +33,7 @@ code 6: send a find room
 code 7: send a create room
 code 8: send a join room
 code 9: looking for a room response
+---
 code 10: game start  response
 code 11: send action
 code 12: receive RLEboard

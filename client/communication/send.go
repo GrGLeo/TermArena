@@ -148,9 +148,12 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 
 			log.Printf("Deserialized packet type: %T", packet)
 			switch msg := packet.(type) {
-			case *shared.RespPacket:
-				log.Printf("Sending RespMsg: %+v", msg)
-				msgs <- ResponseMsg{Code: msg.Success}
+      case *shared.RegisterResponsePacket:
+        msgs <- RegistrationResultMsg{Success: msg.Success, Message: msg.Message, Challenge: msg.Challenge}
+      case *shared.LoginChallengeResponsePacket:
+        msgs <- ChallengeReceivedMsg{Challenge: msg.Challenge}
+      case *shared.AuthResponsePacket:
+        msgs <- AuthResultMsg{Success: msg.Success, Message: msg.Message, SessionToken: msg.SessionToken}
 			case *shared.LookRoomPacket:
 				log.Printf("Sending LookRoomMsg: %+v", msg)
 				msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID, RoomIP: msg.RoomIP}

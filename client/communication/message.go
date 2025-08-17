@@ -10,6 +10,25 @@ type TickMsg struct {
 	Time time.Time
 }
 
+// RegistrationResultMsg is sent by the server as a response to the registration req
+type RegistrationResultMsg struct {
+  Success bool
+  Message string
+  Challenge []byte
+}
+
+// ChallengeReceivedMsg is sent by the server to pass the challenge
+type ChallengeReceivedMsg struct {
+  Challenge []byte
+}
+
+// AuthResultMsg is sent by the server to return a sucess based on the signed_challenge
+type AuthResultMsg struct {
+  Success bool
+  Message string
+  SessionToken string
+}
+
 // LoginMsg is used to pass input field to meta model
 type LoginMsg struct {
 	Username string
