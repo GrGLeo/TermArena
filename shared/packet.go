@@ -93,7 +93,15 @@ func CreateMessage(packet Packet, conn *net.TCPConn) (event.Message, error) {
 
 func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
 	switch m := msg.(type) {
-	// TODO: Implement packet creation from auth messages if needed
+	case event.RegisterResponseMessage:
+		packet := NewRegisterResponsePacket(m.Success, m.Message, m.Challenge)
+		return packet.Serialize(), nil
+	case event.LoginChallengeResponseMessage:
+		packet := NewLoginChallengeResponsePacket(m.Challenge)
+		return packet.Serialize(), nil
+	case event.AuthResponseMessage:
+		packet := NewAuthResponsePacket(m.Success, m.Message, m.SessionToken)
+		return packet.Serialize(), nil
 	case event.RoomSearchMessage:
 		packet := NewLookRoomPacket(m.Success, m.RoomID, m.RoomIP)
 		return packet.Serialize(), nil

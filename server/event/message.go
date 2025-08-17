@@ -10,58 +10,72 @@ type Message interface {
 	Validate() error
 }
 
+// --- AUTH REQUESTS ---
+
 type RegisterRequestMessage struct {
-  Username string
-  PublicKey []byte
-  Conn *net.TCPConn
+	Username  string
+	PublicKey []byte
+	Conn      *net.TCPConn
 }
 
-func (rrm RegisterRequestMessage) Type() string {
-  return "register"
-}
-
-func (rrm RegisterRequestMessage) Validate() error {
-  return nil
-}
+func (rrm RegisterRequestMessage) Type() string    { return "register_request" }
+func (rrm RegisterRequestMessage) Validate() error { return nil }
 
 type LoginChallengeRequestMessage struct {
-  Username string
-  Conn *net.TCPConn
+	Username string
+	Conn     *net.TCPConn
 }
 
-func (lcrm LoginChallengeRequestMessage) Type() string {
-  return "login-challenge"
-}
-
-func (lcrm LoginChallengeRequestMessage) Validate() error {
-  return nil
-}
+func (lcrm LoginChallengeRequestMessage) Type() string    { return "login_challenge_request" }
+func (lcrm LoginChallengeRequestMessage) Validate() error { return nil }
 
 type AuthRequestMessage struct {
-  Username string
-  SignedChallenge []byte
-  Conn *net.TCPConn
+	Username        string
+	SignedChallenge []byte
+	Conn            *net.TCPConn
 }
 
-func (arm AuthRequestMessage) Type() string {
-  return "authentificate"
+func (arm AuthRequestMessage) Type() string    { return "auth_request" }
+func (arm AuthRequestMessage) Validate() error { return nil }
+
+// --- AUTH RESPONSES ---
+
+type RegisterResponseMessage struct {
+	Success   bool
+	Message   string
+	Challenge []byte
+	Conn      *net.TCPConn
 }
 
-func (arm AuthRequestMessage) Validate() error {
-  return nil
+func (m RegisterResponseMessage) Type() string    { return "register_response" }
+func (m RegisterResponseMessage) Validate() error { return nil }
+
+type LoginChallengeResponseMessage struct {
+	Challenge []byte
+	Conn      *net.TCPConn
 }
 
+func (m LoginChallengeResponseMessage) Type() string    { return "login_challenge_response" }
+func (m LoginChallengeResponseMessage) Validate() error { return nil }
 
+type AuthResponseMessage struct {
+	Success      bool
+	Message      string
+	SessionToken string
+	Conn         *net.TCPConn
+}
+
+func (m AuthResponseMessage) Type() string    { return "auth_response" }
+func (m AuthResponseMessage) Validate() error { return nil }
+
+// --- ROOM MESSAGES ---
 
 type RoomRequestMessage struct {
 	RoomType int
 	Conn     *net.TCPConn
 }
 
-func (fm RoomRequestMessage) Type() string {
-	return "find-room"
-}
-
+func (fm RoomRequestMessage) Type() string { return "find-room" }
 func (fm RoomRequestMessage) Validate() error {
 	if fm.RoomType < 0 || fm.RoomType >= 2 {
 		return errors.New("Invalid room type")
@@ -78,10 +92,7 @@ type RoomJoinMessage struct {
 	Conn   *net.TCPConn
 }
 
-func (rm RoomJoinMessage) Type() string {
-	return "join-room"
-}
-
+func (rm RoomJoinMessage) Type() string { return "join-room" }
 func (rm RoomJoinMessage) Validate() error {
 	if len(rm.RoomID) != 5 {
 		return errors.New("Invalid room id")
@@ -98,10 +109,7 @@ type RoomCreateMessage struct {
 	Conn     *net.TCPConn
 }
 
-func (rc RoomCreateMessage) Type() string {
-	return "create-room"
-}
-
+func (rc RoomCreateMessage) Type() string { return "create-room" }
 func (rc RoomCreateMessage) Validate() error {
 	if rc.RoomType < 0 || rc.RoomType >= 3 {
 		return errors.New("Invalid room type")
@@ -119,10 +127,7 @@ type RoomSearchMessage struct {
 	RoomIP  string
 }
 
-func (rs RoomSearchMessage) Type() string {
-	return "search-room"
-}
-
+func (rs RoomSearchMessage) Type() string { return "search-room" }
 func (rs RoomSearchMessage) Validate() error {
 	if rs.Success == 1 {
 		return errors.New("Failed to search for a room")
