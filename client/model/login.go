@@ -102,7 +102,6 @@ type authState int
 const (
 	stateReadyForInput = iota
 	stateBusy
-	stateError
 )
 
 // --- AuthModel (MetaModel) ---
@@ -214,7 +213,7 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
   case keyResultMsg:
 		if msg.err != nil {
-			m.state = stateError
+			m.state = stateReadyForInput
 			m.statusMessage = "Error handling key: " + msg.err.Error()
 			return m, nil
 		}
@@ -235,9 +234,8 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// --- Handle Messages From Server ---
 	case communication.RegistrationResultMsg:
-		log.Print("Hello")
 		if !msg.Success {
-			m.state = stateError
+			m.state = stateReadyForInput
 			m.statusMessage = "Registration failed: " + msg.Message
 			return m, nil
 		}
@@ -245,7 +243,7 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusMessage = "Registration successful! Logging in..."
 		signedChallenge, err := signChallenge(m.currentKey, msg.Challenge)
 		if err != nil {
-			m.state = stateError
+			m.state = stateReadyForInput
 			m.statusMessage = "Failed to sign challenge: " + err.Error()
 			return m, nil
 		}
@@ -263,7 +261,7 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logKeyForDebug()
 		signedChallenge, err := signChallenge(m.currentKey, msg.Challenge)
 		if err != nil {
-			m.state = stateError
+			m.state = stateReadyForInput
 			m.statusMessage = "Failed to sign challenge: " + err.Error()
 			return m, nil
 		}
@@ -273,7 +271,7 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case communication.AuthResultMsg:
 		if !msg.Success {
-			m.state = stateError
+			m.state = stateReadyForInput
 			m.statusMessage = "Login failed: " + msg.Message
 			return m, nil
 		}

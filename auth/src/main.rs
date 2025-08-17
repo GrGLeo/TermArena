@@ -1,30 +1,29 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{Request, Response, Status, transport::Server};
 
 pub mod auth {
     tonic::include_proto!("auth");
 }
 use auth::auth_service_server::{AuthService, AuthServiceServer};
 use auth::{
-    RegisterRequest, RegisterResponse, GetLoginChallengeRequest, GetLoginChallengeResponse,
-    AuthentificateRequest, AuthentificateResponse,
+    AuthentificateRequest, AuthentificateResponse, GetLoginChallengeRequest,
+    GetLoginChallengeResponse, RegisterRequest, RegisterResponse,
 };
 
 use tokio_rusqlite::Connection;
 
 use rand::RngCore;
-use rsa::{pkcs8::DecodePublicKey, RsaPublicKey, Pkcs1v15Sign};
-use rsa::signature::Verifier;
-use sha2::{Sha256, Digest};
+use rsa::{Pkcs1v15Sign, RsaPublicKey, pkcs8::DecodePublicKey};
+use sha2::{Digest, Sha256};
 
 #[derive(Debug)]
-pub struct MyAuthService {
+pub struct TermArenaAuthService {
     db: Arc<Mutex<Connection>>,
 }
 
 #[tonic::async_trait]
-impl AuthService for MyAuthService {
+impl AuthService for TermArenaAuthService {
     async fn register(
         &self,
         request: Request<RegisterRequest>,
@@ -38,8 +37,12 @@ impl AuthService for MyAuthService {
             .call(move |conn| {
                 conn.execute(
                     "INSERT INTO users (username, public_key) VALUES (?1, ?2)",
-                    &[&req.username as &dyn rusqlite::ToSql, &req.public_key as &dyn rusqlite::ToSql],
-                ).map_err(|e| e.into())
+                    &[
+                        &req.username as &dyn rusqlite::ToSql,
+                        &req.public_key as &dyn rusqlite::ToSql,
+                    ],
+                )
+                .map_err(|e| e.into())
             })
             .await;
 
@@ -83,7 +86,7 @@ impl AuthService for MyAuthService {
                 }
             })
             .await;
-        
+
         if let Err(e) = res {
             eprintln!("Failed to store challenge for {}: {}", req.username, e);
             return Err(Status::internal("Failed to prepare login challenge"));
@@ -101,7 +104,7 @@ impl AuthService for MyAuthService {
         let req = request.into_inner();
         let username_for_log = req.username.clone(); // Clone for logging
         println!("Authenticating user: {}", username_for_log);
-        
+
         let db = self.db.lock().await;
 
         let maybe_data: Result<(Vec<u8>, Vec<u8>), _> = db.call({
@@ -117,39 +120,56 @@ impl AuthService for MyAuthService {
             }
         }).await;
 
-        let _ = db.call({
-            let username = req.username.clone();
-            move |conn| conn.execute("DELETE FROM challenges WHERE username = ?1", [&username]).map_err(|e| e.into())
-        }).await;
+        let _ = db
+            .call({
+                let username = req.username.clone();
+                move |conn| {
+                    conn.execute("DELETE FROM challenges WHERE username = ?1", [&username])
+                        .map_err(|e| e.into())
+                }
+            })
+            .await;
 
         let (public_key_der, original_challenge) = match maybe_data {
             Ok(data) => data,
-            Err(_) => return Ok(Response::new(AuthentificateResponse {
-                success: false,
-                message: "Login failed: Invalid username or challenge expired.".into(),
-            })),
+            Err(_) => {
+                return Ok(Response::new(AuthentificateResponse {
+                    success: false,
+                    message: "Invalid username or challenge expired.".into(),
+                }));
+            }
         };
 
         let public_key = match RsaPublicKey::from_public_key_der(&public_key_der) {
             Ok(key) => key,
             Err(_) => return Err(Status::internal("Failed to parse public key")),
         };
-        
+
         let mut hasher = Sha256::new();
         hasher.update(&original_challenge);
         let hashed_challenge = hasher.finalize();
 
-        if public_key.verify(Pkcs1v15Sign::new::<Sha256>(), &hashed_challenge, &req.signed_challenge).is_ok() {
+        if public_key
+            .verify(
+                Pkcs1v15Sign::new::<Sha256>(),
+                &hashed_challenge,
+                &req.signed_challenge,
+            )
+            .is_ok()
+        {
             println!("Successfully authenticated user: {}", username_for_log);
             Ok(Response::new(AuthentificateResponse {
                 success: true,
                 message: "Authentication successful".into(),
             }))
         } else {
-            println!("Authentication failed (invalid signature) for user: {}", username_for_log);
+            println!(
+                "Authentication failed (invalid signature) for user: {}",
+                username_for_log
+            );
             Ok(Response::new(AuthentificateResponse {
                 success: false,
-                message: "Login failed: Invalid signature.".into(),
+                message: "Invalid signature.".into(),
             }))
         }
     }
@@ -158,13 +178,15 @@ impl AuthService for MyAuthService {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "0.0.0.0:50051".parse()?;
-    
+
     let conn = Connection::open("auth.db").await?;
     let db = Arc::new(Mutex::new(conn));
 
-    db.lock().await.call(|conn| {
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS users (
+    db.lock()
+        .await
+        .call(|conn| {
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
                 username TEXT NOT NULL UNIQUE,
                 public_key BLOB NOT NULL
@@ -174,13 +196,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 username TEXT NOT NULL,
                 challenge BLOB NOT NULL,
                 expires_at INTEGER NOT NULL
-            );"
-        ).map_err(|e| e.into())
-    }).await?;
+            );",
+            )
+            .map_err(|e| e.into())
+        })
+        .await?;
 
     println!("Database is ready.");
 
-    let auth_service = MyAuthService { db };
+    let auth_service = TermArenaAuthService { db };
 
     println!("AuthService listening on {}", addr);
 
