@@ -10,23 +10,26 @@ import (
 )
 
 /*
-code 0: send login
-code 1: send create user
-code 2: receive login response
-code 3: send a find room
-code 4: send a create room
-code 5: send a join room
-code 6: looking for a room response
-code 7: game start  response
-code 8: send action
-code 9: receive RLEboard
-code 10: receive Delta
-code 11: game close
-code 12: game end
-code 13: spell selection
-code 14: shop request
-code 15: shop response
-code 16: purchase item
+code 0: register user
+code 1: register user response
+code 2: sending username
+code 3: return challenge
+code 4: send username + signed_challenge
+code 5: return success and message
+code 6: send a find room
+code 7: send a create room
+code 8: send a join room
+code 9: looking for a room response
+code 10: game start  response
+code 11: send action
+code 12: receive RLEboard
+code 13: receive Delta
+code 14: game close
+code 15: game end
+code 16: spell selection
+code 17: shop request
+code 18: shop response
+code 19: purchase item
 */
 
 type Packet interface {
@@ -85,125 +88,242 @@ func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
 }
 
 /*
-LOGIN PACKET
+AUTHENTIFICATION PACKET
 */
-
-type LoginPacket struct {
-	version, code      int
-	Username, Password string
+type RegisterRequestPacket struct {
+  version, code int
+  Username string
+  PublicKey []byte
 }
 
-func NewLoginPacket(username, password string) *LoginPacket {
-	return &LoginPacket{
-		version:  1,
-		code:     0,
-		Username: username,
-		Password: password,
-	}
+func NewRegisterRequestPacket(username string, publicKey []byte) *RegisterRequestPacket {
+  return &RegisterRequestPacket{
+    version: 1,
+    code: 0,
+    Username: username,
+    PublicKey: publicKey,
+  }
 }
 
-func (lp *LoginPacket) Version() int {
-	return lp.version
+func (rrp RegisterRequestPacket) Version() int {
+  return rrp.version
 }
 
-func (lp *LoginPacket) Code() int {
-	return lp.code
+func (rrp RegisterRequestPacket) Code() int {
+  return rrp.code
 }
 
-func (lp *LoginPacket) Serialize() []byte {
-	var buf bytes.Buffer
-	buf.WriteByte(byte(lp.version))
-	buf.WriteByte(byte(lp.code))
-
-	if err := binary.Write(&buf, binary.BigEndian, uint16(len(lp.Username))); err != nil {
+func (rrp RegisterRequestPacket) Serialize() []byte {
+  var buf bytes.Buffer
+  buf.WriteByte(byte(rrp.version))
+  buf.WriteByte(byte(rrp.code))
+	if err := binary.Write(&buf, binary.BigEndian, uint16(len(rrp.Username))); err != nil {
 		return nil
 	}
-	if _, err := buf.WriteString(lp.Username); err != nil {
+	if _, err := buf.WriteString(rrp.Username); err != nil {
 		return nil
 	}
-	if err := binary.Write(&buf, binary.BigEndian, uint16(len(lp.Password))); err != nil {
+	if err := binary.Write(&buf, binary.BigEndian, uint16(len(rrp.PublicKey))); err != nil {
 		return nil
 	}
-	if _, err := buf.WriteString(lp.Password); err != nil {
-		return nil
-	}
-	return buf.Bytes()
-}
-
-type SignInPacket struct {
-	version, code      int
-	Username, Password string
-}
-
-func NewSignInPacket(username, password string) *SignInPacket {
-	return &SignInPacket{
-		version:  1,
-		code:     1,
-		Username: username,
-		Password: password,
-	}
-}
-
-func (cp *SignInPacket) Version() int {
-	return cp.version
-}
-
-func (cp *SignInPacket) Code() int {
-	return cp.code
-}
-
-func (cp *SignInPacket) Serialize() []byte {
-	var buf bytes.Buffer
-	buf.WriteByte(byte(cp.version))
-	buf.WriteByte(byte(cp.code))
-
-	if err := binary.Write(&buf, binary.BigEndian, uint16(len(cp.Username))); err != nil {
-		return nil
-	}
-	if _, err := buf.WriteString(cp.Username); err != nil {
-		return nil
-	}
-	if err := binary.Write(&buf, binary.BigEndian, uint16(len(cp.Password))); err != nil {
-		return nil
-	}
-	if _, err := buf.WriteString(cp.Password); err != nil {
+	if _, err := buf.Write(rrp.PublicKey); err != nil {
 		return nil
 	}
 	return buf.Bytes()
 }
 
-type RespPacket struct {
-	version, code int
-	Success       bool
+type RegisterResponsePacket struct {
+  version, code int
+  success bool
+  message string
+  challenge []byte
 }
 
-func NewRespPacket(success bool) *RespPacket {
-	return &RespPacket{
-		version: 1,
-		code:    2,
-		Success: success,
+func NewRegisterResponsePacket(success bool, message string, challenge []byte) *RegisterResponsePacket {
+  return &RegisterResponsePacket{
+    version: 1,
+    code: 1,
+    success: success,
+    message: message,
+    challenge: challenge,
+  }
+}
+
+func (rrp RegisterResponsePacket) Version() int {
+  return rrp.version
+}
+
+func (rrp RegisterResponsePacket) Code() int {
+  return rrp.code
+}
+
+func (rrp RegisterResponsePacket) Serialize() []byte {
+  var buf bytes.Buffer
+  buf.WriteByte(byte(rrp.version))
+  buf.WriteByte(byte(rrp.code))
+  if rrp.success {
+    buf.WriteByte(1)
+  } else {
+    buf.WriteByte(0)
+  }
+	if err := binary.Write(&buf, binary.BigEndian, uint16(len(rrp.message))); err != nil {
+		return nil
 	}
-}
-
-func (rp RespPacket) Version() int {
-	return rp.version
-}
-
-func (rp RespPacket) Code() int {
-	return rp.code
-}
-
-func (rp *RespPacket) Serialize() []byte {
-	var buf bytes.Buffer
-	buf.WriteByte(byte(rp.version))
-	buf.WriteByte(byte(rp.code))
-	if rp.Success {
-		buf.WriteByte(1)
-	} else {
-		buf.WriteByte(0)
+	if _, err := buf.WriteString(rrp.message); err != nil {
+		return nil
 	}
-	return buf.Bytes()
+	if err := binary.Write(&buf, binary.BigEndian, uint16(len(rrp.challenge))); err != nil {
+		return nil
+	}
+  if _, err := buf.Write(rrp.challenge); err != nil {
+    return nil
+  }
+  return buf.Bytes()
 }
+
+type LoginChallengeRequestPacket struct {
+  version, code int
+  username string
+}
+
+func NewLoginChallengeRequestPacket(username string) *LoginChallengeRequestPacket {
+  return &LoginChallengeRequestPacket{
+    version: 1,
+    code: 2,
+    username: username,
+  }
+}
+
+func (lcrp LoginChallengeRequestPacket) Version() int {
+  return lcrp.version
+}
+
+func (lcrp LoginChallengeRequestPacket) Code() int {
+  return lcrp.code
+}
+
+func (lcrp LoginChallengeRequestPacket) Serialize() []byte {
+  var buf bytes.Buffer
+  buf.WriteByte(byte(lcrp.version))
+  buf.WriteByte(byte(lcrp.code))
+	if err := binary.Write(&buf, binary.BigEndian, uint16(len(lcrp.username))); err != nil {
+		return nil
+	}
+	if _, err := buf.WriteString(lcrp.username); err != nil {
+		return nil
+	}
+  return buf.Bytes()
+}
+
+type LoginChallengeResponsePacket struct {
+  version, code int
+  challenge []byte
+}
+
+func NewLoginChallengeResponsePacket(challenge []byte) *LoginChallengeResponsePacket {
+  return &LoginChallengeResponsePacket{
+    version: 1,
+    code: 3,
+    challenge: challenge,
+  }
+}
+
+func (lcrp LoginChallengeResponsePacket) Version() int {
+  return lcrp.version
+}
+
+func (lcrp LoginChallengeResponsePacket) Code() int {
+  return lcrp.code
+}
+
+func (lcrp LoginChallengeResponsePacket) Serialize() []byte {
+  var buf bytes.Buffer
+  buf.WriteByte(byte(lcrp.version))
+  buf.WriteByte(byte(lcrp.code))
+	if err := binary.Write(&buf, binary.BigEndian, uint16(len(lcrp.challenge))); err != nil {
+		return nil
+	}
+	if _, err := buf.Write(lcrp.challenge); err != nil {
+		return nil
+	}
+  return buf.Bytes()
+}
+
+type AuthRequestPacket struct {
+  version, code int
+  username string
+  signedChallenge []byte
+}
+
+func NewAuthRequestPacket(username string, signedChallenge []byte) *AuthRequestPacket {
+  return &AuthRequestPacket{
+    version: 1,
+    code: 4,
+    username: username,
+    signedChallenge: signedChallenge,
+  }
+}
+
+func (arp AuthRequestPacket) Version() int {
+  return arp.version
+}
+
+func (arp AuthRequestPacket) Code() int {
+  return arp.code
+}
+
+func (arp AuthRequestPacket) Serialize() []byte {
+  var buf bytes.Buffer
+  buf.WriteByte(byte(arp.version))
+  buf.WriteByte(byte(arp.code))
+	if err := binary.Write(&buf, binary.BigEndian, uint16(len(arp.username))); err != nil {
+		return nil
+	}
+	if _, err := buf.WriteString(arp.username); err != nil {
+		return nil
+	}
+	if err := binary.Write(&buf, binary.BigEndian, uint16(len(arp.signedChallenge))); err != nil {
+		return nil
+	}
+  if _, err := buf.Write(arp.signedChallenge); err != nil {
+    return nil
+  }
+  return buf.Bytes()
+}
+
+type AuthResponsePacket struct {
+  version, code int
+  success bool
+}
+
+func NewAuthResponsePacket(success bool) *AuthResponsePacket {
+  return &AuthResponsePacket{
+    version: 1,
+    code: 5,
+    success: success,
+  }
+}
+
+func (arp AuthResponsePacket) Version() int {
+  return arp.version
+}
+
+func (arp AuthResponsePacket) Code() int {
+  return arp.code
+}
+
+func (arp AuthResponsePacket) Serialize() []byte {
+  var buf bytes.Buffer
+  buf.WriteByte(byte(arp.version))
+  buf.WriteByte(byte(arp.code))
+  if arp.success {
+    buf.WriteByte(1)
+  } else {
+    buf.WriteByte(0)
+  }
+  return buf.Bytes()
+}
+
 
 /*
 FIND GAME PACKET
@@ -215,7 +335,7 @@ type RoomRequestPacket struct {
 func NewRoomRequestPacket(RoomType int) *RoomRequestPacket {
 	return &RoomRequestPacket{
 		version:  1,
-		code:     3,
+		code:     6,
 		RoomType: RoomType,
 	}
 }
@@ -244,7 +364,7 @@ type RoomCreatePacket struct {
 func NewRoomCreatePacket(RoomType int) *RoomCreatePacket {
 	return &RoomCreatePacket{
 		version:  1,
-		code:     4,
+		code:     7,
 		RoomType: RoomType,
 	}
 }
@@ -273,7 +393,7 @@ type RoomJoinPacket struct {
 func NewRoomJoinPacket(roomID string) *RoomJoinPacket {
 	return &RoomJoinPacket{
 		version: 1,
-		code:    5,
+		code:    8,
 		RoomID:  roomID,
 	}
 }
@@ -302,7 +422,7 @@ type LookRoomPacket struct {
 func NewLookRoomPacket(success int, roomID, roomIP string) *LookRoomPacket {
 	return &LookRoomPacket{
 		version: 1,
-		code:    6,
+		code:    9,
 		Success: success,
 		RoomID:  roomID,
 		RoomIP:  roomIP,
@@ -340,7 +460,7 @@ type GameStartPacket struct {
 func NewGameStartPacket(success int) *GameStartPacket {
 	return &GameStartPacket{
 		version: 1,
-		code:    7,
+		code:    10,
 		Success: success,
 	}
 }
@@ -368,7 +488,7 @@ type GameClosePacket struct {
 func NewGameClosePacket(success int) *GameStartPacket {
 	return &GameStartPacket{
 		version: 1,
-		code:    11,
+		code:    14,
 		Success: success,
 	}
 }
@@ -397,7 +517,7 @@ type EndGamePacket struct {
 func NewEndGamePacket(win bool) *EndGamePacket {
 	return &EndGamePacket{
 		version: 1,
-		code:    12,
+		code:    15,
 		Win:     win,
 	}
 }
@@ -430,7 +550,7 @@ type SpellSelectionPacket struct {
 func NewSpellSelectionPacket(spell1, spell2 int) *SpellSelectionPacket {
 	return &SpellSelectionPacket{
 		version: 1,
-		code:    13,
+		code:    16,
 		Spell1:  spell1,
 		Spell2:  spell2,
 	}
@@ -465,7 +585,7 @@ type ActionPacket struct {
 func NewActionPacket(action int) *ActionPacket {
 	return &ActionPacket{
 		version: 1,
-		code:    8,
+		code:    11,
 		action:  action,
 	}
 }
@@ -498,7 +618,7 @@ type ShopRequestPacket struct {
 func NewShopRequestPacket() *ShopRequestPacket {
 	return &ShopRequestPacket{
 		version: 1,
-		code:    14,
+		code:    17,
 	}
 }
 
@@ -530,7 +650,7 @@ type ShopResponsePacket struct {
 func NewShopResponsePacket(health, mana, attack_damage, armor, gold int, inventory []int) *ShopResponsePacket {
 	return &ShopResponsePacket{
 		version:       1,
-		code:          15,
+		code:          18,
 		Health:        health,
 		Mana:          mana,
 		Attack_damage: attack_damage,
@@ -575,7 +695,7 @@ type PurchaseItemPacket struct {
 func NewPurchaseItemPacket(itemID int) *PurchaseItemPacket {
 	return &PurchaseItemPacket{
 		version: 1,
-		code:    16,
+		code:    19,
 		ItemID:  itemID,
 	}
 }
@@ -614,7 +734,7 @@ type BoardPacket struct {
 func NewBoardPacket(castTime, castDuration, health, maxHealth, mana, maxMana, level, xp, xpNeeded int, encodedBoard []byte) *BoardPacket {
 	return &BoardPacket{
 		version:      1,
-		code:         9,
+		code:         12,
 		CastTime:     castTime,
 		CastDuration: castDuration,
 		Health:       health,
@@ -665,7 +785,7 @@ type DeltaPacket struct {
 func NewDeltaPacket(tickID uint32, points [2]int, deltas [][3]byte) *DeltaPacket {
 	return &DeltaPacket{
 		version: 1,
-		code:    10,
+		code:    13,
 		Points:  points,
 		TickID:  tickID,
 		Deltas:  deltas,
