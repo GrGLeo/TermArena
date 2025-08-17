@@ -7,5 +7,6 @@ game/target
 GEMINI.md
 *.jsonl
 *.json
+*.db
 Dockerfile
 ttk_calculator.py
