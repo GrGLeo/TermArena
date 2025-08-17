@@ -28,9 +28,9 @@ Size (bytes):  1       1
 - **Version (u8):** Protocol version (currently `1`).
 - **Code (u8):** Packet type identifier.
 
-### Authentication Flow
+### Authentication Flow (SSH-Style)
 
-The following diagram shows the sequence of packets for a user to log in.
+The authentication process uses a challenge-response mechanism similar to SSH, where a client proves its identity by signing a unique challenge with its private key.
 
 ```mermaid
 sequenceDiagram
@@ -38,10 +38,28 @@ sequenceDiagram
     participant Go Server
     participant Auth Service (gRPC)
 
-    Client->>Go Server: Sends LoginPacket (Code 0)
-    Go Server->>Auth Service: Forwards credentials for verification
-    Auth Service-->>Go Server: Returns success/failure
-    Go Server->>Client: Sends RespPacket (Code 2) with result
+    alt Registration (New User)
+        Client->>Client: Generates new RSA key pair
+        Client->>Go Server: Sends RegisterRequestPacket (Code 0) with public key
+        Go Server->>Auth Service: gRPC: Register(username, pubKey)
+        Auth Service-->>Go Server: Returns success
+        Go Server->>Auth Service: gRPC: GetLoginChallenge(username)
+        Auth Service-->>Go Server: Returns unique challenge
+        Go Server->>Client: Sends RegisterResponsePacket (Code 1) with challenge
+    end
+
+    alt Login (Existing User)
+        Client->>Go Server: Sends LoginChallengeRequestPacket (Code 2)
+        Go Server->>Auth Service: gRPC: GetLoginChallenge(username)
+        Auth Service-->>Go Server: Returns unique challenge
+        Go Server->>Client: Sends LoginChallengeResponsePacket (Code 3) with challenge
+    end
+
+    Client->>Client: Signs SHA256(challenge) with private key
+    Client->>Go Server: Sends AuthRequestPacket (Code 4) with signed challenge
+    Go Server->>Auth Service: gRPC: Authentificate(username, signedChallenge)
+    Auth Service-->>Go Server: Verifies signature, returns success/failure
+    Go Server->>Client: Sends AuthResponsePacket (Code 5) with result
 ```
 
 ### Room Management Flow
@@ -54,43 +72,90 @@ sequenceDiagram
     participant Go Server
     participant Rust Game Server
 
-    Client->>Go Server: Sends RoomRequestPacket (Code 3)
-    Go Server-->>Client: Responds with LookRoomPacket (Code 6) containing RoomID and IP
-    Client->>Go Server: Sends RoomJoinPacket (Code 5) to confirm
-    Go Server->>Client: Sends GameStartPacket (Code 7)
+    Client->>Go Server: Sends RoomRequestPacket (Code 6) or RoomCreatePacket (Code 7)
+    Go Server-->>Client: Responds with LookRoomPacket (Code 9) containing RoomID and IP
+    Client->>Go Server: Sends RoomJoinPacket (Code 8) to confirm
+    Go Server->>Client: Sends GameStartPacket (Code 10)
     Note over Client, Rust Game Server: Client now disconnects from Go Server and connects to the Rust Game Server at the given IP.
 ```
 
 ### Go Server Packet Reference
 
-#### `LoginPacket` (Code 0) & `SignInPacket` (Code 1)
+#### `RegisterRequestPacket` (Code 0)
 - **Direction:** Client -> Server
-- **Purpose:** Used by the client to send login or registration credentials.
+- **Purpose:** Registers a new user by providing a username and a public key.
 - **Structure:**
   ```
-  Byte Offset: 0       1       2       3       4         X       X+1     X+2    
-               +-------+-------+-------+-------+---------+-------+---------------+----------------
-               |Version| Code  |  Username Len | Username        |  Password Len | Password ...
-               +-------+-------+-------+-------+---------+-------+---------------+----------------
-  Size (bytes):  1       1       2               (variable)        2                (variable)
+  Byte Offset: 0       1       2       3       4         X         X+1     X+2
+               +-------+-------+-------+-------+---------+---------+-------+----------+
+               |Version| Code  |  Username Len | Username| PubKey Len| Public Key ...
+               +-------+-------+-------+-------+---------+---------+-------+----------+
+  Size (bytes):  1       1       2 (u16)         (var)     2 (u16)   (var)
   ```
 
-#### `RespPacket` (Code 2)
+#### `RegisterResponsePacket` (Code 1)
 - **Direction:** Server -> Client
-- **Purpose:** Responds to login/signin requests.
+- **Purpose:** Responds to a registration request. On success, it also provides an initial challenge to proceed directly to login.
 - **Structure:**
   ```
-  Byte Offset: 0       1       2
-               +-------+-------+--------+
-               |Version| Code  | Success|
-               +-------+-------+--------+
-  Size (bytes):  1       1       1
+  Byte Offset: 0       1       2         3       4       5          Y        Y+1     Y+2
+               +-------+-------+---------+-------+-------+----------+--------+-------+-------------+
+               |Version| Code  | Success | Msg Len       | Message  | Chal Len       | Challenge ...
+               +-------+-------+---------+-------+-------+----------+--------+-------+-------------+
+  Size (bytes):  1       1       1 (bool)  2 (u16)         (var)      2 (u16)          (var)
   ```
-  - `Success`: `1` for success, `0` for failure.
 
-#### `RoomRequestPacket` (Code 3) & `RoomCreatePacket` (Code 4)
+#### `LoginChallengeRequestPacket` (Code 2)
 - **Direction:** Client -> Server
-- **Purpose:** Requests to find a public room or create a new private room.
+- **Purpose:** Requests a login challenge for an existing user.
+- **Structure:**
+  ```
+  Byte Offset: 0       1       2       3       4
+               +-------+-------+-------+-------+----------+
+               |Version| Code  |  Username Len | Username |
+               +-------+-------+-------+-------+----------+
+  Size (bytes):  1       1       2 (u16)         (var)
+  ```
+
+#### `LoginChallengeResponsePacket` (Code 3)
+- **Direction:** Server -> Client
+- **Purpose:** Provides a unique, single-use challenge to the client.
+- **Structure:**
+  ```
+  Byte Offset: 0       1       2       3       4
+               +-------+-------+-------+-------+-------------+
+               |Version| Code  |  Challenge Len| Challenge ...
+               +-------+-------+-------+-------+-------------+
+  Size (bytes):  1       1       2 (u16)         (var, 32 bytes)
+  ```
+
+#### `AuthRequestPacket` (Code 4)
+- **Direction:** Client -> Server
+- **Purpose:** Sends the username and the challenge after it has been signed by the client's private key.
+- **Structure:**
+  ```
+  Byte Offset: 0       1       2       3       4         X         X+1     X+2
+               +-------+-------+-------+-------+---------+---------+-------+----------------------+
+               |Version| Code  |  Username Len | Username| Sig Len | Signed Challenge ...
+               +-------+-------+-------+-------+---------+---------+-------+----------------------+
+  Size (bytes):  1       1       2 (u16)         (var)     2 (u16)   (var)
+  ```
+
+#### `AuthResponsePacket` (Code 5)
+- **Direction:** Server -> Client
+- **Purpose:** Responds to the authentication attempt with success or failure.
+- **Structure:**
+  ```
+  Byte Offset: 0       1       2         3       4       5          Y        Y+1     Y+2
+               +-------+-------+---------+-------+-------+----------+--------+-------+--------------------+
+               |Version| Code  | Success | Msg Len       | Message  | Tok Len        | Session Token ...
+               +-------+-------+---------+-------+-------+----------+--------+-------+--------------------+
+  Size (bytes):  1       1       1 (bool)  2 (u16)         (var)      2 (u16)          (var)
+  ```
+
+#### `RoomRequestPacket` (Code 6)
+- **Direction:** Client -> Server
+- **Purpose:** Requests to find a public room.
 - **Structure:**
   ```
   Byte Offset: 0       1       2
@@ -100,31 +165,43 @@ sequenceDiagram
   Size (bytes):  1       1       1
   ```
 
-#### `RoomJoinPacket` (Code 5)
+#### `RoomCreatePacket` (Code 7)
+- **Direction:** Client -> Server
+- **Purpose:** Requests to create a new private room.
+- **Structure:**
+  ```
+  Byte Offset: 0       1       2
+               +-------+-------+--------+
+               |Version| Code  |RoomType|
+               +-------+-------+--------+
+  Size (bytes):  1       1       1
+  ```
+
+#### `RoomJoinPacket` (Code 8)
 - **Direction:** Client -> Server
 - **Purpose:** Confirms the client wants to join a specific room by its ID.
 - **Structure:**
   ```
-  Byte Offset: 0       1       2    
+  Byte Offset: 0       1       2
                +-------+-------+------
                |Version| Code  | RoomID ...
                +-------+-------+------
   Size (bytes):  1       1       (variable, reads to end of packet)
   ```
 
-#### `LookRoomPacket` (Code 6)
+#### `LookRoomPacket` (Code 9)
 - **Direction:** Server -> Client
 - **Purpose:** Responds to a room search request with connection details for a game server.
 - **Structure:**
   ```
-  Byte Offset: 0       1       2        3       4       5       6       7       8    
+  Byte Offset: 0       1       2        3       4       5       6       7       8
                +-------+-------+--------+-------+-------+-------+-------+-----+------
                |Version| Code  | Success|       RoomID (fixed 5 bytes)        | RoomIP
                +-------+-------+--------+-------+-------+-------+-------+-----+------
   Size (bytes):  1       1       1       5                                    (variable, reads to end of packet)
   ```
 
-#### `GameStartPacket` (Code 7)
+#### `GameStartPacket` (Code 10)
 - **Direction:** Server -> Client
 - **Purpose:** Signals that the game is ready to start.
 - **Structure:**
@@ -140,7 +217,7 @@ sequenceDiagram
 
 ## Part 2: Rust Game Server Communication (In-Game)
 
-Once a player joins a room, they connect to a dedicated Rust game server. The packet `Code` values in this context may differ from the Go server, so it's important to treat this as a separate protocol.
+Once a player joins a room, they connect to a dedicated Rust game server.
 
 ### In-Game Flow
 
@@ -152,31 +229,19 @@ sequenceDiagram
     participant Rust Game Server
 
     loop Game Loop
-        Client->>Rust Game Server: Sends ActionPacket (Code 8) for movement, etc.
-        Client->>Rust Game Server: Sends SpellSelectionPacket (Code 13) at start.
-        Rust Game Server-->>Client: Broadcasts BoardPacket (Code 9) with game state.
-        Rust Game Server-->>Client: Broadcasts DeltaPacket (Code 10) for incremental updates.
+        Client->>Rust Game Server: Sends ActionPacket (Code 11) for movement, etc.
+        Client->>Rust Game Server: Sends SpellSelectionPacket (Code 16) at start.
+        Rust Game Server-->>Client: Broadcasts BoardPacket (Code 12) with game state.
+        Rust Game Server-->>Client: Broadcasts DeltaPacket (Code 13) for incremental updates.
     end
-    Rust Game Server->>Client: Sends EndGamePacket (Code 12) when game is over.
+    Rust Game Server->>Client: Sends EndGamePacket (Code 15) when game is over.
 ```
 
 ### Rust Server Packet Reference
 
 *Note: The packet header (Version, Code) is identical to the Go server packets.*
 
-#### `StartPacket` (Code 7)
-- **Direction:** Server -> Client
-- **Purpose:** Confirms a successful connection to the game server.
-- **Structure:**
-  ```
-  Byte Offset: 0       1       2
-               +-------+-------+--------+
-               |Version| Code  | Success|
-               +-------+-------+--------+
-  Size (bytes):  1       1       1
-  ```
-
-#### `ActionPacket` (Code 8)
+#### `ActionPacket` (Code 11)
 - **Direction:** Client -> Server
 - **Purpose:** Sends player actions like movement or casting.
 - **Structure:**
@@ -188,31 +253,31 @@ sequenceDiagram
   Size (bytes):  1       1       1
   ```
 
-#### `BoardPacket` (Code 9)
+#### `BoardPacket` (Code 12)
 - **Direction:** Server -> Client
 - **Purpose:** Sends the full player-specific view of the game board and champion status.
 - **Structure:**
   ```
-  Byte Offset: 0       1       2         3         4       5       6       7       8       9       10      11      12      13      14      15      16      17      18      19      20      21      22
-               +-------+-------+---------+---------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+------
-               |Version| Code  |Points[0]|Points[1]|    Health     |  Max Health   |     Mana      |   Max Mana    | Level |       XP      |     XP Needed |   Length      | Encoded Board Data ...
-               +-------+-------+---------+---------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+------
-  Size (bytes):  1       1       1         1         2               2               2               2               1       4               4               2               (variable)
+  Byte Offset: 0       1       2         ... 18     19      20      21
+               +-------+-------+---------+... +-------+-------+-------+--------------------+
+               |Version| Code  |  Fields...     |   XP Needed   |   Length      | Encoded Board Data ...
+               +-------+-------+---------+... +-------+-------+-------+--------------------+
+  Size (bytes):  1       1       17               2 (u16)         2 (u16)         (variable)
   ```
 
-#### `DeltaPacket` (Code 10)
+#### `DeltaPacket` (Code 13)
 - **Direction:** Server -> Client
 - **Purpose:** Sends incremental, partial updates to the board state to save bandwidth.
 - **Structure:**
   ```
-  Byte Offset: 0       1       2       3       4       5         6         7       8       9       10    
+  Byte Offset: 0       1       2       3       4       5         6         7       8       9       10
                +-------+-------+-------+-------+-------+---------+---------+-------+-------+-------+------
                |Version| Code  |        TickID         |Points[0]|Points[1]| Delta Count   | Deltas (3 bytes each)
                +-------+-------+-------+-------+-------+---------+---------+-------+-------+-------+------
-  Size (bytes):  1       1       4                       1        1         2                (variable)
+  Size (bytes):  1       1       4 (u32)                 1        1         2 (u16)         (variable)
   ```
 
-#### `GameClosePacket` (Code 11)
+#### `GameClosePacket` (Code 14)
 - **Direction:** Server -> Client
 - **Purpose:** Signals that the game is closing.
 - **Structure:**
@@ -225,32 +290,31 @@ sequenceDiagram
   ```
   - `Success`: `0` for won, `1` for lost, `2` for error.
 
-#### `EndGamePacket` (Code 12)
+#### `EndGamePacket` (Code 15)
 - **Direction:** Server -> Client
 - **Purpose:** Declares the winner at the end of the game.
 - **Structure:**
   ```
   Byte Offset: 0       1       2
                +-------+-------+--------+
-               |Version| Code  | Winner |
+               |Version| Code  | Win    |
                +-------+-------+--------+
-  Size (bytes):  1       1       1
+  Size (bytes):  1       1       1 (bool)
   ```
-  - `Winner`: `0` for Red Team, `1` for Blue Team.
 
-#### `SpellSelectionPacket` (Code 13)
+#### `SpellSelectionPacket` (Code 16)
 - **Direction:** Client -> Server
 - **Purpose:** Sends the player's chosen spells at the beginning of the match.
 - **Structure:**
   ```
-  Byte Offset: 0       1       2       3       4
+  Byte Offset: 0       1       2       3
                +-------+-------+-------+-------+
                |Version| Code  | Spell1| Spell2|
                +-------+-------+-------+-------+
   Size (bytes):  1       1       1       1
   ```
 
-#### `ShopRequestPacket` (Code 14)
+#### `ShopRequestPacket` (Code 17)
 - **Direction:** Client -> Server
 - **Purpose:** Requests the current shop state.
 - **Structure:**
@@ -262,19 +326,19 @@ sequenceDiagram
   Size (bytes):  1       1
   ```
 
-#### `ShopResponsePacket` (Code 15)
+#### `ShopResponsePacket` (Code 18)
 - **Direction:** Server -> Client
 - **Purpose:** Sends player stats and inventory for the shop UI.
 - **Structure:**
   ```
-  Byte Offset: 0       1       2       3       4       5       6       7       8       9       10      11      12      13      14      15      16      17      18      19      20      21      22      23
-               +-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
-               |Version| Code  |    Health     |     Mana      |    Damage     |     Armor     |     Gold      |       Inventory (6 x u16)                                                                     |
-               +-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
-  Size (bytes):  1       1       2               2               2               2               2               12 (6 * 2)
+  Byte Offset: 0       1       ... 10     11      12
+               +-------+-------+-----+... +-------+-------+-----------------------------+
+               |Version| Code  | ... | Gold  |       Inventory (6 x u16)   |
+               +-------+-------+-----+... +-------+-------+-----------------------------+
+  Size (bytes):  1       1       ...       2 (u16)   12 (6 * 2)
   ```
 
-#### `PurchaseItemPacket` (Code 16)
+#### `PurchaseItemPacket` (Code 19)
 - **Direction:** Client -> Server
 - **Purpose:** Sent when a player attempts to buy an item.
 - **Structure:**
@@ -283,6 +347,6 @@ sequenceDiagram
                +-------+-------+-------+-------+
                |Version| Code  |    ItemID     |
                +-------+-------+-------+-------+
-  Size (bytes):  1       1       2
+  Size (bytes):  1       1       2 (u16)
   ```
 
