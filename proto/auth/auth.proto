@@ -24,6 +24,7 @@ message RegisterRequest {
 message RegisterResponse {
   bool success = 1;
   string message = 2;
+  bytes challenge = 3;
 }
 
 // === LOGIN CHALLENGE MESSAGE ===
