@@ -43,20 +43,25 @@ func MakeConnection(port string) (*net.TCPConn, error) {
 	return conn, nil
 }
 
-func SendLoginPacket(conn *net.TCPConn, username, password string) error {
-	log.Print("sending message")
-	loginPacket := shared.NewLoginPacket(username, password)
-	data := loginPacket.Serialize()
-	_, err := conn.Write(data)
-	return err
+func SendRegisterRequestPacket(conn *net.TCPConn, username string, publicKey []byte) error {
+  registerRequestPacket := shared.NewRegisterRequestPacket(username, publicKey)
+  data := registerRequestPacket.Serialize()
+  _, err := conn.Write(data)
+  return err
 }
 
-func SendSignInPacket(conn *net.TCPConn, username, password string) error {
-	log.Print("sending message")
-	createPacket := shared.NewSignInPacket(username, password)
-	data := createPacket.Serialize()
-	_, err := conn.Write(data)
-	return err
+func SendLoginChallengeRequestPacket(conn *net.TCPConn, username string) error {
+  loginChallengeRequestPacket := shared.NewLoginChallengeRequestPacket(username)
+  data := loginChallengeRequestPacket.Serialize()
+  _, err := conn.Write(data)
+  return err
+}
+
+func SendAuthRequestPacket(conn *net.TCPConn, username string, signedChallenge []byte) error {
+  authRequestPacket := shared.NewAuthRequestPacket(username, signedChallenge)
+  data := authRequestPacket.Serialize()
+  _, err := conn.Write(data)
+  return err
 }
 
 func SendRoomRequestPacket(conn *net.TCPConn, roomType int) error {
@@ -148,9 +153,12 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 
 			log.Printf("Deserialized packet type: %T", packet)
 			switch msg := packet.(type) {
-			case *shared.RespPacket:
-				log.Printf("Sending RespMsg: %+v", msg)
-				msgs <- ResponseMsg{Code: msg.Success}
+      case *shared.RegisterResponsePacket:
+        msgs <- RegistrationResultMsg{Success: msg.Success, Message: msg.Message, Challenge: msg.Challenge}
+      case *shared.LoginChallengeResponsePacket:
+        msgs <- ChallengeReceivedMsg{Challenge: msg.Challenge}
+      case *shared.AuthResponsePacket:
+        msgs <- AuthResultMsg{Success: msg.Success, Message: msg.Message, SessionToken: msg.SessionToken}
 			case *shared.LookRoomPacket:
 				log.Printf("Sending LookRoomMsg: %+v", msg)
 				msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID, RoomIP: msg.RoomIP}

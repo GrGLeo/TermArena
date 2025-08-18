@@ -4,31 +4,46 @@ package auth;
 
 option go_package = "github.com/GrGLeo/ctf/server/proto/auth";
 
-service LoginService {
-  rpc Authentificate (AuthentificationRequest) returns (AuthentificationResponse) {}
+// The main authentification service
+service AuthService {
+  // Handles registration for new users
+  rpc Register(RegisterRequest) returns (RegisterResponse) {}
+
+  // Get a unique challenge for a user who want to log in
+  rpc GetLoginChallenge(GetLoginChallengeRequest) returns (GetLoginChallengeResponse) {}
+  // Sends the signed challenge to the server to complete the login
+  rpc Authentificate(AuthentificateRequest) returns (AuthentificateResponse) {}
 }
 
-message AuthentificationRequest {
+// === REGISTRATION MESSAGE ===
+message RegisterRequest {
   string username = 1;
-  string password = 2;
+  bytes public_key = 2;
 }
 
-message AuthentificationResponse {
+message RegisterResponse {
   bool success = 1;
-  string userId = 2;
-  string message = 3;
+  string message = 2;
+  bytes challenge = 3;
 }
 
-service CreateService {
-  rpc Signin (SigninRequest) returns (SigninResponse) {}
-}
-
-message SigninRequest {
+// === LOGIN CHALLENGE MESSAGE ===
+message GetLoginChallengeRequest {
   string username = 1;
-  string password = 2;
 }
 
-message SigninResponse {
+message GetLoginChallengeResponse {
+  bytes challenge = 1;
+}
+
+
+// === AUTHENTIFICATION MESSAGES ===
+message AuthentificateRequest {
+  string username = 1;
+  bytes signed_challenge = 2;
+}
+
+message AuthentificateResponse {
   bool success = 1;
   string message = 2;
 }

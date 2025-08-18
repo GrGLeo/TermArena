@@ -113,8 +113,8 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newmodel, cmd = m.AuthModel.Update(msg)
 		m.AuthModel = newmodel.(model.AuthModel)
 		switch msg := msg.(type) {
-		case communication.ResponseMsg:
-			if !msg.Code {
+		case communication.AuthResultMsg:
+			if !msg.Success {
 				log.Println("Failed to log in")
 			} else {
 				log.Println("Manage to log in")
@@ -221,7 +221,6 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m MetaModel) View() string {
-	log.Printf("Model state: %s/n", m.state)
 	switch m.state {
 	case Disconnect:
 		return m.WaitingModel.View()

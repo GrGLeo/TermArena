@@ -35,7 +35,7 @@ impl ShopResponsePacket {
     pub fn new(stats: (u16, u16, u16, u16, u16), inventory: Vec<u16>) -> Self {
         ShopResponsePacket {
             version: 1,
-            code: 15,
+            code: 18,
             health: stats.0,
             mana: stats.1,
             damage: stats.2,
@@ -83,7 +83,7 @@ impl PurchaseItemPacket {
 
         Ok(PurchaseItemPacket {
             version: 1, // Version and code are handled in the main loop
-            code: 16,
+            code: 18,
             item_id,
         })
     }
