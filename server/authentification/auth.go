@@ -54,32 +54,18 @@ func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 
 	if !regResp.Success {
 		return event.RegisterResponseMessage{
-			Success:   false,
+			Success:   regResp.Success,
 			Message:   regResp.Message,
 			Challenge: nil,
 			Conn:      req.Conn,
 		}
-	}
-
-	challengeResp, err := ac.Client.GetLoginChallenge(ctx, &auth.GetLoginChallengeRequest{
-		Username: req.Username,
-	})
-
-	if err != nil {
-		log.Printf("gRPC GetLoginChallenge call failed: %v", err)
+	} else {
 		return event.RegisterResponseMessage{
-			Success:   false,
-			Message:   "Error getting login challenge",
-			Challenge: nil,
+			Success:   regResp.Success,
+			Message:   regResp.Message,
+			Challenge: regResp.Challenge,
 			Conn:      req.Conn,
 		}
-	}
-
-	return event.RegisterResponseMessage{
-		Success:   true,
-		Message:   regResp.Message,
-		Challenge: challengeResp.Challenge,
-		Conn:      req.Conn,
 	}
 }
 
@@ -139,4 +125,3 @@ func (ac *AuthClient) HandleAuth(msg event.Message) event.Message {
 		Conn:         req.Conn,
 	}
 }
-

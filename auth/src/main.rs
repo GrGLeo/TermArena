@@ -33,12 +33,13 @@ impl AuthService for TermArenaAuthService {
         println!("Registering user: {}", username_for_log);
 
         let conn = self.db.lock().await;
+        let username = req.username.clone();
         let res = conn
             .call(move |conn| {
                 conn.execute(
                     "INSERT INTO users (username, public_key) VALUES (?1, ?2)",
                     &[
-                        &req.username as &dyn rusqlite::ToSql,
+                        &username as &dyn rusqlite::ToSql,
                         &req.public_key as &dyn rusqlite::ToSql,
                     ],
                 )
@@ -47,11 +48,39 @@ impl AuthService for TermArenaAuthService {
             .await;
 
         match res {
-            Ok(_) => Ok(Response::new(RegisterResponse {
-                success: true,
-                message: "User registered successfully".into(),
-                challenge: vec![],
-            })),
+            Ok(_) => {
+                // Username registered, now we need to generate a challenge
+                println!("Starting challenge creation for user: {}", username_for_log);
+                let mut challenge = [0u8; 32];
+                rand::thread_rng().fill_bytes(&mut challenge);
+
+                let res = conn
+                    .call({
+                        let username = req.username.clone();
+                        let challenge_vec = challenge.to_vec();
+                        move |conn| {
+                            conn.execute(
+                                "INSERT INTO challenges (username, challenge, expires_at) VALUES (?1, ?2, strftime('%s','now') + 300)",
+                                &[&username as &dyn rusqlite::ToSql, &challenge_vec as &dyn rusqlite::ToSql],
+                            ).map_err(|e| e.into())
+                        }
+                    })
+                    .await;
+                println!("Challenge stored for user: {}", username_for_log);
+
+                if let Err(e) = res {
+                    eprintln!("Failed to store challenge for {}: {}", req.username, e);
+                    return Err(Status::internal("Failed to prepare login challenge"));
+                }
+
+                println!("Challenge created for user: {}", username_for_log);
+
+                Ok(Response::new(RegisterResponse {
+                    success: true,
+                    message: "User registered".into(),
+                    challenge: challenge.to_vec(),
+                }))
+            }
             Err(e) => {
                 println!("Failed to register user {}: {}", username_for_log, e);
                 Ok(Response::new(RegisterResponse {
