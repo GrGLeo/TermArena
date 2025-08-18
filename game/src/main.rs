@@ -54,7 +54,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
     let version = initial_packet_header[0];
     let code = initial_packet_header[1];
 
-    let (spell1, spell2) = if version == 1 && code == 13 {
+    let (spell1, spell2) = if version == 1 && code == 16 {
         // Code for SpellSelectionPacket
         let mut spell_payload = [0; 2]; // Read spell1 and spell2
         if buf_reader.read_exact(&mut spell_payload).await.is_err() {
@@ -102,7 +102,6 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
     }
 
     // -- Split Stream and Spawn Writer Task --
-    // The reader and writer are already split from the initial read
     // Spawn a separate task that owns the 'writer' and listens on 'rx'
     let _ = spawn(async move {
         while let Some(message) = rx.recv().await {
@@ -153,7 +152,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
         }
 
         match code {
-            8 => {
+            11 => {
                 // Action Packet
                 let mut action_payload = [0; 1];
                 if buf_reader.read_exact(&mut action_payload).await.is_err() {
@@ -163,7 +162,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
                 let mut manager = game_manager.lock().await;
                 manager.store_player_action(player_id, action_payload[0]);
             }
-            14 => {
+            17 => {
                 // Shop Request Packet
                 println!("Got a requests shop packet");
                 let manager = game_manager.lock().await;
@@ -176,7 +175,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
                     println!("Player: {} champion not found", player_id);
                 }
             }
-            16 => {
+            19 => {
                 // Purchase Item Packet
                 let mut purchase_payload = [0; 2];
                 if buf_reader.read_exact(&mut purchase_payload).await.is_err() {

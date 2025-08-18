@@ -11,7 +11,7 @@ impl EndGamePacket {
     pub fn serialize(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.push(1);
-        bytes.push(12);
+        bytes.push(15);
         bytes.push(self.winner as u8);
         bytes
     }

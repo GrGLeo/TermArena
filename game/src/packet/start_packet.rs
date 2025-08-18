@@ -12,7 +12,7 @@ impl StartPacket {
     pub fn new(success: u8) -> Self {
         StartPacket {
             version: 1,
-            code: 7,
+            code: 10,
             success,
         }
     }
@@ -37,14 +37,14 @@ mod tests {
         let success_fail = 0;
         let packet_fail = StartPacket::new(success_fail);
         assert_eq!(packet_fail.version, 1);
-        assert_eq!(packet_fail.code, 7);
+        assert_eq!(packet_fail.code, 10);
         assert_eq!(packet_fail.success, success_fail);
 
         // Test case with success = 1
         let success_ok = 1;
         let packet_ok = StartPacket::new(success_ok);
         assert_eq!(packet_ok.version, 1);
-        assert_eq!(packet_ok.code, 7);
+        assert_eq!(packet_ok.code, 10);
         assert_eq!(packet_ok.success, success_ok);
     }
 
@@ -58,7 +58,7 @@ mod tests {
         // Manually construct the expected byte buffer
         let mut expected_buffer = BytesMut::new();
         expected_buffer.put_u8(packet.version); // 1
-        expected_buffer.put_u8(packet.code); // 7
+        expected_buffer.put_u8(packet.code); // 10
         expected_buffer.put_u8(packet.success); // success_value (e.g., 1)
 
         assert_eq!(
