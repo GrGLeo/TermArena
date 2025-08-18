@@ -42,9 +42,7 @@ sequenceDiagram
         Client->>Client: Generates new RSA key pair
         Client->>Go Server: Sends RegisterRequestPacket (Code 0) with public key
         Go Server->>Auth Service: gRPC: Register(username, pubKey)
-        Auth Service-->>Go Server: Returns success
-        Go Server->>Auth Service: gRPC: GetLoginChallenge(username)
-        Auth Service-->>Go Server: Returns unique challenge
+        Auth Service-->>Go Server: Returns success and challenge
         Go Server->>Client: Sends RegisterResponsePacket (Code 1) with challenge
     end
 
@@ -229,8 +227,8 @@ sequenceDiagram
     participant Rust Game Server
 
     loop Game Loop
-        Client->>Rust Game Server: Sends ActionPacket (Code 11) for movement, etc.
         Client->>Rust Game Server: Sends SpellSelectionPacket (Code 16) at start.
+        Client->>Rust Game Server: Sends ActionPacket (Code 11) for movement, etc.
         Rust Game Server-->>Client: Broadcasts BoardPacket (Code 12) with game state.
         Rust Game Server-->>Client: Broadcasts DeltaPacket (Code 13) for incremental updates.
     end
@@ -258,10 +256,10 @@ sequenceDiagram
 - **Purpose:** Sends the full player-specific view of the game board and champion status.
 - **Structure:**
   ```
-  Byte Offset: 0       1       2         ... 18     19      20      21
-               +-------+-------+---------+... +-------+-------+-------+--------------------+
-               |Version| Code  |  Fields...     |   XP Needed   |   Length      | Encoded Board Data ...
-               +-------+-------+---------+... +-------+-------+-------+--------------------+
+  Byte Offset: 0       1       2        ...   18      19      20      21      22
+               +-------+-------+---------+----+-------+-------+-------+-------+------------+
+               |Version| Code  |  Fields...   |   XP Needed   |   Length      | Encoded Board Data ...
+               +-------+-------+---------+----+-------+-------+-------+-------+------------+
   Size (bytes):  1       1       17               2 (u16)         2 (u16)         (variable)
   ```
 
@@ -331,11 +329,11 @@ sequenceDiagram
 - **Purpose:** Sends player stats and inventory for the shop UI.
 - **Structure:**
   ```
-  Byte Offset: 0       1       ... 10     11      12
-               +-------+-------+-----+... +-------+-------+-----------------------------+
-               |Version| Code  | ... | Gold  |       Inventory (6 x u16)   |
-               +-------+-------+-----+... +-------+-------+-----------------------------+
-  Size (bytes):  1       1       ...       2 (u16)   12 (6 * 2)
+  Byte Offset: 0       1         ... 10     11      12
+               +-------+-------+-----+-------+-------+-------+---------------+
+               |Version| Code  | ... | Gold          | Inventory (6 x u16)   |
+               +-------+-------+-----+-------+-------+-------+---------------+
+  Size (bytes):  1       1       ...   2 (u16)          12 (6 * 2)
   ```
 
 #### `PurchaseItemPacket` (Code 19)
