@@ -13,6 +13,7 @@ use std::collections::HashMap;
 
 pub struct ProjectileManager {
     pub projectiles: HashMap<u64, Projectile>,
+    animation_to_clean: Vec<(u16, u16)>,
     next_projectile_id: u64,
 }
 
@@ -20,6 +21,7 @@ impl ProjectileManager {
     pub fn new() -> Self {
         ProjectileManager {
             projectiles: HashMap::new(),
+            animation_to_clean: Vec::new(),
             next_projectile_id: 0,
         }
     }
@@ -117,6 +119,13 @@ impl ProjectileManager {
         let mut projectiles_to_remove: Vec<u64> = Vec::new();
         let mut pending_effects: Vec<(usize, Target, Vec<GameplayEffect>)> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
+
+        for pos in self.animation_to_clean.drain(..) {
+            animation_commands_executable.push(AnimationCommand::Clear {
+                row: pos.0,
+                col: pos.1,
+            });
+        }
 
         for (id, projectile) in self.projectiles.iter_mut() {
             let (target_row, target_col) = match &projectile.pathing {
@@ -227,7 +236,12 @@ impl ProjectileManager {
 
                     if hit_target {
                         projectiles_to_remove.push(*id);
-                        animation_commands_executable.push(AnimationCommand::Clear { row, col });
+                        self.animation_to_clean.push((row, col));
+                        animation_commands_executable.push(AnimationCommand::Draw {
+                            row,
+                            col,
+                            animation_type,
+                        });
                     } else {
                         animation_commands_executable.push(AnimationCommand::Draw {
                             row,
