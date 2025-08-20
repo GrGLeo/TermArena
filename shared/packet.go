@@ -10,18 +10,6 @@ import (
 )
 
 /*
-package shared
-
-import (
-	"bytes"
-	"encoding/binary"
-	"errors"
-	"net"
-
-	"github.com/GrGLeo/ctf/server/event"
-)
-
-/*
 code 0: register user request (username + pubkey)
 code 1: register user response (success, message, challenge)
 code 2: login challenge request (username)
@@ -53,38 +41,45 @@ type Packet interface {
 }
 
 func CreateMessage(packet Packet, conn *net.TCPConn) (event.Message, error) {
+	responseChan := make(chan event.Message)
 	switch pkt := packet.(type) {
 	case *RegisterRequestPacket:
 		return event.RegisterRequestMessage{
-			Username:  pkt.Username,
-			PublicKey: pkt.PublicKey,
-			Conn:      conn,
+			Username:   pkt.Username,
+			PublicKey:  pkt.PublicKey,
+			Conn:       conn,
+			ResponseCh: responseChan,
 		}, nil
 	case *LoginChallengeRequestPacket:
 		return event.LoginChallengeRequestMessage{
-			Username: pkt.Username,
-			Conn:     conn,
+			Username:   pkt.Username,
+			Conn:       conn,
+			ResponseCh: responseChan,
 		}, nil
 	case *AuthRequestPacket:
 		return event.AuthRequestMessage{
 			Username:        pkt.Username,
 			SignedChallenge: pkt.SignedChallenge,
 			Conn:            conn,
+			ResponseCh:      responseChan,
 		}, nil
 	case *RoomRequestPacket:
 		return event.RoomRequestMessage{
-			RoomType: pkt.RoomType,
-			Conn:     conn,
+			RoomType:   pkt.RoomType,
+			Conn:       conn,
+			ResponseCh: responseChan,
 		}, nil
 	case *RoomCreatePacket:
 		return event.RoomCreateMessage{
-			RoomType: pkt.RoomType,
-			Conn:     conn,
+			RoomType:   pkt.RoomType,
+			Conn:       conn,
+			ResponseCh: responseChan,
 		}, nil
 	case *RoomJoinPacket:
 		return event.RoomJoinMessage{
-			RoomID: pkt.RoomID,
-			Conn:   conn,
+			RoomID:     pkt.RoomID,
+			Conn:       conn,
+			ResponseCh: responseChan,
 		}, nil
 	default:
 		return nil, errors.New("No message to create from packet")
@@ -1086,3 +1081,4 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		return nil, 0, errors.New("unknown message type")
 	}
 }
+

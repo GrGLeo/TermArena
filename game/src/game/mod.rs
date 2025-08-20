@@ -300,10 +300,6 @@ impl GameManager {
         self.tick = self.tick.saturating_add(1);
         println!("---- Game Tick -----");
         self.print_game_state();
-        println!(
-            "Base Blue: {:?} | Base Red {:?}",
-            self.blue_base, self.red_base
-        );
 
         let mut new_animations: Vec<Box<dyn AnimationTrait>> = Vec::new();
         let mut animation_commands_executable: Vec<AnimationCommand> = Vec::new();
@@ -382,7 +378,6 @@ impl GameManager {
             if let Some(enemy) = champ.get_potential_target(&self.board) {
                 match &enemy.content {
                     Some(content) => {
-                        println!("Got content: {:?}", content);
                         match content {
                             CellContent::Tower(id, _) => {
                                 if let Some(attack) = champ.can_attack() {
@@ -768,7 +763,6 @@ impl GameManager {
             })
             .collect();
 
-        println!("Champion placement: {:?}", self.champions);
         println!("Tick duration: {:?}", start_tick.elapsed());
         println!("--------------------");
         updates

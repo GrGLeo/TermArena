@@ -129,7 +129,7 @@ func runClient(ctx context.Context, wg *sync.WaitGroup, clientID int, serverPort
 	log.Printf("Client %d: Connected to server", clientID)
 
 	// 1. Send Login Packet
-	loginPacket := shared.NewLoginPacket("qweqwe", "qweqwe")
+	loginPacket := shared.NewLoginChallengeRequestPacket("simulation_user")
 	_, err = conn.Write(loginPacket.Serialize())
 	if err != nil {
 		log.Printf("Client %d: Failed to send login packet: %v", clientID, err)
@@ -153,7 +153,7 @@ func runClient(ctx context.Context, wg *sync.WaitGroup, clientID int, serverPort
 		return
 	}
 
-	if respPacket, ok := packet.(*shared.RespPacket); ok && respPacket.Success {
+	if _, ok := packet.(*shared.LoginChallengeResponsePacket); ok {
 		log.Printf("Client %d: Login successful", clientID)
 	} else {
 		log.Printf("Client %d: Login failed", clientID)
@@ -233,7 +233,7 @@ gameStartLoop:
 			}
 			gameBuf = append(gameBuf, tempBuf[:n]...)
 
-			if len(gameBuf) >= 3 && gameBuf[1] == 7 {
+			if len(gameBuf) >= 3 && gameBuf[1] == 10 {
 				log.Printf("Client %d: Received GameStartPacket. Starting to send actions.", clientID)
 				gameStarted = true
 				gameBuf = gameBuf[3:]

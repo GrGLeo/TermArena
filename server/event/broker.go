@@ -7,23 +7,25 @@ import (
 )
 
 // EventBroker is a struct that manages the lifecycle of events, including publishing, subscribing, and processing.
-// It uses a queue to hold events, a map to store subscribers for different event types, and channels to handle responses.
+// It uses a queue to hold events and a map to store subscribers for different event types.
 type EventBroker struct {
-	eventQueue      *Queue
-	subscribers     map[string][]func(Message) Message
-	responseChannel map[string]chan Message
-	logger          *zap.SugaredLogger
-	mu              sync.Mutex
+	eventQueue     *Queue
+	subscribers    map[string][]func(Message) Message
+	logger         *zap.SugaredLogger
+	mu             sync.Mutex
+	jobChannel     chan Message
+	workerPoolSize int
 }
 
 // NewEventBroker initializes and returns a new EventBroker instance.
-// It sets up the event queue, subscriber map, response channel map, and logger.
-func NewEventBroker(logger *zap.SugaredLogger) *EventBroker {
+// It sets up the event queue, subscriber map, and logger.
+func NewEventBroker(logger *zap.SugaredLogger, workerPoolSize int) *EventBroker {
 	return &EventBroker{
-		eventQueue:      NewQueue(),
-		subscribers:     make(map[string][]func(Message) Message),
-		responseChannel: make(map[string]chan Message),
-		logger:          logger,
+		eventQueue:     NewQueue(),
+		subscribers:    make(map[string][]func(Message) Message),
+		logger:         logger,
+		jobChannel:     make(chan Message, workerPoolSize),
+		workerPoolSize: workerPoolSize,
 	}
 }
 
@@ -43,45 +45,42 @@ func (eb *EventBroker) Subscribe(eventType string, callback func(Message) Messag
 	eb.subscribers[eventType] = append(eb.subscribers[eventType], callback)
 }
 
-// ResponseChannel returns a channel for receiving responses for a specific event type.
-// If the channel does not exist, it creates a new one.
-func (eb *EventBroker) ResponseChannel(eventType string) chan Message {
-	eb.mu.Lock()
-	defer eb.mu.Unlock()
-	if _, ok := eb.responseChannel[eventType]; !ok {
-		eb.responseChannel[eventType] = make(chan Message)
+// Start initializes the worker pool and begins processing messages.
+func (eb *EventBroker) Start() {
+	eb.logger.Info("Starting event broker")
+	for i := 0; i < eb.workerPoolSize; i++ {
+		go eb.worker(i)
 	}
-	return eb.responseChannel[eventType]
+	go eb.dispatch()
 }
 
-// ProcessMessage continuously processes messages from the event queue.
-// It retrieves messages from the queue, invokes the corresponding subscriber callbacks, and sends responses to the appropriate channels.
-func (eb *EventBroker) ProcessMessage() {
+// dispatch is responsible for dequeuing messages and distributing them to workers.
+func (eb *EventBroker) dispatch() {
+	eb.logger.Info("Starting dispatcher")
 	for {
 		msg := eb.eventQueue.Dequeue()
+		eb.jobChannel <- msg
+	}
+}
+
+// worker processes messages from the job channel.
+func (eb *EventBroker) worker(id int) {
+	eb.logger.Infow("Starting worker", "id", id)
+	for msg := range eb.jobChannel {
 		eventType := msg.Type()
-		eb.logger.Infow("Processing message", "message", eventType)
+		eb.logger.Infow("Processing message", "worker_id", id, "message_type", eventType)
 		var respMsg Message
 		if callbacks, ok := eb.subscribers[eventType]; ok {
 			for _, callback := range callbacks {
 				respMsg = callback(msg)
-        if respMsg != nil {
-				  eb.logger.Infow("Response message", "message", respMsg.Type())
-        }
+				if respMsg != nil {
+					eb.logger.Infow("Response message", "worker_id", id, "message_type", respMsg.Type())
+				}
 			}
 		}
-
-		// Use the ResponseChannel method to ensure the channel is created
-		channel := eb.ResponseChannel(eventType)
-		channel <- respMsg
+		if msg.ResponseChan() != nil {
+			msg.ResponseChan() <- respMsg
+		}
 	}
 }
 
-// Helper function to list available channels for debugging
-func (eb *EventBroker) listAvailableChannels() []string {
-	channels := make([]string, 0, len(eb.responseChannel))
-	for eventType := range eb.responseChannel {
-		channels = append(channels, eventType)
-	}
-	return channels
-}

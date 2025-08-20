@@ -99,7 +99,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 
 				// Unified logic: publish message, wait for response, create packet, send response.
 				broker.Publish(msg)
-				response := <-broker.ResponseChannel(msg.Type())
+				response := <-msg.ResponseChan()
 
 				responsePacket, err := shared.CreatePacketFromMessage(response)
 				if err != nil {
@@ -139,7 +139,7 @@ func main() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, loggerKey, log)
 
-	broker := event.NewEventBroker(log)
+	broker := event.NewEventBroker(log, 10)
 	log.Info("New Event Broker initialize")
 
 	roomManager := manager.NewRoomManager(log)
@@ -151,7 +151,7 @@ func main() {
 	}
 	log.Info("Auth client initialized")
 
-	go broker.ProcessMessage()
+	broker.Start()
 	log.Info("Broker ready to process message")
 
 	// Subscribe new authentication handlers
@@ -170,4 +170,3 @@ func main() {
 	}
 	select {}
 }
-
