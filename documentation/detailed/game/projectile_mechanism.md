@@ -26,7 +26,8 @@ The `Projectile` struct implements the `AnimationTrait`, allowing it to be integ
 
 This manager orchestrates all active projectiles in the game. Its main responsibilities include:
 - **`create_skillshot_projectile(...)`**: Creates a new projectile with a pre-defined straight path.
-- **`create_homing_projectile(...)`**: Creates a new projectile that tracks a specific target.
+- **`create_lockon_projectile(...)`**: Creates a new projectile that tracks a specific target.
+- **`create_rotationay_projectile(...)`**: Creates a new projectile that does a full turn around the owner.
 - **`update_and_check_collisions(...)`**: This is the central method called each game tick. It:
     1. Iterates through all active projectiles.
     2. Updates each projectile's position based on its `speed` and `path`.

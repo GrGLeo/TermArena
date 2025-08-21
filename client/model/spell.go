@@ -73,4 +73,16 @@ var availableSpells = []Spell{
 		StunDuration: 0,
 		IsHeal:       true,
 	},
+	{
+		ID:           3,
+		Name:         "Whrilwind",
+		ManaCost:     40,
+		CooldownSecs: 15,
+		Range:        8,
+		Width:        3,
+		Speed:        1,
+		BaseDamage:   50,
+		DamageRatio:  0.3,
+		StunDuration: 0,
+	},
 }

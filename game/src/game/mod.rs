@@ -17,7 +17,7 @@ use buffs::Buff;
 use bytes::BytesMut;
 use cell::Team;
 pub use cell::{BaseTerrain, Cell, CellContent, MinionId, PlayerId, TowerId};
-use entities::champion::{self, Ability, Castable};
+use entities::champion::{Ability, Castable};
 pub use entities::champion::{Action, Champion};
 use entities::{
     AttackAction, Fighter, Target,
@@ -36,8 +36,7 @@ use std::{
     collections::HashMap,
     mem::take,
     time::{Duration, Instant},
-    usize,
-    vec,
+    usize, vec,
 };
 
 pub type ClientMessage = BytesMut;
@@ -321,18 +320,21 @@ impl GameManager {
             champ.active_buffs = kept_buffs;
         });
 
-        self.minion_manager.minions.par_iter_mut().for_each(|(_, minion)| {
-            let current_buffs = take(&mut minion.active_buffs);
-            let mut kept_buffs = HashMap::new();
-            for (id, mut buff) in current_buffs.into_iter() {
-                if !buff.on_tick(minion) {
-                    kept_buffs.insert(id, buff);
-                } else {
-                    buff.on_remove(minion);
+        self.minion_manager
+            .minions
+            .par_iter_mut()
+            .for_each(|(_, minion)| {
+                let current_buffs = take(&mut minion.active_buffs);
+                let mut kept_buffs = HashMap::new();
+                for (id, mut buff) in current_buffs.into_iter() {
+                    if !buff.on_tick(minion) {
+                        kept_buffs.insert(id, buff);
+                    } else {
+                        buff.on_remove(minion);
+                    }
                 }
-            }
-            minion.active_buffs = kept_buffs;
-        });
+                minion.active_buffs = kept_buffs;
+            });
 
         // --- Turn ---
         // Player turn
@@ -377,101 +379,99 @@ impl GameManager {
             // 3. auto_attack
             if let Some(enemy) = champ.get_potential_target(&self.board) {
                 match &enemy.content {
-                    Some(content) => {
-                        match content {
-                            CellContent::Tower(id, _) => {
-                                if let Some(attack) = champ.can_attack() {
-                                    match attack {
-                                        AttackAction::Melee {
-                                            damage,
-                                            mut animation,
-                                        } => {
-                                            animation.attach_target(*id);
-                                            new_animations.push(animation);
-                                            pending_effects.push((
-                                                Some(*player_id),
-                                                Target::Tower(*id),
-                                                vec![GameplayEffect::Damage(damage)],
-                                            ))
-                                        }
-                                        _ => {}
+                    Some(content) => match content {
+                        CellContent::Tower(id, _) => {
+                            if let Some(attack) = champ.can_attack() {
+                                match attack {
+                                    AttackAction::Melee {
+                                        damage,
+                                        mut animation,
+                                    } => {
+                                        animation.attach_target(*id);
+                                        new_animations.push(animation);
+                                        pending_effects.push((
+                                            Some(*player_id),
+                                            Target::Tower(*id),
+                                            vec![GameplayEffect::Damage(damage)],
+                                        ))
                                     }
-                                }
-                            }
-                            CellContent::Monster(id) => {
-                                if let Some(attack) = champ.can_attack() {
-                                    match attack {
-                                        AttackAction::Melee {
-                                            damage,
-                                            mut animation,
-                                        } => {
-                                            animation.attach_target(*id);
-                                            new_animations.push(animation);
-                                            pending_effects.push((
-                                                Some(*player_id),
-                                                Target::Monster(*id),
-                                                vec![GameplayEffect::Damage(damage)],
-                                            ))
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                            }
-                            CellContent::Minion(id, _) => {
-                                if let Some(attack) = champ.can_attack() {
-                                    match attack {
-                                        AttackAction::Melee {
-                                            damage,
-                                            mut animation,
-                                        } => {
-                                            animation.attach_target(*id);
-                                            new_animations.push(animation);
-                                            pending_effects.push((
-                                                Some(*player_id),
-                                                Target::Minion(*id),
-                                                vec![GameplayEffect::Damage(damage)],
-                                            ))
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                            }
-                            CellContent::Champion(id, _) => {
-                                if let Some(attack) = champ.can_attack() {
-                                    match attack {
-                                        AttackAction::Melee {
-                                            damage,
-                                            mut animation,
-                                        } => {
-                                            animation.attach_target(*id);
-                                            new_animations.push(animation);
-                                            pending_effects.push((
-                                                Some(*player_id),
-                                                Target::Champion(*id),
-                                                vec![GameplayEffect::Damage(damage)],
-                                            ))
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                            }
-                            CellContent::Base(team) => {
-                                if let Some(attack) = champ.can_attack() {
-                                    match attack {
-                                        AttackAction::Melee { damage, animation } => {
-                                            new_animations.push(animation);
-                                            pending_effects.push((
-                                                Some(*player_id),
-                                                Target::Base(*team),
-                                                vec![GameplayEffect::Damage(damage)],
-                                            ))
-                                        }
-                                        _ => {}
-                                    }
+                                    _ => {}
                                 }
                             }
                         }
-                    }
+                        CellContent::Monster(id) => {
+                            if let Some(attack) = champ.can_attack() {
+                                match attack {
+                                    AttackAction::Melee {
+                                        damage,
+                                        mut animation,
+                                    } => {
+                                        animation.attach_target(*id);
+                                        new_animations.push(animation);
+                                        pending_effects.push((
+                                            Some(*player_id),
+                                            Target::Monster(*id),
+                                            vec![GameplayEffect::Damage(damage)],
+                                        ))
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                        CellContent::Minion(id, _) => {
+                            if let Some(attack) = champ.can_attack() {
+                                match attack {
+                                    AttackAction::Melee {
+                                        damage,
+                                        mut animation,
+                                    } => {
+                                        animation.attach_target(*id);
+                                        new_animations.push(animation);
+                                        pending_effects.push((
+                                            Some(*player_id),
+                                            Target::Minion(*id),
+                                            vec![GameplayEffect::Damage(damage)],
+                                        ))
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                        CellContent::Champion(id, _) => {
+                            if let Some(attack) = champ.can_attack() {
+                                match attack {
+                                    AttackAction::Melee {
+                                        damage,
+                                        mut animation,
+                                    } => {
+                                        animation.attach_target(*id);
+                                        new_animations.push(animation);
+                                        pending_effects.push((
+                                            Some(*player_id),
+                                            Target::Champion(*id),
+                                            vec![GameplayEffect::Damage(damage)],
+                                        ))
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                        CellContent::Base(team) => {
+                            if let Some(attack) = champ.can_attack() {
+                                match attack {
+                                    AttackAction::Melee { damage, animation } => {
+                                        new_animations.push(animation);
+                                        pending_effects.push((
+                                            Some(*player_id),
+                                            Target::Base(*team),
+                                            vec![GameplayEffect::Damage(damage)],
+                                        ))
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    },
                     None => break,
                 }
             }
@@ -569,7 +569,9 @@ impl GameManager {
             });
 
         // Distribute XP from dead monster
-        for (player_id, xp_reward, gold_reward, health_reward, buff_reward) in monster_rewards.into_iter() {
+        for (player_id, xp_reward, gold_reward, health_reward, buff_reward) in
+            monster_rewards.into_iter()
+        {
             if let Some(champion) = self.champions.get_mut(&player_id) {
                 champion.add_xp(xp_reward as u16);
                 champion.add_gold(gold_reward as u16);
@@ -804,7 +806,7 @@ impl GameManager {
         // We create the projectiles
         for (tower_id, target, damage, speed, visual) in projectiles_to_create {
             if let Some(tower) = self.towers.get(&tower_id) {
-                self.projectile_manager.create_homing_projectile(
+                self.projectile_manager.create_lockon_projectile(
                     tower.tower_id as u64,
                     tower.team_id,
                     target,

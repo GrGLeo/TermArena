@@ -81,6 +81,8 @@ impl Spell for HealingWaveSpell {
             target_id: None,
             start_pos: (proj_start_row, proj_start_col),
             end_pos: (proj_end_row, proj_end_col),
+            radius: None,
+            total_iteration: None,
             speed: self.stats.speed,
             payloads: vec![GameplayEffect::Heal(heal_amount)],
             visual_cell_type: CellAnimation::Heal, // Placeholder visual

@@ -30,7 +30,7 @@ impl ProjectileManager {
         match blueprint.projectile_type {
             ProjectileType::LockOn => {
                 if let Some(target_id) = blueprint.target_id {
-                    self.create_homing_projectile(
+                    self.create_lockon_projectile(
                         blueprint.owner_id,
                         blueprint.team_id,
                         target_id,
@@ -51,6 +51,20 @@ impl ProjectileManager {
                     blueprint.payloads,
                     blueprint.visual_cell_type,
                 );
+            }
+            ProjectileType::Rotationnary => {
+                if let (Some(radius), Some(total_iteration)) = (blueprint.radius, blueprint.total_iteration) {
+                    self.create_rotationnary_projectile(
+                        blueprint.owner_id,
+                        blueprint.team_id,
+                        radius,
+                        total_iteration,
+                        blueprint.start_pos,
+                        blueprint.speed,
+                        blueprint.payloads,
+                        blueprint.visual_cell_type,
+                    );
+                }
             }
         }
     }
@@ -80,7 +94,7 @@ impl ProjectileManager {
         self.projectiles.insert(id, projectile);
     }
 
-    pub fn create_homing_projectile(
+    pub fn create_lockon_projectile(
         &mut self,
         owner_id: u64,
         team_id: Team,
@@ -92,12 +106,39 @@ impl ProjectileManager {
     ) {
         let id = self.next_projectile_id;
         self.next_projectile_id += 1;
-        let projectile = Projectile::from_homing_shot(
+        let projectile = Projectile::from_lockon_shot(
             id,
             owner_id,
             team_id,
             start_pos,
             target_id,
+            speed,
+            payloads,
+            visual_cell_type,
+        );
+        self.projectiles.insert(id, projectile);
+    }
+
+    pub fn create_rotationnary_projectile(
+        &mut self,
+        owner_id: u64,
+        team_id: Team,
+        radius: u8,
+        total_iteration: u8,
+        start_pos: (u16, u16),
+        speed: u32,
+        payloads: Vec<GameplayEffect>,
+        visual_cell_type: CellAnimation,
+    ) {
+        let id = self.next_projectile_id;
+        self.next_projectile_id += 1;
+        let projectile = Projectile::from_rotationnary_shot(
+            id,
+            owner_id,
+            team_id,
+            start_pos,
+            radius,
+            total_iteration,
             speed,
             payloads,
             visual_cell_type,
@@ -164,6 +205,14 @@ impl ProjectileManager {
                         }
                     }
                     _ => {
+                        projectiles_to_remove.push(*id as u64);
+                        continue;
+                    }
+                    }
+                PathingLogic::Rotationnary { .. } => {
+                    if let Some(champ) = champions.get(&(projectile.owner_id as usize)) {
+                        (champ.row, champ.col)
+                    } else {
                         projectiles_to_remove.push(*id as u64);
                         continue;
                     }
@@ -234,7 +283,7 @@ impl ProjectileManager {
                         }
                     }
 
-                    if hit_target {
+                    if hit_target && !matches!(projectile.pathing, PathingLogic::Rotationnary { .. }) {
                         projectiles_to_remove.push(*id);
                         self.animation_to_clean.push((row, col));
                         animation_commands_executable.push(AnimationCommand::Draw {
@@ -257,7 +306,6 @@ impl ProjectileManager {
         for id in projectiles_to_remove {
             self.projectiles.remove(&id);
         }
-
         (pending_effects, animation_commands_executable)
     }
 }
@@ -386,7 +434,7 @@ mod tests {
     #[test]
     fn test_create_homing_projectile() {
         let mut manager = ProjectileManager::new();
-        manager.create_homing_projectile(
+        manager.create_lockon_projectile(
             2,
             Team::Red,
             Target::Champion(202),
@@ -410,6 +458,7 @@ mod tests {
             target_id: Option::Some(Target::Minion(5)),
             start_pos: (0, 0),
             end_pos: (10, 10),
+            radius: None,
             speed: 2,
             payloads: vec![GameplayEffect::Damage(5)],
             visual_cell_type: CellAnimation::TowerHit,
@@ -430,6 +479,7 @@ mod tests {
             target_id: Option::Some(Target::Minion(5)),
             start_pos: (0, 0),
             end_pos: (10, 10),
+            radius: None,
             speed: 2,
             payloads: vec![GameplayEffect::Damage(5)],
             visual_cell_type: CellAnimation::TowerHit,
@@ -546,7 +596,7 @@ mod tests {
             target_pos.1 as usize,
         );
 
-        manager.create_homing_projectile(
+        manager.create_lockon_projectile(
             101,
             Team::Blue,
             Target::Tower(target_id),
@@ -633,7 +683,7 @@ mod tests {
         );
         champions.insert(target_id, target_champion);
 
-        manager.create_homing_projectile(
+        manager.create_lockon_projectile(
             102,
             Team::Blue,
             Target::Champion(target_id),
