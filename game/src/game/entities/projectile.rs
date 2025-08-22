@@ -47,6 +47,11 @@ pub enum PathingLogic {
     LockOn {
         target_id: Target,
     },
+    Rotationnary {
+        radius: u8,
+        total_iteration: u8,
+        current_iteration: u8,
+    }
 }
 
 #[derive(Debug)]
@@ -95,7 +100,7 @@ impl Projectile {
         }
     }
 
-    pub fn from_homing_shot(
+    pub fn from_lockon_shot(
         id: u64,
         owner_id: u64,
         team_id: Team,
@@ -106,6 +111,31 @@ impl Projectile {
         visual_cell_type: CellAnimation,
     ) -> Self {
         let pathing = PathingLogic::LockOn { target_id };
+        Projectile {
+            id,
+            owner_id,
+            team_id,
+            current_position: start_pos,
+            pathing,
+            speed,
+            tick_counter: 0,
+            payloads,
+            visual_cell_type,
+        }
+    }
+
+    pub fn from_rotationnary_shot(
+        id: u64,
+        owner_id: u64,
+        team_id: Team,
+        start_pos: (u16, u16),
+        radius: u8,
+        total_iteration: u8,
+        speed: u32,
+        payloads: Vec<GameplayEffect>,
+        visual_cell_type: CellAnimation,
+    ) -> Self {
+        let pathing = PathingLogic::Rotationnary { radius, total_iteration, current_iteration: 0 };
         Projectile {
             id,
             owner_id,
@@ -154,6 +184,26 @@ impl AnimationTrait for Projectile {
                 }
                 self.current_position.0 = self.current_position.0.saturating_add_signed(row_step);
                 self.current_position.1 = self.current_position.1.saturating_add_signed(col_step);
+            }
+            PathingLogic::Rotationnary { radius, total_iteration, current_iteration } => {
+                if *current_iteration >= *total_iteration {
+                    return AnimationCommand::Done;
+                }
+                let position = match *current_iteration % 8 {
+                    0 => (-1, 0),
+                    1 => (-1, 1),
+                    2 => (0, 1),
+                    3 => (1, 1),
+                    4 => (1, 0),
+                    5 => (1, -1),
+                    6 => (0, -1),
+                    7 => (-1, -1),
+                    _ => (0,0),
+                };
+
+                self.current_position.0 = target_row.saturating_add_signed(position.0);
+                self.current_position.1 = target_col.saturating_add_signed(position.1);
+                *current_iteration += 1;
             }
         }
         // 3. Return the Draw command with the new position
@@ -227,7 +277,7 @@ mod tests {
     fn test_from_homing_shot_creation() {
         let start_pos = (5, 5);
         let target = Target::Champion(202);
-        let projectile = Projectile::from_homing_shot(
+        let projectile = Projectile::from_lockon_shot(
             2,
             102,
             Team::Red,
@@ -301,7 +351,7 @@ mod tests {
     fn test_next_frame_for_homing_shot() {
         let start_pos = (10, 10);
         let target = Target::Champion(202);
-        let mut projectile = Projectile::from_homing_shot(
+        let mut projectile = Projectile::from_lockon_shot(
             4,
             104,
             Team::Red,
@@ -400,5 +450,71 @@ mod tests {
             AnimationCommand::Draw { row: 1, col: 0, .. }
         ));
         assert_eq!(projectile.current_position, (1, 0));
+    }
+
+    #[test]
+    fn test_next_frame_for_rotationnary_shot() {
+        let caster_pos = (10, 10);
+        let mut projectile = Projectile::from_rotationnary_shot(
+            5,
+            105,
+            Team::Blue,
+            caster_pos,
+            1, // radius
+            8, // total_iterations
+            2, // speed
+            vec![GameplayEffect::Damage(10)],
+            CellAnimation::FireBall,
+        );
+
+        // Tick 1: No move (speed delay)
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        assert_eq!(projectile.current_position, caster_pos);
+
+        // Tick 2: Move to pos 0
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        assert_eq!(projectile.current_position, (9, 10));
+
+        // Tick 3: No move
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        // Tick 4: Move to pos 1
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        assert_eq!(projectile.current_position, (9, 11));
+
+        // Tick 5, 6: Move to pos 2
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        assert_eq!(projectile.current_position, (10, 11));
+
+        // Tick 7, 8: Move to pos 3
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        assert_eq!(projectile.current_position, (11, 11));
+
+        // Tick 9, 10: Move to pos 4
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        assert_eq!(projectile.current_position, (11, 10));
+
+        // Tick 11, 12: Move to pos 5
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        assert_eq!(projectile.current_position, (11, 9));
+
+        // Tick 13, 14: Move to pos 6
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        assert_eq!(projectile.current_position, (10, 9));
+
+        // Tick 15, 16: Move to pos 7
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        assert_eq!(projectile.current_position, (9, 9));
+
+        // Tick 17: No move
+        projectile.next_frame(caster_pos.0, caster_pos.1);
+        // Tick 18: Iteration is done
+        let cmd_done = projectile.next_frame(caster_pos.0, caster_pos.1);
+        assert!(matches!(cmd_done, AnimationCommand::Done));
     }
 }

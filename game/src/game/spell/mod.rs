@@ -11,6 +11,7 @@ use crate::config::SpellStats;
 pub mod fireball;
 pub mod freeze_wall;
 pub mod healing_wave;
+pub mod whirlwind;
 
 pub struct ProjectileBlueprint {
     pub projectile_type: ProjectileType,
@@ -19,6 +20,8 @@ pub struct ProjectileBlueprint {
     pub target_id: Option<Target>,
     pub start_pos: (u16, u16),
     pub end_pos: (u16, u16),
+    pub radius: Option<u8>,
+    pub total_iteration: Option<u8>,
     pub speed: u32,
     pub payloads: Vec<GameplayEffect>,
     pub visual_cell_type: CellAnimation,
@@ -27,6 +30,7 @@ pub struct ProjectileBlueprint {
 pub enum ProjectileType {
     LockOn,
     SkillShot,
+    Rotationnary,
 }
 
 pub trait Spell: Send + Sync + Debug + 'static {
@@ -46,6 +50,7 @@ pub fn create_spell_from_id(id: u8, stats: SpellStats) -> Box<dyn Spell> {
         0 => Box::new(freeze_wall::FreezeWallSpell::new(stats)),
         1 => Box::new(fireball::FireballSpell::new(stats)),
         2 => Box::new(healing_wave::HealingWaveSpell::new(stats)),
+        3 => Box::new(whirlwind::WhirlwindSpell::new(stats)),
         _ => panic!("Unknown spell ID: {}", id),
     }
 }

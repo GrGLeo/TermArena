@@ -119,6 +119,8 @@ impl Spell for FreezeWallSpell {
                 target_id: None,
                 start_pos: (proj_start_row, proj_start_col),
                 end_pos: (proj_end_row, proj_end_col),
+                radius: None,
+                total_iteration: None,
                 speed: self.stats.speed,
                 payloads,
                 visual_cell_type: CellAnimation::FreezeWall,
