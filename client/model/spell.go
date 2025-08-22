@@ -4,32 +4,17 @@ import "fmt"
 
 // Spell represents the data for a single champion ability.
 type Spell struct {
-	ID           int
-	Name         string
-	ManaCost     int
-	CooldownSecs int
-	Range        int
-	Width        int
-	Speed        int
-	BaseDamage   int
-	DamageRatio  float32
-	StunDuration int
-	IsHeal       bool
+	ID          int
+	Name        string
+	Description string
 }
 
 // String returns a formatted string for the spell's stats.
 func (s Spell) String() string {
 	return fmt.Sprintf(
-		"Name: %s\nMana Cost: %d\nCooldown: %ds\nRange: %d\nWidth: %d\nSpeed: %d\nBase Damage: %d\nDamage Ratio: %.2f\nStun: %d seconds",
+		"Name: %s\n%s",
 		s.Name,
-		s.ManaCost,
-		s.CooldownSecs,
-		s.Range,
-		s.Width,
-		s.Speed,
-		s.BaseDamage,
-		s.DamageRatio,
-		s.StunDuration,
+		s.Description,
 	)
 }
 
@@ -37,52 +22,23 @@ func (s Spell) String() string {
 // This will be used to populate the selection UI.
 var availableSpells = []Spell{
 	{
-		ID:           0,
-		Name:         "Freeze Wall",
-		ManaCost:     50,
-		CooldownSecs: 10,
-		Range:        10,
-		Width:        5,
-		Speed:        1,
-		BaseDamage:   20,
-		DamageRatio:  0.8,
-		StunDuration: 1,
+		ID:   0,
+		Name: "Freeze Wall",
+		Description: "Mana Cost: 50\nCooldown: 10s\nDamage: 20 (+80% Ratio)\nStun: 1 second",
 	},
 	{
-		ID:           1,
-		Name:         "Fireball",
-		ManaCost:     30,
-		CooldownSecs: 5,
-		Range:        15,
-		Width:        1,
-		Speed:        3,
-		BaseDamage:   40,
-		DamageRatio:  0.6,
-		StunDuration: 0,
+		ID:   1,
+		Name: "Fireball",
+		Description: "Mana Cost: 30\nCooldown: 5s\nDamage: 40 (+60% Ratio)",
 	},
 	{
-		ID:           2,
-		Name:         "Healing Wave",
-		ManaCost:     40,
-		CooldownSecs: 15,
-		Range:        8,
-		Width:        3,
-		Speed:        1,
-		BaseDamage:   50,
-		DamageRatio:  0.3,
-		StunDuration: 0,
-		IsHeal:       true,
+		ID:   2,
+		Name: "Healing Wave",
+		Description: "Mana Cost: 40\nCooldown: 15s\nHeal: 50 (+30% Ratio)",
 	},
 	{
-		ID:           3,
-		Name:         "Whrilwind",
-		ManaCost:     40,
-		CooldownSecs: 15,
-		Range:        8,
-		Width:        3,
-		Speed:        1,
-		BaseDamage:   50,
-		DamageRatio:  0.3,
-		StunDuration: 0,
+		ID:   3,
+		Name: "Whirlwind",
+		Description: "Mana Cost: 10\nCooldown: 10s\nDamage: 10 (+30% Ratio)",
 	},
 }
