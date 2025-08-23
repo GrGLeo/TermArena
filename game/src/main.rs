@@ -10,12 +10,14 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::spawn;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
-use tokio::time::{Duration, sleep};
+use tokio::time::{Duration, Instant, sleep};
 
 mod config;
 mod errors;
 mod game;
 mod packet;
+
+const TICK_RATE: Duration = Duration::from_millis(40);
 
 // Cli Parser
 #[derive(Parser, Debug)]
@@ -242,13 +244,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tick_manager = Arc::clone(&arc_gm);
     spawn(async move {
         loop {
+            let starting_time = Instant::now();
             let game_started: bool;
             {
                 let manager = tick_manager.lock().await;
                 game_started = manager.game_started;
             }
             if game_started {
-                sleep(Duration::from_millis(40)).await;
+                let start_time = Instant::now();
+                // sleep(Duration::from_millis(40)).await;
 
                 let updates: HashMap<PlayerId, ClientMessage>;
                 {
@@ -262,6 +266,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     manager.send_to_player(player_id, message).await;
                 }
                 drop(manager);
+                if let Some(duration) = TICK_RATE.checked_sub(start_time.elapsed()) {
+                    sleep(duration).await
+                }
+                println!("TOTAL TICK TIME: {:?}", starting_time.elapsed());
             } else {
                 sleep(Duration::from_secs(5)).await;
                 println!("Waiting for all players to connect...");
