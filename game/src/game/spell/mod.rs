@@ -12,6 +12,7 @@ pub mod fireball;
 pub mod freeze_wall;
 pub mod healing_wave;
 pub mod whirlwind;
+pub mod pierce;
 
 pub struct ProjectileBlueprint {
     pub projectile_type: ProjectileType,
