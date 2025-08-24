@@ -86,6 +86,7 @@ pub struct Champion {
     pub spells: HashMap<u8, Box<dyn Spell>>,
     pub current_cast: Option<Cast>,
     pub active_buffs: HashMap<String, Box<dyn Buff>>,
+    on_hit_effects: Vec<Box<dyn Buff>>,
     last_regen: Instant,
     death_counter: u8,
     death_timer: Instant,
@@ -141,6 +142,7 @@ impl Champion {
             stun_timer: None,
             inventory: [None, None, None, None, None, None],
             active_buffs: HashMap::new(),
+            on_hit_effects: Vec::new(),
             last_regen: Instant::now(),
             team_id,
             row,
@@ -164,7 +166,8 @@ impl Champion {
     }
 
     pub fn add_health(&mut self, hp: u8) {
-        self.stats.health.add(hp as u16).min(self.stats.max_health);
+        let health =  &mut self.stats.health;
+        *health = health.add(hp as u16).min(self.stats.max_health);
     }
 
     pub fn add_xp(&mut self, xp: u16) {
