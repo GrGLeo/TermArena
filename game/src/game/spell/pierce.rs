@@ -62,10 +62,12 @@ impl Spell for PierceSpell {
 
         let damage_per_sec =
             (caster_damage as f32 * self.stats.damage_ratio + self.stats.base_damage as f32) as u16;
-        let stun_duration = self.stats.stun_duration.unwrap_or(0);
         let dot_buff = DoTBuff::new(
-            stun_duration as u64,
+            self.stats.effect_duration.unwrap_or(0) as u64,
             damage_per_sec as u8,
             );
+        let effect = GameplayEffect::Buff(Box::new(dot_buff));
+        caster.reset_aa();
+        caster.add_effects(effect);
     }
 }

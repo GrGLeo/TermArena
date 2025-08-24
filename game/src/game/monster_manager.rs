@@ -118,6 +118,7 @@ impl MonsterManager {
                                     if let AttackAction::Melee {
                                         damage,
                                         mut animation,
+                                        effects: _,
                                     } = attack_action
                                     {
                                         animation.attach_target(champion_id);

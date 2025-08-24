@@ -159,7 +159,7 @@ mod tests {
             width: 3,
             damage_ratio: 0.0,
             base_damage: 20,
-            stun_duration: None,
+            effect_duration: None,
             is_heal: Some(true),
         };
 
@@ -171,7 +171,7 @@ mod tests {
 
         spell.cast(&mut champion, 0, &mut projectile_manager);
 
-        assert_eq!(projectile_manager.projectiles.len(), 1);
+        assert_eq!(projectile_manager.projectiles.len(), 3);
         let projectile = &projectile_manager.projectiles[&0];
         assert_eq!(projectile.payloads.len(), 1);
         assert_eq!(projectile.payloads[0], GameplayEffect::Heal(20));

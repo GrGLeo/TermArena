@@ -42,7 +42,7 @@ fn mock_fireball_spell_stats() -> SpellStats {
         cooldown_secs: 10,
         speed: 1,
         width: 1,
-        stun_duration: None,
+        effect_duration: None,
         is_heal: Some(false),
     }
 }
@@ -57,7 +57,7 @@ fn mock_freezewall_spell_stats() -> SpellStats {
         cooldown_secs: 20,
         speed: 1,
         width: 3,
-        stun_duration: Some(2),
+        effect_duration: Some(2),
         is_heal: Some(false),
     }
 }

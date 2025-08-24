@@ -105,7 +105,7 @@ impl Spell for FreezeWallSpell {
             // Once build.rs is done we would check that stun duration is initalized
             // We will then always be sure to have Some(duration)
             let mut payloads: Vec<GameplayEffect> = Vec::new();
-            if let Some(duration) = self.stats.stun_duration {
+            if let Some(duration) = self.stats.effect_duration {
                 payloads = vec![
                     GameplayEffect::Damage(spell_damage),
                     GameplayEffect::Buff(Box::new(StunBuff::new(duration as u64))),
