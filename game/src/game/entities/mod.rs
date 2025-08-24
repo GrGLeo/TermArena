@@ -19,6 +19,7 @@ pub enum AttackAction {
     Melee {
         damage: u16,
         animation: Box<dyn AnimationTrait>,
+        effects: Vec<GameplayEffect>,
     },
     Projectile {
         damage: u16,

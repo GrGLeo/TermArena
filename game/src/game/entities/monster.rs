@@ -146,6 +146,7 @@ impl Fighter for Monster {
             Some(AttackAction::Melee {
                 damage: self.stats.attack_damage,
                 animation: Box::new(animation),
+                effects: Vec::new(),
             })
         } else {
             None
