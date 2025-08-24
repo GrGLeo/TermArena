@@ -719,6 +719,7 @@ impl GameManager {
             std::process::exit(0);
         }
 
+        println!("computing duration: {:?}", start_tick.elapsed());
         // --- Send per player there board view ---
         let updates: HashMap<PlayerId, ClientMessage> = self
             .champions
@@ -765,7 +766,7 @@ impl GameManager {
             })
             .collect();
 
-        println!("Tick duration: {:?}", start_tick.elapsed());
+        println!("tick duration: {:?}", start_tick.elapsed());
         println!("--------------------");
         updates
     }
