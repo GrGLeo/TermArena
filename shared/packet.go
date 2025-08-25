@@ -32,6 +32,8 @@ code 16: spell selection
 code 17: shop request
 code 18: shop response
 code 19: purchase item
+---
+code 100: message code
 */
 
 type Packet interface {
@@ -81,6 +83,8 @@ func CreateMessage(packet Packet, conn *net.TCPConn) (event.Message, error) {
 			Conn:       conn,
 			ResponseCh: responseChan,
 		}, nil
+	case *MessagePacket:
+		return nil, nil
 	default:
 		return nil, errors.New("No message to create from packet")
 	}
@@ -723,6 +727,30 @@ func (pip *PurchaseItemPacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
+type MessagePacket struct {
+	version, code int
+	Message       string
+}
+
+func NewMessagePacket(message string) *MessagePacket {
+	return &MessagePacket{
+		version: 1,
+		code:    100,
+		Message: message,
+	}
+}
+
+func (mp *MessagePacket) Version() int { return mp.version }
+func (mp *MessagePacket) Code() int    { return mp.code }
+func (mp *MessagePacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(mp.version))
+	buf.WriteByte(byte(mp.code))
+	binary.Write(&buf, binary.BigEndian, uint16(len(mp.Message)))
+	buf.WriteString(mp.Message)
+	return buf.Bytes()
+}
+
 // DeSerialize deserializes a byte slice into a specific Packet type.
 func DeSerialize(data []byte) (Packet, int, error) {
 	if len(data) < 2 {
@@ -1077,8 +1105,24 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, 4, nil
 
+	case 100:
+		if len(data) < 4 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		messageLen := int(binary.BigEndian.Uint16(data[2:4]))
+		totalLen := 4 + messageLen
+		if len(data) < totalLen {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		message := string(data[4:totalLen])
+		packet := &MessagePacket{
+			version: version,
+			code:    code,
+			Message: message,
+		}
+		return packet, totalLen, nil
+
 	default:
 		return nil, 0, errors.New("unknown message type")
 	}
 }
-
