@@ -87,7 +87,7 @@ pub struct SpellStats {
     pub damage_ratio: f32,
     pub base_damage: u16,
     #[serde(default)]
-    pub stun_duration: Option<u8>,
+    pub effect_duration: Option<u8>,
     #[serde(default)]
     pub is_heal: Option<bool>,
 }

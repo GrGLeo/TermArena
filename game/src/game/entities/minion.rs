@@ -75,34 +75,82 @@ impl Minion {
                 Lane::Top => (
                     142,
                     4,
-                    vec![(115, 5), (83, 5), (9, 4), (4, 9), (4, 71), (4, 115), (4, 145)],
+                    vec![
+                        (115, 5),
+                        (83, 5),
+                        (9, 4),
+                        (4, 9),
+                        (4, 71),
+                        (4, 115),
+                        (4, 145),
+                    ],
                 ),
                 Lane::Mid => (
                     142,
                     7,
-                    vec![(117, 32), (101, 48), (75, 74), (48, 101), (32, 117), (4, 145)],
+                    vec![
+                        (117, 32),
+                        (101, 48),
+                        (75, 74),
+                        (48, 101),
+                        (32, 117),
+                        (4, 145),
+                    ],
                 ),
                 Lane::Bottom => (
                     145,
                     7,
-                    vec![(145, 34), (145, 78), (145, 140), (140, 145), (96, 145), (66, 145), (35, 145), (4, 145)],
+                    vec![
+                        (145, 34),
+                        (145, 78),
+                        (145, 140),
+                        (140, 145),
+                        (96, 145),
+                        (66, 145),
+                        (35, 145),
+                        (4, 145),
+                    ],
                 ),
             },
             Team::Red => match lane {
                 Lane::Top => (
                     4,
                     142,
-                    vec![(4, 115), (4, 71), (4, 9), (9, 4), (83, 5), (115, 5), (145, 4)],
+                    vec![
+                        (4, 115),
+                        (4, 71),
+                        (4, 9),
+                        (9, 4),
+                        (83, 5),
+                        (115, 5),
+                        (145, 4),
+                    ],
                 ),
                 Lane::Mid => (
                     7,
                     142,
-                    vec![(117, 32), (48, 101), (74, 75), (101, 48), (117, 32), (145, 4)],
+                    vec![
+                        (117, 32),
+                        (48, 101),
+                        (74, 75),
+                        (101, 48),
+                        (117, 32),
+                        (145, 4),
+                    ],
                 ),
                 Lane::Bottom => (
                     7,
                     145,
-                    vec![(35, 145), (66, 145), (96, 145), (140, 145), (145, 140), (145, 78), (145, 34), (145, 4)],
+                    vec![
+                        (35, 145),
+                        (66, 145),
+                        (96, 145),
+                        (140, 145),
+                        (145, 140),
+                        (145, 78),
+                        (145, 34),
+                        (145, 4),
+                    ],
                 ),
             },
         };
@@ -213,7 +261,11 @@ impl Minion {
                     CellContent::Tower(id, _) => {
                         if let Some(attack) = self.can_attack() {
                             match attack {
-                                AttackAction::Melee { damage, mut animation } => {
+                                AttackAction::Melee {
+                                    damage,
+                                    mut animation,
+                                    effects: _,
+                                } => {
                                     animation.attach_target(*id);
                                     new_animations.push(animation);
                                     pending_effects.push((
@@ -229,7 +281,11 @@ impl Minion {
                     CellContent::Minion(id, _) => {
                         if let Some(attack) = self.can_attack() {
                             match attack {
-                                AttackAction::Melee { damage, mut animation } => {
+                                AttackAction::Melee {
+                                    damage,
+                                    mut animation,
+                                    effects: _,
+                                } => {
                                     animation.attach_target(*id);
                                     new_animations.push(animation);
                                     pending_effects.push((
@@ -245,7 +301,11 @@ impl Minion {
                     CellContent::Base(team) => {
                         if let Some(attack) = self.can_attack() {
                             match attack {
-                                AttackAction::Melee { damage, animation } => {
+                                AttackAction::Melee {
+                                    damage,
+                                    animation,
+                                    effects: _,
+                                } => {
                                     new_animations.push(animation);
                                     pending_effects.push((
                                         None,
@@ -260,7 +320,11 @@ impl Minion {
                     CellContent::Champion(id, _) => {
                         if let Some(attack) = self.can_attack() {
                             match attack {
-                                AttackAction::Melee { damage, mut animation } => {
+                                AttackAction::Melee {
+                                    damage,
+                                    mut animation,
+                                    effects: _,
+                                } => {
                                     animation.attach_target(*id);
                                     new_animations.push(animation);
                                     pending_effects.push((
@@ -349,6 +413,7 @@ impl Fighter for Minion {
             Some(AttackAction::Melee {
                 damage: self.stats.attack_damage,
                 animation: Box::new(animation),
+                effects: Vec::new(),
             })
         } else {
             None
@@ -402,7 +467,7 @@ impl Fighter for Minion {
 
 impl HasBuff for Minion {
     fn get_stats_mut(&mut self) -> &mut Stats {
-        return &mut self.stats
+        return &mut self.stats;
     }
 
     fn is_stunned(&self) -> bool {

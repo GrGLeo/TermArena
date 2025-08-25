@@ -7,7 +7,7 @@ width = 5
 speed = 1
 base_damage = 10
 damage_ratio = 0.2
-stun_duration = 1
+effect_duration = 1
 
 [[spell]]
 id = 1
@@ -39,3 +39,14 @@ width = 1
 speed = 1
 base_damage = 10
 damage_ratio = 0.3
+
+[[spell]]
+id = 4
+mana_cost = 5
+cooldown_secs = 10
+range = 1
+width = 1
+speed = 1
+base_damage = 0
+damage_ratio = 0.1
+effect_duration = 5

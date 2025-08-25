@@ -45,3 +45,49 @@ impl Buff for RedBuff {
         Box::new(self.clone())
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct DoTBuff {
+    pub duration_remaining: Duration,
+    pub applied_at: Instant,
+    damage_per_sec: u8,
+    last_tick: Instant,
+}
+
+impl DoTBuff {
+    pub fn new(duration: u64, damage_per_sec: u8) -> DoTBuff {
+        DoTBuff {
+            duration_remaining: Duration::from_secs(duration),
+            applied_at: Instant::now(),
+            damage_per_sec,
+
+            last_tick: Instant::now(),
+        }
+    }
+}
+
+impl Buff for DoTBuff {
+    fn id(&self) -> &str {
+        "DoTBuff"
+    }
+
+    fn on_apply(&mut self, _target: &mut dyn super::HasBuff) {
+    }
+
+    fn on_tick(&mut self, target: &mut dyn super::HasBuff) -> bool {
+        if self.last_tick.elapsed() >= Duration::from_secs(1) {
+            let health = &mut target.get_stats_mut().health;
+            *health = health.saturating_sub(self.damage_per_sec as u16);
+            self.last_tick = Instant::now();
+        }
+        self.applied_at.elapsed() > self.duration_remaining
+    }
+
+    fn on_remove(&mut self, _target: &mut dyn super::HasBuff) {
+    }
+
+    fn clone_box(&self) -> Box<dyn Buff> {
+        Box::new(self.clone())
+    }
+}
+

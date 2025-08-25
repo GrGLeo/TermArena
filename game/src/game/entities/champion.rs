@@ -49,7 +49,7 @@ impl std::fmt::Debug for Castable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Castable::Spell(spell) => write!(f, "Castable::Spell(id: {})", spell.id()),
-            Castable::Ability(ability) => write!(f, "Castable::Ability({:?}", ability),
+            Castable::Ability(ability) => write!(f, "Castable::Ability({:?})", ability),
         }
     }
 }
@@ -86,6 +86,7 @@ pub struct Champion {
     pub spells: HashMap<u8, Box<dyn Spell>>,
     pub current_cast: Option<Cast>,
     pub active_buffs: HashMap<String, Box<dyn Buff>>,
+    on_hit_effects: Vec<GameplayEffect>,
     last_regen: Instant,
     death_counter: u8,
     death_timer: Instant,
@@ -141,6 +142,7 @@ impl Champion {
             stun_timer: None,
             inventory: [None, None, None, None, None, None],
             active_buffs: HashMap::new(),
+            on_hit_effects: Vec::new(),
             last_regen: Instant::now(),
             team_id,
             row,
@@ -159,12 +161,17 @@ impl Champion {
         )
     }
 
+    pub fn add_effects(&mut self, effect: GameplayEffect) {
+        self.on_hit_effects.push(effect);
+    }
+
     pub fn add_gold(&mut self, gold: u16) {
         self.gold += gold
     }
 
     pub fn add_health(&mut self, hp: u8) {
-        self.stats.health.add(hp as u16).min(self.stats.max_health);
+        let health = &mut self.stats.health;
+        *health = health.add(hp as u16).min(self.stats.max_health);
     }
 
     pub fn add_xp(&mut self, xp: u16) {
@@ -172,11 +179,16 @@ impl Champion {
         while let Some(xp_needed) = self.xp_for_next_level() {
             if self.xp >= xp_needed {
                 self.xp -= xp_needed;
-                self.level_up();
+                self.add_level();
             } else {
                 break;
             }
         }
+    }
+
+    fn add_level(&mut self) {
+        self.level += 1;
+        self.recalculate_stats();
     }
 
     pub fn xp_for_next_level(&self) -> Option<u16> {
@@ -185,11 +197,6 @@ impl Champion {
         } else {
             None
         }
-    }
-
-    fn level_up(&mut self) {
-        self.level += 1;
-        self.recalculate_stats();
     }
 
     pub fn add_item(&mut self, item: Item) -> Result<(), GameError> {
@@ -204,7 +211,9 @@ impl Champion {
                 // This should not be reached when an item with requirement is added
                 // crafting cost should be included.
                 // TODO: Validate config when loaded ?
-                return Err(GameError::InvalidInput("Craftable item missing crafting_cost".to_string()));
+                return Err(GameError::InvalidInput(
+                    "Craftable item missing crafting_cost".to_string(),
+                ));
             };
 
             // Check if player has enough gold for crafting
@@ -413,10 +422,10 @@ impl Champion {
                 if self.current_cast.is_some() {
                     return Err(GameError::ChampionBusy);
                 }
-                self.current_cast = Some(Cast{
+                self.current_cast = Some(Cast {
                     start_time: Instant::now(),
                     cast_time: Duration::from_secs(6),
-                    action: Castable::Ability(Ability::Recall)
+                    action: Castable::Ability(Ability::Recall),
                 });
                 return Ok(());
             }
@@ -518,6 +527,12 @@ impl Champion {
             return (0, 0);
         }
     }
+    
+    pub fn reset_aa(&mut self) {
+        if let Some(instant) = self.last_attacked.checked_sub(self.stats.attack_speed) {
+            self.last_attacked = instant
+        }
+    }
 
     pub fn restore_max_health_mana(&mut self) {
         self.stats.health = self.stats.max_health;
@@ -580,9 +595,11 @@ impl Fighter for Champion {
         if self.last_attacked + self.stats.attack_speed < Instant::now() {
             self.last_attacked = Instant::now();
             let animation = MeleeAnimation::new(self.player_id);
+            let effects = self.on_hit_effects.drain(..).collect();
             Some(AttackAction::Melee {
                 damage: self.stats.attack_damage,
                 animation: Box::new(animation),
+                effects,
             })
         } else {
             None
@@ -646,7 +663,7 @@ impl Fighter for Champion {
 
 impl HasBuff for Champion {
     fn get_stats_mut(&mut self) -> &mut Stats {
-        return &mut self.stats
+        return &mut self.stats;
     }
 
     fn is_stunned(&self) -> bool {
@@ -677,6 +694,7 @@ mod tests {
     use crate::game::buffs::stun_buff::StunBuff;
     use crate::game::entities::item::{Item, ItemStats};
     use crate::game::spell::freeze_wall::FreezeWallSpell;
+    use crate::game::spell::pierce::PierceSpell;
 
     // Helper function to create a dummy board for tests that require one
     fn create_dummy_board(rows: usize, cols: usize) -> Board {
@@ -1103,7 +1121,7 @@ mod tests {
             speed: 1,
             base_damage: 20,
             damage_ratio: 0.8,
-            stun_duration: Some(5),
+            effect_duration: Some(5),
             is_heal: Some(false),
         };
         let mut spell_stats: HashMap<u8, Box<dyn Spell>> = HashMap::new();
@@ -2107,13 +2125,8 @@ mod tests {
         // Add one sword, but two are required
         champion.inventory[0] = Some(sword_of_power.clone());
 
-        let double_edged_sword = create_test_item(
-            8,
-            "Double-edged Sword",
-            700,
-            Some(100),
-            Some(vec![1, 1]),
-        );
+        let double_edged_sword =
+            create_test_item(8, "Double-edged Sword", 700, Some(100), Some(vec![1, 1]));
 
         let result = champion.add_item(double_edged_sword);
         assert!(result.is_err());
@@ -2137,14 +2150,10 @@ mod tests {
         champion.inventory[0] = Some(sword_of_power_1);
         champion.inventory[1] = Some(sword_of_power_2);
 
-        let double_edged_sword = create_test_item(
-            8,
-            "Double-edged Sword",
-            700,
-            Some(100),
-            Some(vec![1, 1]),
-        );
-        let expected_gold_after_craft = champion.gold - double_edged_sword.crafting_cost.unwrap() as u16;
+        let double_edged_sword =
+            create_test_item(8, "Double-edged Sword", 700, Some(100), Some(vec![1, 1]));
+        let expected_gold_after_craft =
+            champion.gold - double_edged_sword.crafting_cost.unwrap() as u16;
 
         let result = champion.add_item(double_edged_sword.clone());
         assert!(result.is_ok());
@@ -2163,13 +2172,8 @@ mod tests {
 
         // No required items in inventory
 
-        let double_edged_sword = create_test_item(
-            8,
-            "Double-edged Sword",
-            700,
-            Some(100),
-            Some(vec![1, 1]),
-        );
+        let double_edged_sword =
+            create_test_item(8, "Double-edged Sword", 700, Some(100), Some(vec![1, 1]));
         let expected_gold_after_buyout = champion.gold - double_edged_sword.cost as u16;
 
         let result = champion.add_item(double_edged_sword.clone());
@@ -2177,5 +2181,88 @@ mod tests {
         // Inventory should contain the item, and gold should be reduced by buyout cost
         assert_eq!(champion.inventory[0], Some(double_edged_sword));
         assert_eq!(champion.gold, expected_gold_after_buyout);
+    }
+
+    #[test]
+    fn test_pierce_spell_and_on_hit_effect() {
+        let mut board = create_dummy_board(10, 10);
+        let mut pm = ProjectileManager::new();
+        let champion_stats = create_default_champion_stats();
+        let mut spell_stats_map: HashMap<u8, Box<dyn Spell>> = HashMap::new();
+
+        let pierce_spell_stats = SpellStats {
+            id: 2, // some id
+            mana_cost: 10,
+            cooldown_secs: 5,
+            range: 0,
+            width: 0,
+            speed: 0,
+            base_damage: 10,
+            damage_ratio: 0.5,
+            effect_duration: Some(5),
+            is_heal: Some(false),
+        };
+        let pierce_spell = Box::new(PierceSpell::new(pierce_spell_stats));
+        spell_stats_map.insert(1, pierce_spell); // Use action 2 (id 1)
+
+        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats, spell_stats_map);
+        champion.stats.mana = 100; // Ensure enough mana
+
+        // The champion has no on-hit effects initially.
+        assert!(champion.on_hit_effects.is_empty());
+
+        // Cast the pierce spell (Action2)
+        let action = Action::Action2;
+        let result = champion.take_action(&action, &mut board, &mut pm);
+        assert!(result.is_ok());
+
+        // The champion should now have one on-hit effect.
+        assert_eq!(champion.on_hit_effects.len(), 1);
+        match &champion.on_hit_effects[0] {
+            GameplayEffect::Buff(_) => (),
+            _ => panic!("Effect should be a buff"),
+        }
+
+        // Now, let's make the champion attack.
+        // For that, there must be a target.
+        let enemy_id = 2;
+        let enemy_team = Team::Blue;
+        let enemy_row = 2;
+        let enemy_col = 3;
+        board.place_cell(
+            CellContent::Champion(enemy_id, enemy_team),
+            enemy_row as usize,
+            enemy_col as usize,
+        );
+
+        // Ensure champion can attack (cooldown ready)
+        champion.last_attacked =
+            Instant::now() - champion.stats.attack_speed - Duration::from_secs(1);
+
+        // The champion should have a target.
+        assert!(champion.get_potential_target(&board).is_some());
+
+        // Perform the attack
+        let attack_action_opt = champion.can_attack();
+        assert!(attack_action_opt.is_some());
+
+        if let Some(AttackAction::Melee {
+            damage: _,
+            animation: _,
+            effects,
+        }) = attack_action_opt
+        {
+            // The attack action should contain the on-hit effect.
+            assert_eq!(effects.len(), 1);
+            match &effects[0] {
+                GameplayEffect::Buff(_) => (),
+                _ => panic!("Effect in attack action should be a buff"),
+            }
+        } else {
+            panic!("Expected a Melee attack action");
+        }
+
+        // After the attack, the champion's on_hit_effects should be empty again.
+        assert!(champion.on_hit_effects.is_empty());
     }
 }

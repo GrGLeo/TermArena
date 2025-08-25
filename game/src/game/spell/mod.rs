@@ -12,6 +12,7 @@ pub mod fireball;
 pub mod freeze_wall;
 pub mod healing_wave;
 pub mod whirlwind;
+pub mod pierce;
 
 pub struct ProjectileBlueprint {
     pub projectile_type: ProjectileType,
@@ -51,6 +52,7 @@ pub fn create_spell_from_id(id: u8, stats: SpellStats) -> Box<dyn Spell> {
         1 => Box::new(fireball::FireballSpell::new(stats)),
         2 => Box::new(healing_wave::HealingWaveSpell::new(stats)),
         3 => Box::new(whirlwind::WhirlwindSpell::new(stats)),
+        4 => Box::new(pierce::PierceSpell::new(stats)),
         _ => panic!("Unknown spell ID: {}", id),
     }
 }

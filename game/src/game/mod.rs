@@ -386,13 +386,15 @@ impl GameManager {
                                     AttackAction::Melee {
                                         damage,
                                         mut animation,
+                                        mut effects,
                                     } => {
                                         animation.attach_target(*id);
                                         new_animations.push(animation);
+                                        effects.push(GameplayEffect::Damage(damage));
                                         pending_effects.push((
                                             Some(*player_id),
                                             Target::Tower(*id),
-                                            vec![GameplayEffect::Damage(damage)],
+                                            effects,
                                         ))
                                     }
                                     _ => {}
@@ -405,13 +407,15 @@ impl GameManager {
                                     AttackAction::Melee {
                                         damage,
                                         mut animation,
+                                        mut effects,
                                     } => {
                                         animation.attach_target(*id);
                                         new_animations.push(animation);
+                                        effects.push(GameplayEffect::Damage(damage));
                                         pending_effects.push((
                                             Some(*player_id),
                                             Target::Monster(*id),
-                                            vec![GameplayEffect::Damage(damage)],
+                                            effects,
                                         ))
                                     }
                                     _ => {}
@@ -424,13 +428,15 @@ impl GameManager {
                                     AttackAction::Melee {
                                         damage,
                                         mut animation,
+                                        mut effects,
                                     } => {
                                         animation.attach_target(*id);
                                         new_animations.push(animation);
+                                        effects.push(GameplayEffect::Damage(damage));
                                         pending_effects.push((
                                             Some(*player_id),
                                             Target::Minion(*id),
-                                            vec![GameplayEffect::Damage(damage)],
+                                            effects,
                                         ))
                                     }
                                     _ => {}
@@ -443,13 +449,15 @@ impl GameManager {
                                     AttackAction::Melee {
                                         damage,
                                         mut animation,
+                                        mut effects,
                                     } => {
                                         animation.attach_target(*id);
                                         new_animations.push(animation);
+                                        effects.push(GameplayEffect::Damage(damage));
                                         pending_effects.push((
                                             Some(*player_id),
                                             Target::Champion(*id),
-                                            vec![GameplayEffect::Damage(damage)],
+                                            effects,
                                         ))
                                     }
                                     _ => {}
@@ -459,12 +467,17 @@ impl GameManager {
                         CellContent::Base(team) => {
                             if let Some(attack) = champ.can_attack() {
                                 match attack {
-                                    AttackAction::Melee { damage, animation } => {
+                                    AttackAction::Melee {
+                                        damage,
+                                        animation,
+                                        mut effects,
+                                    } => {
                                         new_animations.push(animation);
+                                        effects.push(GameplayEffect::Damage(damage));
                                         pending_effects.push((
                                             Some(*player_id),
                                             Target::Base(*team),
-                                            vec![GameplayEffect::Damage(damage)],
+                                            effects,
                                         ))
                                     }
                                     _ => {}
