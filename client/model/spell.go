@@ -44,6 +44,6 @@ var availableSpells = []Spell{
 	{
 		ID:   4,
 		Name: "Pierce",
-    Description: "Mana Cost: 5\nCooldown: 10s\nDamage per second: 10% Ratio\n Effect: 5 second",
+    Description: "Mana Cost: 5\nCooldown: 10s\nDamage per second: 10% Ratio\nEffect: 5 second",
 	},
 }

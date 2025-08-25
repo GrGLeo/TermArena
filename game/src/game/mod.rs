@@ -391,7 +391,6 @@ impl GameManager {
                                         animation.attach_target(*id);
                                         new_animations.push(animation);
                                         effects.push(GameplayEffect::Damage(damage));
-
                                         pending_effects.push((
                                             Some(*player_id),
                                             Target::Tower(*id),
