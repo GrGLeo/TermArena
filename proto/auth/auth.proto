@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package auth;
 
-option go_package = "github.com/GrGLeo/ctf/server/proto/auth";
+option go_package = "server/proto/auth";
 
 // The main authentification service
 service AuthService {

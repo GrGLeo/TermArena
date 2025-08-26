@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package message;
+
+option go_package = "server/proto/message";
+
+// MessageService provides gRPC methods for message routing and client management
+// This service acts as a microservice that handles message distribution
+// based on room membership and client registration.
+service MessageService {
+  // RouteMessage sends a message from a sender to all receivers in the same room
+  // The service determines the appropriate receivers based on room membership
+  rpc RouteMessage(RouteMessageRequest) returns (RouteMessageResponse) {}
+
+  // RegisterClient registers a client with a specific room for message routing
+  // Clients must be registered before they can send/receive messages
+  rpc RegisterClient(RegisterClientRequest) returns (RegisterClientResponse) {}
+
+  // UnregisterClient removes a client from room-based message routing
+  // This should be called when a client disconnects or leaves a room
+  rpc UnregisterClient(UnregisterClientRequest)
+      returns (UnregisterClientResponse) {}
+}
+
+// === ROUTE MESSAGE ===
+message RouteMessageRequest {
+  string sender = 1;   // The client ID or username sending the message
+  string content = 2;  // The actual message content to be delivered
+}
+
+message RouteMessageResponse {
+  repeated string receivers = 1;  // List of client IDs that received the message
+  string content = 2;             // The parsed message content (echoed back)
+}
+
+// === REGISTER MESSAGE ===
+message RegisterClientRequest {
+  string client = 1;   // Unique client identifier (e.g., user ID or session token)
+  string room_id = 2;  // The room ID where the client wants to receive messages
+}
+
+message RegisterClientResponse {
+  bool success = 1;  // True if registration succeeded, false otherwise
+}
+
+// === UNREGISTER MESSAGE ===
+message UnregisterClientRequest {
+  string client = 1;  // The client ID to be unregistered
+}
+
+message UnregisterClientResponse {
+  bool success = 1;  // True if unregistration succeeded, false otherwise
+}
