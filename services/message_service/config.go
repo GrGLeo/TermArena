@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 
@@ -8,20 +9,21 @@ import (
 )
 
 type Config struct {
-	Host             string
-	Port             int
-	MaxMessageSize   int
-	MessageRateLimit int
-	MessageTTLSecond int
-	LogLevel         string
-	WorkerPoolSize   int
-	MaxQueueSize     int
+	Host                   string
+	Port                   int
+	MaxMessageSize         int
+	MessageRateLimit       int
+	MessageTTLSecond       int
+	LogLevel               string
+	WorkerPoolSize         int
+	MaxQueueSize           int
+	ShutdownTimeoutSeconds int
 }
 
 func NewConfig() *Config {
 	err := godotenv.Load()
 	if err != nil {
-		panic(0)
+    fmt.Printf("Warning: .env file not found. Using environment variables. %v\n", err)
 	}
 
 	host := os.Getenv("MESSAGE_SERVICE_HOST")
@@ -69,14 +71,21 @@ func NewConfig() *Config {
 		intMessageQueueSize = 1000
 	}
 
+	shutdownTimeout := os.Getenv("SHUTDOWN_TIMEOUT_SECONDS")
+	intShutdownTimeout, err := strconv.Atoi(shutdownTimeout)
+	if err != nil {
+		intShutdownTimeout = 30
+	}
+
 	return &Config{
-		Host:             host,
-		Port:             intPort,
-		MaxMessageSize:   intMaxMessageSize,
-		MessageRateLimit: intMessageRateLimit,
-		MessageTTLSecond: intMessageTTLSeconds,
-		LogLevel:         logLevel,
-		WorkerPoolSize:   intWorkerPoolSize,
-		MaxQueueSize:     intMessageQueueSize,
+		Host:                   host,
+		Port:                   intPort,
+		MaxMessageSize:         intMaxMessageSize,
+		MessageRateLimit:       intMessageRateLimit,
+		MessageTTLSecond:       intMessageTTLSeconds,
+		LogLevel:               logLevel,
+		WorkerPoolSize:         intWorkerPoolSize,
+		MaxQueueSize:           intMessageQueueSize,
+		ShutdownTimeoutSeconds: intShutdownTimeout,
 	}
 }

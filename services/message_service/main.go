@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 func NewLogger(level string) *slog.Logger {
@@ -30,14 +34,30 @@ func NewLogger(level string) *slog.Logger {
 
 func main() {
 	config := NewConfig()
-
-	// Initialize logger
 	logger := NewLogger(config.LogLevel)
 	slog.SetDefault(logger)
+	server := NewServer(config, logger)
 
-	// Log service startup
-	slog.Info("Message service starting",
-		"log_level", config.LogLevel,
-		"version", "1.0.0",
-	)
+	// channel  to listen for interruption
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		if err := server.Start(); err != nil {
+			logger.Error("Failed to start server", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	<-quit
+	logger.Info("Shutting down Message service ...")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.ShutdownTimeoutSeconds)*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		logger.Error("Service forced to shutdown!", "error", err)
+		os.Exit(1)
+	}
+
+	logger.Info("Service exited")
 }
