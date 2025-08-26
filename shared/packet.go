@@ -84,7 +84,12 @@ func CreateMessage(packet Packet, conn *net.TCPConn) (event.Message, error) {
 			ResponseCh: responseChan,
 		}, nil
 	case *MessagePacket:
-		return nil, nil
+		return event.MessageRequestMessage{
+			Sender:     pkt.Sender,
+			Message:    pkt.Message,
+			Conn:       conn,
+			ResponseCh: responseChan,
+		}, nil
 	default:
 		return nil, errors.New("No message to create from packet")
 	}
@@ -728,14 +733,15 @@ func (pip *PurchaseItemPacket) Serialize() []byte {
 }
 
 type MessagePacket struct {
-	version, code int
-	Message       string
+	version, code   int
+	Sender, Message string
 }
 
-func NewMessagePacket(message string) *MessagePacket {
+func NewMessagePacket(sender, message string) *MessagePacket {
 	return &MessagePacket{
 		version: 1,
 		code:    100,
+		Sender:  sender,
 		Message: message,
 	}
 }
@@ -746,6 +752,8 @@ func (mp *MessagePacket) Serialize() []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(byte(mp.version))
 	buf.WriteByte(byte(mp.code))
+	binary.Write(&buf, binary.BigEndian, uint16(len(mp.Sender)))
+	buf.WriteString(mp.Sender)
 	binary.Write(&buf, binary.BigEndian, uint16(len(mp.Message)))
 	buf.WriteString(mp.Message)
 	return buf.Bytes()
@@ -1105,19 +1113,25 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, 4, nil
 
-	case 100:
-		if len(data) < 4 {
+	case 100: // MessagePacket
+		if len(data) < 6 {
 			return nil, 0, errors.New("incomplete packet")
 		}
-		messageLen := int(binary.BigEndian.Uint16(data[2:4]))
-		totalLen := 4 + messageLen
+		senderLen := int(binary.BigEndian.Uint16(data[2:4]))
+		if len(data) < 4+senderLen+2 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		messageLen := int(binary.BigEndian.Uint16(data[4+senderLen : 4+senderLen+2]))
+		totalLen := 4 + senderLen + 2 + messageLen
 		if len(data) < totalLen {
 			return nil, 0, errors.New("incomplete packet")
 		}
-		message := string(data[4:totalLen])
+		sender := string(data[4 : 4+senderLen])
+		message := string(data[4+senderLen+2 : totalLen])
 		packet := &MessagePacket{
 			version: version,
 			code:    code,
+			Sender:  sender,
 			Message: message,
 		}
 		return packet, totalLen, nil
