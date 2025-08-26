@@ -21,10 +21,11 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// === ROUTE MESSAGE ===
 type RouteMessageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Sender        string                 `protobuf:"bytes,1,opt,name=sender,proto3" json:"sender,omitempty"`
-	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	Sender        string                 `protobuf:"bytes,1,opt,name=sender,proto3" json:"sender,omitempty"`   // The client ID or username sending the message
+	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"` // The actual message content to be delivered
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -75,8 +76,8 @@ func (x *RouteMessageRequest) GetContent() string {
 
 type RouteMessageResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Receivers     []string               `protobuf:"bytes,1,rep,name=receivers,proto3" json:"receivers,omitempty"`
-	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	Receivers     []string               `protobuf:"bytes,1,rep,name=receivers,proto3" json:"receivers,omitempty"` // List of client IDs that received the message
+	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`     // The parsed message content (echoed back)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -125,10 +126,11 @@ func (x *RouteMessageResponse) GetContent() string {
 	return ""
 }
 
+// === REGISTER MESSAGE ===
 type RegisterClientRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Client        string                 `protobuf:"bytes,1,opt,name=client,proto3" json:"client,omitempty"`
-	RoomId        string                 `protobuf:"bytes,2,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	Client        string                 `protobuf:"bytes,1,opt,name=client,proto3" json:"client,omitempty"`               // Unique client identifier (e.g., user ID or session token)
+	RoomId        string                 `protobuf:"bytes,2,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"` // The room ID where the client wants to receive messages
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -179,7 +181,7 @@ func (x *RegisterClientRequest) GetRoomId() string {
 
 type RegisterClientResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // True if registration succeeded, false otherwise
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -221,9 +223,10 @@ func (x *RegisterClientResponse) GetSuccess() bool {
 	return false
 }
 
+// === UNREGISTER MESSAGE ===
 type UnregisterClientRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Client        string                 `protobuf:"bytes,1,opt,name=client,proto3" json:"client,omitempty"`
+	Client        string                 `protobuf:"bytes,1,opt,name=client,proto3" json:"client,omitempty"` // The client ID to be unregistered
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -267,7 +270,7 @@ func (x *UnregisterClientRequest) GetClient() string {
 
 type UnregisterClientResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // True if unregistration succeeded, false otherwise
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -332,7 +335,7 @@ const file_proto_message_message_proto_rawDesc = "" +
 	"\x0eMessageService\x12M\n" +
 	"\fRouteMessage\x12\x1c.message.RouteMessageRequest\x1a\x1d.message.RouteMessageResponse\"\x00\x12S\n" +
 	"\x0eRegisterClient\x12\x1e.message.RegisterClientRequest\x1a\x1f.message.RegisterClientResponse\"\x00\x12Y\n" +
-	"\x10UnregisterClient\x12 .message.UnregisterClientRequest\x1a!.message.UnregisterClientResponse\"\x00B\x16Z\x14server/proto/messageb\x06proto3"
+	"\x10UnregisterClient\x12 .message.UnregisterClientRequest\x1a!.message.UnregisterClientResponse\"\x00B\x16Z\x14shared/proto/messageb\x06proto3"
 
 var (
 	file_proto_message_message_proto_rawDescOnce sync.Once

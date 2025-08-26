@@ -27,9 +27,19 @@ const (
 // MessageServiceClient is the client API for MessageService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// MessageService provides gRPC methods for message routing and client management
+// This service acts as a microservice that handles message distribution
+// based on room membership and client registration.
 type MessageServiceClient interface {
+	// RouteMessage sends a message from a sender to all receivers in the same room
+	// The service determines the appropriate receivers based on room membership
 	RouteMessage(ctx context.Context, in *RouteMessageRequest, opts ...grpc.CallOption) (*RouteMessageResponse, error)
+	// RegisterClient registers a client with a specific room for message routing
+	// Clients must be registered before they can send/receive messages
 	RegisterClient(ctx context.Context, in *RegisterClientRequest, opts ...grpc.CallOption) (*RegisterClientResponse, error)
+	// UnregisterClient removes a client from room-based message routing
+	// This should be called when a client disconnects or leaves a room
 	UnregisterClient(ctx context.Context, in *UnregisterClientRequest, opts ...grpc.CallOption) (*UnregisterClientResponse, error)
 }
 
@@ -74,9 +84,19 @@ func (c *messageServiceClient) UnregisterClient(ctx context.Context, in *Unregis
 // MessageServiceServer is the server API for MessageService service.
 // All implementations must embed UnimplementedMessageServiceServer
 // for forward compatibility.
+//
+// MessageService provides gRPC methods for message routing and client management
+// This service acts as a microservice that handles message distribution
+// based on room membership and client registration.
 type MessageServiceServer interface {
+	// RouteMessage sends a message from a sender to all receivers in the same room
+	// The service determines the appropriate receivers based on room membership
 	RouteMessage(context.Context, *RouteMessageRequest) (*RouteMessageResponse, error)
+	// RegisterClient registers a client with a specific room for message routing
+	// Clients must be registered before they can send/receive messages
 	RegisterClient(context.Context, *RegisterClientRequest) (*RegisterClientResponse, error)
+	// UnregisterClient removes a client from room-based message routing
+	// This should be called when a client disconnects or leaves a room
 	UnregisterClient(context.Context, *UnregisterClientRequest) (*UnregisterClientResponse, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }

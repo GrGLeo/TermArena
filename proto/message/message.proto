@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package message;
 
-option go_package = "server/proto/message";
+option go_package = "shared/proto/message";
 
 // MessageService provides gRPC methods for message routing and client management
 // This service acts as a microservice that handles message distribution
