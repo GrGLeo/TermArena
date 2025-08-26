@@ -354,7 +354,7 @@ const file_proto_auth_auth_proto_rawDesc = "" +
 	"\vAuthService\x12;\n" +
 	"\bRegister\x12\x15.auth.RegisterRequest\x1a\x16.auth.RegisterResponse\"\x00\x12V\n" +
 	"\x11GetLoginChallenge\x12\x1e.auth.GetLoginChallengeRequest\x1a\x1f.auth.GetLoginChallengeResponse\"\x00\x12M\n" +
-	"\x0eAuthentificate\x12\x1b.auth.AuthentificateRequest\x1a\x1c.auth.AuthentificateResponse\"\x00B)Z'github.com/GrGLeo/ctf/server/proto/authb\x06proto3"
+	"\x0eAuthentificate\x12\x1b.auth.AuthentificateRequest\x1a\x1c.auth.AuthentificateResponse\"\x00B\x13Z\x11server/proto/authb\x06proto3"
 
 var (
 	file_proto_auth_auth_proto_rawDescOnce sync.Once
