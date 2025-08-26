@@ -32,6 +32,8 @@ code 16: spell selection
 code 17: shop request
 code 18: shop response
 code 19: purchase item
+---
+code 100: message code
 */
 
 type Packet interface {
@@ -78,6 +80,13 @@ func CreateMessage(packet Packet, conn *net.TCPConn) (event.Message, error) {
 	case *RoomJoinPacket:
 		return event.RoomJoinMessage{
 			RoomID:     pkt.RoomID,
+			Conn:       conn,
+			ResponseCh: responseChan,
+		}, nil
+	case *MessagePacket:
+		return event.MessageRequestMessage{
+			Sender:     pkt.Sender,
+			Message:    pkt.Message,
 			Conn:       conn,
 			ResponseCh: responseChan,
 		}, nil
@@ -723,6 +732,33 @@ func (pip *PurchaseItemPacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
+type MessagePacket struct {
+	version, code   int
+	Sender, Message string
+}
+
+func NewMessagePacket(sender, message string) *MessagePacket {
+	return &MessagePacket{
+		version: 1,
+		code:    100,
+		Sender:  sender,
+		Message: message,
+	}
+}
+
+func (mp *MessagePacket) Version() int { return mp.version }
+func (mp *MessagePacket) Code() int    { return mp.code }
+func (mp *MessagePacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(mp.version))
+	buf.WriteByte(byte(mp.code))
+	binary.Write(&buf, binary.BigEndian, uint16(len(mp.Sender)))
+	buf.WriteString(mp.Sender)
+	binary.Write(&buf, binary.BigEndian, uint16(len(mp.Message)))
+	buf.WriteString(mp.Message)
+	return buf.Bytes()
+}
+
 // DeSerialize deserializes a byte slice into a specific Packet type.
 func DeSerialize(data []byte) (Packet, int, error) {
 	if len(data) < 2 {
@@ -1077,8 +1113,30 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, 4, nil
 
+	case 100: // MessagePacket
+		if len(data) < 6 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		senderLen := int(binary.BigEndian.Uint16(data[2:4]))
+		if len(data) < 4+senderLen+2 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		messageLen := int(binary.BigEndian.Uint16(data[4+senderLen : 4+senderLen+2]))
+		totalLen := 4 + senderLen + 2 + messageLen
+		if len(data) < totalLen {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		sender := string(data[4 : 4+senderLen])
+		message := string(data[4+senderLen+2 : totalLen])
+		packet := &MessagePacket{
+			version: version,
+			code:    code,
+			Sender:  sender,
+			Message: message,
+		}
+		return packet, totalLen, nil
+
 	default:
 		return nil, 0, errors.New("unknown message type")
 	}
 }
-

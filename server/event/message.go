@@ -14,20 +14,20 @@ type Message interface {
 // --- AUTH REQUESTS ---
 
 type RegisterRequestMessage struct {
-	Username     string
-	PublicKey    []byte
-	Conn         *net.TCPConn
+	Username  string
+	PublicKey []byte
+	Conn      *net.TCPConn
 	// ResponseCh is the channel to send the response to.
 	ResponseCh chan Message
 }
 
-func (rrm RegisterRequestMessage) Type() string           { return "register_request" }
-func (rrm RegisterRequestMessage) Validate() error        { return nil }
+func (rrm RegisterRequestMessage) Type() string               { return "register_request" }
+func (rrm RegisterRequestMessage) Validate() error            { return nil }
 func (rrm RegisterRequestMessage) ResponseChan() chan Message { return rrm.ResponseCh }
 
 type LoginChallengeRequestMessage struct {
-	Username     string
-	Conn         *net.TCPConn
+	Username string
+	Conn     *net.TCPConn
 	// ResponseCh is the channel to send the response to.
 	ResponseCh chan Message
 }
@@ -43,11 +43,11 @@ type AuthRequestMessage struct {
 	SignedChallenge []byte
 	Conn            *net.TCPConn
 	// ResponseCh is the channel to send the response to.
-	ResponseCh    chan Message
+	ResponseCh chan Message
 }
 
-func (arm AuthRequestMessage) Type() string           { return "auth_request" }
-func (arm AuthRequestMessage) Validate() error        { return nil }
+func (arm AuthRequestMessage) Type() string               { return "auth_request" }
+func (arm AuthRequestMessage) Validate() error            { return nil }
 func (arm AuthRequestMessage) ResponseChan() chan Message { return arm.ResponseCh }
 
 // --- AUTH RESPONSES ---
@@ -59,8 +59,8 @@ type RegisterResponseMessage struct {
 	Conn      *net.TCPConn
 }
 
-func (m RegisterResponseMessage) Type() string           { return "register_response" }
-func (m RegisterResponseMessage) Validate() error        { return nil }
+func (m RegisterResponseMessage) Type() string               { return "register_response" }
+func (m RegisterResponseMessage) Validate() error            { return nil }
 func (m RegisterResponseMessage) ResponseChan() chan Message { return nil }
 
 type LoginChallengeResponseMessage struct {
@@ -68,8 +68,8 @@ type LoginChallengeResponseMessage struct {
 	Conn      *net.TCPConn
 }
 
-func (m LoginChallengeResponseMessage) Type() string           { return "login_challenge_response" }
-func (m LoginChallengeResponseMessage) Validate() error        { return nil }
+func (m LoginChallengeResponseMessage) Type() string               { return "login_challenge_response" }
+func (m LoginChallengeResponseMessage) Validate() error            { return nil }
 func (m LoginChallengeResponseMessage) ResponseChan() chan Message { return nil }
 
 type AuthResponseMessage struct {
@@ -79,15 +79,15 @@ type AuthResponseMessage struct {
 	Conn         *net.TCPConn
 }
 
-func (m AuthResponseMessage) Type() string           { return "auth_response" }
-func (m AuthResponseMessage) Validate() error        { return nil }
+func (m AuthResponseMessage) Type() string               { return "auth_response" }
+func (m AuthResponseMessage) Validate() error            { return nil }
 func (m AuthResponseMessage) ResponseChan() chan Message { return nil }
 
 // --- ROOM MESSAGES ---
 
 type RoomRequestMessage struct {
-	RoomType     int
-	Conn         *net.TCPConn
+	RoomType int
+	Conn     *net.TCPConn
 	// ResponseCh is the channel to send the response to.
 	ResponseCh chan Message
 }
@@ -106,8 +106,8 @@ func (fm RoomRequestMessage) Validate() error {
 func (fm RoomRequestMessage) ResponseChan() chan Message { return fm.ResponseCh }
 
 type RoomJoinMessage struct {
-	RoomID       string
-	Conn         *net.TCPConn
+	RoomID string
+	Conn   *net.TCPConn
 	// ResponseCh is the channel to send the response to.
 	ResponseCh chan Message
 }
@@ -126,8 +126,8 @@ func (rm RoomJoinMessage) Validate() error {
 func (rm RoomJoinMessage) ResponseChan() chan Message { return rm.ResponseCh }
 
 type RoomCreateMessage struct {
-	RoomType     int
-	Conn         *net.TCPConn
+	RoomType int
+	Conn     *net.TCPConn
 	// ResponseCh is the channel to send the response to.
 	ResponseCh chan Message
 }
@@ -151,7 +151,7 @@ type RoomSearchMessage struct {
 	RoomIP  string
 }
 
-func (rs RoomSearchMessage) Type() string           { return "search-room" }
+func (rs RoomSearchMessage) Type() string { return "search-room" }
 func (rs RoomSearchMessage) Validate() error {
 	if rs.Success == 1 {
 		return errors.New("Failed to search for a room")
@@ -160,3 +160,21 @@ func (rs RoomSearchMessage) Validate() error {
 }
 func (rs RoomSearchMessage) ResponseChan() chan Message { return nil }
 
+type MessageRequestMessage struct {
+	Sender     string
+	Message    string
+	Conn       *net.TCPConn
+	ResponseCh chan Message
+}
+
+func (mrm MessageRequestMessage) Type() string { return "message_request" }
+func (mrm MessageRequestMessage) Validate() error {
+	if mrm.Sender == "" {
+		return errors.New("Sender cannot be empty")
+	}
+	if mrm.Message == "" {
+		return errors.New("Message cannot be empty")
+	}
+	return nil
+}
+func (mrm MessageRequestMessage) ResponseChan() chan Message { return mrm.ResponseCh }
