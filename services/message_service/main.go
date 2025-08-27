@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
 )
 
 func NewLogger(level string) *slog.Logger {
@@ -36,7 +37,7 @@ func main() {
 	config := NewConfig()
 	logger := NewLogger(config.LogLevel)
 	slog.SetDefault(logger)
-	server := NewServer(config, logger)
+	server := NewMessageService(config, logger)
 
 	// channel  to listen for interruption
 	quit := make(chan os.Signal, 1)

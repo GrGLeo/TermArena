@@ -9,20 +9,20 @@ import (
 	"google.golang.org/grpc"
 )
 
-type Server struct {
+type MessageService struct {
 	config     *Config
 	logger     *slog.Logger
 	grpcServer *grpc.Server
 }
 
-func NewServer(config *Config, logger *slog.Logger) *Server {
-	return &Server{
+func NewMessageService (config *Config, logger *slog.Logger) *MessageService {
+	return &MessageService{
 		config: config,
 		logger: logger,
 	}
 }
 
-func (s *Server) Start() error {
+func (s *MessageService) Start() error {
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.config.Host, s.config.Port))
 	if err != nil {
 		return fmt.Errorf("failed to listen: %w", err)
@@ -32,7 +32,7 @@ func (s *Server) Start() error {
 	return s.grpcServer.Serve(lis)
 }
 
-func (s *Server) Shutdown(ctx context.Context) error {
+func (s *MessageService) Shutdown(ctx context.Context) error {
 	s.logger.Info("Initiating graceful shutdown", "timeout_seconds", s.config.ShutdownTimeoutSeconds)
 	done := make(chan struct{})
 	go func() {
