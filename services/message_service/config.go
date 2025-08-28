@@ -23,7 +23,7 @@ type Config struct {
 func NewConfig() *Config {
 	err := godotenv.Load()
 	if err != nil {
-    fmt.Printf("Warning: .env file not found. Using environment variables. %v\n", err)
+		fmt.Printf("Warning: .env file not found. Using environment variables. %v\n", err)
 	}
 
 	host := os.Getenv("MESSAGE_SERVICE_HOST")
