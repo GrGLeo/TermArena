@@ -37,7 +37,7 @@ func main() {
 	config := NewConfig()
 	logger := NewLogger(config.LogLevel)
 	slog.SetDefault(logger)
-	server := NewMessageService(config, logger)
+	server := NewMessageServer(config, logger)
 
 	// channel  to listen for interruption
 	quit := make(chan os.Signal, 1)
