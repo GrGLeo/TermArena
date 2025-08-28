@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
 )
 
 func NewLogger(level string) *slog.Logger {

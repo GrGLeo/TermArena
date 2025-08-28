@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net"
 
-	"google.golang.org/grpc"
 	pb "github.com/GrGLeo/ctf_game/shared/proto/message"
+	"google.golang.org/grpc"
 )
 
 type MessageServer struct {
@@ -34,8 +34,8 @@ func (s *MessageServer) Start() error {
 	}
 	s.grpcServer = grpc.NewServer()
 	s.logger.Info("gRPC server starting", "host", s.config.Host, "port", s.config.Port, "service", "MessageService")
-  pb.RegisterMessageServiceServer(s.grpcServer, s.handler)
-  
+	pb.RegisterMessageServiceServer(s.grpcServer, s.handler)
+
 	return s.grpcServer.Serve(lis)
 }
 

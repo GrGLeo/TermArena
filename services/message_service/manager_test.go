@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
-	"slices"
 )
 
 // Test constants
