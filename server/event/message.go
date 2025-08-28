@@ -83,6 +83,67 @@ func (m AuthResponseMessage) Type() string               { return "auth_response
 func (m AuthResponseMessage) Validate() error            { return nil }
 func (m AuthResponseMessage) ResponseChan() chan Message { return nil }
 
+// --- CLIENT REGISTRATION ---
+type ClientRegistrationMessage struct {
+	ClientID  string
+	RoomID    int
+	Conn      *net.TCPConn
+	ReponseCh chan Message
+}
+
+func (m ClientRegistrationMessage) Type() string { return "client_registration" }
+func (m ClientRegistrationMessage) Validate() error {
+	if m.ClientID == "" {
+		return errors.New("client ID cannot be empty")
+	}
+	return nil
+}
+func (m ClientRegistrationMessage) ResponseChan() chan Message { return m.ReponseCh }
+
+type ClientRegistrationResponse struct {
+	Success  bool
+	Message  string
+	ClientID string
+}
+
+func (m ClientRegistrationResponse) Type() string { return "client_registration_response" }
+func (m ClientRegistrationResponse) Validate() error {
+	if m.ClientID == "" {
+		return errors.New("client ID cannot be empty")
+	}
+	return nil
+}
+func (m ClientRegistrationResponse) ResponseChan() chan Message { return nil }
+
+type ClientUnregistrationMessage struct {
+	ClientID  string
+	ReponseCh chan Message
+}
+
+func (m ClientUnregistrationMessage) Type() string { return "client_unregistration" }
+func (m ClientUnregistrationMessage) Validate() error {
+	if m.ClientID == "" {
+		return errors.New("client ID cannot be empty")
+	}
+	return nil
+}
+func (m ClientUnregistrationMessage) ResponseChan() chan Message { return m.ReponseCh }
+
+type ClientUnregistrationResponse struct {
+	Success  bool
+	Message  string
+	ClientID string
+}
+
+func (m ClientUnregistrationResponse) Type() string { return "client_unregistration_response" }
+func (m ClientUnregistrationResponse) Validate() error {
+	if m.ClientID == "" {
+		return errors.New("client ID cannot be empty")
+	}
+	return nil
+}
+func (m ClientUnregistrationResponse) ResponseChan() chan Message { return nil }
+
 // --- ROOM MESSAGES ---
 
 type RoomRequestMessage struct {

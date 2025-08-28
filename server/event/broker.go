@@ -34,6 +34,7 @@ func NewEventBroker(logger *zap.SugaredLogger, workerPoolSize int) *EventBroker 
 func (eb *EventBroker) Publish(msg Message) {
 	eb.mu.Lock()
 	defer eb.mu.Unlock()
+  eb.logger.Infow("Found message","message", msg.Type())
 	eb.eventQueue.Enqueue(msg)
 }
 
@@ -48,7 +49,7 @@ func (eb *EventBroker) Subscribe(eventType string, callback func(Message) Messag
 // Start initializes the worker pool and begins processing messages.
 func (eb *EventBroker) Start() {
 	eb.logger.Info("Starting event broker")
-	for i := 0; i < eb.workerPoolSize; i++ {
+	for i := range eb.workerPoolSize {
 		go eb.worker(i)
 	}
 	go eb.dispatch()
