@@ -40,7 +40,6 @@ message RegisterClientRequest {
 }
 
 message RegisterClientResponse {
-  bool success = 1;  // True if registration succeeded, false otherwise
 }
 
 // === UNREGISTER MESSAGE ===
@@ -49,5 +48,4 @@ message UnregisterClientRequest {
 }
 
 message UnregisterClientResponse {
-  bool success = 1;  // True if unregistration succeeded, false otherwise
 }

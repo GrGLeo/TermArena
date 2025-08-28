@@ -181,7 +181,6 @@ func (x *RegisterClientRequest) GetRoomId() string {
 
 type RegisterClientResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // True if registration succeeded, false otherwise
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -214,13 +213,6 @@ func (x *RegisterClientResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use RegisterClientResponse.ProtoReflect.Descriptor instead.
 func (*RegisterClientResponse) Descriptor() ([]byte, []int) {
 	return file_proto_message_message_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *RegisterClientResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
 }
 
 // === UNREGISTER MESSAGE ===
@@ -270,7 +262,6 @@ func (x *UnregisterClientRequest) GetClient() string {
 
 type UnregisterClientResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // True if unregistration succeeded, false otherwise
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -305,13 +296,6 @@ func (*UnregisterClientResponse) Descriptor() ([]byte, []int) {
 	return file_proto_message_message_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *UnregisterClientResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
-}
-
 var File_proto_message_message_proto protoreflect.FileDescriptor
 
 const file_proto_message_message_proto_rawDesc = "" +
@@ -325,13 +309,11 @@ const file_proto_message_message_proto_rawDesc = "" +
 	"\acontent\x18\x02 \x01(\tR\acontent\"H\n" +
 	"\x15RegisterClientRequest\x12\x16\n" +
 	"\x06client\x18\x01 \x01(\tR\x06client\x12\x17\n" +
-	"\aroom_id\x18\x02 \x01(\tR\x06roomId\"2\n" +
-	"\x16RegisterClientResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"1\n" +
+	"\aroom_id\x18\x02 \x01(\tR\x06roomId\"\x18\n" +
+	"\x16RegisterClientResponse\"1\n" +
 	"\x17UnregisterClientRequest\x12\x16\n" +
-	"\x06client\x18\x01 \x01(\tR\x06client\"4\n" +
-	"\x18UnregisterClientResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess2\x8f\x02\n" +
+	"\x06client\x18\x01 \x01(\tR\x06client\"\x1a\n" +
+	"\x18UnregisterClientResponse2\x8f\x02\n" +
 	"\x0eMessageService\x12M\n" +
 	"\fRouteMessage\x12\x1c.message.RouteMessageRequest\x1a\x1d.message.RouteMessageResponse\"\x00\x12S\n" +
 	"\x0eRegisterClient\x12\x1e.message.RegisterClientRequest\x1a\x1f.message.RegisterClientResponse\"\x00\x12Y\n" +

@@ -8,27 +8,35 @@ import (
 )
 
 type MessageManager struct {
-	userToRoom   map[string]int
-	userLock     sync.RWMutex
-	roomToClient map[int]map[string]struct{}
-	roomLock     sync.RWMutex
-	logger       *slog.Logger
+	userToRoom     map[string]int
+	userLock       sync.RWMutex
+	roomToClient   map[int]map[string]struct{}
+	roomLock       sync.RWMutex
+	logger         *slog.Logger
+	maxMessageSize int
 }
 
-func NewMessageManager(logger *slog.Logger) *MessageManager {
+func NewMessageManager(maxMessageSize int, logger *slog.Logger) *MessageManager {
 	userToRoom := make(map[string]int)
 	roomToClient := make(map[int]map[string]struct{})
 
 	return &MessageManager{
-		userToRoom:   userToRoom,
-		userLock:     sync.RWMutex{},
-		roomToClient: roomToClient,
-		roomLock:     sync.RWMutex{},
-		logger:       logger,
+		userToRoom:     userToRoom,
+		userLock:       sync.RWMutex{},
+		roomToClient:   roomToClient,
+		roomLock:       sync.RWMutex{},
+		logger:         logger,
+		maxMessageSize: maxMessageSize,
 	}
 }
 
 func (mm *MessageManager) RegisterClient(client string, roomID int) error {
+	// Input validation
+	client = strings.TrimSpace(client)
+	if client == "" {
+		return fmt.Errorf("client cannot be empty")
+	}
+
 	mm.userLock.RLock()
 	oldRoomID, exist := mm.userToRoom[client]
 	mm.userLock.RUnlock()
@@ -106,6 +114,21 @@ func (mm *MessageManager) UnregisterClient(client string) error {
 }
 
 func (mm *MessageManager) RouteMessage(sender string, content string) ([]string, string, error) {
+	// Validation step
+	sender = strings.TrimSpace(sender)
+	content = strings.TrimSpace(content)
+
+	if sender == "" {
+		return nil, "", fmt.Errorf("sender cannot be empty")
+	}
+	if content == "" {
+		return nil, "", fmt.Errorf("content cannot be empty")
+	}
+
+	if len(content) > mm.maxMessageSize {
+		return nil, "", fmt.Errorf("message too long (max message size: %d)", mm.maxMessageSize)
+	}
+
 	mm.userLock.RLock()
 	roomID, exists := mm.userToRoom[sender]
 	mm.userLock.RUnlock()
@@ -159,13 +182,22 @@ func parseMessage(content, sender string) (string, string) {
 	// First we extract the target of the message
 	parts := strings.Fields(content)
 
+	// Validation
+	if len(parts) == 0 {
+		return "", fmt.Sprintf("(room) %s: %s", sender, content)
+	}
+
 	if strings.HasPrefix(parts[0], "/") {
 		target := parts[0][1:] // We remove the initial "/"
+		messageContent := ""
+		if len(parts) > 1 {
+			messageContent = strings.Join(parts[1:], " ")
+		}
 		if target == "all" {
-			return target, fmt.Sprintf("(all) %s: %s", sender, strings.Join(parts[1:], " "))
+			return target, fmt.Sprintf("(all) %s: %s", sender, messageContent)
 		} else {
-			return target, fmt.Sprintf("(whisper) %s: %s", sender, strings.Join(parts[1:], " "))
+			return target, fmt.Sprintf("(whisper) %s: %s", sender, messageContent)
 		}
 	}
-	return "", fmt.Sprintf("(room) %s: %s", sender, strings.Join(parts[1:], " "))
+	return "", fmt.Sprintf("(room) %s: %s", sender, content)
 }

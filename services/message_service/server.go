@@ -7,18 +7,23 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
+	pb "github.com/GrGLeo/ctf_game/shared/proto/message"
 )
 
 type MessageServer struct {
 	config     *Config
 	logger     *slog.Logger
+	handler    *MessageHandler
 	grpcServer *grpc.Server
 }
 
 func NewMessageServer(config *Config, logger *slog.Logger) *MessageServer {
+	manager := NewMessageManager(config.MaxMessageSize, logger)
+	handler := NewMessageHandler(manager, logger)
 	return &MessageServer{
-		config: config,
-		logger: logger,
+		config:  config,
+		logger:  logger,
+		handler: handler,
 	}
 }
 
@@ -28,7 +33,9 @@ func (s *MessageServer) Start() error {
 		return fmt.Errorf("failed to listen: %w", err)
 	}
 	s.grpcServer = grpc.NewServer()
-	s.logger.Info("gRPC server starting", "host", s.config.Host, "port", s.config.Port)
+	s.logger.Info("gRPC server starting", "host", s.config.Host, "port", s.config.Port, "service", "MessageService")
+  pb.RegisterMessageServiceServer(s.grpcServer, s.handler)
+  
 	return s.grpcServer.Serve(lis)
 }
 
