@@ -6,9 +6,10 @@ import (
 	"net"
 	"os"
 
-	auth "github.com/GrGLeo/ctf/server/authentification"
 	"github.com/GrGLeo/ctf/server/event"
+	handler "github.com/GrGLeo/ctf/server/handlers"
 	manager "github.com/GrGLeo/ctf/server/room_manager"
+	conm "github.com/GrGLeo/ctf/server/conn_manager"
 
 	"github.com/GrGLeo/ctf/shared"
 	"github.com/joho/godotenv"
@@ -62,7 +63,7 @@ func HandleClient(ctx context.Context, server *net.TCPListener, connChannel chan
 	}
 }
 
-func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.EventBroker) {
+func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.EventBroker, connManager *conm.ConnectionManager) {
 	buffer := make([]byte, 4096) // A persistent buffer for each client
 	var data []byte
 
@@ -71,6 +72,16 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 		if err != nil {
 			if err.Error() == "EOF" {
 				log.Infow("Client disconnected", "ip", conn.RemoteAddr())
+				// Unregister the client
+        client, exist := connManager.Unregister(conn)
+        if exist {
+          responseChan := make(chan event.Message)
+				  msg := event.ClientUnregistrationMessage{
+            ClientID: client,
+            ReponseCh: responseChan,
+          }
+          broker.Publish(msg)
+        }
 			} else {
 				log.Infow("Error reading from client", "ip", conn.RemoteAddr(), "error", err)
 			}
@@ -135,6 +146,7 @@ func main() {
 		log.Fatalln("Failed to launch TCP server", err.Error())
 	}
 	log.Info("Server started and listening")
+  connectionManager := conm.NewConnectionManager()
 	connChannel := make(chan *net.TCPConn)
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, loggerKey, log)
@@ -145,11 +157,17 @@ func main() {
 	roomManager := manager.NewRoomManager(log)
 	log.Info("New room manager initialize")
 
-	authClient, err := auth.NewAuthClient()
+	authClient, err := handler.NewAuthClient(broker)
 	if err != nil {
 		log.Fatalln("Failed to create auth client:", err)
 	}
 	log.Info("Auth client initialized")
+	messagesClient, err := handler.NewMessageServiceClient(connectionManager)
+	if err != nil {
+		log.Fatalln("Failed to create messages client:", err)
+	}
+	log.Info("Messages client initialized")
+
 
 	broker.Start()
 	log.Info("Broker ready to process message")
@@ -159,6 +177,10 @@ func main() {
 	broker.Subscribe("login_challenge_request", authClient.HandleLoginChallenge)
 	broker.Subscribe("auth_request", authClient.HandleAuth)
 
+	// Subscribe new messages handlers
+	broker.Subscribe("client_registration", messagesClient.HandleClientRegistration)
+	broker.Subscribe("client_unregistration", messagesClient.HandleClientUnregistration)
+
 	// Subscribe existing room handlers
 	broker.Subscribe("find-room", roomManager.FindRoom)
 	broker.Subscribe("create-room", roomManager.CreateRoom)
@@ -166,7 +188,7 @@ func main() {
 
 	go HandleClient(ctx, server, connChannel)
 	for conn := range connChannel {
-		go ProcessClient(conn, log, broker)
+		go ProcessClient(conn, log, broker, connectionManager)
 	}
 	select {}
 }
