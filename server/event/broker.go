@@ -34,7 +34,6 @@ func NewEventBroker(logger *zap.SugaredLogger, workerPoolSize int) *EventBroker 
 func (eb *EventBroker) Publish(msg Message) {
 	eb.mu.Lock()
 	defer eb.mu.Unlock()
-  eb.logger.Infow("Found message","message", msg.Type())
 	eb.eventQueue.Enqueue(msg)
 }
 
@@ -84,4 +83,3 @@ func (eb *EventBroker) worker(id int) {
 		}
 	}
 }
-
