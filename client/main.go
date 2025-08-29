@@ -117,9 +117,9 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !msg.Success {
 				log.Println("Failed to log in")
 			} else {
-				log.Println("Manage to log in")
+        m.Username = m.AuthModel.Username
 				m.state = Lobby
-				m.LobbyModel = model.NewLobbyModel(m.Connection)
+				m.LobbyModel = model.NewLobbyModel(m.Connection, m.Username)
 				m.LobbyModel.SetDimension(m.height, m.width)
 				return m, m.LobbyModel.Init()
 			}
@@ -208,7 +208,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			go communication.ListenForPackets(m.Connection, m.msgs)
 
 			m.state = Lobby
-			m.LobbyModel = model.NewLobbyModel(m.Connection)
+			m.LobbyModel = model.NewLobbyModel(m.Connection, m.Username)
 			m.LobbyModel.SetDimension(m.height, m.width)
 			return m, m.LobbyModel.Init()
 		default:

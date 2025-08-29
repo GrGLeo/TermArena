@@ -32,11 +32,15 @@ func NewMessageHandler(manager ManagerInterface, logger *slog.Logger) *MessageHa
 }
 
 func (mh *MessageHandler) RouteMessage(ctx context.Context, req *pb.RouteMessageRequest) (*pb.RouteMessageResponse, error) {
+	mh.logger.Info("[MESSAGE SERVICE] RouteMessage called", "sender", req.Sender, "content", req.Content)
+
 	receivers, message, err := mh.manager.RouteMessage(req.Sender, req.Content)
 	if err != nil {
-		mh.logger.Error("Failed to route message", "sender", req.Sender, "error", err)
+		mh.logger.Error("[MESSAGE SERVICE] Failed to route message", "sender", req.Sender, "error", err)
 		return nil, MapToGRPCError(err)
 	}
+
+	mh.logger.Info("[MESSAGE SERVICE] RouteMessage completed", "sender", req.Sender, "receivers", receivers, "processed_message", message)
 	return &pb.RouteMessageResponse{
 		Receivers: receivers,
 		Content:   message,

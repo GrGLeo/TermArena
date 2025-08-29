@@ -108,9 +108,19 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 					continue
 				}
 
+				// Log message processing
+				if msg.Type() == "message_request" {
+					if reqMsg, ok := msg.(event.MessageRequestMessage); ok {
+						log.Infow("[SERVER] MessageRequest received", "sender", reqMsg.Sender, "message", reqMsg.Message, "ip", conn.RemoteAddr())
+					}
+				}
+
 				// Unified logic: publish message, wait for response, create packet, send response.
+				log.Infow("[SERVER] Publishing message to broker", "message_type", msg.Type(), "ip", conn.RemoteAddr())
 				broker.Publish(msg)
+				log.Infow("[SERVER] Waiting for response from broker", "message_type", msg.Type())
 				response := <-msg.ResponseChan()
+				log.Infow("[SERVER] Received response from broker", "response_type", response.Type(), "ip", conn.RemoteAddr())
 
 				switch resp := response.(type) {
 				case event.MessageResponseMessage:

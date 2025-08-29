@@ -1,6 +1,7 @@
 package communication
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -10,7 +11,6 @@ import (
 	"github.com/GrGLeo/ctf/shared"
 	tea "github.com/charmbracelet/bubbletea"
 )
-
 
 func AttemptGameConnection(roomIP string) tea.Cmd {
 	return func() tea.Msg {
@@ -44,24 +44,24 @@ func MakeConnection(port string) (*net.TCPConn, error) {
 }
 
 func SendRegisterRequestPacket(conn *net.TCPConn, username string, publicKey []byte) error {
-  registerRequestPacket := shared.NewRegisterRequestPacket(username, publicKey)
-  data := registerRequestPacket.Serialize()
-  _, err := conn.Write(data)
-  return err
+	registerRequestPacket := shared.NewRegisterRequestPacket(username, publicKey)
+	data := registerRequestPacket.Serialize()
+	_, err := conn.Write(data)
+	return err
 }
 
 func SendLoginChallengeRequestPacket(conn *net.TCPConn, username string) error {
-  loginChallengeRequestPacket := shared.NewLoginChallengeRequestPacket(username)
-  data := loginChallengeRequestPacket.Serialize()
-  _, err := conn.Write(data)
-  return err
+	loginChallengeRequestPacket := shared.NewLoginChallengeRequestPacket(username)
+	data := loginChallengeRequestPacket.Serialize()
+	_, err := conn.Write(data)
+	return err
 }
 
 func SendAuthRequestPacket(conn *net.TCPConn, username string, signedChallenge []byte) error {
-  authRequestPacket := shared.NewAuthRequestPacket(username, signedChallenge)
-  data := authRequestPacket.Serialize()
-  _, err := conn.Write(data)
-  return err
+	authRequestPacket := shared.NewAuthRequestPacket(username, signedChallenge)
+	data := authRequestPacket.Serialize()
+	_, err := conn.Write(data)
+	return err
 }
 
 func SendRoomRequestPacket(conn *net.TCPConn, roomType int) error {
@@ -121,6 +121,35 @@ func SendSpellSelectionPacket(conn *net.TCPConn, spell1, spell2 int) error {
 	return err
 }
 
+func SendMessage(conn *net.TCPConn, sender, message string) error {
+	log.Printf("[CLIENT] SendMessage: sender=%s, message='%s'", sender, message)
+	messageLen := len(message)
+	if messageLen == 0 {
+		return errors.New("Message cannot be empty")
+	} else if messageLen > 1024 {
+		return errors.New("Message is too long")
+	}
+	messagePacket := shared.NewMessagePacket(sender, message)
+	data := messagePacket.Serialize()
+	log.Printf("[CLIENT] SendMessage: packet created, data length=%d", len(data))
+	_, err := conn.Write(data)
+	if err != nil {
+		log.Printf("[CLIENT] SendMessage: ERROR writing to connection: %v", err)
+	} else {
+		log.Printf("[CLIENT] SendMessage: SUCCESS - message sent to server")
+	}
+	return err
+}
+
+// Message types for Bubbletea
+type IncomingMessageMsg struct {
+	Content  string
+}
+
+type MessageErrorMsg struct {
+	Error string
+}
+
 func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 	var data []byte
 	buf := make([]byte, 4096)
@@ -153,12 +182,12 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 
 			log.Printf("Deserialized packet type: %T", packet)
 			switch msg := packet.(type) {
-      case *shared.RegisterResponsePacket:
-        msgs <- RegistrationResultMsg{Success: msg.Success, Message: msg.Message, Challenge: msg.Challenge}
-      case *shared.LoginChallengeResponsePacket:
-        msgs <- ChallengeReceivedMsg{Challenge: msg.Challenge}
-      case *shared.AuthResponsePacket:
-        msgs <- AuthResultMsg{Success: msg.Success, Message: msg.Message, SessionToken: msg.SessionToken}
+			case *shared.RegisterResponsePacket:
+				msgs <- RegistrationResultMsg{Success: msg.Success, Message: msg.Message, Challenge: msg.Challenge}
+			case *shared.LoginChallengeResponsePacket:
+				msgs <- ChallengeReceivedMsg{Challenge: msg.Challenge}
+			case *shared.AuthResponsePacket:
+				msgs <- AuthResultMsg{Success: msg.Success, Message: msg.Message, SessionToken: msg.SessionToken}
 			case *shared.LookRoomPacket:
 				log.Printf("Sending LookRoomMsg: %+v", msg)
 				msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID, RoomIP: msg.RoomIP}
@@ -177,11 +206,11 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 				if err != nil {
 					log.Print(err.Error())
 				}
-        casting := [2]int{msg.CastTime, msg.CastDuration}
+				casting := [2]int{msg.CastTime, msg.CastDuration}
 				health := [2]int{msg.Health, msg.MaxHealth}
 				mana := [2]int{msg.Mana, msg.MaxMana}
 				xp := [2]int{msg.Xp, msg.XpNeeded}
-        log.Printf("Sending BoardMsg: Casting=%v, Health=%v, Level=%d, Xp=%v", casting, health, msg.Level, xp)
+				log.Printf("Sending BoardMsg: Casting=%v, Health=%v, Level=%d, Xp=%v", casting, health, msg.Level, xp)
 				msgs <- BoardMsg{Casting: casting, Health: health, Mana: mana, Level: msg.Level, Xp: xp, Board: board}
 			case *shared.DeltaPacket:
 				deltas := DecodeDeltas(msg.Deltas)
@@ -190,6 +219,14 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 			case *shared.EndGamePacket:
 				log.Printf("Sending EndGameMsg: Win=%t", msg.Win)
 				msgs <- EndGameMsg{Win: msg.Win}
+			case *shared.MessageResponsePacket:
+				log.Printf("[CLIENT] Received message response: %s", msg.Message)
+				msgs <- IncomingMessageMsg{
+					Content:  msg.Message,
+				}
+			case *shared.MessageErrorPacket:
+				log.Printf("[CLIENT] Received message error: %s", msg.Error)
+				msgs <- MessageErrorMsg{Error: msg.Error}
 			default:
 				log.Printf("Unknown type: %T, raw: %x", packet, data)
 				msgs <- GamePacketMsg{Packet: data}

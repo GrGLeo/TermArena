@@ -90,20 +90,25 @@ func (ms *MessagesServiceClient) HandleClientUnregistration(msg event.Message) e
 
 func (ms *MessagesServiceClient) HandleRouteMessage(msg event.Message) event.Message {
 	req := msg.(event.MessageRequestMessage)
+	ms.logger.Infow("[SERVER HANDLER] HandleRouteMessage called", "sender", req.Sender, "message", req.Message)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	ms.logger.Infow("[SERVER HANDLER] Calling message service", "sender", req.Sender)
 	resp, err := ms.Client.RouteMessage(ctx, &pb.RouteMessageRequest{
 		Sender:  req.Sender,
 		Content: req.Message,
 	})
 	if err != nil {
-		ms.logger.Errorw("gRPC Route call failed", "error", err, "sender", req.Sender)
+		ms.logger.Errorw("[SERVER HANDLER] gRPC Route call failed", "error", err, "sender", req.Sender)
 		return event.MessageErrorResponse{
 			Error:      fmt.Sprintf("Failed to route message: %v", err),
 			ResponseCh: req.ResponseCh,
 		}
 	}
+
+	ms.logger.Infow("[SERVER HANDLER] Message service responded", "receivers", resp.Receivers, "response_content", resp.Content)
 	return event.MessageResponseMessage{
 		Receivers:  resp.Receivers,
 		Message:    resp.Content,

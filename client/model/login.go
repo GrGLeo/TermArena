@@ -37,6 +37,12 @@ type Styles struct {
 	ActiveTab       lipgloss.Style
 	InactiveTab     lipgloss.Style
 	TabGap          lipgloss.Style
+	// Messaging
+	SystemMessage lipgloss.Style
+	OwnMessage    lipgloss.Style
+	OtherMessage  lipgloss.Style
+	InputPrompt   lipgloss.Style
+	Help          lipgloss.Style
 }
 
 func DefaultStyles() *Styles {
@@ -94,6 +100,26 @@ func DefaultStyles() *Styles {
 		BorderForeground(s.BorderColor).
 		PaddingRight(1)
 
+	// --- Messaging Styles ---
+	s.SystemMessage = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("9")).
+		Italic(true)
+
+	s.OwnMessage = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("12")).
+		Bold(true)
+
+	s.OtherMessage = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("15"))
+
+	s.InputPrompt = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("11")).
+		Bold(true)
+
+	s.Help = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("8")).
+		Italic(true)
+
 	return s
 }
 
@@ -106,6 +132,7 @@ const (
 
 // --- AuthModel (MetaModel) ---
 type AuthModel struct {
+	Username      string
 	styles        *Styles
 	usernameInput textinput.Model
 	state         authState
@@ -182,15 +209,15 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyEnter:
 				m.state = stateBusy
 				m.statusMessage = "Connecting..."
-				username := m.usernameInput.Value()
+				m.Username = m.usernameInput.Value()
 
 				return m, func() tea.Msg {
 					// Try to load the key for the user
-					key, err := loadKey(username)
+					key, err := loadKey(m.Username)
 					if err != nil {
 						// KEY NOT FOUND
 						// Generate a new key pair
-						privKey, pubKeyBytes, genErr := generateAndSaveKeys(username)
+						privKey, pubKeyBytes, genErr := generateAndSaveKeys(m.Username)
 						return keyResultMsg{
 							key:       privKey,
 							publicKey: *pubKeyBytes,
@@ -211,7 +238,7 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, cmd)
 			}
 		}
-  case keyResultMsg:
+	case keyResultMsg:
 		if msg.err != nil {
 			m.state = stateReadyForInput
 			m.statusMessage = "Error handling key: " + msg.err.Error()
@@ -227,7 +254,6 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			communication.SendRegisterRequestPacket(m.conn, username, msg.publicKey)
 		} else {
 			m.statusMessage = "Existing user. Requesting challenge..."
-			m.logKeyForDebug()
 			communication.SendLoginChallengeRequestPacket(m.conn, username)
 		}
 		return m, nil
@@ -255,10 +281,7 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusMessage = "Challenge received. Signing..."
 		if m.currentKey == nil {
 			log.Print("Error m.currentkey is nil")
-		} else {
-			log.Printf("This should not be called")
 		}
-		m.logKeyForDebug()
 		signedChallenge, err := signChallenge(m.currentKey, msg.Challenge)
 		if err != nil {
 			m.state = stateReadyForInput
@@ -276,9 +299,7 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	}
-
 	return m, tea.Batch(cmds...)
-
 }
 
 func (m AuthModel) View() string {
