@@ -241,10 +241,11 @@ func (mrm MessageRequestMessage) Validate() error {
 func (mrm MessageRequestMessage) ResponseChan() chan Message { return mrm.ResponseCh }
 
 type MessageResponseMessage struct {
-  Receivers []string
-  Message string
-  ResponseCh chan Message
+	Receivers  []string
+	Message    string
+	ResponseCh chan Message
 }
+
 func (mrm MessageResponseMessage) Type() string { return "message_response" }
 func (mrm MessageResponseMessage) Validate() error {
 	if len(mrm.Receivers) == 0 {
@@ -256,3 +257,12 @@ func (mrm MessageResponseMessage) Validate() error {
 	return nil
 }
 func (mrm MessageResponseMessage) ResponseChan() chan Message { return mrm.ResponseCh }
+
+type MessageErrorResponse struct {
+	Error      string
+	ResponseCh chan Message
+}
+
+func (mer MessageErrorResponse) Type() string               { return "message_error" }
+func (mer MessageErrorResponse) Validate() error            { return nil }
+func (mer MessageErrorResponse) ResponseChan() chan Message { return mer.ResponseCh }

@@ -2,13 +2,13 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"os"
 	"time"
 
 	"github.com/GrGLeo/ctf/server/event"
 	"github.com/GrGLeo/ctf/server/proto/auth"
 	pb "github.com/GrGLeo/ctf/server/proto/auth"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -16,9 +16,10 @@ import (
 type AuthClient struct {
 	Client pb.AuthServiceClient
 	broker *event.EventBroker
+	logger *zap.SugaredLogger
 }
 
-func NewAuthClient(broker *event.EventBroker) (*AuthClient, error) {
+func NewAuthClient(broker *event.EventBroker, logger *zap.SugaredLogger) (*AuthClient, error) {
 	authServiceAddr := os.Getenv("AUTH_SERVICE_ADDR")
 	if authServiceAddr == "" {
 		authServiceAddr = "localhost:50051"
@@ -31,6 +32,7 @@ func NewAuthClient(broker *event.EventBroker) (*AuthClient, error) {
 	return &AuthClient{
 		Client: client,
 		broker: broker,
+		logger: logger,
 	}, nil
 }
 
@@ -45,7 +47,7 @@ func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 	})
 
 	if err != nil {
-		log.Printf("gRPC Register call failed: %v", err)
+		ac.logger.Errorw("gRPC Register call failed", "error", err, "username", req.Username)
 		return event.RegisterResponseMessage{
 			Success:   false,
 			Message:   "Internal server error",

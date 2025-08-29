@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -10,6 +10,7 @@ import (
 	conm "github.com/GrGLeo/ctf/server/conn_manager"
 	"github.com/GrGLeo/ctf/server/event"
 	pb "github.com/GrGLeo/ctf/shared/proto/message"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -17,9 +18,10 @@ import (
 type MessagesServiceClient struct {
 	Client      pb.MessageServiceClient
 	connManager *conm.ConnectionManager
+	logger      *zap.SugaredLogger
 }
 
-func NewMessageServiceClient(connManager *conm.ConnectionManager) (*MessagesServiceClient, error) {
+func NewMessageServiceClient(connManager *conm.ConnectionManager, logger *zap.SugaredLogger) (*MessagesServiceClient, error) {
 	messageServiceAddr := os.Getenv("MESSAGE_SERVICE_ADDR")
 	if messageServiceAddr == "" {
 		messageServiceAddr = "localhost:8083"
@@ -32,6 +34,7 @@ func NewMessageServiceClient(connManager *conm.ConnectionManager) (*MessagesServ
 	return &MessagesServiceClient{
 		Client:      client,
 		connManager: connManager,
+		logger:      logger,
 	}, nil
 }
 
@@ -46,7 +49,7 @@ func (ms *MessagesServiceClient) HandleClientRegistration(msg event.Message) eve
 	})
 
 	if err != nil {
-		log.Printf("gRPC Register call failed: %v", err)
+		ms.logger.Errorw("gRPC Register call failed", "error", err, "client_id", req.ClientID)
 		return event.ClientRegistrationResponse{
 			Success:  false,
 			Message:  "Failed to register with message service",
@@ -71,7 +74,7 @@ func (ms *MessagesServiceClient) HandleClientUnregistration(msg event.Message) e
 	})
 
 	if err != nil {
-		log.Printf("gRPC Unregister call failed: %v", err)
+		ms.logger.Errorw("gRPC Unregister call failed", "error", err, "client_id", req.ClientID)
 		return event.ClientUnregistrationResponse{
 			Success:  false,
 			Message:  "Failed to unregister with message service",
@@ -95,13 +98,15 @@ func (ms *MessagesServiceClient) HandleRouteMessage(msg event.Message) event.Mes
 		Content: req.Message,
 	})
 	if err != nil {
-		log.Printf("gRPC Unregister call failed: %v", err)
-    //TODO: how to handle error
-		return event.MessageResponseMessage{
+		ms.logger.Errorw("gRPC Route call failed", "error", err, "sender", req.Sender)
+		return event.MessageErrorResponse{
+			Error:      fmt.Sprintf("Failed to route message: %v", err),
+			ResponseCh: req.ResponseCh,
 		}
 	}
 	return event.MessageResponseMessage{
-		Receivers: resp.Receivers,
-		Message:   resp.Content,
+		Receivers:  resp.Receivers,
+		Message:    resp.Content,
+		ResponseCh: req.ResponseCh,
 	}
 }

@@ -114,6 +114,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 
 				switch resp := response.(type) {
 				case event.MessageResponseMessage:
+					log.Infow("MessageResponseMessage found", "message", resp.Message)
 					responsePacket, err := shared.CreatePacketFromMessage(resp)
 					if err != nil {
 						log.Errorw("Error creating packet from message", "error", err.Error())
@@ -122,6 +123,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 					}
 					for _, receiverID := range resp.Receivers {
 						receiverConn, exist := connManager.GetConn(receiverID)
+						log.Infow("recevierConn found", "conn", receiverConn.RemoteAddr().String())
 						if exist {
 							if _, err := receiverConn.Write(responsePacket); err != nil {
 								log.Errorw("Error writing response to client", "error", err)
@@ -130,6 +132,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 							log.Warnw("Could not find connection for receiver", "receiver", receiverID)
 						}
 					}
+					data = data[bytesConsumed:]
 				default:
 					responsePacket, err := shared.CreatePacketFromMessage(resp)
 					if err != nil {
@@ -137,18 +140,14 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 						data = data[bytesConsumed:]
 						continue
 					}
-
 					if _, err := conn.Write(responsePacket); err != nil {
 						log.Errorw("Error writing response to client", "error", err)
 					}
-
 					// Special case for room search where connection ownership changes
 					if _, ok := response.(event.RoomSearchMessage); ok {
 						return
 					}
-
 					data = data[bytesConsumed:]
-
 				}
 			}
 		}
@@ -178,12 +177,12 @@ func main() {
 	roomManager := manager.NewRoomManager(log)
 	log.Info("New room manager initialize")
 
-	authClient, err := handler.NewAuthClient(broker)
+	authClient, err := handler.NewAuthClient(broker, log)
 	if err != nil {
 		log.Fatalln("Failed to create auth client:", err)
 	}
 	log.Info("Auth client initialized")
-	messagesClient, err := handler.NewMessageServiceClient(connectionManager)
+	messagesClient, err := handler.NewMessageServiceClient(connectionManager, log)
 	if err != nil {
 		log.Fatalln("Failed to create messages client:", err)
 	}
