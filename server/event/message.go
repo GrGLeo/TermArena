@@ -239,3 +239,20 @@ func (mrm MessageRequestMessage) Validate() error {
 	return nil
 }
 func (mrm MessageRequestMessage) ResponseChan() chan Message { return mrm.ResponseCh }
+
+type MessageResponseMessage struct {
+  Receivers []string
+  Message string
+  ResponseCh chan Message
+}
+func (mrm MessageResponseMessage) Type() string { return "message_response" }
+func (mrm MessageResponseMessage) Validate() error {
+	if len(mrm.Receivers) == 0 {
+		return errors.New("Receivers cannot be empty")
+	}
+	if mrm.Message == "" {
+		return errors.New("Message cannot be empty")
+	}
+	return nil
+}
+func (mrm MessageResponseMessage) ResponseChan() chan Message { return mrm.ResponseCh }

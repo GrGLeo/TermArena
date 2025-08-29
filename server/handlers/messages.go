@@ -84,3 +84,24 @@ func (ms *MessagesServiceClient) HandleClientUnregistration(msg event.Message) e
 		ClientID: req.ClientID,
 	}
 }
+
+func (ms *MessagesServiceClient) HandleRouteMessage(msg event.Message) event.Message {
+	req := msg.(event.MessageRequestMessage)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := ms.Client.RouteMessage(ctx, &pb.RouteMessageRequest{
+		Sender:  req.Sender,
+		Content: req.Message,
+	})
+	if err != nil {
+		log.Printf("gRPC Unregister call failed: %v", err)
+    //TODO: how to handle error
+		return event.MessageResponseMessage{
+		}
+	}
+	return event.MessageResponseMessage{
+		Receivers: resp.Receivers,
+		Message:   resp.Content,
+	}
+}

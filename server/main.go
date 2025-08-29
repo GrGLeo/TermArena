@@ -6,10 +6,10 @@ import (
 	"net"
 	"os"
 
+	conm "github.com/GrGLeo/ctf/server/conn_manager"
 	"github.com/GrGLeo/ctf/server/event"
 	handler "github.com/GrGLeo/ctf/server/handlers"
 	manager "github.com/GrGLeo/ctf/server/room_manager"
-	conm "github.com/GrGLeo/ctf/server/conn_manager"
 
 	"github.com/GrGLeo/ctf/shared"
 	"github.com/joho/godotenv"
@@ -73,15 +73,15 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 			if err.Error() == "EOF" {
 				log.Infow("Client disconnected", "ip", conn.RemoteAddr())
 				// Unregister the client
-        client, exist := connManager.Unregister(conn)
-        if exist {
-          responseChan := make(chan event.Message)
-				  msg := event.ClientUnregistrationMessage{
-            ClientID: client,
-            ReponseCh: responseChan,
-          }
-          broker.Publish(msg)
-        }
+				client, exist := connManager.Unregister(conn)
+				if exist {
+					responseChan := make(chan event.Message)
+					msg := event.ClientUnregistrationMessage{
+						ClientID:  client,
+						ReponseCh: responseChan,
+					}
+					broker.Publish(msg)
+				}
 			} else {
 				log.Infow("Error reading from client", "ip", conn.RemoteAddr(), "error", err)
 			}
@@ -112,23 +112,44 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 				broker.Publish(msg)
 				response := <-msg.ResponseChan()
 
-				responsePacket, err := shared.CreatePacketFromMessage(response)
-				if err != nil {
-					log.Errorw("Error creating packet from message", "error", err.Error())
+				switch resp := response.(type) {
+				case event.MessageResponseMessage:
+					responsePacket, err := shared.CreatePacketFromMessage(resp)
+					if err != nil {
+						log.Errorw("Error creating packet from message", "error", err.Error())
+						data = data[bytesConsumed:]
+						continue
+					}
+					for _, receiverID := range resp.Receivers {
+						receiverConn, exist := connManager.GetConn(receiverID)
+						if exist {
+							if _, err := receiverConn.Write(responsePacket); err != nil {
+								log.Errorw("Error writing response to client", "error", err)
+							}
+						} else {
+							log.Warnw("Could not find connection for receiver", "receiver", receiverID)
+						}
+					}
+				default:
+					responsePacket, err := shared.CreatePacketFromMessage(resp)
+					if err != nil {
+						log.Errorw("Error creating packet from message", "error", err.Error())
+						data = data[bytesConsumed:]
+						continue
+					}
+
+					if _, err := conn.Write(responsePacket); err != nil {
+						log.Errorw("Error writing response to client", "error", err)
+					}
+
+					// Special case for room search where connection ownership changes
+					if _, ok := response.(event.RoomSearchMessage); ok {
+						return
+					}
+
 					data = data[bytesConsumed:]
-					continue
-				}
 
-				if _, err := conn.Write(responsePacket); err != nil {
-					log.Errorw("Error writing response to client", "error", err)
 				}
-
-				// Special case for room search where connection ownership changes
-				if _, ok := response.(event.RoomSearchMessage); ok {
-					return
-				}
-
-				data = data[bytesConsumed:]
 			}
 		}
 	}
@@ -146,7 +167,7 @@ func main() {
 		log.Fatalln("Failed to launch TCP server", err.Error())
 	}
 	log.Info("Server started and listening")
-  connectionManager := conm.NewConnectionManager()
+	connectionManager := conm.NewConnectionManager()
 	connChannel := make(chan *net.TCPConn)
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, loggerKey, log)
@@ -168,7 +189,6 @@ func main() {
 	}
 	log.Info("Messages client initialized")
 
-
 	broker.Start()
 	log.Info("Broker ready to process message")
 
@@ -180,6 +200,7 @@ func main() {
 	// Subscribe new messages handlers
 	broker.Subscribe("client_registration", messagesClient.HandleClientRegistration)
 	broker.Subscribe("client_unregistration", messagesClient.HandleClientUnregistration)
+	broker.Subscribe("message_request", messagesClient.HandleRouteMessage)
 
 	// Subscribe existing room handlers
 	broker.Subscribe("find-room", roomManager.FindRoom)

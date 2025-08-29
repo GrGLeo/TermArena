@@ -759,6 +759,30 @@ func (mp *MessagePacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
+type MessageResponsePacket struct {
+	version, code int
+	Message       string
+}
+
+func NewMessageResponsePacket(message string) *MessageResponsePacket {
+	return &MessageResponsePacket{
+		version: 1,
+		code:    101,
+		Message: message,
+	}
+}
+
+func (mrp *MessageResponsePacket) Version() int { return mrp.version }
+func (mrp *MessageResponsePacket) Code() int    { return mrp.code }
+func (mrp *MessageResponsePacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(mrp.version))
+	buf.WriteByte(byte(mrp.code))
+	binary.Write(&buf, binary.BigEndian, uint16(len(mrp.Message)))
+	buf.WriteString(mrp.Message)
+	return buf.Bytes()
+}
+
 // DeSerialize deserializes a byte slice into a specific Packet type.
 func DeSerialize(data []byte) (Packet, int, error) {
 	if len(data) < 2 {
@@ -1132,6 +1156,26 @@ func DeSerialize(data []byte) (Packet, int, error) {
 			version: version,
 			code:    code,
 			Sender:  sender,
+			Message: message,
+		}
+		return packet, totalLen, nil
+
+	case 101: // MessageResponsePacket
+		if len(data) < 4 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		messageLen := int(binary.BigEndian.Uint16(data[2:4]))
+		if len(data) < 4+messageLen+2 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		totalLen := 4 +  messageLen
+		if len(data) < totalLen {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		message := string(data[4 : 4+messageLen])
+		packet := &MessageResponsePacket{
+			version: version,
+			code:    code,
 			Message: message,
 		}
 		return packet, totalLen, nil
