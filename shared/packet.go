@@ -34,6 +34,8 @@ code 18: shop response
 code 19: purchase item
 ---
 code 100: message code
+code 101: message response
+code 102: message error
 */
 
 type Packet interface {
@@ -108,6 +110,12 @@ func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
 		return packet.Serialize(), nil
 	case event.RoomSearchMessage:
 		packet := NewLookRoomPacket(m.Success, m.RoomID, m.RoomIP)
+		return packet.Serialize(), nil
+	case event.MessageResponseMessage:
+		packet := NewMessageResponsePacket(m.Message)
+		return packet.Serialize(), nil
+	case event.MessageErrorResponse:
+		packet := NewMessageErrorPacket(m.Error)
 		return packet.Serialize(), nil
 	default:
 		return nil, errors.New("Failed to create packet from message")
@@ -759,6 +767,54 @@ func (mp *MessagePacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
+type MessageResponsePacket struct {
+	version, code int
+	Message       string
+}
+
+func NewMessageResponsePacket(message string) *MessageResponsePacket {
+	return &MessageResponsePacket{
+		version: 1,
+		code:    101,
+		Message: message,
+	}
+}
+
+func (mrp *MessageResponsePacket) Version() int { return mrp.version }
+func (mrp *MessageResponsePacket) Code() int    { return mrp.code }
+func (mrp *MessageResponsePacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(mrp.version))
+	buf.WriteByte(byte(mrp.code))
+	binary.Write(&buf, binary.BigEndian, uint16(len(mrp.Message)))
+	buf.WriteString(mrp.Message)
+	return buf.Bytes()
+}
+
+type MessageErrorPacket struct {
+	version, code int
+	Error         string
+}
+
+func NewMessageErrorPacket(errorMsg string) *MessageErrorPacket {
+	return &MessageErrorPacket{
+		version: 1,
+		code:    102,
+		Error:   errorMsg,
+	}
+}
+
+func (mep *MessageErrorPacket) Version() int { return mep.version }
+func (mep *MessageErrorPacket) Code() int    { return mep.code }
+func (mep *MessageErrorPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(mep.version))
+	buf.WriteByte(byte(mep.code))
+	binary.Write(&buf, binary.BigEndian, uint16(len(mep.Error)))
+	buf.WriteString(mep.Error)
+	return buf.Bytes()
+}
+
 // DeSerialize deserializes a byte slice into a specific Packet type.
 func DeSerialize(data []byte) (Packet, int, error) {
 	if len(data) < 2 {
@@ -1133,6 +1189,43 @@ func DeSerialize(data []byte) (Packet, int, error) {
 			code:    code,
 			Sender:  sender,
 			Message: message,
+		}
+		return packet, totalLen, nil
+
+	case 101: // MessageResponsePacket
+		if len(data) < 4 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		messageLen := int(binary.BigEndian.Uint16(data[2:4]))
+		if len(data) < 4+messageLen+2 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		totalLen := 4 + messageLen
+		if len(data) < totalLen {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		message := string(data[4 : 4+messageLen])
+		packet := &MessageResponsePacket{
+			version: version,
+			code:    code,
+			Message: message,
+		}
+		return packet, totalLen, nil
+
+	case 102: // MessageErrorPacket
+		if len(data) < 4 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		errorLen := int(binary.BigEndian.Uint16(data[2:4]))
+		totalLen := 4 + errorLen
+		if len(data) < totalLen {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		errorMsg := string(data[4:totalLen])
+		packet := &MessageErrorPacket{
+			version: version,
+			code:    code,
+			Error:   errorMsg,
 		}
 		return packet, totalLen, nil
 

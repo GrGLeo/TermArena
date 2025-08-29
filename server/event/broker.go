@@ -48,7 +48,7 @@ func (eb *EventBroker) Subscribe(eventType string, callback func(Message) Messag
 // Start initializes the worker pool and begins processing messages.
 func (eb *EventBroker) Start() {
 	eb.logger.Info("Starting event broker")
-	for i := 0; i < eb.workerPoolSize; i++ {
+	for i := range eb.workerPoolSize {
 		go eb.worker(i)
 	}
 	go eb.dispatch()
@@ -83,4 +83,3 @@ func (eb *EventBroker) worker(id int) {
 		}
 	}
 }
-

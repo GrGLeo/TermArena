@@ -1,23 +1,25 @@
-package auth
+package handlers
 
 import (
 	"context"
-	"log"
 	"os"
 	"time"
 
 	"github.com/GrGLeo/ctf/server/event"
 	"github.com/GrGLeo/ctf/server/proto/auth"
 	pb "github.com/GrGLeo/ctf/server/proto/auth"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 type AuthClient struct {
 	Client pb.AuthServiceClient
+	broker *event.EventBroker
+	logger *zap.SugaredLogger
 }
 
-func NewAuthClient() (*AuthClient, error) {
+func NewAuthClient(broker *event.EventBroker, logger *zap.SugaredLogger) (*AuthClient, error) {
 	authServiceAddr := os.Getenv("AUTH_SERVICE_ADDR")
 	if authServiceAddr == "" {
 		authServiceAddr = "localhost:50051"
@@ -29,6 +31,8 @@ func NewAuthClient() (*AuthClient, error) {
 	client := auth.NewAuthServiceClient(conn)
 	return &AuthClient{
 		Client: client,
+		broker: broker,
+		logger: logger,
 	}, nil
 }
 
@@ -43,7 +47,7 @@ func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 	})
 
 	if err != nil {
-		log.Printf("gRPC Register call failed: %v", err)
+		ac.logger.Errorw("gRPC Register call failed", "error", err, "username", req.Username)
 		return event.RegisterResponseMessage{
 			Success:   false,
 			Message:   "Internal server error",
@@ -112,6 +116,27 @@ func (ac *AuthClient) HandleAuth(msg event.Message) event.Message {
 		return event.AuthResponseMessage{
 			Success:      false,
 			Message:      authResp.Message,
+			SessionToken: "",
+			Conn:         req.Conn,
+		}
+	}
+
+	// When the client connect the room is the main lobby with ID 0
+	regResponseCh := make(chan event.Message, 1)
+	clientRegistration := event.ClientRegistrationMessage{
+		ClientID:  req.Username,
+		RoomID:    0,
+		Conn:      req.Conn,
+		ReponseCh: regResponseCh,
+	}
+	ac.broker.Publish(clientRegistration)
+
+	// Wait for client registration to complete
+	regResponse := <-regResponseCh
+	if regResp, ok := regResponse.(event.ClientRegistrationResponse); ok && !regResp.Success {
+		return event.AuthResponseMessage{
+			Success:      false,
+			Message:      "Failed to register client: " + regResp.Message,
 			SessionToken: "",
 			Conn:         req.Conn,
 		}
