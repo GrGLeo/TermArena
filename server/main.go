@@ -133,7 +133,6 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 					}
 					for _, receiverID := range resp.Receivers {
 						receiverConn, exist := connManager.GetConn(receiverID)
-						log.Infow("[SERVER] recevierConn found", "conn", receiverConn.RemoteAddr().String())
 						if exist {
 							if _, err := receiverConn.Write(responsePacket); err != nil {
 								log.Errorw("[SERVER] Error writing response to client", "error", err)
@@ -198,8 +197,8 @@ func main() {
 	}
 	log.Info("[SERVER] Messages client initialized")
 
-	broker.Start()
-	log.Info("[SERVER] Broker ready to process message")
+	broker.StartWithMonitoring(ctx)
+	log.Info("[SERVER] Broker ready to process message with monitoring")
 
 	// Subscribe new authentication handlers
 	broker.Subscribe("register_request", authClient.HandleRegistration)
