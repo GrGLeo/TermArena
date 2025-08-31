@@ -15,6 +15,7 @@ var (
 
 const (
 	SOLO = iota
+	PRACTICE
 	CLASSIC
 	RANKED
 )
@@ -25,18 +26,26 @@ type ClassicRoom struct {
 	MaxPlayers int
 }
 
+type PracticeRoom struct {
+	Port       string
+	PlayersIn  int
+	MaxPlayers int
+}
+
 // RoomManager handles the queueing and starting of game rooms.
 type RoomManager struct {
-	ClassicRooms map[string]*ClassicRoom
-	logger       *zap.SugaredLogger
-	mu           sync.Mutex
+	ClassicRooms  map[string]*ClassicRoom
+	PracticeRooms map[string]*PracticeRoom
+	logger        *zap.SugaredLogger
+	mu            sync.Mutex
 }
 
 // NewRoomManager initializes a new RoomManager.
 func NewRoomManager(logger *zap.SugaredLogger) *RoomManager {
 	return &RoomManager{
-		ClassicRooms: make(map[string]*ClassicRoom),
-		logger:       logger,
+		ClassicRooms:  make(map[string]*ClassicRoom),
+		PracticeRooms: make(map[string]*PracticeRoom),
+		logger:        logger,
 	}
 }
 
@@ -45,6 +54,8 @@ func getMaxPlayers(roomType int) int {
 	switch roomType {
 	case SOLO:
 		return 1
+	case PRACTICE:
+		return 4
 	case CLASSIC:
 		return 8
 	case RANKED:
@@ -96,18 +107,19 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 		}
 	}
 
-	if roomType == CLASSIC {
+  switch roomType {
+  case PRACTICE:
 		rm.mu.Lock()
 		defer rm.mu.Unlock()
 
 		// Find an existing room with space
-		for port, room := range rm.ClassicRooms {
+		for port, room := range rm.PracticeRooms {
 			if room.PlayersIn < room.MaxPlayers {
 				room.PlayersIn++
-				rm.logger.Infow("Player joined existing classic room", "port", port, "players", room.PlayersIn)
+				rm.logger.Infow("[ROOM MANAGER] Player joined existing practice room", "port", port, "players", room.PlayersIn)
 
 				if room.PlayersIn == room.MaxPlayers {
-					rm.logger.Infow("Classic room is now full, removing from queue", "port", port)
+					rm.logger.Infow("[ROOM MANAGER] Practice room is now full, removing from queue", "port", port)
 					delete(rm.ClassicRooms, port)
 				}
 
@@ -117,7 +129,28 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 				}
 			}
 		}
+  case CLASSIC:
+		rm.mu.Lock()
+		defer rm.mu.Unlock()
 
+		// Find an existing room with space
+		for port, room := range rm.ClassicRooms {
+			if room.PlayersIn < room.MaxPlayers {
+				room.PlayersIn++
+				rm.logger.Infow("[ROOM MANAGER] Player joined existing classic room", "port", port, "players", room.PlayersIn)
+
+				if room.PlayersIn == room.MaxPlayers {
+					rm.logger.Infow("[ROOM MANAGER] Classic room is now full, removing from queue", "port", port)
+					delete(rm.ClassicRooms, port)
+				}
+
+				return event.RoomSearchMessage{
+					Success: 0,
+					RoomIP:  port,
+				}
+			}
+		}
+  }
 		// No available rooms, create a new one
 		portMutex.Lock()
 		port := portCounter
@@ -131,20 +164,29 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 		maxPlayersStr := strconv.Itoa(maxPlayers)
 		StartGame(portStr, "1", maxPlayersStr)
 
-		newRoom := &ClassicRoom{
-			Port:       portStr,
-			PlayersIn:  1,
-			MaxPlayers: maxPlayers,
-		}
-		rm.ClassicRooms[portStr] = newRoom
-		rm.logger.Infow("Created new classic room", "port", portStr)
+    switch roomType {
+    case PRACTICE:
+      newRoom := &PracticeRoom{
+        Port:       portStr,
+        PlayersIn:  1,
+        MaxPlayers: maxPlayers,
+      }
+      rm.PracticeRooms[portStr] = newRoom
+      rm.logger.Infow("[ROOM MANAGER] Created new pratice room", "port", portStr)
+    case CLASSIC:
+      newRoom := &ClassicRoom{
+        Port:       portStr,
+        PlayersIn:  1,
+        MaxPlayers: maxPlayers,
+      }
+      rm.ClassicRooms[portStr] = newRoom
+      rm.logger.Infow("[ROOM MANAGER] Created new classic room", "port", portStr)
+    }
 
 		return event.RoomSearchMessage{
 			Success: 0,
 			RoomIP:  portStr,
 		}
-	}
-
 	// Default for other game modes like RANKED for now
 	return event.RoomSearchMessage{
 		Success: 0,
@@ -159,3 +201,4 @@ func (rm *RoomManager) JoinRoom(msg event.Message) event.Message {
 func (rm *RoomManager) CreateRoom(msg event.Message) event.Message {
 	return nil
 }
+

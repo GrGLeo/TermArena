@@ -10,6 +10,7 @@ import (
 	pb "github.com/GrGLeo/ctf_game/shared/proto/message"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"slices"
 )
 
 // mockMessageManager implements the MessageManager interface for testing
@@ -435,13 +436,7 @@ func TestRouteMessageHandler(t *testing.T) {
 						t.Errorf("receivers = %v, want %v", resp.Receivers, tt.expectedReceivers)
 					} else {
 						for _, expected := range tt.expectedReceivers {
-							found := false
-							for _, actual := range resp.Receivers {
-								if actual == expected {
-									found = true
-									break
-								}
-							}
+							found := slices.Contains(resp.Receivers, expected)
 							if !found {
 								t.Errorf("expected receiver %s not found in %v", expected, resp.Receivers)
 							}
