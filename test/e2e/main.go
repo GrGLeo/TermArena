@@ -251,8 +251,6 @@ func (c *TestClient) listenForResponses() {
 				c.username, timestamp, p.Success, p.Message, string(p.Challenge))
 
 		case *shared.LoginChallengeResponsePacket:
-			fmt.Printf("[%s] LOGIN CHALLENGE RESPONSE at %d: Challenge='%s'\n",
-				c.username, timestamp, string(p.Challenge))
 			// Store the challenge for authentication
 			c.challenge = make([]byte, len(p.Challenge))
 			copy(c.challenge, p.Challenge)

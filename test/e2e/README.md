@@ -1,6 +1,6 @@
 # E2E Test Suite
 
-This directory contains end-to-end tests for the CTF game's messaging system.
+This directory contains end-to-end tests for TermArena's messaging system.
 
 ## Overview
 
@@ -65,6 +65,7 @@ go build -o e2e_test
 - Authentication service running
 - Message service running
 - User keys available in `~/.config/term_arena/keys/`
+- User public keys stored server side
 
 ## User Management
 
@@ -116,13 +117,6 @@ test/e2e/
 1. **Connection Refused**: Ensure server is running on port 8082
 2. **Authentication Failed**: Check user keys exist in the expected location
 3. **Test Timeouts**: Verify all services are responding within expected timeframes
-
-### Debug Mode
-
-Enable verbose logging by setting the environment variable:
-```bash
-export LOG_LEVEL=debug
-```
 
 ## Contributing
 
