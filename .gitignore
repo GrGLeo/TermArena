@@ -1,5 +1,4 @@
 .env
-test/
 *.log
 /bin
 auth/target
