@@ -117,7 +117,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !msg.Success {
 				log.Println("Failed to log in")
 			} else {
-        m.Username = m.AuthModel.Username
+				m.Username = m.AuthModel.Username
 				m.state = Lobby
 				m.LobbyModel = model.NewLobbyModel(m.Connection, m.Username)
 				m.LobbyModel.SetDimension(m.height, m.width)
