@@ -92,6 +92,12 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.tabSelected = (m.tabSelected - 1 + 4) % 4
 	case TabRightMsg:
 		m.tabSelected = (m.tabSelected + 1) % 4
+	case communication.IncomingMessageMsg, communication.MessageErrorMsg:
+		// Always handle incoming messages regardless of current tab
+		var mm tea.Model
+		mm, cmd = m.messagingModel.Update(msg)
+		m.messagingModel = mm.(MessagingModel)
+		return m, cmd
 	}
 
 	if m.tabSelected == 0 {

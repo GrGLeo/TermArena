@@ -38,11 +38,14 @@ type Styles struct {
 	InactiveTab     lipgloss.Style
 	TabGap          lipgloss.Style
 	// Messaging
-	SystemMessage lipgloss.Style
-	OwnMessage    lipgloss.Style
-	OtherMessage  lipgloss.Style
-	InputPrompt   lipgloss.Style
-	Help          lipgloss.Style
+	SystemMessage  lipgloss.Style
+	OwnMessage     lipgloss.Style
+	OtherMessage   lipgloss.Style
+	AllMessage     lipgloss.Style
+	WhisperMessage lipgloss.Style
+	RoomMessage    lipgloss.Style
+	InputPrompt    lipgloss.Style
+	Help           lipgloss.Style
 }
 
 func DefaultStyles() *Styles {
@@ -106,11 +109,20 @@ func DefaultStyles() *Styles {
 		Italic(true)
 
 	s.OwnMessage = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("12")).
+		Foreground(lipgloss.Color("15")).
 		Bold(true)
 
 	s.OtherMessage = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("15"))
+
+	s.AllMessage = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("10")) // Green
+
+	s.WhisperMessage = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("13")) // Purple
+
+	s.RoomMessage = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("12")) // Blue
 
 	s.InputPrompt = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("11")).

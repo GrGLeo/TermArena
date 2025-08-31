@@ -38,10 +38,11 @@ type TabRightMsg struct{}
 func NewMessagingModel(conn *net.TCPConn, userID string) MessagingModel {
 	ti := textinput.New()
 	ti.Placeholder = "Type your message... (use /all or /userID for routing)"
-	ti.Width = 50
+	ti.Width = 60
 	ti.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	ti.Focus()
 
-	vp := viewport.New(80, 20)
+	vp := viewport.New(70, 21)
 	vp.SetContent("Welcome to the messaging system!\nUse /all to broadcast or /userID for private messages.\n")
 
 	return MessagingModel{
@@ -67,14 +68,16 @@ func (m MessagingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.viewport.Width = msg.Width
-		m.viewport.Height = msg.Height - 4
+		// For the moment we block to a fix size, this is not ideal.
+		m.viewport.Width = 70
+		m.viewport.Height = 21 - 4
 
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
 			if m.showInput && m.input.Value() != "" {
 				message := m.input.Value()
+				message = strings.Trim(message, " ")
 				m.input.SetValue("")
 
 				// Validate message before sending
@@ -98,14 +101,6 @@ func (m MessagingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						Timestamp: time.Now(),
 						IsSystem:  true,
 					})
-				} else {
-					// Add sent message to local display
-					m.addMessage(Message{
-						Content:   message,
-						SenderID:  m.username,
-						Timestamp: time.Now(),
-						IsSystem:  false,
-					})
 				}
 				m.updateViewport()
 				return m, nil
@@ -124,21 +119,6 @@ func (m MessagingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Handle navigation keys only when NOT in input mode
 		if !m.showInput {
-			switch msg.String() {
-			case "j", "k":
-				var vpCmd tea.Cmd
-				if msg.String() == "j" {
-					m.viewport, vpCmd = m.viewport.Update(tea.KeyMsg{Type: tea.KeyDown})
-				} else {
-					m.viewport, vpCmd = m.viewport.Update(tea.KeyMsg{Type: tea.KeyUp})
-				}
-				cmds = append(cmds, vpCmd)
-			case "h":
-				return m, func() tea.Msg { return TabLeftMsg{} }
-			case "l":
-				return m, func() tea.Msg { return TabRightMsg{} }
-			}
-
 			var vpCmd tea.Cmd
 			m.viewport, vpCmd = m.viewport.Update(msg)
 			cmds = append(cmds, vpCmd)
@@ -147,7 +127,7 @@ func (m MessagingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case communication.IncomingMessageMsg:
 		// Handle incoming messages from server
 		m.addMessage(Message{
-			Content:   msg.Content,
+			Content:   strings.Trim(msg.Content, " "),
 			Timestamp: time.Now(),
 			IsSystem:  false,
 		})
@@ -192,7 +172,7 @@ func (m MessagingModel) View() string {
 		)
 		sections = append(sections, inputSection)
 	} else {
-		scrollHelp := m.styles.Help.Render("↑/↓ (scroll), h/l (tabs), TAB (input mode)")
+		scrollHelp := m.styles.Help.Render("↑/↓ (scroll), ←/→ (tabs), TAB (input mode)")
 		sections = append(sections, scrollHelp)
 	}
 
@@ -213,21 +193,43 @@ func (m *MessagingModel) updateViewport() {
 
 	for _, msg := range m.messages {
 		timestamp := msg.Timestamp.Format("15:04:05")
+		var messageText string
 
 		if msg.IsSystem {
-			content.WriteString(m.styles.SystemMessage.Render(
-				fmt.Sprintf("[%s] *** %s ***\n", timestamp, msg.Content),
-			))
+			messageText = fmt.Sprintf("[%s] *** %s ***", timestamp, msg.Content)
 		} else {
 			if msg.SenderID == m.username {
-				content.WriteString(m.styles.OwnMessage.Render(
-					fmt.Sprintf("[%s] %s\n", timestamp, msg.Content),
-				))
+				messageText = fmt.Sprintf("[%s] %s", timestamp, msg.Content)
 			} else {
-				content.WriteString(m.styles.OtherMessage.Render(
-					fmt.Sprintf("[%s] %s\n", timestamp, msg.Content),
-				))
+				messageText = fmt.Sprintf("[%s] %s", timestamp, msg.Content)
 			}
+		}
+
+		// Handle message wrapping for long messages
+		messageLines := m.wrapMessage(messageText, m.viewport.Width)
+
+		for _, line := range messageLines {
+			// Pad the line to viewport width
+			paddedLine := m.padToWidth(line, m.viewport.Width)
+
+			if msg.IsSystem {
+				content.WriteString(m.styles.SystemMessage.Render(paddedLine))
+			} else {
+				var style lipgloss.Style
+				if msg.SenderID == m.username {
+					style = m.styles.OwnMessage
+				} else if strings.Contains(msg.Content, "(all)") {
+					style = m.styles.AllMessage
+				} else if strings.Contains(msg.Content, "(whisper)") {
+					style = m.styles.WhisperMessage
+				} else if strings.Contains(msg.Content, "(room)") {
+					style = m.styles.RoomMessage
+				} else {
+					style = m.styles.OtherMessage
+				}
+				content.WriteString(style.Render(paddedLine))
+			}
+			content.WriteString("\n")
 		}
 	}
 
@@ -235,19 +237,43 @@ func (m *MessagingModel) updateViewport() {
 	m.viewport.GotoBottom()
 }
 
+// Helper function to wrap long messages
+func (m *MessagingModel) wrapMessage(text string, width int) []string {
+	if len(text) <= width {
+		return []string{text}
+	}
+
+	var lines []string
+	for len(text) > width {
+		lines = append(lines, text[:width])
+		text = text[width:]
+	}
+	if len(text) > 0 {
+		lines = append(lines, text)
+	}
+	return lines
+}
+
+// Helper function to pad text to specified width
+func (m *MessagingModel) padToWidth(text string, width int) string {
+	if len(text) >= width {
+		return text
+	}
+	padding := width - len(text)
+	return text + strings.Repeat(" ", padding)
+}
+
 func (m *MessagingModel) SetDimension(width, height int) {
 	m.width = width
 	m.height = height
-	m.viewport.Width = width
-	m.viewport.Height = height - 6
 }
 
 func (m *MessagingModel) validateMessage(message string) error {
 	if len(message) == 0 {
 		return fmt.Errorf("message cannot be empty")
 	}
-	if len(message) > 1024 {
-		return fmt.Errorf("message too long (max 1024 characters)")
+	if len(message) > 256 {
+		return fmt.Errorf("message too long (max 256 characters)")
 	}
 
 	// Validate prefix format

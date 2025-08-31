@@ -163,18 +163,14 @@ func (mm *MessageManager) RouteMessage(sender string, content string) ([]string,
 		// Include all clients in room except sender
 		receivers = make([]string, 0, len(roomClients)-1)
 		for client := range roomClients {
-			if client != sender {
-				receivers = append(receivers, client)
-			}
+			receivers = append(receivers, client)
 		}
 		mm.logger.Info("[MESSAGE MANAGER] Broadcasting to all in room", "sender", sender, "receivers", receivers)
 	case "":
 		// Regular room message - exclude sender
 		receivers = make([]string, 0, len(roomClients)-1)
 		for client := range roomClients {
-			if client != sender {
-				receivers = append(receivers, client)
-			}
+			receivers = append(receivers, client)
 		}
 		mm.logger.Info("[MESSAGE MANAGER] Room message", "sender", sender, "receivers", receivers)
 	default:
