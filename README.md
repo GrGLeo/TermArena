@@ -12,16 +12,17 @@ This project has evolved from a Capture The Flag game to a MOBA (Multiplayer Onl
 
 ## Project Overview
 
-This project is a real-time multiplayer online battle arena (MOBA) game. Players control champions on a board, engaging in strategic combat, managing minions, and destroying enemy towers and bases. The game emphasizes real-time action, strategic decision-making, and team-based objectives.
+This project is a real-time multiplayer online battle arena (MOBA) game with integrated messaging capabilities. Players control champions on a board, engaging in strategic combat, managing minions, and destroying enemy towers and bases. The game emphasizes real-time action, strategic decision-making, team-based objectives, and seamless player communication through broadcast and private messaging.
 
 ## Components
 
 The project is composed of several distinct services:
 
 - **`game/` (Rust)**: The core game engine, responsible for managing game state, board logic, entity management (champions, minions, towers), collision detection, pathfinding, and animations. This is where the MOBA game mechanics are primarily implemented.
-- **`server/` (Go)**: The main game server, handling client connections, matchmaking, room management, and relaying game state updates between the `game/` engine and clients. It also processes player actions and forwards them to the `game/` engine.
-- **`client/` (Go)**: The game client, providing the user interface, handling player input, and rendering the game state received from the `server/`.
+- **`server/` (Go)**: The main game server, handling client connections, matchmaking, room management, messaging coordination, and relaying game state updates between the `game/` engine and clients. It also processes player actions and forwards them to the `game/` engine.
+- **`client/` (Go)**: The game client, providing the user interface, handling player input, real-time messaging, and rendering the game state received from the `server/`.
 - **`auth/` (Rust)**: The authentication service, responsible for user authentication and authorization.
+- **`services/message_service/` (Go)**: The messaging service, providing real-time player-to-player communication with support for broadcast and private messaging.
 
 ## Installation
 

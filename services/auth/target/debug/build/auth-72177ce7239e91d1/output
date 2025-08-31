@@ -1,0 +1,2 @@
+cargo:rerun-if-changed=../proto/auth/auth.proto
+cargo:rerun-if-changed=../proto

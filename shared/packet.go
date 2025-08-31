@@ -34,9 +34,9 @@ code 17: shop request
 code 18: shop response
 code 19: purchase item
 ---
-code 100: message code
-code 101: message response
-code 102: message error
+code 100: message packet (sender + message content)
+code 101: message response (routed message content)
+code 102: message error (error description)
 */
 
 type Packet interface {
@@ -1199,7 +1199,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		messageLen := int(binary.BigEndian.Uint16(data[2:4]))
 		if len(data) < 4+messageLen {
-      return nil, 0, errors.New(fmt.Sprintf("incomplete packet message length: %d | %d", messageLen, len(data)))
+			return nil, 0, errors.New(fmt.Sprintf("incomplete packet message length: %d | %d", messageLen, len(data)))
 		}
 		totalLen := 4 + messageLen
 		if len(data) < totalLen {
