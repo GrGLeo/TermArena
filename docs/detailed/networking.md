@@ -350,7 +350,45 @@ sequenceDiagram
 
 ---
 
-## Part 3: Message Service Packet Reference
+## Part 3: Message Service Communication (Real-time Messaging)
+
+The Message Service handles real-time player-to-player communication through dedicated packet codes (100-102). Clients connect directly to the Message Service for messaging functionality while the Go Server coordinates room-based messaging.
+
+### Message Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Go Server
+    participant Message Service
+
+    Client->>Go Server: Join room (TCP connection)
+    Go Server->>Message Service: RegisterClient(client_id, room_id) via gRPC
+    Message Service-->>Go Server: Registration confirmation
+
+    Client->>Message Service: TCP connection for messaging
+    Client->>Message Service: MessagePacket (Code 100) with content
+    Message Service->>Message Service: Route message based on prefix (/all, /userID)
+    Message Service->>Client: MessageResponsePacket (Code 101) to recipients
+
+    alt Error case
+        Message Service->>Client: MessageErrorPacket (Code 102) on failure
+    end
+
+    Client->>Go Server: Leave room
+    Go Server->>Message Service: UnregisterClient(client_id) via gRPC
+```
+
+### Message Routing Patterns
+
+The Message Service supports several routing patterns:
+
+- **Broadcast (`/all`):** Messages sent to all players in the current room
+- **Private (`/userID`):** Direct messages to a specific player
+- **Room-based:** Messages scoped to the current game room
+- **System Messages:** Automated messages from the server
+
+## Message Service Packet Reference
 
 The Message Service uses dedicated packet codes (100-102) for real-time messaging functionality.
 
