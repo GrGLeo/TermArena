@@ -30,7 +30,7 @@ impl AuthService for TermArenaAuthService {
     ) -> Result<Response<RegisterResponse>, Status> {
         let req = request.into_inner();
         let username_for_log = req.username.clone(); // Clone for logging
-        println!("Registering user: {}", username_for_log);
+        println!("[AUTH] Registering user: {}", username_for_log);
 
         let conn = self.db.lock().await;
         let username = req.username.clone();
@@ -50,7 +50,7 @@ impl AuthService for TermArenaAuthService {
         match res {
             Ok(_) => {
                 // Username registered, now we need to generate a challenge
-                println!("Starting challenge creation for user: {}", username_for_log);
+                println!("[AUTH] Starting challenge creation for user: {}", username_for_log);
                 let mut challenge = [0u8; 32];
                 rand::thread_rng().fill_bytes(&mut challenge);
 
@@ -66,14 +66,14 @@ impl AuthService for TermArenaAuthService {
                         }
                     })
                     .await;
-                println!("Challenge stored for user: {}", username_for_log);
+                println!("[AUTH] Challenge stored for user: {}", username_for_log);
 
                 if let Err(e) = res {
-                    eprintln!("Failed to store challenge for {}: {}", req.username, e);
+                    eprintln!("[AUTH] Failed to store challenge for {}: {}", req.username, e);
                     return Err(Status::internal("Failed to prepare login challenge"));
                 }
 
-                println!("Challenge created for user: {}", username_for_log);
+                println!("[AUTH] Challenge created for user: {}", username_for_log);
 
                 Ok(Response::new(RegisterResponse {
                     success: true,
@@ -82,7 +82,7 @@ impl AuthService for TermArenaAuthService {
                 }))
             }
             Err(e) => {
-                println!("Failed to register user {}: {}", username_for_log, e);
+                println!("[AUTH] Failed to register user {}: {}", username_for_log, e);
                 Ok(Response::new(RegisterResponse {
                     success: false,
                     message: "Username may already be taken.".into(),
@@ -97,7 +97,7 @@ impl AuthService for TermArenaAuthService {
         request: Request<GetLoginChallengeRequest>,
     ) -> Result<Response<GetLoginChallengeResponse>, Status> {
         let req = request.into_inner();
-        println!("Generating challenge for user: {}", req.username);
+        println!("[AUTH] Generating challenge for user: {}", req.username);
 
         let mut challenge = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut challenge);
@@ -117,7 +117,7 @@ impl AuthService for TermArenaAuthService {
             .await;
 
         if let Err(e) = res {
-            eprintln!("Failed to store challenge for {}: {}", req.username, e);
+            eprintln!("[AUTH] Failed to store challenge for {}: {}", req.username, e);
             return Err(Status::internal("Failed to prepare login challenge"));
         }
 
@@ -132,7 +132,7 @@ impl AuthService for TermArenaAuthService {
     ) -> Result<Response<AuthentificateResponse>, Status> {
         let req = request.into_inner();
         let username_for_log = req.username.clone(); // Clone for logging
-        println!("Authenticating user: {}", username_for_log);
+        println!("[AUTH] Authenticating user: {}", username_for_log);
 
         let db = self.db.lock().await;
 
@@ -186,14 +186,14 @@ impl AuthService for TermArenaAuthService {
             )
             .is_ok()
         {
-            println!("Successfully authenticated user: {}", username_for_log);
+            println!("[AUTH] Successfully authenticated user: {}", username_for_log);
             Ok(Response::new(AuthentificateResponse {
                 success: true,
                 message: "Authentication successful".into(),
             }))
         } else {
             println!(
-                "Authentication failed (invalid signature) for user: {}",
+                "[AUTH] Authentication failed (invalid signature) for user: {}",
                 username_for_log
             );
             Ok(Response::new(AuthentificateResponse {
@@ -231,11 +231,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .await?;
 
-    println!("Database is ready.");
+    println!("[AUTH] Database is ready.");
 
     let auth_service = TermArenaAuthService { db };
 
-    println!("AuthService listening on {}", addr);
+    println!("[AUTH] AuthService listening on {}", addr);
 
     Server::builder()
         .add_service(AuthServiceServer::new(auth_service))

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"net"
 
 	"github.com/GrGLeo/ctf/server/event"
@@ -1194,15 +1195,15 @@ func DeSerialize(data []byte) (Packet, int, error) {
 
 	case 101: // MessageResponsePacket
 		if len(data) < 4 {
-			return nil, 0, errors.New("incomplete packet")
+			return nil, 0, errors.New("incomplete packet header")
 		}
 		messageLen := int(binary.BigEndian.Uint16(data[2:4]))
-		if len(data) < 4+messageLen+2 {
-			return nil, 0, errors.New("incomplete packet")
+		if len(data) < 4+messageLen {
+      return nil, 0, errors.New(fmt.Sprintf("incomplete packet message length: %d | %d", messageLen, len(data)))
 		}
 		totalLen := 4 + messageLen
 		if len(data) < totalLen {
-			return nil, 0, errors.New("incomplete packet")
+			return nil, 0, errors.New("incomplete packet total length")
 		}
 		message := string(data[4 : 4+messageLen])
 		packet := &MessageResponsePacket{

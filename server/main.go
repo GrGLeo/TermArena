@@ -55,10 +55,10 @@ func HandleClient(ctx context.Context, server *net.TCPListener, connChannel chan
 	for {
 		conn, err := server.AcceptTCP()
 		if err != nil {
-			log.Errorln("Failed to accept connection")
+			log.Errorln("[SERVER] Failed to accept connection")
 			continue
 		}
-		log.Infow("Accept new connection", "ip", conn.RemoteAddr())
+		log.Infow("[SERVER] Accept new connection", "ip", conn.RemoteAddr())
 		connChannel <- conn
 	}
 }
@@ -71,7 +71,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 		n, err := conn.Read(buffer)
 		if err != nil {
 			if err.Error() == "EOF" {
-				log.Infow("Client disconnected", "ip", conn.RemoteAddr())
+				log.Infow("[SERVER] Client disconnected", "ip", conn.RemoteAddr())
 				// Unregister the client
 				client, exist := connManager.Unregister(conn)
 				if exist {
@@ -83,7 +83,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 					broker.Publish(msg)
 				}
 			} else {
-				log.Infow("Error reading from client", "ip", conn.RemoteAddr(), "error", err)
+				log.Infow("[SERVER] Error reading from client", "ip", conn.RemoteAddr(), "error", err)
 			}
 			return // Exit if there's an error or if the client disconnects
 		}
@@ -96,52 +96,62 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 					if err.Error() == "incomplete packet" {
 						break // Wait for more data
 					}
-					log.Infow("Error deserializing packet", "ip", conn.RemoteAddr(), "error", err)
+					log.Infow("[SERVER] Error deserializing packet", "ip", conn.RemoteAddr(), "error", err)
 					data = nil // Clear buffer on persistent error
 					continue
 				}
 
 				msg, err := shared.CreateMessage(packet, conn)
 				if err != nil {
-					log.Infow("Error creating message from packet", "ip", conn.RemoteAddr(), "error", err)
+					log.Infow("[SERVER] Error creating message from packet", "ip", conn.RemoteAddr(), "error", err)
 					data = data[bytesConsumed:]
 					continue
 				}
 
+				// Log message processing
+				if msg.Type() == "message_request" {
+					if reqMsg, ok := msg.(event.MessageRequestMessage); ok {
+						log.Infow("[SERVER] MessageRequest received", "sender", reqMsg.Sender, "message", reqMsg.Message, "ip", conn.RemoteAddr())
+					}
+				}
+
 				// Unified logic: publish message, wait for response, create packet, send response.
+				log.Infow("[SERVER] Publishing message to broker", "message_type", msg.Type(), "ip", conn.RemoteAddr())
 				broker.Publish(msg)
+				log.Infow("[SERVER] Waiting for response from broker", "message_type", msg.Type())
 				response := <-msg.ResponseChan()
+				log.Infow("[SERVER] Received response from broker", "response_type", response.Type(), "ip", conn.RemoteAddr())
 
 				switch resp := response.(type) {
 				case event.MessageResponseMessage:
-					log.Infow("MessageResponseMessage found", "message", resp.Message)
+					log.Infow("[SERVER] MessageResponseMessage found", "message", resp.Message)
 					responsePacket, err := shared.CreatePacketFromMessage(resp)
 					if err != nil {
-						log.Errorw("Error creating packet from message", "error", err.Error())
+						log.Errorw("[SERVER] Error creating packet from message", "error", err.Error())
 						data = data[bytesConsumed:]
 						continue
 					}
 					for _, receiverID := range resp.Receivers {
 						receiverConn, exist := connManager.GetConn(receiverID)
-						log.Infow("recevierConn found", "conn", receiverConn.RemoteAddr().String())
+						log.Infow("[SERVER] recevierConn found", "conn", receiverConn.RemoteAddr().String())
 						if exist {
 							if _, err := receiverConn.Write(responsePacket); err != nil {
-								log.Errorw("Error writing response to client", "error", err)
+								log.Errorw("[SERVER] Error writing response to client", "error", err)
 							}
 						} else {
-							log.Warnw("Could not find connection for receiver", "receiver", receiverID)
+							log.Warnw("[SERVER] Could not find connection for receiver", "receiver", receiverID)
 						}
 					}
 					data = data[bytesConsumed:]
 				default:
 					responsePacket, err := shared.CreatePacketFromMessage(resp)
 					if err != nil {
-						log.Errorw("Error creating packet from message", "error", err.Error())
+						log.Errorw("[SERVER] Error creating packet from message", "error", err.Error())
 						data = data[bytesConsumed:]
 						continue
 					}
 					if _, err := conn.Write(responsePacket); err != nil {
-						log.Errorw("Error writing response to client", "error", err)
+						log.Errorw("[SERVER] Error writing response to client", "error", err)
 					}
 					// Special case for room search where connection ownership changes
 					if _, ok := response.(event.RoomSearchMessage); ok {
@@ -156,40 +166,40 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 
 func main() {
 	log := NewLogger(env)
-	log.Info("Starting server...")
+	log.Info("[SERVER] Starting server...")
 	serverAddr, err := net.ResolveTCPAddr("tcp", ":8082")
 	if err != nil {
-		log.Fatalln("Failed to resolve TCP Addr", err.Error())
+		log.Fatalln("[SERVER] Failed to resolve TCP Addr", err.Error())
 	}
 	server, err := net.ListenTCP("tcp", serverAddr)
 	if err != nil {
-		log.Fatalln("Failed to launch TCP server", err.Error())
+		log.Fatalln("[SERVER] Failed to launch TCP server", err.Error())
 	}
-	log.Info("Server started and listening")
+	log.Info("[SERVER] Server started and listening")
 	connectionManager := conm.NewConnectionManager()
 	connChannel := make(chan *net.TCPConn)
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, loggerKey, log)
 
 	broker := event.NewEventBroker(log, 10)
-	log.Info("New Event Broker initialize")
+	log.Info("[SERVER] New Event Broker initialize")
 
 	roomManager := manager.NewRoomManager(log)
-	log.Info("New room manager initialize")
+	log.Info("[SERVER] New room manager initialize")
 
 	authClient, err := handler.NewAuthClient(broker, log)
 	if err != nil {
-		log.Fatalln("Failed to create auth client:", err)
+		log.Fatalln("[SERVER] Failed to create auth client:", err)
 	}
-	log.Info("Auth client initialized")
+	log.Info("[SERVER] Auth client initialized")
 	messagesClient, err := handler.NewMessageServiceClient(connectionManager, log)
 	if err != nil {
-		log.Fatalln("Failed to create messages client:", err)
+		log.Fatalln("[SERVER] Failed to create messages client:", err)
 	}
-	log.Info("Messages client initialized")
+	log.Info("[SERVER] Messages client initialized")
 
 	broker.Start()
-	log.Info("Broker ready to process message")
+	log.Info("[SERVER] Broker ready to process message")
 
 	// Subscribe new authentication handlers
 	broker.Subscribe("register_request", authClient.HandleRegistration)
