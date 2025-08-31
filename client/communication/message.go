@@ -133,3 +133,13 @@ type ReconnectMsg struct{}
 
 // Cooldown msg for abilities
 type CooldownTickMsg struct{}
+
+// Content of a new received message
+type IncomingMessageMsg struct {
+	Content  string
+}
+
+// Error content of a failed message
+type MessageErrorMsg struct {
+	Error string
+}

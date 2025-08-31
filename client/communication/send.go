@@ -141,14 +141,6 @@ func SendMessage(conn *net.TCPConn, sender, message string) error {
 	return err
 }
 
-// Message types for Bubbletea
-type IncomingMessageMsg struct {
-	Content  string
-}
-
-type MessageErrorMsg struct {
-	Error string
-}
 
 func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 	var data []byte
