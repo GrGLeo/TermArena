@@ -1,1 +1,0 @@
-/home/leo/code/ctf_game/auth/target/release/auth: /home/leo/code/ctf_game/auth/../proto /home/leo/code/ctf_game/auth/../proto/auth/auth.proto /home/leo/code/ctf_game/auth/build.rs /home/leo/code/ctf_game/auth/src/main.rs /home/leo/code/ctf_game/auth/target/release/build/auth-85f285a6b9ca8b27/out/auth.rs
