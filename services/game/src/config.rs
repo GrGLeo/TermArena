@@ -1,0 +1,142 @@
+use std::collections::HashMap;
+use std::fs;
+
+use serde::Deserialize;
+
+use crate::game::entities::item::Item;
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ItemFile {
+    pub items: Vec<Item>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BaseStats {
+    pub health: u16,
+    pub armor: u16,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ChampionStats {
+    pub attack_damage: u16,
+    pub attack_speed_ms: u64,
+    pub health: u16,
+    pub mana: u16,
+    pub armor: u16,
+    pub xp_per_level: Vec<u16>,
+    pub level_up_health_increase: u16,
+    pub level_up_attack_damage_increase: u16,
+    pub level_up_armor_increase: u16,
+    pub health_per_sec: f32,
+    pub mana_per_sec: f32,
+    pub attack_range_row: u16,
+    pub attack_range_col: u16,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MinionStats {
+    pub attack_damage: u16,
+    pub attack_speed_ms: u64,
+    pub health: u16,
+    pub armor: u16,
+    pub aggro_range_row: u16,
+    pub aggro_range_col: u16,
+    pub attack_range_row: u16,
+    pub attack_range_col: u16,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct TowerStats {
+    pub attack_damage: u16,
+    pub attack_speed_secs: u64,
+    pub health: u16,
+    pub armor: u16,
+    pub attack_range_row: u16,
+    pub attack_range_col: u16,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MonsterStats {
+    pub id: String,
+    pub spawn_row: u16,
+    pub spawn_col: u16,
+    pub attack_damage: u16,
+    pub attack_speed_ms: u64,
+    pub health: u16,
+    pub armor: u16,
+    pub aggro_range_row: u8,
+    pub aggro_range_col: u8,
+    pub attack_range_row: u8,
+    pub attack_range_col: u8,
+    pub leash_range: u8,
+    pub xp_reward: u8,
+    pub gold_reward: u16,
+    pub health_reward: u8,
+    pub buff_reward: Option<String>,
+    pub respawn_timer_secs: u16,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct SpellStats {
+    pub id: u8,
+    pub mana_cost: u16,
+    pub cooldown_secs: u8,
+    pub range: u16,
+    pub speed: u32,
+    pub width: u8,
+    pub damage_ratio: f32,
+    pub base_damage: u16,
+    #[serde(default)]
+    pub effect_duration: Option<u8>,
+    #[serde(default)]
+    pub is_heal: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct SpellFile {
+    spell: Vec<SpellStats>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct GameConfig {
+    pub base: BaseStats,
+    pub champion: ChampionStats,
+    pub minion: MinionStats,
+    pub tower: TowerStats,
+    pub neutral_monsters: Vec<MonsterStats>,
+    #[serde(skip)]
+    pub spells: HashMap<u8, SpellStats>,
+    #[serde(skip)]
+    pub items: HashMap<u32, Item>,
+}
+
+impl GameConfig {
+    pub fn load(
+        config_path: &str,
+        spell_path: &str,
+        items_path: &str,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let content = fs::read_to_string(config_path)?;
+        let mut config: GameConfig = toml::from_str(&content)?;
+
+        let spell_content = fs::read_to_string(spell_path)?;
+        let spells_file: SpellFile = toml::from_str(&spell_content)?;
+
+        config.spells = spells_file
+            .spell
+            .into_iter()
+            .map(|spell_conf| (spell_conf.id, spell_conf))
+            .collect();
+
+        let items_content = fs::read_to_string(items_path)?;
+        let items_file: ItemFile = toml::from_str(&items_content)?;
+
+        config.items = items_file
+            .items
+            .into_iter()
+            .map(|item| (item.id, item))
+            .collect();
+
+        Ok(config)
+    }
+}
