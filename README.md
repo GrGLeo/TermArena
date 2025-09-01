@@ -11,7 +11,7 @@ make build
 ./run_app.sh
 ```
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Architecture](#architecture)
@@ -25,7 +25,7 @@ make build
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 
-## 🎯 Overview
+## Overview
 
 TermArena evolved from a Capture The Flag game to a full-featured MOBA with a complete rewrite of the core game logic in Rust. Players control champions on a dynamic board, engaging in strategic combat, fighting AI minions and champions, destroying enemy towers and bases. The game emphasizes real-time action, tactical decision-making, and seamless communication through integrated messaging.
 
@@ -37,7 +37,7 @@ TermArena evolved from a Capture The Flag game to a full-featured MOBA with a co
 - **Cross-Platform**: Terminal-based client with server infrastructure
 - **Extensible Design**: Plugin-based spell and item systems
 
-## 🏗️ Architecture
+## Architecture
 
 The system uses a microservices architecture with specialized components communicating via TCP and gRPC protocols.
 
@@ -48,8 +48,6 @@ graph TD
     B -->|gRPC| E{Message Service}
     B -->|Spawns| D(Rust Game Server)
     A -->|TCP| D
-    A -->|TCP| E
-    A -->|TCP| E
 ```
 
 ### Data Flow
@@ -58,9 +56,9 @@ graph TD
 2. **Room Management**: Go Server coordinates matchmaking and room creation
 3. **Game Launch**: Go Server spawns dedicated Rust Game Server for each match
 4. **Real-time Gameplay**: Client connects directly to Rust Game Server for low-latency gameplay
-5. **Messaging**: Client connects to Message Service for real-time communication
+5. **Messaging**: Client sends message to Go Server → Server queries Message Service for routes and parsed message → Message Service returns routes and parsed message to Server → Server distributes to receivers
 
-## 🔧 Components
+## Components
 
 ### Core Services
 
