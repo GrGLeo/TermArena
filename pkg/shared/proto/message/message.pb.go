@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v3.21.12
-// source: proto/message/message.proto
+// source: pkg/proto/message/message.proto
 
 package message
 
@@ -32,7 +32,7 @@ type RouteMessageRequest struct {
 
 func (x *RouteMessageRequest) Reset() {
 	*x = RouteMessageRequest{}
-	mi := &file_proto_message_message_proto_msgTypes[0]
+	mi := &file_pkg_proto_message_message_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -44,7 +44,7 @@ func (x *RouteMessageRequest) String() string {
 func (*RouteMessageRequest) ProtoMessage() {}
 
 func (x *RouteMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_message_message_proto_msgTypes[0]
+	mi := &file_pkg_proto_message_message_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -57,7 +57,7 @@ func (x *RouteMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouteMessageRequest.ProtoReflect.Descriptor instead.
 func (*RouteMessageRequest) Descriptor() ([]byte, []int) {
-	return file_proto_message_message_proto_rawDescGZIP(), []int{0}
+	return file_pkg_proto_message_message_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *RouteMessageRequest) GetSender() string {
@@ -84,7 +84,7 @@ type RouteMessageResponse struct {
 
 func (x *RouteMessageResponse) Reset() {
 	*x = RouteMessageResponse{}
-	mi := &file_proto_message_message_proto_msgTypes[1]
+	mi := &file_pkg_proto_message_message_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -96,7 +96,7 @@ func (x *RouteMessageResponse) String() string {
 func (*RouteMessageResponse) ProtoMessage() {}
 
 func (x *RouteMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_message_message_proto_msgTypes[1]
+	mi := &file_pkg_proto_message_message_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -109,7 +109,7 @@ func (x *RouteMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouteMessageResponse.ProtoReflect.Descriptor instead.
 func (*RouteMessageResponse) Descriptor() ([]byte, []int) {
-	return file_proto_message_message_proto_rawDescGZIP(), []int{1}
+	return file_pkg_proto_message_message_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *RouteMessageResponse) GetReceivers() []string {
@@ -137,7 +137,7 @@ type RegisterClientRequest struct {
 
 func (x *RegisterClientRequest) Reset() {
 	*x = RegisterClientRequest{}
-	mi := &file_proto_message_message_proto_msgTypes[2]
+	mi := &file_pkg_proto_message_message_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -149,7 +149,7 @@ func (x *RegisterClientRequest) String() string {
 func (*RegisterClientRequest) ProtoMessage() {}
 
 func (x *RegisterClientRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_message_message_proto_msgTypes[2]
+	mi := &file_pkg_proto_message_message_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -162,7 +162,7 @@ func (x *RegisterClientRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterClientRequest.ProtoReflect.Descriptor instead.
 func (*RegisterClientRequest) Descriptor() ([]byte, []int) {
-	return file_proto_message_message_proto_rawDescGZIP(), []int{2}
+	return file_pkg_proto_message_message_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *RegisterClientRequest) GetClient() string {
@@ -187,7 +187,7 @@ type RegisterClientResponse struct {
 
 func (x *RegisterClientResponse) Reset() {
 	*x = RegisterClientResponse{}
-	mi := &file_proto_message_message_proto_msgTypes[3]
+	mi := &file_pkg_proto_message_message_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -199,7 +199,7 @@ func (x *RegisterClientResponse) String() string {
 func (*RegisterClientResponse) ProtoMessage() {}
 
 func (x *RegisterClientResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_message_message_proto_msgTypes[3]
+	mi := &file_pkg_proto_message_message_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -212,7 +212,7 @@ func (x *RegisterClientResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterClientResponse.ProtoReflect.Descriptor instead.
 func (*RegisterClientResponse) Descriptor() ([]byte, []int) {
-	return file_proto_message_message_proto_rawDescGZIP(), []int{3}
+	return file_pkg_proto_message_message_proto_rawDescGZIP(), []int{3}
 }
 
 // === UNREGISTER MESSAGE ===
@@ -225,7 +225,7 @@ type UnregisterClientRequest struct {
 
 func (x *UnregisterClientRequest) Reset() {
 	*x = UnregisterClientRequest{}
-	mi := &file_proto_message_message_proto_msgTypes[4]
+	mi := &file_pkg_proto_message_message_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -237,7 +237,7 @@ func (x *UnregisterClientRequest) String() string {
 func (*UnregisterClientRequest) ProtoMessage() {}
 
 func (x *UnregisterClientRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_message_message_proto_msgTypes[4]
+	mi := &file_pkg_proto_message_message_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -250,7 +250,7 @@ func (x *UnregisterClientRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnregisterClientRequest.ProtoReflect.Descriptor instead.
 func (*UnregisterClientRequest) Descriptor() ([]byte, []int) {
-	return file_proto_message_message_proto_rawDescGZIP(), []int{4}
+	return file_pkg_proto_message_message_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *UnregisterClientRequest) GetClient() string {
@@ -268,7 +268,7 @@ type UnregisterClientResponse struct {
 
 func (x *UnregisterClientResponse) Reset() {
 	*x = UnregisterClientResponse{}
-	mi := &file_proto_message_message_proto_msgTypes[5]
+	mi := &file_pkg_proto_message_message_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -280,7 +280,7 @@ func (x *UnregisterClientResponse) String() string {
 func (*UnregisterClientResponse) ProtoMessage() {}
 
 func (x *UnregisterClientResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_message_message_proto_msgTypes[5]
+	mi := &file_pkg_proto_message_message_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -293,14 +293,14 @@ func (x *UnregisterClientResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnregisterClientResponse.ProtoReflect.Descriptor instead.
 func (*UnregisterClientResponse) Descriptor() ([]byte, []int) {
-	return file_proto_message_message_proto_rawDescGZIP(), []int{5}
+	return file_pkg_proto_message_message_proto_rawDescGZIP(), []int{5}
 }
 
-var File_proto_message_message_proto protoreflect.FileDescriptor
+var File_pkg_proto_message_message_proto protoreflect.FileDescriptor
 
-const file_proto_message_message_proto_rawDesc = "" +
+const file_pkg_proto_message_message_proto_rawDesc = "" +
 	"\n" +
-	"\x1bproto/message/message.proto\x12\amessage\"G\n" +
+	"\x1fpkg/proto/message/message.proto\x12\amessage\"G\n" +
 	"\x13RouteMessageRequest\x12\x16\n" +
 	"\x06sender\x18\x01 \x01(\tR\x06sender\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\"N\n" +
@@ -317,22 +317,22 @@ const file_proto_message_message_proto_rawDesc = "" +
 	"\x0eMessageService\x12M\n" +
 	"\fRouteMessage\x12\x1c.message.RouteMessageRequest\x1a\x1d.message.RouteMessageResponse\"\x00\x12S\n" +
 	"\x0eRegisterClient\x12\x1e.message.RegisterClientRequest\x1a\x1f.message.RegisterClientResponse\"\x00\x12Y\n" +
-	"\x10UnregisterClient\x12 .message.UnregisterClientRequest\x1a!.message.UnregisterClientResponse\"\x00B0Z.github.com/GrGLeo/ctf/pkg/shared/proto/messageb\x06proto3"
+	"\x10UnregisterClient\x12 .message.UnregisterClientRequest\x1a!.message.UnregisterClientResponse\"\x00B\x1aZ\x18pkg/shared/proto/messageb\x06proto3"
 
 var (
-	file_proto_message_message_proto_rawDescOnce sync.Once
-	file_proto_message_message_proto_rawDescData []byte
+	file_pkg_proto_message_message_proto_rawDescOnce sync.Once
+	file_pkg_proto_message_message_proto_rawDescData []byte
 )
 
-func file_proto_message_message_proto_rawDescGZIP() []byte {
-	file_proto_message_message_proto_rawDescOnce.Do(func() {
-		file_proto_message_message_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_message_message_proto_rawDesc), len(file_proto_message_message_proto_rawDesc)))
+func file_pkg_proto_message_message_proto_rawDescGZIP() []byte {
+	file_pkg_proto_message_message_proto_rawDescOnce.Do(func() {
+		file_pkg_proto_message_message_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pkg_proto_message_message_proto_rawDesc), len(file_pkg_proto_message_message_proto_rawDesc)))
 	})
-	return file_proto_message_message_proto_rawDescData
+	return file_pkg_proto_message_message_proto_rawDescData
 }
 
-var file_proto_message_message_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_proto_message_message_proto_goTypes = []any{
+var file_pkg_proto_message_message_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_pkg_proto_message_message_proto_goTypes = []any{
 	(*RouteMessageRequest)(nil),      // 0: message.RouteMessageRequest
 	(*RouteMessageResponse)(nil),     // 1: message.RouteMessageResponse
 	(*RegisterClientRequest)(nil),    // 2: message.RegisterClientRequest
@@ -340,7 +340,7 @@ var file_proto_message_message_proto_goTypes = []any{
 	(*UnregisterClientRequest)(nil),  // 4: message.UnregisterClientRequest
 	(*UnregisterClientResponse)(nil), // 5: message.UnregisterClientResponse
 }
-var file_proto_message_message_proto_depIdxs = []int32{
+var file_pkg_proto_message_message_proto_depIdxs = []int32{
 	0, // 0: message.MessageService.RouteMessage:input_type -> message.RouteMessageRequest
 	2, // 1: message.MessageService.RegisterClient:input_type -> message.RegisterClientRequest
 	4, // 2: message.MessageService.UnregisterClient:input_type -> message.UnregisterClientRequest
@@ -354,26 +354,26 @@ var file_proto_message_message_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_proto_message_message_proto_init() }
-func file_proto_message_message_proto_init() {
-	if File_proto_message_message_proto != nil {
+func init() { file_pkg_proto_message_message_proto_init() }
+func file_pkg_proto_message_message_proto_init() {
+	if File_pkg_proto_message_message_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_message_message_proto_rawDesc), len(file_proto_message_message_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_message_message_proto_rawDesc), len(file_pkg_proto_message_message_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_proto_message_message_proto_goTypes,
-		DependencyIndexes: file_proto_message_message_proto_depIdxs,
-		MessageInfos:      file_proto_message_message_proto_msgTypes,
+		GoTypes:           file_pkg_proto_message_message_proto_goTypes,
+		DependencyIndexes: file_pkg_proto_message_message_proto_depIdxs,
+		MessageInfos:      file_pkg_proto_message_message_proto_msgTypes,
 	}.Build()
-	File_proto_message_message_proto = out.File
-	file_proto_message_message_proto_goTypes = nil
-	file_proto_message_message_proto_depIdxs = nil
+	File_pkg_proto_message_message_proto = out.File
+	file_pkg_proto_message_message_proto_goTypes = nil
+	file_pkg_proto_message_message_proto_depIdxs = nil
 }

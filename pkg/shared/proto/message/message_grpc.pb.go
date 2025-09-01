@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v3.21.12
-// source: proto/message/message.proto
+// source: pkg/proto/message/message.proto
 
 package message
 
@@ -213,5 +213,5 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/message/message.proto",
+	Metadata: "pkg/proto/message/message.proto",
 }
