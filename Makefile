@@ -15,12 +15,12 @@ build-game:
 build-server:
 	@echo "Building server..."
 	@mkdir -p bin
-	go build -o bin/server ./server
+	cd server && go build -o ../bin/server .
 
 build-client:
 	@echo "Building client..."
 	@mkdir -p bin
-	go build -o bin/client ./client
+	cd client && go build -o ../bin/client .
 
 package: build
 	@echo "Packaging application..."

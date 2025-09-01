@@ -4,7 +4,7 @@ go 1.23.2
 
 require (
 	github.com/GrGLeo/ctf/client v0.0.0
-	github.com/GrGLeo/ctf/shared v0.0.0
+	github.com/GrGLeo/ctf/pkg/shared v0.0.0
 )
 
 require (
@@ -34,4 +34,4 @@ replace github.com/GrGLeo/ctf/client => ../../client
 
 replace github.com/GrGLeo/ctf/server => ../../server
 
-replace github.com/GrGLeo/ctf/shared => ../../shared
+replace github.com/GrGLeo/ctf/pkg/shared => ../../pkg/shared

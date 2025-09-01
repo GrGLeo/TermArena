@@ -317,7 +317,7 @@ const file_proto_message_message_proto_rawDesc = "" +
 	"\x0eMessageService\x12M\n" +
 	"\fRouteMessage\x12\x1c.message.RouteMessageRequest\x1a\x1d.message.RouteMessageResponse\"\x00\x12S\n" +
 	"\x0eRegisterClient\x12\x1e.message.RegisterClientRequest\x1a\x1f.message.RegisterClientResponse\"\x00\x12Y\n" +
-	"\x10UnregisterClient\x12 .message.UnregisterClientRequest\x1a!.message.UnregisterClientResponse\"\x00B\x16Z\x14shared/proto/messageb\x06proto3"
+	"\x10UnregisterClient\x12 .message.UnregisterClientRequest\x1a!.message.UnregisterClientResponse\"\x00B0Z.github.com/GrGLeo/ctf/pkg/shared/proto/messageb\x06proto3"
 
 var (
 	file_proto_message_message_proto_rawDescOnce sync.Once

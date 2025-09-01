@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/GrGLeo/ctf/shared"
+	"github.com/GrGLeo/ctf/pkg/shared"
 )
 
 type ClientStats struct {

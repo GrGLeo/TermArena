@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/GrGLeo/ctf/shared"
+	"github.com/GrGLeo/ctf/pkg/shared"
 	"go.uber.org/zap"
 )
 
@@ -127,7 +127,7 @@ func (gr *GameRoom) CloseGame(success int) {
 func (gr *GameRoom) sendInitGrid() {
 	grid := gr.board.GetCurrentGrid()
 	encodedBoard := RunLengthEncode(grid)
-  length := len(encodedBoard)
+	length := len(encodedBoard)
 	packet := shared.NewBoardPacket(0, 0, 0, 0, 0, length, gr.points, encodedBoard)
 	data := packet.Serialize()
 	for _, conn := range gr.playerConnection {
@@ -150,7 +150,7 @@ func (gr *GameRoom) broadcastState() error {
 	if len(deltas) > totalCells/2 {
 		gr.logger.Infow("Sending back full board", "roomID", gr.GameID)
 		encodedBoard := RunLengthEncode(grid)
-    length := len(encodedBoard)
+		length := len(encodedBoard)
 		packet := shared.NewBoardPacket(0, 0, 0, 0, 0, length, gr.points, encodedBoard)
 		data = packet.Serialize()
 	} else {
