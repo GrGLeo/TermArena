@@ -2,7 +2,7 @@
 *.log
 /bin
 services/auth/target
-game/target
+services/game/target
 GEMINI.md
 *.jsonl
 *.json
