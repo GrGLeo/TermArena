@@ -194,7 +194,7 @@ func NewQueueModel(conn *net.TCPConn) QueueModel {
 	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
 	return QueueModel{
-		options:  []string{"Sandbox (solo)", "Classic (4v4)", "Ranked (4v4)"},
+		options:  []string{"Sandbox (solo)", "Practice (2v2)", "Classic (4v4)", "Ranked (4v4)"},
 		selected: 0,
 		conn:     conn,
 		spinner:  sp,
@@ -279,11 +279,12 @@ func (m QueueModel) View() string {
 	gameInstruction := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("255")).
 		Render(
-			"Capture the flag is a 2v2 multiplayer game.\n" +
-				"Each team needs to capture the enemy flag and bring it back to their own base.\n" +
+			"TermArena is a MOBA game. Each team needs to destroy the enemy base.\n" +
+				"To progress on the map you will need to beat minions, destroy tower, fight enemy champion.\n" +
+        "Each 30 seconds minions are spawn, they will follow there respective lane.\n" +
+        "Jungle monster respawn after 90 seconds.\n" +
 				"Player can move around the map using w,a,s,d.\n" +
-				"Player can dash using space. Dash moves the player instantly by a short distance.\n" +
-				"Dash passes through walls.",
+				"Spell selected are bind to q and e.",
 		)
 
 	optionsStyle := lipgloss.NewStyle().
