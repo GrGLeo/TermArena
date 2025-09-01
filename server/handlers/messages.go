@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
+	pb "github.com/GrGLeo/ctf/pkg/shared/proto/message"
 	conm "github.com/GrGLeo/ctf/server/conn_manager"
 	"github.com/GrGLeo/ctf/server/event"
-	pb "github.com/GrGLeo/ctf/shared/proto/message"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

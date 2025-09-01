@@ -1,8 +1,8 @@
 .env
 *.log
 /bin
-auth/target
-game/target
+services/auth/target
+services/game/target
 GEMINI.md
 *.jsonl
 *.json

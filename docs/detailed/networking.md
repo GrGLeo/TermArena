@@ -342,9 +342,101 @@ sequenceDiagram
 - **Structure:**
   ```
   Byte Offset: 0       1       2       3
-               +-------+-------+-------+-------+
-               |Version| Code  |    ItemID     |
-               +-------+-------+-------+-------+
+                +-------+-------+-------+-------+
+                |Version| Code  |    ItemID     |
+                +-------+-------+-------+-------+
   Size (bytes):  1       1       2 (u16)
   ```
 
+---
+
+## Part 3: Message Service Communication (Real-time Messaging)
+
+The Message Service handles real-time player-to-player communication through dedicated packet codes (100-102). Clients connect directly to the Message Service for messaging functionality while the Go Server coordinates room-based messaging.
+
+### Message Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Go Server
+    participant Message Service
+
+    Client->>Go Server: Join room (TCP connection)
+    Go Server->>Message Service: RegisterClient(client_id, room_id) via gRPC
+    Message Service-->>Go Server: Registration confirmation
+
+    Client->>Message Service: TCP connection for messaging
+    Client->>Message Service: MessagePacket (Code 100) with content
+    Message Service->>Message Service: Route message based on prefix (/all, /userID)
+    Message Service->>Client: MessageResponsePacket (Code 101) to recipients
+
+    alt Error case
+        Message Service->>Client: MessageErrorPacket (Code 102) on failure
+    end
+
+    Client->>Go Server: Leave room
+    Go Server->>Message Service: UnregisterClient(client_id) via gRPC
+```
+
+### Message Routing Patterns
+
+The Message Service supports several routing patterns:
+
+- **Broadcast (`/all`):** Messages sent to all players in the current room
+- **Private (`/userID`):** Direct messages to a specific player
+- **Room-based:** Messages scoped to the current game room
+- **System Messages:** Automated messages from the server
+
+## Message Service Packet Reference
+
+The Message Service uses dedicated packet codes (100-102) for real-time messaging functionality.
+
+#### `MessagePacket` (Code 100)
+- **Direction:** Client -> Server
+- **Purpose:** Sends a message from a client to be routed through the Message Service.
+- **Structure:**
+  ```
+  Byte Offset: 0       1       2       3       4         X         X+1     X+2
+                +-------+-------+-------+-------+---------+---------+-------+----------------------+
+                |Version| Code  |  Sender Len   | Sender  |     Msg Len     | Message Content ...
+                +-------+-------+-------+-------+---------+---------+-------+----------------------+
+  Size (bytes):  1       1       2 (u16)         (var)     2 (u16)           (var)
+  ```
+- **Fields:**
+  - `Sender Len`: Length of sender username (u16)
+  - `Sender`: Username string (variable length)
+  - `Msg Len`: Length of message content (u16)
+  - `Message Content`: The actual message text (variable length, max 256 chars)
+
+#### `MessageResponsePacket` (Code 101)
+- **Direction:** Server -> Client
+- **Purpose:** Delivers a routed message to the client.
+- **Structure:**
+  ```
+  Byte Offset: 0       1       2       3       4
+                +-------+-------+-------+-------+--------------------+
+                |Version| Code  |  Msg Len      | Message Content ...
+                +-------+-------+-------+-------+--------------------+
+  Size (bytes):  1       1       2 (u16)         (var)
+  ```
+- **Fields:**
+  - `Msg Len`: Length of message content (u16)
+  - `Message Content`: The routed message text (variable length)
+
+#### `MessageErrorPacket` (Code 102)
+- **Direction:** Server -> Client
+- **Purpose:** Reports an error in message processing or delivery.
+- **Structure:**
+  ```
+  Byte Offset: 0       1       2       3       4
+                +-------+-------+-------+-------+--------------------+
+                |Version| Code  |  Error Len    | Error Message ...
+                +-------+-------+-------+-------+--------------------+
+  Size (bytes):  1       1       2 (u16)         (var)
+  ```
+- **Fields:**
+  - `Error Len`: Length of error message (u16)
+  - `Error Message`: Error description text (variable length)
+
+---

@@ -7,6 +7,7 @@ The Go server acts as the central orchestrator of the TermArena game. It is resp
 - **Client Connection Handling:** Listens for incoming TCP connections from clients and manages the lifecycle of each connection.
 - **Authentication:** Communicates with the [Rust Auth Service](./auth_rust.md) to authenticate users.
 - **Room Management:** Allows players to create, find, and join game rooms.
+- **Real-time Messaging:** Integrates with the [Message Service](./message_service.md) to handle player-to-player messaging.
 - **Game Server Orchestration:** Spawns a new Rust game server process when a game room is created.
 
 ## Architecture
@@ -29,6 +30,7 @@ The Go server's code is organized into the following packages:
 
 - **`main.go`:** The entry point of the server, responsible for initializing the server and starting the event loop.
 - **`authentification/`:** Handles communication with the Rust Auth Service.
+- **`handlers/messages.go`:** Integrates with the Message Service for real-time messaging functionality.
 - **`event/`:** Implements the event broker and defines the message types.
 - **`room_manager.go/`:** Manages the creation, discovery, and joining of game rooms.
 - **`shared/`:** Contains code that is shared with the client, such as packet definitions and serialization functions.

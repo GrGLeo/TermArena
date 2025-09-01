@@ -11,7 +11,7 @@ import (
 	handler "github.com/GrGLeo/ctf/server/handlers"
 	manager "github.com/GrGLeo/ctf/server/room_manager"
 
-	"github.com/GrGLeo/ctf/shared"
+	"github.com/GrGLeo/ctf/pkg/shared"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )

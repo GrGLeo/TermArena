@@ -66,7 +66,7 @@ pub struct GameManager {
 impl GameManager {
     pub fn new(config: GameConfig, max_players: u8) -> Self {
         println!("Initializing GameManager...");
-        let file_path = "game/assets/map.json";
+        let file_path = "services/game/assets/map.json";
         let mut board = match Board::from_json(file_path) {
             Ok(board) => board,
             Err(e) => {
@@ -226,6 +226,7 @@ impl GameManager {
             }
 
             // We check if we can start the game and send a Start to each player
+            println!("players count: {}", self.players_count);
             if self.players_count == self.max_players {
                 self.game_started = true;
                 self.game_start_time = Some(Instant::now());

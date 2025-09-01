@@ -3,7 +3,7 @@ module github.com/GrGLeo/ctf/services/message_service
 go 1.23.2
 
 require (
-	github.com/GrGLeo/ctf_game/shared v0.0.0
+	github.com/GrGLeo/ctf_game/pkg/shared v0.0.0
 	github.com/joho/godotenv v1.5.1
 	google.golang.org/grpc v1.71.1
 )
@@ -19,4 +19,4 @@ require (
 	google.golang.org/protobuf v1.36.4 // indirect
 )
 
-replace github.com/GrGLeo/ctf_game/shared => ../../shared
+replace github.com/GrGLeo/ctf_game/pkg/shared => ../../pkg/shared

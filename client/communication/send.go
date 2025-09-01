@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/GrGLeo/ctf/shared"
+	"github.com/GrGLeo/ctf/pkg/shared"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -141,7 +141,6 @@ func SendMessage(conn *net.TCPConn, sender, message string) error {
 	return err
 }
 
-
 func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 	var data []byte
 	buf := make([]byte, 4096)
@@ -214,7 +213,7 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 			case *shared.MessageResponsePacket:
 				log.Printf("[CLIENT] Received message response: %s", msg.Message)
 				msgs <- IncomingMessageMsg{
-					Content:  msg.Message,
+					Content: msg.Message,
 				}
 			case *shared.MessageErrorPacket:
 				log.Printf("[CLIENT] Received message error: %s", msg.Error)

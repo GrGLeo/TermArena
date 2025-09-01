@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	pb "github.com/GrGLeo/ctf_game/shared/proto/message"
+	pb "github.com/GrGLeo/ctf_game/pkg/shared/proto/message"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

@@ -47,36 +47,26 @@ kill_process() {
   fi
 }
 
-# Build the game and auth services
-echo "Building game service..."
-(cd game && cargo build) || { echo "Failed to build game service"; exit 1; }
-echo "Building auth service..."
-(cd auth && cargo build) || { echo "Failed to build auth service"; exit 1; }
-
-# Build the message service
-echo "Building message service..."
-(cd services/message_service && go build -o message_service_bin) || { echo "Failed to build message service"; exit 1; }
-
-# Build the server binary
-echo "Building server service..."
-(cd server && go build -o server_bin main.go) || { echo "Failed to build server service"; exit 1; }
+# Build all services using Makefile
+echo "Building all services..."
+make build || { echo "Failed to build services"; exit 1; }
 
 # Kill existing auth, message service, and server processes
-kill_process "./auth/target/debug/auth"
-kill_process "./services/message_service/message_service_bin"
-kill_process "./server/server_bin"
+kill_process "./bin/auth"
+kill_process "./bin/message_service"
+kill_process "./bin/server"
 
 # Start the auth, message service, and server services in the background, redirecting output to files
 echo "Starting auth service. Output redirected to auth.log"
-./auth/target/debug/auth > auth.log 2>&1 &
+./bin/auth > auth.log 2>&1 &
 AUTH_PID=$!
 
 echo "Starting message service. Output redirected to message_service.log"
-./services/message_service/message_service_bin > message_service.log 2>&1 &
+./bin/message_service > message_service.log 2>&1 &
 MESSAGE_PID=$!
 
 echo "Starting server service. Output redirected to server.log"
-./server/server_bin > server.log 2>&1 &
+./bin/server > server.log 2>&1 &
 SERVER_PID=$!
 
 # Wait a moment for services to start up

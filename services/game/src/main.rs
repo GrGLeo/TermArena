@@ -11,6 +11,7 @@ use tokio::spawn;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 use tokio::time::{Duration, Instant, sleep};
+use std::env;
 
 mod config;
 mod errors;
@@ -229,12 +230,20 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Change to the parent directory (root) to ensure correct relative paths
+    let mut current_dir = env::current_dir()?;
+    if current_dir.ends_with("bin") {
+        current_dir.pop();
+        env::set_current_dir(&current_dir)?;
+        println!("Changed working directory to: {:?}", current_dir);
+    }
+
     let args = CliArgs::parse();
     let address = format!("0.0.0.0:{}", args.port);
     let listener = TcpListener::bind(&address).await?;
     println!("Server listening  on {}", address);
 
-    let config = config::GameConfig::load("game/stats.toml", "game/spells.toml", "game/items.toml")
+    let config = config::GameConfig::load("services/game/stats.toml", "services/game/spells.toml", "services/game/items.toml")
         .expect("Failed to load game configuration");
     let game_manager = GameManager::new(config, args.max_players);
     let arc_gm = Arc::new(Mutex::new(game_manager));

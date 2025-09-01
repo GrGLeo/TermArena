@@ -1,4 +1,4 @@
-module github.com/GrGLeo/ctf/shared
+module github.com/GrGLeo/ctf/pkg/shared
 
 go 1.23.2
 
