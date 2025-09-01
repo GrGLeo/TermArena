@@ -127,13 +127,10 @@ make run-auth
 # Terminal 2: Message Service
 make run-message
 
-# Terminal 3: Game Engine
-make run-game
-
-# Terminal 4: Game Server
+# Terminal 3: Game Server
 make run-server
 
-# Terminal 5: Client
+# Terminal 4: Client
 make run-client
 ```
 
