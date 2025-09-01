@@ -6,16 +6,21 @@ build: build-auth build-game build-server build-client
 
 build-auth:
 	@echo "Building auth service..."
-	cd auth && cargo build --release
+	cd services/auth && cargo build --release
 
 build-game:
 	@echo "Building game engine..."
-	cd game && cargo build --release
+	cd services/game && cargo build --release
 
 build-server:
 	@echo "Building server..."
 	@mkdir -p bin
 	cd server && go build -o ../bin/server .
+
+build-server:
+	@echo "Building message service..."
+	@mkdir -p bin
+	cd services/message_service && go build -o ../../bin/message_service .
 
 build-client:
 	@echo "Building client..."
@@ -25,16 +30,20 @@ build-client:
 package: build
 	@echo "Packaging application..."
 	@mkdir -p bin
-	@cp auth/target/release/auth bin/auth
-	@cp game/target/release/game bin/game
+	@cp services/auth/target/release/auth bin/auth
+	@cp services/game/target/release/game bin/game
 
 run-auth:
 	@echo "Running auth service..."
-	./auth/target/release/auth
+	./bin/auth
+
+run-message:
+	@echo "Running message service..."
+	./bin/message_service
 
 run-game:
 	@echo "Running game engine..."
-	./game/target/release/game
+	./bin/game
 
 run-server:
 	@echo "Running server..."
@@ -64,8 +73,10 @@ deploy: package
 	ssh leo@endurace.cloud "pkill auth || true"
 	ssh leo@endurace.cloud "pkill server || true"
 	ssh leo@endurace.cloud "pkill game || true"
+	ssh leo@endurace.cloud "pkill message_service || true"
 	scp bin/auth leo@endurace.cloud:/home/leo/bin/
 	scp bin/server leo@endurace.cloud:/home/leo/bin/
+	scp bin/message_service leo@endurace.cloud:/home/leo/bin/
 	scp bin/game leo@endurace.cloud:/home/leo/game/target/debug/
 	scp game/spells.toml leo@endurace.cloud:/home/leo/game/
 	scp game/items.toml leo@endurace.cloud:/home/leo/game/
