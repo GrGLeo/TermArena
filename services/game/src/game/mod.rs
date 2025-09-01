@@ -66,7 +66,7 @@ pub struct GameManager {
 impl GameManager {
     pub fn new(config: GameConfig, max_players: u8) -> Self {
         println!("Initializing GameManager...");
-        let file_path = "game/assets/map.json";
+        let file_path = "services/game/assets/map.json";
         let mut board = match Board::from_json(file_path) {
             Ok(board) => board,
             Err(e) => {

@@ -9,7 +9,7 @@ import (
 )
 
 func StartGame(ip, map_id, max_players string) error {
-	command := "./game/target/debug/game"
+	command := "./bin/game"
 	args := []string{"--port", ip, "--map", map_id, "--max-players", max_players}
 	cmd := exec.Command(command, args...)
 

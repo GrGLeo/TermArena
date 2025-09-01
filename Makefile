@@ -1,23 +1,25 @@
-.PHONY: all build clean run-auth run-game run-server run-client run-simulation test package deploy
+.PHONY: all build build-auth build-game build-server build-message build-client clean run-auth run-message run-game run-server run-client run-simulation test package deploy
 
 all: build
 
-build: build-auth build-game build-server build-client
+build: build-auth build-game build-server build-message build-client
 
 build-auth:
 	@echo "Building auth service..."
-	cd services/auth && cargo build --release
+	@rm bin/auth
+	cd services/auth && cargo build --release && mv target/release/auth ../../bin/auth
 
 build-game:
 	@echo "Building game engine..."
-	cd services/game && cargo build --release
+	@rm bin/game
+	cd services/game && cargo build --release && mv target/release/game ../../bin/game
 
 build-server:
 	@echo "Building server..."
 	@mkdir -p bin
 	cd server && go build -o ../bin/server .
 
-build-server:
+build-message:
 	@echo "Building message service..."
 	@mkdir -p bin
 	cd services/message_service && go build -o ../../bin/message_service .
@@ -64,8 +66,8 @@ test:
 clean:
 	@echo "Cleaning up build artifacts..."
 	rm -rf bin
-	cd auth && cargo clean
-	cd game && cargo clean
+	cd services/auth && cargo clean
+	cd services/game && cargo clean
 
 deploy: package
 	@echo "Deploying to production..."
@@ -78,7 +80,7 @@ deploy: package
 	scp bin/server leo@endurace.cloud:/home/leo/bin/
 	scp bin/message_service leo@endurace.cloud:/home/leo/bin/
 	scp bin/game leo@endurace.cloud:/home/leo/game/target/debug/
-	scp game/spells.toml leo@endurace.cloud:/home/leo/game/
-	scp game/items.toml leo@endurace.cloud:/home/leo/game/
-	scp game/rules.toml leo@endurace.cloud:/home/leo/game/
-	scp game/stats.toml leo@endurace.cloud:/home/leo/game/
+	scp services/game/spells.toml leo@endurace.cloud:/home/leo/game/
+	scp services/game/items.toml leo@endurace.cloud:/home/leo/game/
+	scp services/game/rules.toml leo@endurace.cloud:/home/leo/game/
+	scp services/game/stats.toml leo@endurace.cloud:/home/leo/game/
