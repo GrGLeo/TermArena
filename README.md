@@ -47,7 +47,7 @@ graph TD
     B -->|gRPC| C{Auth Service}
     B -->|gRPC| E{Message Service}
     B -->|Spawns| D(Rust Game Server)
-    A -->|TCP| D
+    A <-->|TCP| D
 ```
 
 ### Data Flow
