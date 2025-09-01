@@ -46,7 +46,7 @@ run-client:
 
 run-simulation:
 	@echo "Running simulation..."
-	go run ./simulation
+	cd test/e2e && go run game_simulation.go
 
 test:
 	@echo "Running tests..."
