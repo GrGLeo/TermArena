@@ -8,3 +8,4 @@ GEMINI.md
 *.json
 *.db
 Dockerfile
+docs/todo.md
