@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTF Map Editor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>CTF Map Editor</h1>
+
+    <div class="controls">
+        <div class="file-input">
+            <label for="mapFileInput">Load Map JSON:</label>
+            <input type="file" id="mapFileInput" accept=".json">
+        </div>
+
+        <div class="brush-selection">
+            <label for="brushTool">Brush Tool:</label>
+            <select id="brushTool">
+                <option value="floor">Floor</option>
+                <option value="wall">Wall</option>
+                <option value="bush">Bush</option>
+                <option value="fill">Fill</option>
+                <option value="line">Line</option>
+            </select>
+        </div>
+
+        <div class="brush-size">
+            <label for="brushSize">Brush Size:</label>
+            <input type="number" id="brushSize" value="1" min="1">
+        </div>
+
+        <div class="symmetry-toggle">
+            <input type="checkbox" id="symmetryToggle">
+            <label for="symmetryToggle">Enable 180° Symmetry</label>
+        </div>
+
+        <button id="saveMapBtn">Save Map JSON</button>
+
+        <button id="drawDiagonalWallsBtn">Draw Diagonal Walls</button>
+
+        <div class="map-size-controls">
+            <label for="mapRows">Rows:</label>
+            <input type="number" id="mapRows" value="50" min="10">
+            <label for="mapCols">Cols:</label>
+            <input type="number" id="mapCols" value="50" min="10">
+            <button id="resizeMapBtn">Resize Map</button>
+        </div>
+
+        <div class="zoom-controls">
+            <label>Zoom:</label>
+            <button id="zoomOutBtn">-</button>
+            <button id="zoomInBtn">+</button>
+        </div>
+    </div>
+
+    <div class="map-container">
+        <canvas id="mapCanvas"></canvas>
+        <div class="coordinates">Row: <span id="coordRow">0</span>, Col: <span id="coordCol">0</span></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

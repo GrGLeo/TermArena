@@ -1,0 +1,83 @@
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 20px;
+    background-color: #282c34;
+    color: #abb2bf;
+}
+
+h1 {
+    color: #61afef;
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #3a3f4b;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.controls div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+label {
+    font-weight: bold;
+    color: #e06c75;
+}
+
+input[type="file"],
+select,
+button {
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid #5c6370;
+    background-color: #4b5263;
+    color: #abb2bf;
+    cursor: pointer;
+}
+
+input[type="file"]:hover,
+select:hover,
+button:hover {
+    background-color: #5c6370;
+}
+
+input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #98c379;
+}
+
+.map-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background-color: #3a3f4b;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+#mapCanvas {
+    border: 2px solid #61afef;
+    background-color: #21252b;
+}
+
+.coordinates {
+    font-size: 1.1em;
+    color: #98c379;
+}
+
+.coordinates span {
+    font-weight: bold;
+}

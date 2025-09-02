@@ -8,4 +8,4 @@ GEMINI.md
 *.json
 *.db
 Dockerfile
-ttk_calculator.py
+docs/todo.md

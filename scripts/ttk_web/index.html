@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTK Calculator - Term Arena</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>TTK Calculator - Term Arena</h1>
+        <p>Balance game entities, equip items, and see real-time TTK changes</p>
+    </header>
+
+    <div class="container">
+        <!-- Entity Stats Section -->
+        <section class="entity-stats">
+            <h2>Entity Stats</h2>
+            <div id="entity-list" class="entity-list">
+                <!-- Entities will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Champion Items Section -->
+        <section class="champion-items">
+            <h2>Champion Items (Max 6)</h2>
+            <div class="equipped-items" id="equipped-items">
+                <!-- Equipped items will be shown here -->
+            </div>
+            <div class="available-items" id="available-items">
+                <!-- Available items will be loaded here -->
+            </div>
+        </section>
+
+
+
+        <!-- TTK Results Section -->
+        <section class="ttk-results">
+            <h2>TTK Results</h2>
+            <div class="ttk-controls">
+                <label>Attacker: </label>
+                <select id="attacker-select">
+                    <option value="champion">Champion</option>
+                    <option value="minion">Minion</option>
+                    <option value="tower">Tower</option>
+                    <!-- Neutral monsters will be added dynamically -->
+                </select>
+                <label>Defender: </label>
+                <select id="defender-select">
+                    <option value="champion">Champion</option>
+                    <option value="minion">Minion</option>
+                    <option value="tower">Tower</option>
+                    <!-- Neutral monsters will be added dynamically -->
+                </select>
+            </div>
+            <table id="ttk-table">
+                <thead>
+                    <tr>
+                        <th>Attacker</th>
+                        <th>Defender</th>
+                        <th>Hits to Kill</th>
+                        <th>Time to Kill (s)</th>
+                        <th>DPS</th>
+                        <th>Attacker HP Left</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Results will be populated here -->
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <!-- Scripts -->
+    <script src="simple-toml-parser.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
