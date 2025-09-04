@@ -15,13 +15,17 @@ type TokenBucket struct {
 }
 
 func NewTokenBucket(capacity, refillRate int64) *TokenBucket {
-  return &TokenBucket{
-    capacity:       capacity,
-    tokens:         capacity, // Start with full bucket
-    refillRate:     refillRate,
-    incrementToken: 0,
-    lastRefill:     time.Now(),
-  }
+	return &TokenBucket{
+		capacity:       capacity,
+		tokens:         capacity, // Start with full bucket
+		refillRate:     refillRate,
+		incrementToken: 0,
+		lastRefill:     time.Now(),
+	}
+}
+
+func NewTokenBucketFromConfig(config BucketConfig) *TokenBucket {
+	return NewTokenBucket(int64(config.Capacity), int64(config.Refill))
 }
 
 func (tb *TokenBucket) Allow() bool {
