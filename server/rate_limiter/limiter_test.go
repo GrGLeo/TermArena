@@ -57,7 +57,7 @@ func TestNewGlobalRateLimiter_InvalidYAMLValues(t *testing.T) {
 register_request:
   capacity: -1
   refill: 0
-login_request_challenge:
+login_challenge_request:
   capacity: 0
   refill: -5
 find-room:
@@ -126,14 +126,14 @@ func TestGlobalRateLimiter_Allow(t *testing.T) {
 		{
 			name:        "IP-bound register request",
 			identifier:  "192.168.1.1",
-			requestType: "register-request",
+			requestType: "register_request",
 			isIPBound:   true,
 			wantErr:     false,
 		},
 		{
 			name:        "IP-bound login request",
 			identifier:  "192.168.1.1",
-			requestType: "login-request-challenge",
+			requestType: "login_challenge_request",
 			isIPBound:   true,
 			wantErr:     false,
 		},
@@ -205,7 +205,7 @@ func TestIPRateLimiter_GetBucket(t *testing.T) {
 	// Test lazy initialization
 	t.Run("lazy initialization", func(t *testing.T) {
 		ip := "192.168.1.1"
-		bucket1, err := ipLimiter.GetBucket(ip, "register-request")
+		bucket1, err := ipLimiter.GetBucket(ip, "register_request")
 		if err != nil {
 			t.Fatalf("GetBucket() failed: %v", err)
 		}
@@ -214,7 +214,7 @@ func TestIPRateLimiter_GetBucket(t *testing.T) {
 		}
 
 		// Second call should return same bucket
-		bucket2, err := ipLimiter.GetBucket(ip, "register-request")
+		bucket2, err := ipLimiter.GetBucket(ip, "register_request")
 		if err != nil {
 			t.Fatalf("GetBucket() failed: %v", err)
 		}
@@ -236,12 +236,12 @@ func TestIPRateLimiter_GetBucket(t *testing.T) {
 		ip1 := "192.168.1.1"
 		ip2 := "192.168.1.2"
 
-		bucket1, err := ipLimiter.GetBucket(ip1, "register-request")
+		bucket1, err := ipLimiter.GetBucket(ip1, "register_request")
 		if err != nil {
 			t.Fatalf("GetBucket() failed: %v", err)
 		}
 
-		bucket2, err := ipLimiter.GetBucket(ip2, "register-request")
+		bucket2, err := ipLimiter.GetBucket(ip2, "register_request")
 		if err != nil {
 			t.Fatalf("GetBucket() failed: %v", err)
 		}
@@ -328,7 +328,7 @@ func TestRateLimiting_Enforcement(t *testing.T) {
 
 		// First 2 requests should be allowed
 		for i := range 2 {
-			allowed, err := grl.Allow(ip, "register-request", true)
+			allowed, err := grl.Allow(ip, "register_request", true)
 			if err != nil {
 				t.Fatalf("Allow() failed: %v", err)
 			}
@@ -338,7 +338,7 @@ func TestRateLimiting_Enforcement(t *testing.T) {
 		}
 
 		// Third request should be denied
-		allowed, err := grl.Allow(ip, "register-request", true)
+		allowed, err := grl.Allow(ip, "register_request", true)
 		if err != nil {
 			t.Fatalf("Allow() failed: %v", err)
 		}
@@ -396,7 +396,7 @@ func TestIPRateLimiter_ConcurrentSameIP(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range numCalls {
-				_, err := ipLimiter.GetBucket(ip, "register-request")
+				_, err := ipLimiter.GetBucket(ip, "register_request")
 				if err != nil {
 					atomic.AddInt64(&errorCount, 1)
 				} else {
@@ -441,7 +441,7 @@ func TestGlobalRateLimiter_ConcurrentSameIPAllow(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range numCalls {
-				allowed, err := grl.Allow(ip, "register-request", true)
+				allowed, err := grl.Allow(ip, "register_request", true)
 				if err != nil {
 					t.Errorf("Unexpected error: %v", err)
 					return
@@ -486,7 +486,7 @@ func TestGlobalRateLimiter_ConcurrentMixedAccess(t *testing.T) {
 			// Alternate between IP and user requests
 			if id%2 == 0 {
 				ip := fmt.Sprintf("192.168.1.%d", id%10)
-				_, err := grl.Allow(ip, "register-request", true)
+				_, err := grl.Allow(ip, "register_request", true)
 				if err != nil {
 					t.Errorf("IP request failed: %v", err)
 				}
@@ -522,12 +522,12 @@ func BenchmarkIPRateLimiter_GetBucket(b *testing.B) {
 	ip := "192.168.1.100"
 
 	// Pre-warm the limiter
-	_, _ = ipLimiter.GetBucket(ip, "register-request")
+	_, _ = ipLimiter.GetBucket(ip, "register_request")
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, _ = ipLimiter.GetBucket(ip, "register-request")
+			_, _ = ipLimiter.GetBucket(ip, "register_request")
 		}
 	})
 }
@@ -563,12 +563,12 @@ func BenchmarkGlobalRateLimiter_Allow_IP(b *testing.B) {
 	ip := "192.168.1.100"
 
 	// Pre-warm the limiter
-	_, _ = grl.Allow(ip, "register-request", true)
+	_, _ = grl.Allow(ip, "register_request", true)
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, _ = grl.Allow(ip, "register-request", true)
+			_, _ = grl.Allow(ip, "register_request", true)
 		}
 	})
 }
@@ -608,7 +608,7 @@ func BenchmarkLazyInitialization_IP(b *testing.B) {
 		ipCounter := 0
 		for pb.Next() {
 			ip := fmt.Sprintf("192.168.1.%d", ipCounter%1000)
-			_, _ = ipLimiter.GetBucket(ip, "register-request")
+			_, _ = ipLimiter.GetBucket(ip, "register_request")
 			ipCounter++
 		}
 	})
@@ -651,7 +651,7 @@ func BenchmarkConcurrentMixedAccess(b *testing.B) {
 			// Alternate between IP and user requests
 			if ipCounter%2 == 0 {
 				ip := fmt.Sprintf("192.168.1.%d", ipCounter%100)
-				_, _ = grl.Allow(ip, "register-request", true)
+				_, _ = grl.Allow(ip, "register_request", true)
 				ipCounter++
 			} else {
 				user := fmt.Sprintf("user%d", userCounter%100)
@@ -691,7 +691,7 @@ func BenchmarkMemoryUsage(b *testing.B) {
 		ip := fmt.Sprintf("192.168.1.%d", i%1000)
 		user := fmt.Sprintf("user%d", i%1000)
 
-		_, _ = ipLimiter.GetBucket(ip, "register-request")
+		_, _ = ipLimiter.GetBucket(ip, "register_request")
 		_, _ = userLimiter.GetBucket(user, "find-room")
 	}
 }

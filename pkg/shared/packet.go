@@ -5,9 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"net"
-
-	"github.com/GrGLeo/ctf/server/event"
 )
 
 /*
@@ -45,83 +42,6 @@ type Packet interface {
 	Serialize() []byte
 }
 
-func CreateMessage(packet Packet, conn *net.TCPConn) (event.Message, error) {
-	responseChan := make(chan event.Message)
-	switch pkt := packet.(type) {
-	case *RegisterRequestPacket:
-		return event.RegisterRequestMessage{
-			Username:   pkt.Username,
-			PublicKey:  pkt.PublicKey,
-			Conn:       conn,
-			ResponseCh: responseChan,
-		}, nil
-	case *LoginChallengeRequestPacket:
-		return event.LoginChallengeRequestMessage{
-			Username:   pkt.Username,
-			Conn:       conn,
-			ResponseCh: responseChan,
-		}, nil
-	case *AuthRequestPacket:
-		return event.AuthRequestMessage{
-			Username:        pkt.Username,
-			SignedChallenge: pkt.SignedChallenge,
-			Conn:            conn,
-			ResponseCh:      responseChan,
-		}, nil
-	case *RoomRequestPacket:
-		return event.RoomRequestMessage{
-			RoomType:   pkt.RoomType,
-			Conn:       conn,
-			ResponseCh: responseChan,
-		}, nil
-	case *RoomCreatePacket:
-		return event.RoomCreateMessage{
-			RoomType:   pkt.RoomType,
-			Conn:       conn,
-			ResponseCh: responseChan,
-		}, nil
-	case *RoomJoinPacket:
-		return event.RoomJoinMessage{
-			RoomID:     pkt.RoomID,
-			Conn:       conn,
-			ResponseCh: responseChan,
-		}, nil
-	case *MessagePacket:
-		return event.MessageRequestMessage{
-			Sender:     pkt.Sender,
-			Message:    pkt.Message,
-			Conn:       conn,
-			ResponseCh: responseChan,
-		}, nil
-	default:
-		return nil, errors.New("No message to create from packet")
-	}
-}
-
-func CreatePacketFromMessage(msg event.Message) ([]byte, error) {
-	switch m := msg.(type) {
-	case event.RegisterResponseMessage:
-		packet := NewRegisterResponsePacket(m.Success, m.Message, m.Challenge)
-		return packet.Serialize(), nil
-	case event.LoginChallengeResponseMessage:
-		packet := NewLoginChallengeResponsePacket(m.Challenge)
-		return packet.Serialize(), nil
-	case event.AuthResponseMessage:
-		packet := NewAuthResponsePacket(m.Success, m.Message, m.SessionToken)
-		return packet.Serialize(), nil
-	case event.RoomSearchMessage:
-		packet := NewLookRoomPacket(m.Success, m.RoomID, m.RoomIP)
-		return packet.Serialize(), nil
-	case event.MessageResponseMessage:
-		packet := NewMessageResponsePacket(m.Message)
-		return packet.Serialize(), nil
-	case event.MessageErrorResponse:
-		packet := NewMessageErrorPacket(m.Error)
-		return packet.Serialize(), nil
-	default:
-		return nil, errors.New("Failed to create packet from message")
-	}
-}
 
 /*
 AUTHENTIFICATION PACKETS

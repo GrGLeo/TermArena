@@ -2,13 +2,105 @@ package event
 
 import (
 	"errors"
+	"fmt"
 	"net"
+
+	"github.com/GrGLeo/ctf/pkg/shared"
+	conm "github.com/GrGLeo/ctf/server/conn_manager"
 )
 
 type Message interface {
 	Type() string
 	Validate() error
 	ResponseChan() chan Message
+}
+
+func CreateMessage(packet shared.Packet, conn *net.TCPConn, connManager *conm.ConnectionManager) (Message, error) {
+	responseChan := make(chan Message)
+	switch pkt := packet.(type) {
+	case *shared.RegisterRequestPacket:
+		return RegisterRequestMessage{
+			Username:   pkt.Username,
+			PublicKey:  pkt.PublicKey,
+			Conn:       conn,
+			ResponseCh: responseChan,
+		}, nil
+	case *shared.LoginChallengeRequestPacket:
+		return LoginChallengeRequestMessage{
+			Username:   pkt.Username,
+			Conn:       conn,
+			ResponseCh: responseChan,
+		}, nil
+	case *shared.AuthRequestPacket:
+		return AuthRequestMessage{
+			Username:        pkt.Username,
+			SignedChallenge: pkt.SignedChallenge,
+			Conn:            conn,
+			ResponseCh:      responseChan,
+		}, nil
+	case *shared.RoomRequestPacket:
+		user, exist := connManager.GetUser(conn)
+		if !exist {
+			return nil, fmt.Errorf("failed to find associated user")
+		}
+		return RoomRequestMessage{
+			RoomType:   pkt.RoomType,
+			Conn:       conn,
+			User:       user,
+			ResponseCh: responseChan,
+		}, nil
+	case *shared.RoomCreatePacket:
+		return RoomCreateMessage{
+			RoomType:   pkt.RoomType,
+			Conn:       conn,
+			ResponseCh: responseChan,
+		}, nil
+	case *shared.RoomJoinPacket:
+		return RoomJoinMessage{
+			RoomID:     pkt.RoomID,
+			Conn:       conn,
+			ResponseCh: responseChan,
+		}, nil
+	case *shared.MessagePacket:
+		user, exist := connManager.GetUser(conn)
+		if !exist {
+			return nil, fmt.Errorf("failed to find associated user")
+		}
+		return MessageRequestMessage{
+			Sender:     pkt.Sender,
+			Message:    pkt.Message,
+			Conn:       conn,
+			User:       user,
+			ResponseCh: responseChan,
+		}, nil
+	default:
+		return nil, errors.New("No message to create from packet")
+	}
+}
+
+func CreatePacketFromMessage(msg Message) ([]byte, error) {
+	switch m := msg.(type) {
+	case RegisterResponseMessage:
+		packet := shared.NewRegisterResponsePacket(m.Success, m.Message, m.Challenge)
+		return packet.Serialize(), nil
+	case LoginChallengeResponseMessage:
+		packet := shared.NewLoginChallengeResponsePacket(m.Challenge)
+		return packet.Serialize(), nil
+	case AuthResponseMessage:
+		packet := shared.NewAuthResponsePacket(m.Success, m.Message, m.SessionToken)
+		return packet.Serialize(), nil
+	case RoomSearchMessage:
+		packet := shared.NewLookRoomPacket(m.Success, m.RoomID, m.RoomIP)
+		return packet.Serialize(), nil
+	case MessageResponseMessage:
+		packet := shared.NewMessageResponsePacket(m.Message)
+		return packet.Serialize(), nil
+	case MessageErrorResponse:
+		packet := shared.NewMessageErrorPacket(m.Error)
+		return packet.Serialize(), nil
+	default:
+		return nil, errors.New("Failed to create packet from message")
+	}
 }
 
 // --- AUTH REQUESTS ---
@@ -148,6 +240,7 @@ func (m ClientUnregistrationResponse) ResponseChan() chan Message { return nil }
 
 type RoomRequestMessage struct {
 	RoomType int
+	User     string
 	Conn     *net.TCPConn
 	// ResponseCh is the channel to send the response to.
 	ResponseCh chan Message
@@ -222,9 +315,10 @@ func (rs RoomSearchMessage) Validate() error {
 func (rs RoomSearchMessage) ResponseChan() chan Message { return nil }
 
 type MessageRequestMessage struct {
-	Sender     string
+	Sender     string // TODO: to be removed in issue #159
 	Message    string
 	Conn       *net.TCPConn
+	User       string
 	ResponseCh chan Message
 }
 

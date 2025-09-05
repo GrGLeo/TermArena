@@ -5,9 +5,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/GrGLeo/ctf/pkg/shared"
 	"github.com/GrGLeo/ctf/server/event"
 	"github.com/GrGLeo/ctf/server/proto/auth"
 	pb "github.com/GrGLeo/ctf/server/proto/auth"
+	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -16,10 +18,11 @@ import (
 type AuthClient struct {
 	Client pb.AuthServiceClient
 	broker *event.EventBroker
+  rateLimiter *ratelimiter.GlobalRateLimiter
 	logger *zap.SugaredLogger
 }
 
-func NewAuthClient(broker *event.EventBroker, logger *zap.SugaredLogger) (*AuthClient, error) {
+func NewAuthClient(broker *event.EventBroker, logger *zap.SugaredLogger, rateLimiter *ratelimiter.GlobalRateLimiter) (*AuthClient, error) {
 	authServiceAddr := os.Getenv("AUTH_SERVICE_ADDR")
 	if authServiceAddr == "" {
 		authServiceAddr = "localhost:50051"
@@ -32,12 +35,45 @@ func NewAuthClient(broker *event.EventBroker, logger *zap.SugaredLogger) (*AuthC
 	return &AuthClient{
 		Client: client,
 		broker: broker,
+    rateLimiter: rateLimiter,
 		logger: logger,
 	}, nil
 }
 
 func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 	req := msg.(event.RegisterRequestMessage)
+  ip, err := shared.ExtractIP(req.Conn)
+  if err != nil {
+    ac.logger.Errorw("[SERVER HANDLER] failed to extract TCP IP from connection", "error", err)
+		return event.RegisterResponseMessage{
+			Success:   false,
+			Message:   "Failed to extract TCP IP",
+			Challenge: nil,
+			Conn:      req.Conn,
+		}
+  }
+  allowed, err := ac.rateLimiter.Allow(ip, req.Type(), true)
+
+	if err != nil {
+		ac.logger.Errorw("[SERVER HANDLER] Failed to retrieve bucket", "error", err, "ip", ip)
+		return event.RegisterResponseMessage{
+			Success:   false,
+			Message:   "Internal server error",
+			Challenge: nil,
+			Conn:      req.Conn,
+		}
+	}
+
+  if !allowed {
+    ac.logger.Warn("[SERVER HANDLER] Rate limit exceed", "ip", ip, "username", req.Username)
+    return event.RegisterResponseMessage{
+      Success: false,
+      Message: "Rate limit exceed",
+      Challenge: nil,
+      Conn: req.Conn,
+    }
+  }
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -47,7 +83,7 @@ func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 	})
 
 	if err != nil {
-		ac.logger.Errorw("gRPC Register call failed", "error", err, "username", req.Username)
+		ac.logger.Errorw("[SERVER HANDLER] gRPC Register call failed", "error", err, "username", req.Username)
 		return event.RegisterResponseMessage{
 			Success:   false,
 			Message:   "Internal server error",
@@ -75,6 +111,31 @@ func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 
 func (ac *AuthClient) HandleLoginChallenge(msg event.Message) event.Message {
 	req := msg.(event.LoginChallengeRequestMessage)
+  ip, err := shared.ExtractIP(req.Conn)
+  if err != nil {
+    ac.logger.Errorw("[SERVER HANDLER] Failed to extract TCP IP from connection", "error", err)
+		return event.LoginChallengeResponseMessage{
+			Challenge: nil,
+			Conn:      req.Conn,
+		}
+  }
+  allowed, err := ac.rateLimiter.Allow(ip, req.Type(), true)
+
+	if err != nil {
+		ac.logger.Errorw("[SERVER HANDLER] Failed to retrieve bucket", "error", err, "ip", ip)
+		return event.LoginChallengeResponseMessage{
+			Challenge: nil,
+			Conn:      req.Conn,
+		}
+	}
+
+  if !allowed {
+    ac.logger.Warn("[SERVER HANDLER] Rate limit exceed", "ip", ip, "username", req.Username)
+    return event.LoginChallengeResponseMessage{
+      Challenge: nil,
+      Conn: req.Conn,
+    }
+  }
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

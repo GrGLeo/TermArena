@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/GrGLeo/ctf/server/event"
+	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
 	"go.uber.org/zap"
 )
 
@@ -37,14 +38,16 @@ type RoomManager struct {
 	ClassicRooms  map[string]*ClassicRoom
 	PracticeRooms map[string]*PracticeRoom
 	logger        *zap.SugaredLogger
+	rateLimiter   *ratelimiter.GlobalRateLimiter
 	mu            sync.Mutex
 }
 
 // NewRoomManager initializes a new RoomManager.
-func NewRoomManager(logger *zap.SugaredLogger) *RoomManager {
+func NewRoomManager(logger *zap.SugaredLogger, rateLimiter *ratelimiter.GlobalRateLimiter) *RoomManager {
 	return &RoomManager{
 		ClassicRooms:  make(map[string]*ClassicRoom),
 		PracticeRooms: make(map[string]*PracticeRoom),
+    rateLimiter: rateLimiter,
 		logger:        logger,
 	}
 }
@@ -79,6 +82,24 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 		return nil
 	}
 
+	allowed, err := rm.rateLimiter.Allow(roomRequest.User, roomRequest.Type(), false)
+
+	if err != nil {
+		rm.logger.Errorw("[SERVER HANDLER] Failed to retrieve bucket", "error", err, "user", roomRequest.User)
+		return event.RoomSearchMessage{
+			Success: 1,
+			RoomIP:  "",
+		}
+	}
+
+	if !allowed {
+		rm.logger.Warn("[SERVER HANDLER] Rate limit exceed", "username", roomRequest.User)
+		return event.RoomSearchMessage{
+			Success: 1,
+			RoomIP:  "",
+		}
+	}
+
 	if err := roomRequest.Validate(); err != nil {
 		rm.logger.Errorw("Invalid RoomRequestMessage", "error", err)
 		return nil
@@ -107,8 +128,8 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 		}
 	}
 
-  switch roomType {
-  case PRACTICE:
+	switch roomType {
+	case PRACTICE:
 		rm.mu.Lock()
 		defer rm.mu.Unlock()
 
@@ -129,7 +150,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 				}
 			}
 		}
-  case CLASSIC:
+	case CLASSIC:
 		rm.mu.Lock()
 		defer rm.mu.Unlock()
 
@@ -150,43 +171,43 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 				}
 			}
 		}
-  }
-		// No available rooms, create a new one
-		portMutex.Lock()
-		port := portCounter
-		portCounter++
-		if portCounter > 50153 {
-			portCounter = 50053
+	}
+	// No available rooms, create a new one
+	portMutex.Lock()
+	port := portCounter
+	portCounter++
+	if portCounter > 50153 {
+		portCounter = 50053
+	}
+	portMutex.Unlock()
+
+	portStr := strconv.Itoa(port)
+	maxPlayersStr := strconv.Itoa(maxPlayers)
+	StartGame(portStr, "1", maxPlayersStr)
+
+	switch roomType {
+	case PRACTICE:
+		newRoom := &PracticeRoom{
+			Port:       portStr,
+			PlayersIn:  1,
+			MaxPlayers: maxPlayers,
 		}
-		portMutex.Unlock()
-
-		portStr := strconv.Itoa(port)
-		maxPlayersStr := strconv.Itoa(maxPlayers)
-		StartGame(portStr, "1", maxPlayersStr)
-
-    switch roomType {
-    case PRACTICE:
-      newRoom := &PracticeRoom{
-        Port:       portStr,
-        PlayersIn:  1,
-        MaxPlayers: maxPlayers,
-      }
-      rm.PracticeRooms[portStr] = newRoom
-      rm.logger.Infow("[ROOM MANAGER] Created new pratice room", "port", portStr)
-    case CLASSIC:
-      newRoom := &ClassicRoom{
-        Port:       portStr,
-        PlayersIn:  1,
-        MaxPlayers: maxPlayers,
-      }
-      rm.ClassicRooms[portStr] = newRoom
-      rm.logger.Infow("[ROOM MANAGER] Created new classic room", "port", portStr)
-    }
-
-		return event.RoomSearchMessage{
-			Success: 0,
-			RoomIP:  portStr,
+		rm.PracticeRooms[portStr] = newRoom
+		rm.logger.Infow("[ROOM MANAGER] Created new pratice room", "port", portStr)
+	case CLASSIC:
+		newRoom := &ClassicRoom{
+			Port:       portStr,
+			PlayersIn:  1,
+			MaxPlayers: maxPlayers,
 		}
+		rm.ClassicRooms[portStr] = newRoom
+		rm.logger.Infow("[ROOM MANAGER] Created new classic room", "port", portStr)
+	}
+
+	return event.RoomSearchMessage{
+		Success: 0,
+		RoomIP:  portStr,
+	}
 	// Default for other game modes like RANKED for now
 	return event.RoomSearchMessage{
 		Success: 0,
@@ -201,4 +222,3 @@ func (rm *RoomManager) JoinRoom(msg event.Message) event.Message {
 func (rm *RoomManager) CreateRoom(msg event.Message) event.Message {
 	return nil
 }
-

@@ -9,6 +9,7 @@ import (
 	conm "github.com/GrGLeo/ctf/server/conn_manager"
 	"github.com/GrGLeo/ctf/server/event"
 	handler "github.com/GrGLeo/ctf/server/handlers"
+	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
 	manager "github.com/GrGLeo/ctf/server/room_manager"
 
 	"github.com/GrGLeo/ctf/pkg/shared"
@@ -25,12 +26,14 @@ const (
 var (
 	env  string
 	port string
+  rateLimiterConfigPath string
 )
 
 func init() {
 	godotenv.Load()
 	env = os.Getenv("ENV")
 	port = os.Getenv("SERVER")
+  rateLimiterConfigPath = os.Getenv("RATE_LIMITER_CONFIG_PATH")
 }
 
 func NewLogger(env string) *zap.SugaredLogger {
@@ -101,7 +104,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 					continue
 				}
 
-				msg, err := shared.CreateMessage(packet, conn)
+				msg, err := event.CreateMessage(packet, conn, connManager)
 				if err != nil {
 					log.Infow("[SERVER] Error creating message from packet", "ip", conn.RemoteAddr(), "error", err)
 					data = data[bytesConsumed:]
@@ -125,7 +128,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 				switch resp := response.(type) {
 				case event.MessageResponseMessage:
 					log.Infow("[SERVER] MessageResponseMessage found", "message", resp.Message)
-					responsePacket, err := shared.CreatePacketFromMessage(resp)
+					responsePacket, err := event.CreatePacketFromMessage(resp)
 					if err != nil {
 						log.Errorw("[SERVER] Error creating packet from message", "error", err.Error())
 						data = data[bytesConsumed:]
@@ -143,7 +146,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 					}
 					data = data[bytesConsumed:]
 				default:
-					responsePacket, err := shared.CreatePacketFromMessage(resp)
+					responsePacket, err := event.CreatePacketFromMessage(resp)
 					if err != nil {
 						log.Errorw("[SERVER] Error creating packet from message", "error", err.Error())
 						data = data[bytesConsumed:]
@@ -183,15 +186,20 @@ func main() {
 	broker := event.NewEventBroker(log, 10)
 	log.Info("[SERVER] New Event Broker initialize")
 
-	roomManager := manager.NewRoomManager(log)
+  rateLimiter, err := ratelimiter.NewGlobalRateLimiter(rateLimiterConfigPath)
+  if err != nil {
+    log.Fatalln("[SERVER] Failed to create rate limiter", err)
+  }
+
+	roomManager := manager.NewRoomManager(log, rateLimiter)
 	log.Info("[SERVER] New room manager initialize")
 
-	authClient, err := handler.NewAuthClient(broker, log)
+	authClient, err := handler.NewAuthClient(broker, log, rateLimiter)
 	if err != nil {
 		log.Fatalln("[SERVER] Failed to create auth client:", err)
 	}
 	log.Info("[SERVER] Auth client initialized")
-	messagesClient, err := handler.NewMessageServiceClient(connectionManager, log)
+	messagesClient, err := handler.NewMessageServiceClient(connectionManager, log, rateLimiter)
 	if err != nil {
 		log.Fatalln("[SERVER] Failed to create messages client:", err)
 	}
