@@ -10,6 +10,7 @@ import (
 	pb "github.com/GrGLeo/ctf/pkg/shared/proto/message"
 	conm "github.com/GrGLeo/ctf/server/conn_manager"
 	"github.com/GrGLeo/ctf/server/event"
+	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -18,10 +19,11 @@ import (
 type MessagesServiceClient struct {
 	Client      pb.MessageServiceClient
 	connManager *conm.ConnectionManager
+	rateLimiter *ratelimiter.GlobalRateLimiter
 	logger      *zap.SugaredLogger
 }
 
-func NewMessageServiceClient(connManager *conm.ConnectionManager, logger *zap.SugaredLogger) (*MessagesServiceClient, error) {
+func NewMessageServiceClient(connManager *conm.ConnectionManager, logger *zap.SugaredLogger, rateLimiter *ratelimiter.GlobalRateLimiter) (*MessagesServiceClient, error) {
 	messageServiceAddr := os.Getenv("MESSAGE_SERVICE_ADDR")
 	if messageServiceAddr == "" {
 		messageServiceAddr = "localhost:8083"
@@ -34,6 +36,7 @@ func NewMessageServiceClient(connManager *conm.ConnectionManager, logger *zap.Su
 	return &MessagesServiceClient{
 		Client:      client,
 		connManager: connManager,
+		rateLimiter: rateLimiter,
 		logger:      logger,
 	}, nil
 }
@@ -90,6 +93,23 @@ func (ms *MessagesServiceClient) HandleClientUnregistration(msg event.Message) e
 
 func (ms *MessagesServiceClient) HandleRouteMessage(msg event.Message) event.Message {
 	req := msg.(event.MessageRequestMessage)
+	allowed, err := ms.rateLimiter.Allow(req.User, req.Type(), false)
+
+	if err != nil {
+		ms.logger.Errorw("[SERVER HANDLER] Failed to retrieve bucket", "error", err, "user", req.User)
+		return event.MessageErrorResponse{
+			Error:      fmt.Sprintf("Failed to route message: %v", err),
+			ResponseCh: req.ResponseCh,
+		}
+	}
+
+	if !allowed {
+		ms.logger.Warn("[SERVER HANDLER] Rate limit exceed", "username", req.User)
+		return event.MessageErrorResponse{
+			Error:      "Failed to route message: rate limit exceed",
+			ResponseCh: req.ResponseCh,
+		}
+	}
 	ms.logger.Infow("[SERVER HANDLER] HandleRouteMessage called", "sender", req.Sender, "message", req.Message)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
