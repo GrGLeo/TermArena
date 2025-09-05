@@ -1,3 +1,6 @@
+// Package ratelimiter provides a thread-safe rate limiting system using token bucket algorithm.
+// It supports both IP-based and user-based rate limiting with lazy initialization
+// and automatic cleanup of unused limiters.
 package ratelimiter
 
 import (
@@ -9,6 +12,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// RateLimitConfig holds the configuration for all rate limiting buckets.
+// Each field corresponds to a different type of request with its own capacity and refill rate.
 type RateLimitConfig struct {
 	RegisterRequest       BucketConfig `yaml:"register_request"`
 	LoginChallengeRequest BucketConfig `yaml:"login_request_challenge"`
@@ -16,6 +21,7 @@ type RateLimitConfig struct {
 	MessageRequest        BucketConfig `yaml:"message_request"`
 }
 
+// BucketConfig defines the capacity and refill rate for a single token bucket.
 type BucketConfig struct {
 	Capacity int `yaml:"capacity"`
 	Refill   int `yaml:"refill"`
@@ -26,6 +32,9 @@ type RateLimiter struct {
 	mu      sync.RWMutex
 }
 
+// NewRateLimiter creates a new rate limiter with token buckets for different request types.
+// If isIPBound is true, creates buckets for IP-bound requests (register, login).
+// If isIPBound is false, creates buckets for user-bound requests (find-room, message).
 func NewRateLimiter(config *RateLimitConfig, isIPBound bool) *RateLimiter {
 	var buckets map[string]*TokenBucket
 	if isIPBound {
@@ -56,6 +65,9 @@ type IPRateLimiter struct {
 	mu         sync.RWMutex
 }
 
+// NewIPRateLimiter creates a new IP-based rate limiter that manages rate limits per IP address.
+// It uses lazy initialization to create rate limiters only when first accessed.
+// Automatically cleans up unused limiters after 24 hours of inactivity.
 func NewIPRateLimiter(config *RateLimitConfig) *IPRateLimiter {
 	irl := &IPRateLimiter{
 		limiters:   make(map[string]*RateLimiter),
@@ -66,6 +78,11 @@ func NewIPRateLimiter(config *RateLimitConfig) *IPRateLimiter {
 	return irl
 }
 
+// GetBucket returns the token bucket for the specified IP address and request type.
+// Creates a new rate limiter for the IP on first access (lazy initialization).
+// Supported request types: "register-request", "login-request-challenge".
+// Returns an error for invalid request types or if limiter creation fails.
+// Thread-safe for concurrent access.
 func (irl *IPRateLimiter) GetBucket(ip, requestType string) (*TokenBucket, error) {
 	irl.mu.RLock()
 	limiter, exists := irl.limiters[ip]
@@ -116,6 +133,8 @@ func (irl *IPRateLimiter) cleanupRoutine() {
 	}
 }
 
+// GetLimiterCount returns the current number of active IP limiters.
+// This is primarily used for testing and monitoring purposes.
 func (irl *IPRateLimiter) GetLimiterCount() int {
 	irl.mu.RLock()
 	defer irl.mu.RUnlock()
@@ -129,6 +148,9 @@ type UserRateLimiter struct {
 	mu         sync.RWMutex
 }
 
+// NewUserRateLimiter creates a new user-based rate limiter that manages rate limits per user.
+// It uses lazy initialization to create rate limiters only when first accessed.
+// Automatically cleans up unused limiters after 24 hours of inactivity.
 func NewUserRateLimiter(config *RateLimitConfig) *UserRateLimiter {
 	url := &UserRateLimiter{
 		limiters:   make(map[string]*RateLimiter),
@@ -139,6 +161,11 @@ func NewUserRateLimiter(config *RateLimitConfig) *UserRateLimiter {
 	return url
 }
 
+// GetBucket returns the token bucket for the specified user and request type.
+// Creates a new rate limiter for the user on first access (lazy initialization).
+// Supported request types: "find-room", "message_request".
+// Returns an error for invalid request types or if limiter creation fails.
+// Thread-safe for concurrent access.
 func (url *UserRateLimiter) GetBucket(user, requestType string) (*TokenBucket, error) {
 	url.mu.RLock()
 	limiter, exists := url.limiters[user]
@@ -195,6 +222,10 @@ type GlobalRateLimiter struct {
 	config      RateLimitConfig
 }
 
+// NewGlobalRateLimiter creates a new global rate limiter from a YAML configuration file.
+// Loads rate limit settings from the specified config file and applies default values
+// for any missing or invalid configuration. Returns an error if the file cannot be read
+// or parsed, or if the YAML structure is invalid.
 func NewGlobalRateLimiter(configPath string) (*GlobalRateLimiter, error) {
 	file, err := os.ReadFile(configPath)
 	if err != nil {
@@ -215,6 +246,12 @@ func NewGlobalRateLimiter(configPath string) (*GlobalRateLimiter, error) {
 	}, nil
 }
 
+// Allow checks if a request should be allowed based on the current rate limits.
+// If isIPBound is true, applies IP-based rate limiting using the identifier as an IP address.
+// If isIPBound is false, applies user-based rate limiting using the identifier as a user ID.
+// Returns true if the request is allowed, false if rate limited.
+// Returns an error if the identifier or request type is invalid.
+// Thread-safe for concurrent access.
 func (grl *GlobalRateLimiter) Allow(identifier string, requestType string, isIPBound bool) (bool, error) {
 	if isIPBound {
 		bucket, err := grl.ipLimiter.GetBucket(identifier, requestType)
@@ -251,6 +288,8 @@ func applyDefaults(config *RateLimitConfig) {
 	}
 }
 
+// GetConfig returns a copy of the current rate limit configuration.
+// This is primarily used for testing and debugging purposes.
 func (grl *GlobalRateLimiter) GetConfig() RateLimitConfig {
 	return grl.config
 }
