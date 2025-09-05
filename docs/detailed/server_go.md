@@ -6,6 +6,7 @@ The Go server acts as the central orchestrator of the TermArena game. It is resp
 
 - **Client Connection Handling:** Listens for incoming TCP connections from clients and manages the lifecycle of each connection.
 - **Authentication:** Communicates with the [Rust Auth Service](./auth_rust.md) to authenticate users.
+- **Rate Limiting:** Implements [token bucket rate limiting](./rate_limiter.md) to prevent abuse and resource exhaustion.
 - **Room Management:** Allows players to create, find, and join game rooms.
 - **Real-time Messaging:** Integrates with the [Message Service](./message_service.md) to handle player-to-player messaging.
 - **Game Server Orchestration:** Spawns a new Rust game server process when a game room is created.
@@ -33,4 +34,21 @@ The Go server's code is organized into the following packages:
 - **`handlers/messages.go`:** Integrates with the Message Service for real-time messaging functionality.
 - **`event/`:** Implements the event broker and defines the message types.
 - **`room_manager.go/`:** Manages the creation, discovery, and joining of game rooms.
+- **`rate_limiter/`:** Implements token bucket rate limiting to prevent abuse.
 - **`shared/`:** Contains code that is shared with the client, such as packet definitions and serialization functions.
+
+## Security Features
+
+The Go server includes several security measures to protect against common attacks:
+
+### Rate Limiting
+- **IP-based limiting** for authentication requests (registration, login challenges)
+- **User-based limiting** for authenticated actions (messaging, room finding)
+- **Token bucket algorithm** with configurable capacity and refill rates
+- **Automatic cleanup** of unused rate limiters to prevent memory leaks
+
+### Attack Protection
+- **Brute force prevention** on registration and authentication
+- **Message flooding protection** per user account
+- **Resource exhaustion prevention** through request throttling
+- **Comprehensive logging** for security monitoring
