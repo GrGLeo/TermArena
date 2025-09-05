@@ -94,10 +94,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 
 	if !allowed {
 		rm.logger.Warn("[SERVER HANDLER] Rate limit exceed", "username", roomRequest.User)
-		return event.RoomSearchMessage{
-			Success: 1,
-			RoomIP:  "",
-		}
+		return event.RateLimitResponse{ResponseCh: roomRequest.ResponseCh}
 	}
 
 	if err := roomRequest.Validate(); err != nil {

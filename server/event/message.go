@@ -98,6 +98,9 @@ func CreatePacketFromMessage(msg Message) ([]byte, error) {
 	case MessageErrorResponse:
 		packet := shared.NewMessageErrorPacket(m.Error)
 		return packet.Serialize(), nil
+	case RateLimitResponse:
+		packet := shared.NewRateLimitPacket()
+		return packet.Serialize(), nil
 	default:
 		return nil, errors.New("Failed to create packet from message")
 	}
@@ -360,3 +363,11 @@ type MessageErrorResponse struct {
 func (mer MessageErrorResponse) Type() string               { return "message_error" }
 func (mer MessageErrorResponse) Validate() error            { return nil }
 func (mer MessageErrorResponse) ResponseChan() chan Message { return mer.ResponseCh }
+
+type RateLimitResponse struct {
+	ResponseCh chan Message
+}
+
+func (rlr RateLimitResponse) Type() string               { return "rate_limit_error" }
+func (rlr RateLimitResponse) Validate() error            { return nil }
+func (rlr RateLimitResponse) ResponseChan() chan Message { return rlr.ResponseCh }

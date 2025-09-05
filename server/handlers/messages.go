@@ -105,10 +105,7 @@ func (ms *MessagesServiceClient) HandleRouteMessage(msg event.Message) event.Mes
 
 	if !allowed {
 		ms.logger.Warn("[SERVER HANDLER] Rate limit exceed", "username", req.User)
-		return event.MessageErrorResponse{
-			Error:      "Failed to route message: rate limit exceed",
-			ResponseCh: req.ResponseCh,
-		}
+		return event.RateLimitResponse{ResponseCh: req.ResponseCh}
 	}
 	ms.logger.Infow("[SERVER HANDLER] HandleRouteMessage called", "sender", req.Sender, "message", req.Message)
 

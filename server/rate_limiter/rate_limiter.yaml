@@ -8,5 +8,5 @@ find-room:
   capacity: 30
   refill: 500
 message_request:
-  capacity: 100
-  refill: 1670
+  capacity: 30
+  refill: 500

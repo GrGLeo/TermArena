@@ -1,6 +1,7 @@
 package main
 
 import (
+	"go.dalton.dog/bubbleup"
 	"log"
 	"net"
 
@@ -33,6 +34,7 @@ type MetaModel struct {
 	Connection     *net.TCPConn
 	GameConnection *net.TCPConn
 	msgs           chan tea.Msg
+	alert          bubbleup.AlertModel
 	width          int
 	height         int
 }
@@ -45,24 +47,40 @@ func NewMetaModel() MetaModel {
 		state:          state,
 		AnimationModel: model.NewAnimationModel(),
 		msgs:           msgs,
+		alert:          *bubbleup.NewAlertModel(80, true),
 	}
 }
 
 func (m MetaModel) Init() tea.Cmd {
 	switch m.state {
 	case Disconnect:
-		return tea.Batch(m.WaitingModel.Init(), communication.AttemptReconnect())
+		return tea.Batch(m.WaitingModel.Init(), communication.AttemptReconnect(), m.alert.Init())
 	case Intro:
-		return m.AnimationModel.Init()
+		return tea.Batch(m.AnimationModel.Init(), m.alert.Init())
 	case Login:
-		return m.AuthModel.Init()
+		return tea.Batch(m.AuthModel.Init(), m.alert.Init())
 	}
-	return communication.AttemptReconnect()
+	return tea.Batch(communication.AttemptReconnect(), m.alert.Init())
 }
 
 func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var alertCmd tea.Cmd
 	var cmd tea.Cmd
 	var newmodel tea.Model
+
+	// Handle alert-specific messages
+	switch msg := msg.(type) {
+	case communication.RateLimitMsg:
+		alertCmd = m.alert.NewAlertCmd(bubbleup.WarnKey, "Rate limit exceeded, wait one minute...")
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+	}
+
+	// Always update alert model with current message
+	outAlert, outCmd := m.alert.Update(msg)
+	m.alert = outAlert.(bubbleup.AlertModel)
+
 	switch m.state {
 	case Disconnect:
 		switch msg := msg.(type) {
@@ -75,30 +93,30 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Connection = msg.Conn
 			m.state = Intro
 			go communication.ListenForPackets(m.Connection, m.msgs)
-			return m, m.AnimationModel.Init()
+			return m, tea.Batch(m.AnimationModel.Init(), outCmd, alertCmd)
 		case communication.ReconnectMsg:
 			newmodel, cmd = m.WaitingModel.Update(msg)
 			m.WaitingModel = newmodel.(model.WaitingModel)
-			return m, tea.Batch(cmd, communication.AttemptReconnect())
+			return m, tea.Batch(cmd, communication.AttemptReconnect(), outCmd, alertCmd)
 		default:
 			newmodel, cmd = m.WaitingModel.Update(msg)
 			m.WaitingModel = newmodel.(model.WaitingModel)
-			return m, cmd
+			return m, tea.Batch(cmd, outCmd, alertCmd)
 		}
 	case Intro:
 		switch msg := msg.(type) {
 		case communication.TickMsg:
 			newmodel, cmd = m.AnimationModel.Update(msg)
 			m.AnimationModel = newmodel.(model.AnimationModel)
-			return m, cmd
+			return m, tea.Batch(cmd, outCmd, alertCmd)
 		case tea.KeyMsg:
 			if msg.Type == tea.KeyEnter {
 				m.state = Login
 				m.AuthModel = model.NewAuthModel(m.Connection)
 				m.AuthModel.SetDimension(m.height, m.width)
-				return m, m.AuthModel.Init()
+				return m, tea.Batch(m.AuthModel.Init(), outCmd, alertCmd)
 			}
-			return m, cmd
+			return m, tea.Batch(cmd, outCmd, alertCmd)
 		case tea.WindowSizeMsg:
 			m.width = msg.Width
 			m.height = msg.Height
@@ -121,10 +139,10 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.state = Lobby
 				m.LobbyModel = model.NewLobbyModel(m.Connection, m.Username)
 				m.LobbyModel.SetDimension(m.height, m.width)
-				return m, m.LobbyModel.Init()
+				return m, tea.Batch(m.LobbyModel.Init(), outCmd, alertCmd)
 			}
 		default:
-			return m, cmd
+			return m, tea.Batch(cmd, outCmd, alertCmd)
 		}
 
 	case Lobby:
@@ -132,22 +150,22 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LobbyModel = newmodel.(model.LobbyModel)
 		switch msg := msg.(type) {
 		case communication.LookRoomMsg:
-			return m, communication.AttemptGameConnection(msg.RoomIP)
+			return m, tea.Batch(communication.AttemptGameConnection(msg.RoomIP), outCmd, alertCmd)
 		case communication.GameConnectionMsg:
 			m.GameConnection = msg.Conn
 			communication.SendSpellSelectionPacket(m.GameConnection, m.LobbyModel.SelectedSpells[0], m.LobbyModel.SelectedSpells[1])
 			go communication.ListenForPackets(m.GameConnection, m.msgs)
-			return m, nil
+			return m, tea.Batch(outCmd, alertCmd)
 		case communication.GameConnectionFailedMsg:
 			log.Println("Failed to connect to game server after multiple attempts.")
-			return m, nil
+			return m, tea.Batch(outCmd, alertCmd)
 		case communication.GameStartMsg:
 			m.state = Game
 			m.GameModel = model.NewGameModel(m.GameConnection)
 			m.GameModel.SetDimension(m.height, m.width)
-			return m, m.GameModel.Init()
+			return m, tea.Batch(m.GameModel.Init(), outCmd, alertCmd)
 		default:
-			return m, cmd
+			return m, tea.Batch(cmd, outCmd, alertCmd)
 		}
 
 	case Game:
@@ -167,24 +185,24 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.GameConnection,
 			)
 			m.ShopModel.SetDimension(m.height, m.width)
-			return m, m.ShopModel.Init()
+			return m, tea.Batch(m.ShopModel.Init(), outCmd, alertCmd)
 		case communication.GameCloseMsg:
 			m.state = GameOver
 			m.GameOverModel = model.NewGameOverModel(msg.Code)
 			m.GameOverModel.SetDimension(m.height, m.width)
-			return m, m.GameOverModel.Init()
+			return m, tea.Batch(m.GameOverModel.Init(), outCmd, alertCmd)
 		default:
-			return m, cmd
+			return m, tea.Batch(cmd, outCmd, alertCmd)
 		}
 	case Shop:
 		switch msg := msg.(type) {
 		case communication.BackToGameMsg:
 			m.state = Game
-			return m, nil
+			return m, tea.Batch(outCmd, alertCmd)
 		default:
 			newmodel, cmd = m.ShopModel.Update(msg)
 			m.ShopModel = newmodel.(model.ShopModel)
-			return m, cmd
+			return m, tea.Batch(cmd, outCmd, alertCmd)
 		}
 	case GameOver:
 		switch msg := msg.(type) {
@@ -200,7 +218,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// If reconnect fails, fall back to the Disconnect screen for robust retries
 				log.Println("Failed to reconnect to lobby server, falling back to disconnect screen:", err)
 				m.state = Disconnect
-				return m, m.Init()
+				return m, tea.Batch(m.Init(), outCmd, alertCmd)
 			}
 
 			// If successful, set the new connection and start a new packet listener
@@ -210,34 +228,37 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = Lobby
 			m.LobbyModel = model.NewLobbyModel(m.Connection, m.Username)
 			m.LobbyModel.SetDimension(m.height, m.width)
-			return m, m.LobbyModel.Init()
+			return m, tea.Batch(m.LobbyModel.Init(), outCmd, alertCmd)
 		default:
 			newmodel, cmd = m.GameOverModel.Update(msg)
 			m.GameOverModel = newmodel.(model.GameOverModel)
-			return m, cmd
+			return m, tea.Batch(cmd, outCmd, alertCmd)
 		}
 	}
-	return m, nil
+	return m, tea.Batch(outCmd, alertCmd)
 }
 
 func (m MetaModel) View() string {
+	var content string
 	switch m.state {
 	case Disconnect:
-		return m.WaitingModel.View()
+		content = m.WaitingModel.View()
 	case Intro:
-		return m.AnimationModel.View()
+		content = m.AnimationModel.View()
 	case Login:
-		return m.AuthModel.View()
+		content = m.AuthModel.View()
 	case Lobby:
-		return m.LobbyModel.View()
+		content = m.LobbyModel.View()
 	case Game:
-		return m.GameModel.View()
+		content = m.GameModel.View()
 	case Shop:
-		return m.ShopModel.View()
+		content = m.ShopModel.View()
 	case GameOver:
-		return m.GameOverModel.View()
+		content = m.GameOverModel.View()
+	default:
+		content = ""
 	}
-	return ""
+	return m.alert.Render(content)
 }
 
 func main() {

@@ -218,6 +218,8 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 			case *shared.MessageErrorPacket:
 				log.Printf("[CLIENT] Received message error: %s", msg.Error)
 				msgs <- MessageErrorMsg{Error: msg.Error}
+      case *shared.RateLimitPacket:
+        msgs <- RateLimitMsg{}
 			default:
 				log.Printf("Unknown type: %T, raw: %x", packet, data)
 				msgs <- GamePacketMsg{Packet: data}
