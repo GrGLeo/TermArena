@@ -1,5 +1,8 @@
 package shared
 
-func Hello() string {
-  return "Hello, world!"
+import "net"
+
+func ExtractIp(conn *net.TCPConn) string {
+  addr := conn.RemoteAddr().(*net.TCPAddr)
+  return addr.IP.String()
 }

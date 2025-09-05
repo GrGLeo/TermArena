@@ -17,4 +17,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
 )
 
-replace github.com/GrGLeo/ctf/server => ../server
+replace github.com/GrGLeo/ctf/server => ../../server
