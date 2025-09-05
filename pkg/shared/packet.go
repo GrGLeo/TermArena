@@ -34,6 +34,8 @@ code 19: purchase item
 code 100: message packet (sender + message content)
 code 101: message response (routed message content)
 code 102: message error (error description)
+---
+code 255: error message for rate limit exceed
 */
 
 type Packet interface {
@@ -736,6 +738,27 @@ func (mep *MessageErrorPacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
+
+type RateLimitPacket struct {
+  version, code int
+}
+
+func NewRateLimitPacket() *RateLimitPacket {
+	return &RateLimitPacket{
+		version: 1,
+		code:    255,
+	}
+}
+
+func (rlp *RateLimitPacket) Version() int { return rlp.version }
+func (rlp *RateLimitPacket) Code() int    { return rlp.code }
+func (rlp *RateLimitPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(rlp.version))
+	buf.WriteByte(byte(rlp.code))
+	return buf.Bytes()
+}
+
 // DeSerialize deserializes a byte slice into a specific Packet type.
 func DeSerialize(data []byte) (Packet, int, error) {
 	if len(data) < 2 {
@@ -1149,7 +1172,15 @@ func DeSerialize(data []byte) (Packet, int, error) {
 			Error:   errorMsg,
 		}
 		return packet, totalLen, nil
-
+  case 255:
+		if len(data) < 2 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		packet := &RateLimitPacket{
+			version: version,
+			code:    code,
+		}
+		return packet, 2, nil
 	default:
 		return nil, 0, errors.New("unknown message type")
 	}

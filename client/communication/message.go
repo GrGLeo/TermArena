@@ -143,3 +143,6 @@ type IncomingMessageMsg struct {
 type MessageErrorMsg struct {
 	Error string
 }
+
+// Rate Limit exceed message
+type RateLimitMsg struct {}
