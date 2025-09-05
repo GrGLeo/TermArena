@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestExtractIp_ValidIPv4(t *testing.T) {
+func TestExtractIP_ValidIPv4(t *testing.T) {
 	// Create a mock TCP connection with IPv4 address
 	remoteAddr, _ := net.ResolveTCPAddr("tcp", "192.168.1.100:12345")
 
@@ -20,7 +20,7 @@ func TestExtractIp_ValidIPv4(t *testing.T) {
 	}
 }
 
-func TestExtractIp_ValidIPv6(t *testing.T) {
+func TestExtractIP_ValidIPv6(t *testing.T) {
 	// Test IPv6 address extraction
 	remoteAddr, _ := net.ResolveTCPAddr("tcp", "[2001:db8::1]:12345")
 
@@ -32,7 +32,7 @@ func TestExtractIp_ValidIPv6(t *testing.T) {
 	}
 }
 
-func TestExtractIp_Localhost(t *testing.T) {
+func TestExtractIP_Localhost(t *testing.T) {
 	// Test localhost IPv4
 	remoteAddr, _ := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 
@@ -43,7 +43,3 @@ func TestExtractIp_Localhost(t *testing.T) {
 		t.Errorf("Expected IP %s, got %s", expectedIP, actualIP)
 	}
 }
-
-// Note: The current ExtractIp function has a potential panic if the connection
-// doesn't have a *net.TCPAddr. In a real implementation, you might want to add
-// error handling, but for now we'll test the happy path.

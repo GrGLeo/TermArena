@@ -42,11 +42,20 @@ func NewAuthClient(broker *event.EventBroker, logger *zap.SugaredLogger, rateLim
 
 func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 	req := msg.(event.RegisterRequestMessage)
-  ip := shared.ExtractIp(req.Conn)
+  ip, err := shared.ExtractIP(req.Conn)
+  if err != nil {
+    ac.logger.Errorw("[SERVER HANDLER] failed to extract TCP IP from connection", "error", err)
+		return event.RegisterResponseMessage{
+			Success:   false,
+			Message:   "Failed to extract TCP IP",
+			Challenge: nil,
+			Conn:      req.Conn,
+		}
+  }
   allowed, err := ac.rateLimiter.Allow(ip, req.Type(), true)
 
 	if err != nil {
-		ac.logger.Errorw("Failed to retrieve bucket", "error", err, "ip", ip)
+		ac.logger.Errorw("[SERVER HANDLER] Failed to retrieve bucket", "error", err, "ip", ip)
 		return event.RegisterResponseMessage{
 			Success:   false,
 			Message:   "Internal server error",
@@ -56,7 +65,7 @@ func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 	}
 
   if !allowed {
-    ac.logger.Warn("Rate limit exceed", "ip", ip, "username", req.Username)
+    ac.logger.Warn("[SERVER HANDLER] Rate limit exceed", "ip", ip, "username", req.Username)
     return event.RegisterResponseMessage{
       Success: false,
       Message: "Rate limit exceed",
@@ -74,7 +83,7 @@ func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 	})
 
 	if err != nil {
-		ac.logger.Errorw("gRPC Register call failed", "error", err, "username", req.Username)
+		ac.logger.Errorw("[SERVER HANDLER] gRPC Register call failed", "error", err, "username", req.Username)
 		return event.RegisterResponseMessage{
 			Success:   false,
 			Message:   "Internal server error",
@@ -102,11 +111,18 @@ func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 
 func (ac *AuthClient) HandleLoginChallenge(msg event.Message) event.Message {
 	req := msg.(event.LoginChallengeRequestMessage)
-  ip := shared.ExtractIp(req.Conn)
+  ip, err := shared.ExtractIP(req.Conn)
+  if err != nil {
+    ac.logger.Errorw("[SERVER HANDLER] Failed to extract TCP IP from connection", "error", err)
+		return event.LoginChallengeResponseMessage{
+			Challenge: nil,
+			Conn:      req.Conn,
+		}
+  }
   allowed, err := ac.rateLimiter.Allow(ip, req.Type(), true)
 
 	if err != nil {
-		ac.logger.Errorw("Failed to retrieve bucket", "error", err, "ip", ip)
+		ac.logger.Errorw("[SERVER HANDLER] Failed to retrieve bucket", "error", err, "ip", ip)
 		return event.LoginChallengeResponseMessage{
 			Challenge: nil,
 			Conn:      req.Conn,
@@ -114,7 +130,7 @@ func (ac *AuthClient) HandleLoginChallenge(msg event.Message) event.Message {
 	}
 
   if !allowed {
-    ac.logger.Warn("Rate limit exceed", "ip", ip, "username", req.Username)
+    ac.logger.Warn("[SERVER HANDLER] Rate limit exceed", "ip", ip, "username", req.Username)
     return event.LoginChallengeResponseMessage{
       Challenge: nil,
       Conn: req.Conn,
