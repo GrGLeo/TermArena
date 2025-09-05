@@ -21,12 +21,11 @@ The following diagram illustrates the interaction between the different componen
 ```mermaid
 graph TD
     A[Client] -->|TCP| B(Go Server)
-    B -->|Check| C(Rate Limit)
-    C -->|Response| B
+    B <-->|Check| C(Rate Limit)
     B -->|gRPC| D{Auth Service}
     B -->|gRPC| E{Message Service}
     B -->|Spawns| F[Rust Game Server]
-    A -->|TCP| F
+    A <-->|TCP| F
 ```
 
 ### Data Flow
