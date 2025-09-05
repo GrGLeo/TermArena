@@ -16,7 +16,7 @@ import (
 // Each field corresponds to a different type of request with its own capacity and refill rate.
 type RateLimitConfig struct {
 	RegisterRequest       BucketConfig `yaml:"register_request"`
-	LoginChallengeRequest BucketConfig `yaml:"login_request_challenge"`
+	LoginChallengeRequest BucketConfig `yaml:"login_challenge_request"`
 	FindRoom              BucketConfig `yaml:"find-room"`
 	MessageRequest        BucketConfig `yaml:"message_request"`
 }
@@ -41,8 +41,8 @@ func NewRateLimiter(config *RateLimitConfig, isIPBound bool) *RateLimiter {
 		registerBucket := NewTokenBucket(int64(config.RegisterRequest.Capacity), int64(config.RegisterRequest.Refill))
 		loginBucket := NewTokenBucket(int64(config.LoginChallengeRequest.Capacity), int64(config.LoginChallengeRequest.Refill))
 		buckets = map[string]*TokenBucket{
-			"register-request":        registerBucket,
-			"login-request-challenge": loginBucket,
+			"register_request":        registerBucket,
+			"login_challenge_request": loginBucket,
 		}
 	} else {
 		findBucket := NewTokenBucket(int64(config.FindRoom.Capacity), int64(config.FindRoom.Refill))
@@ -256,13 +256,13 @@ func (grl *GlobalRateLimiter) Allow(identifier string, requestType string, isIPB
 	if isIPBound {
 		bucket, err := grl.ipLimiter.GetBucket(identifier, requestType)
 		if err != nil {
-			return false, fmt.Errorf("got an error: %s", err)
+			return false, fmt.Errorf("error on retrieving bucket: %s", err)
 		}
 		return bucket.Allow(), nil
 	}
 	bucket, err := grl.userLimiter.GetBucket(identifier, requestType)
 	if err != nil {
-		return false, fmt.Errorf("got an error: %s", err)
+		return false, fmt.Errorf("error on retrieving bucket: %s", err)
 	}
 	return bucket.Allow(), nil
 }
