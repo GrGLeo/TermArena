@@ -2,6 +2,9 @@ package ratelimiter_test
 
 import (
 	"fmt"
+	"os"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/GrGLeo/ctf/server/rate_limiter"
@@ -45,6 +48,65 @@ func TestNewGlobalRateLimiter(t *testing.T) {
 				t.Fatal("NewGlobalRateLimiter() returned nil")
 			}
 		})
+	}
+}
+
+func TestNewGlobalRateLimiter_InvalidYAMLValues(t *testing.T) {
+	// Create a temporary YAML file with invalid values
+	invalidYAML := `
+register_request:
+  capacity: -1
+  refill: 0
+login_request_challenge:
+  capacity: 0
+  refill: -5
+find-room:
+  capacity: -10
+  refill: 0
+message_request:
+  capacity: 0
+  refill: -100
+`
+	tmpFile, err := os.CreateTemp("", "invalid_config_*.yaml")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(invalidYAML); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	// Test that defaults are applied for invalid values
+	grl, err := ratelimiter.NewGlobalRateLimiter(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("NewGlobalRateLimiter() failed: %v", err)
+	}
+
+	// Verify defaults were applied
+	expectedDefaults := ratelimiter.RateLimitConfig{
+		RegisterRequest: ratelimiter.BucketConfig{
+			Capacity: 2,
+			Refill:   33,
+		},
+		LoginChallengeRequest: ratelimiter.BucketConfig{
+			Capacity: 2,
+			Refill:   33,
+		},
+		FindRoom: ratelimiter.BucketConfig{
+			Capacity: 30,
+			Refill:   500,
+		},
+		MessageRequest: ratelimiter.BucketConfig{
+			Capacity: 100,
+			Refill:   1670,
+		},
+	}
+
+	actualConfig := grl.GetConfig()
+	if actualConfig != expectedDefaults {
+		t.Errorf("Defaults not applied correctly.\nGot: %+v\nExpected: %+v", actualConfig, expectedDefaults)
 	}
 }
 
@@ -265,7 +327,7 @@ func TestRateLimiting_Enforcement(t *testing.T) {
 		ip := "192.168.1.1"
 
 		// First 2 requests should be allowed
-		for i := 0; i < 2; i++ {
+		for i := range 2 {
 			allowed, err := grl.Allow(ip, "register-request", true)
 			if err != nil {
 				t.Fatalf("Allow() failed: %v", err)
@@ -291,7 +353,7 @@ func TestRateLimiting_Enforcement(t *testing.T) {
 
 		// First 30 requests should be allowed
 		allowedCount := 0
-		for i := 0; i < 35; i++ {
+		for range 35 {
 			allowed, err := grl.Allow(user, "find-room", false)
 			if err != nil {
 				t.Fatalf("Allow() failed: %v", err)
@@ -305,6 +367,141 @@ func TestRateLimiting_Enforcement(t *testing.T) {
 			t.Errorf("Expected 30 requests to be allowed, got %d", allowedCount)
 		}
 	})
+}
+
+func TestIPRateLimiter_ConcurrentSameIP(t *testing.T) {
+	config := &ratelimiter.RateLimitConfig{
+		RegisterRequest: ratelimiter.BucketConfig{
+			Capacity: 100,
+			Refill:   1000,
+		},
+		LoginChallengeRequest: ratelimiter.BucketConfig{
+			Capacity: 100,
+			Refill:   1000,
+		},
+	}
+
+	ipLimiter := ratelimiter.NewIPRateLimiter(config)
+
+	ip := "192.168.1.1"
+	numGoroutines := 50
+	numCalls := 100
+
+	var wg sync.WaitGroup
+	var successCount int64
+	var errorCount int64
+
+	for range numGoroutines {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range numCalls {
+				_, err := ipLimiter.GetBucket(ip, "register-request")
+				if err != nil {
+					atomic.AddInt64(&errorCount, 1)
+				} else {
+					atomic.AddInt64(&successCount, 1)
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	// Verify all calls succeeded (no race conditions)
+	totalCalls := int64(numGoroutines * numCalls)
+	if successCount != totalCalls {
+		t.Errorf("Expected %d successful calls, got %d (errors: %d)",
+			totalCalls, successCount, errorCount)
+	}
+
+	// Verify only one limiter instance was created
+	limiterCount := ipLimiter.GetLimiterCount()
+	if limiterCount != 1 {
+		t.Errorf("Expected 1 limiter instance, got %d", limiterCount)
+	}
+}
+
+func TestGlobalRateLimiter_ConcurrentSameIPAllow(t *testing.T) {
+	grl, err := ratelimiter.NewGlobalRateLimiter("rate_limiter.yaml")
+	if err != nil {
+		t.Fatalf("Failed to create GlobalRateLimiter: %v", err)
+	}
+
+	ip := "192.168.1.1"
+	numGoroutines := 10
+	numCalls := 5 // Within capacity limit
+
+	var wg sync.WaitGroup
+	var allowedCount int64
+	var deniedCount int64
+
+	for range numGoroutines {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range numCalls {
+				allowed, err := grl.Allow(ip, "register-request", true)
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+					return
+				}
+				if allowed {
+					atomic.AddInt64(&allowedCount, 1)
+				} else {
+					atomic.AddInt64(&deniedCount, 1)
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	// With capacity=2, should allow exactly 2 requests
+	if allowedCount != 2 {
+		t.Errorf("Expected 2 allowed requests, got %d", allowedCount)
+	}
+
+	totalRequests := int64(numGoroutines * numCalls)
+	if deniedCount != totalRequests-2 {
+		t.Errorf("Expected %d denied requests, got %d",
+			totalRequests-2, deniedCount)
+	}
+}
+
+func TestGlobalRateLimiter_ConcurrentMixedAccess(t *testing.T) {
+	grl, err := ratelimiter.NewGlobalRateLimiter("rate_limiter.yaml")
+	if err != nil {
+		t.Fatalf("Failed to create GlobalRateLimiter: %v", err)
+	}
+
+	numGoroutines := 20
+	var wg sync.WaitGroup
+
+	for i := range numGoroutines {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+
+			// Alternate between IP and user requests
+			if id%2 == 0 {
+				ip := fmt.Sprintf("192.168.1.%d", id%10)
+				_, err := grl.Allow(ip, "register-request", true)
+				if err != nil {
+					t.Errorf("IP request failed: %v", err)
+				}
+			} else {
+				user := fmt.Sprintf("user%d", id%10)
+				_, err := grl.Allow(user, "find-room", false)
+				if err != nil {
+					t.Errorf("User request failed: %v", err)
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	// Test completes without race conditions or deadlocks
 }
 
 // Benchmark functions for performance testing

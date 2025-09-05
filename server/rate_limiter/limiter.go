@@ -116,6 +116,12 @@ func (irl *IPRateLimiter) cleanupRoutine() {
 	}
 }
 
+func (irl *IPRateLimiter) GetLimiterCount() int {
+	irl.mu.RLock()
+	defer irl.mu.RUnlock()
+	return len(irl.limiters)
+}
+
 type UserRateLimiter struct {
 	limiters   map[string]*RateLimiter // user -> RateLimiter
 	lastAccess map[string]time.Time
@@ -199,6 +205,9 @@ func NewGlobalRateLimiter(configPath string) (*GlobalRateLimiter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to Unmarshal yaml file: %s", err)
 	}
+
+	// YAML validation
+	applyDefaults(&config)
 	return &GlobalRateLimiter{
 		ipLimiter:   NewIPRateLimiter(&config),
 		userLimiter: NewUserRateLimiter(&config),
@@ -219,4 +228,29 @@ func (grl *GlobalRateLimiter) Allow(identifier string, requestType string, isIPB
 		return false, fmt.Errorf("got an error: %s", err)
 	}
 	return bucket.Allow(), nil
+}
+
+func applyDefaults(config *RateLimitConfig) {
+	defaults := []struct {
+		field      *int
+		defaultVal int
+	}{
+		{&config.RegisterRequest.Refill, 33},
+		{&config.RegisterRequest.Capacity, 2},
+		{&config.LoginChallengeRequest.Refill, 33},
+		{&config.LoginChallengeRequest.Capacity, 2},
+		{&config.FindRoom.Refill, 500},
+		{&config.FindRoom.Capacity, 30},
+		{&config.MessageRequest.Refill, 1670},
+		{&config.MessageRequest.Capacity, 100},
+	}
+	for _, d := range defaults {
+		if *d.field <= 0 {
+			*d.field = d.defaultVal
+		}
+	}
+}
+
+func (grl *GlobalRateLimiter) GetConfig() RateLimitConfig {
+	return grl.config
 }
