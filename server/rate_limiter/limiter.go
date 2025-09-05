@@ -80,7 +80,7 @@ func NewIPRateLimiter(config *RateLimitConfig) *IPRateLimiter {
 
 // GetBucket returns the token bucket for the specified IP address and request type.
 // Creates a new rate limiter for the IP on first access (lazy initialization).
-// Supported request types: "register-request", "login-request-challenge".
+// Supported request types: "register_request", "login_challenge_request".
 // Returns an error for invalid request types or if limiter creation fails.
 // Thread-safe for concurrent access.
 func (irl *IPRateLimiter) GetBucket(ip, requestType string) (*TokenBucket, error) {
