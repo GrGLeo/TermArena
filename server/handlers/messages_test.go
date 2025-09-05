@@ -10,6 +10,7 @@ import (
 	pb "github.com/GrGLeo/ctf/pkg/shared/proto/message"
 	connmanager "github.com/GrGLeo/ctf/server/conn_manager"
 	"github.com/GrGLeo/ctf/server/event"
+	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -77,8 +78,20 @@ func (m *mockSugaredLogger) Errorw(msg string, keysAndValues ...interface{}) {
 	}
 }
 
+// createTestRateLimiter creates a test rate limiter using the existing config
+func createTestRateLimiter() *ratelimiter.GlobalRateLimiter {
+	// Use the existing rate limiter config file
+	grl, err := ratelimiter.NewGlobalRateLimiter("/home/leo/code/term_arena/server/rate_limiter/rate_limiter.yaml")
+	if err != nil {
+		// If config file doesn't exist or is invalid, create a simple one that allows everything
+		// This is just for testing purposes
+		panic("Failed to create rate limiter for test: " + err.Error())
+	}
+	return grl
+}
+
 // Helper function to create test MessagesServiceClient
-func createTestMessagesServiceClient(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger) *MessagesServiceClient {
+func createTestMessagesServiceClient(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger, mockRateLimiter *ratelimiter.GlobalRateLimiter) *MessagesServiceClient {
 	if mockClient == nil {
 		mockClient = &mockMessageServiceClient{}
 	}
@@ -88,10 +101,14 @@ func createTestMessagesServiceClient(mockClient *mockMessageServiceClient, mockC
 	if mockLogger == nil {
 		mockLogger = zap.NewNop().Sugar()
 	}
+	if mockRateLimiter == nil {
+		mockRateLimiter = createTestRateLimiter()
+	}
 
 	return &MessagesServiceClient{
 		Client:      mockClient,
 		connManager: mockConnMgr,
+		rateLimiter: mockRateLimiter,
 		logger:      mockLogger,
 	}
 }
@@ -179,7 +196,7 @@ func TestMessagesServiceClient_HandleClientRegistration(t *testing.T) {
 				tt.mockSetup(mockClient, mockConnMgr, mockLogger)
 			}
 
-			client := createTestMessagesServiceClient(mockClient, mockConnMgr, mockLogger)
+			client := createTestMessagesServiceClient(mockClient, mockConnMgr, mockLogger, nil)
 			result := client.HandleClientRegistration(tt.req)
 
 			if !tt.expectedResult(result) {
@@ -289,7 +306,7 @@ func TestMessagesServiceClient_HandleClientUnregistration(t *testing.T) {
 				tt.mockSetup(mockClient, mockConnMgr, mockLogger)
 			}
 
-			client := createTestMessagesServiceClient(mockClient, mockConnMgr, mockLogger)
+			client := createTestMessagesServiceClient(mockClient, mockConnMgr, mockLogger, nil)
 			result := client.HandleClientUnregistration(tt.req)
 
 			if !tt.expectedResult(result) {
@@ -407,7 +424,7 @@ func TestMessagesServiceClient_HandleRouteMessage(t *testing.T) {
 				tt.mockSetup(mockClient, mockConnMgr, mockLogger)
 			}
 
-			client := createTestMessagesServiceClient(mockClient, mockConnMgr, mockLogger)
+			client := createTestMessagesServiceClient(mockClient, mockConnMgr, mockLogger, nil)
 			result := client.HandleRouteMessage(tt.req)
 
 			if !tt.expectedResult(result) {
@@ -439,7 +456,7 @@ func BenchmarkHandleClientRegistration(b *testing.B) {
 	mockConnMgr := connmanager.NewConnectionManager()
 	mockLogger := zap.NewNop().Sugar()
 
-	client := createTestMessagesServiceClient(mockClient, mockConnMgr, mockLogger)
+	client := createTestMessagesServiceClient(mockClient, mockConnMgr, mockLogger, nil)
 	req := event.ClientRegistrationMessage{
 		ClientID: "client1",
 		RoomID:   1,
@@ -464,7 +481,7 @@ func BenchmarkHandleRouteMessage(b *testing.B) {
 	mockConnMgr := connmanager.NewConnectionManager()
 	mockLogger := zap.NewNop().Sugar()
 
-	client := createTestMessagesServiceClient(mockClient, mockConnMgr, mockLogger)
+	client := createTestMessagesServiceClient(mockClient, mockConnMgr, mockLogger, nil)
 	req := event.MessageRequestMessage{
 		Sender:     "client1",
 		Message:    "Hello",
