@@ -1,3 +1,7 @@
+# Rate Limiter Configuration
+# Token bucket algorithm settings for different request types
+# refill rate is tokens per second (scaled by 1000 internally)
+
 register_request:
   capacity: 2
   refill: 33

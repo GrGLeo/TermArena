@@ -342,10 +342,22 @@ sequenceDiagram
 - **Structure:**
   ```
   Byte Offset: 0       1       2       3
-                +-------+-------+-------+-------+
-                |Version| Code  |    ItemID     |
-                +-------+-------+-------+-------+
+                 +-------+-------+-------+-------+
+                 |Version| Code  |    ItemID     |
+                 +-------+-------+-------+-------+
   Size (bytes):  1       1       2 (u16)
+  ```
+
+#### `RateLimitPacket` (Code 255)
+- **Direction:** Server -> Client
+- **Purpose:** Sent when a request is rate limited and cannot be processed.
+- **Structure:**
+  ```
+  Byte Offset: 0       1
+                 +-------+-------+
+                 |Version| Code  |
+                 +-------+-------+
+  Size (bytes):  1       1
   ```
 
 ---

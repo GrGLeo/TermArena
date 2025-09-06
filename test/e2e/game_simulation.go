@@ -33,7 +33,7 @@ type ClientStats struct {
 	LatencyCount     int64
 }
 
-func main() {
+func RunGameSimulation() {
 	if len(os.Args) < 5 {
 		fmt.Println("Usage: go run main.go <client_count> <server_port> <duration_in_seconds> <game_type>")
 		return
