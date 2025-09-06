@@ -281,7 +281,7 @@ func registrationRateLimitTest(clients []*TestClient) error {
 	}
 
 	// Send multiple registration requests rapidly to trigger rate limit
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		username := fmt.Sprintf("ratelimit_reg_%d_%d", time.Now().Unix(), i)
 		// Use a valid-looking but fake public key
 		fakeKey := []byte("-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA\n-----END PUBLIC KEY-----")
@@ -333,7 +333,7 @@ func authRateLimitTest(clients []*TestClient) error {
 	}
 
 	// Send multiple consecutive login challenge requests to trigger rate limit
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		challengePacket := shared.NewLoginChallengeRequestPacket(client.username)
 		data := challengePacket.Serialize()
 
@@ -388,7 +388,7 @@ func messageRateLimitTest(clients []*TestClient) error {
 	time.Sleep(500 * time.Millisecond)
 
 	// Send 35 messages rapidly (exceeding 30/minute limit)
-	for i := 0; i < 35; i++ {
+	for i := range 35 {
 		message := fmt.Sprintf("Rate limit test message %d", i+1)
 		client.sendMessage(message)
 
