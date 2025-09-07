@@ -81,7 +81,7 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 					responseChan := make(chan event.Message)
 					msg := event.ClientUnregistrationMessage{
 						ClientID:  client,
-						ReponseCh: responseChan,
+						ResponseCh: responseChan,
 					}
 					broker.Publish(msg)
 				}

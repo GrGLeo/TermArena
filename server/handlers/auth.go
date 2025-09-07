@@ -180,7 +180,7 @@ func (ac *AuthClient) HandleAuth(msg event.Message) event.Message {
 		ClientID:  req.Username,
 		RoomID:    0,
 		Conn:      req.Conn,
-		ReponseCh: regResponseCh,
+		ResponseCh: regResponseCh,
 	}
 	ac.broker.Publish(clientRegistration)
 
