@@ -44,7 +44,6 @@ type Packet interface {
 	Serialize() []byte
 }
 
-
 /*
 AUTHENTIFICATION PACKETS
 */
@@ -334,11 +333,12 @@ func (cp *RoomJoinPacket) Serialize() []byte {
 }
 
 type LookRoomPacket struct {
-	version, code, Success int
-	RoomID, RoomIP         string
+	version, code   int
+	Success, RoomID int
+	RoomIP          string
 }
 
-func NewLookRoomPacket(success int, roomID, roomIP string) *LookRoomPacket {
+func NewLookRoomPacket(success, roomID int, roomIP string) *LookRoomPacket {
 	return &LookRoomPacket{
 		version: 1,
 		code:    9,
@@ -352,16 +352,10 @@ func (lp *LookRoomPacket) Version() int { return lp.version }
 func (lp *LookRoomPacket) Code() int    { return lp.code }
 func (lp *LookRoomPacket) Serialize() []byte {
 	var buf bytes.Buffer
-	capacity := 3 + len(lp.RoomID) + len(lp.RoomIP)
-	buf.Grow(capacity)
 	buf.WriteByte(byte(lp.version))
 	buf.WriteByte(byte(lp.code))
 	buf.WriteByte(byte(lp.Success))
-	if lp.RoomID != "" {
-		buf.WriteString(lp.RoomID)
-	} else {
-		buf.WriteString("     ")
-	}
+	binary.Write(&buf, binary.BigEndian, uint16(lp.RoomID))
 	buf.WriteString(lp.RoomIP)
 	return buf.Bytes()
 }
@@ -738,9 +732,8 @@ func (mep *MessageErrorPacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
-
 type RateLimitPacket struct {
-  version, code int
+	version, code int
 }
 
 func NewRateLimitPacket() *RateLimitPacket {
@@ -948,13 +941,13 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		if len(data) < 8 {
 			return nil, 0, errors.New("incomplete packet")
 		}
-		roomID := string(data[3:8])
-		roomIP := string(data[8:])
+    roomID := binary.BigEndian.Uint16(data[3:5])
+		roomIP := string(data[5:])
 		packet := &LookRoomPacket{
 			version: version,
 			code:    code,
 			Success: int(data[2]),
-			RoomID:  roomID,
+			RoomID:  int(roomID),
 			RoomIP:  roomIP,
 		}
 		return packet, len(data), nil
@@ -1172,7 +1165,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 			Error:   errorMsg,
 		}
 		return packet, totalLen, nil
-  case 255:
+	case 255:
 		if len(data) < 2 {
 			return nil, 0, errors.New("incomplete packet")
 		}

@@ -326,7 +326,7 @@ type CreateModel struct {
 	roomIDInput   textinput.Model
 	width, height int
 	looking       bool
-	roomID        string
+	roomID        int
 	conn          *net.TCPConn
 	spinner       spinner.Model
 	inputFocused  bool
@@ -469,7 +469,7 @@ func (m CreateModel) View() string {
 		optionsBuilder.WriteString(
 			lipgloss.NewStyle().
 				Foreground(lipgloss.Color("205")).
-				Render("Joining room " + m.roomID + " " + m.spinner.View()),
+				Render("Joining room " + m.spinner.View()),
 		)
 	}
 

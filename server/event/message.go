@@ -46,7 +46,7 @@ func CreateMessage(packet shared.Packet, conn *net.TCPConn, connManager *conm.Co
 		return RoomRequestMessage{
 			RoomType:   pkt.RoomType,
 			Conn:       conn,
-			User:       user,
+			Username:   user,
 			ResponseCh: responseChan,
 		}, nil
 	case *shared.RoomCreatePacket:
@@ -180,10 +180,10 @@ func (m AuthResponseMessage) ResponseChan() chan Message { return nil }
 
 // --- CLIENT REGISTRATION ---
 type ClientRegistrationMessage struct {
-	ClientID  string
-	RoomID    int
-	Conn      *net.TCPConn
-	ReponseCh chan Message
+	ClientID   string
+	RoomID     int
+	Conn       *net.TCPConn
+	ResponseCh chan Message
 }
 
 func (m ClientRegistrationMessage) Type() string { return "client_registration" }
@@ -193,7 +193,7 @@ func (m ClientRegistrationMessage) Validate() error {
 	}
 	return nil
 }
-func (m ClientRegistrationMessage) ResponseChan() chan Message { return m.ReponseCh }
+func (m ClientRegistrationMessage) ResponseChan() chan Message { return m.ResponseCh }
 
 type ClientRegistrationResponse struct {
 	Success  bool
@@ -211,8 +211,8 @@ func (m ClientRegistrationResponse) Validate() error {
 func (m ClientRegistrationResponse) ResponseChan() chan Message { return nil }
 
 type ClientUnregistrationMessage struct {
-	ClientID  string
-	ReponseCh chan Message
+	ClientID   string
+	ResponseCh chan Message
 }
 
 func (m ClientUnregistrationMessage) Type() string { return "client_unregistration" }
@@ -222,7 +222,7 @@ func (m ClientUnregistrationMessage) Validate() error {
 	}
 	return nil
 }
-func (m ClientUnregistrationMessage) ResponseChan() chan Message { return m.ReponseCh }
+func (m ClientUnregistrationMessage) ResponseChan() chan Message { return m.ResponseCh }
 
 type ClientUnregistrationResponse struct {
 	Success  bool
@@ -243,7 +243,7 @@ func (m ClientUnregistrationResponse) ResponseChan() chan Message { return nil }
 
 type RoomRequestMessage struct {
 	RoomType int
-	User     string
+	Username string
 	Conn     *net.TCPConn
 	// ResponseCh is the channel to send the response to.
 	ResponseCh chan Message
@@ -251,8 +251,8 @@ type RoomRequestMessage struct {
 
 func (fm RoomRequestMessage) Type() string { return "find-room" }
 func (fm RoomRequestMessage) Validate() error {
-	if fm.RoomType < 0 || fm.RoomType >= 2 {
-		return errors.New("Invalid room type")
+	if fm.RoomType < 0 || fm.RoomType >= 4 {
+    return errors.New(fmt.Sprintf("Invalid room type: %d", fm.RoomType))
 	}
 
 	if fm.Conn == nil {
@@ -304,7 +304,7 @@ func (rc RoomCreateMessage) ResponseChan() chan Message { return rc.ResponseCh }
 
 type RoomSearchMessage struct {
 	Success int
-	RoomID  string
+	RoomID  int
 	RoomIP  string
 }
 

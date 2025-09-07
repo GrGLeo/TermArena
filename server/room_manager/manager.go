@@ -21,33 +21,23 @@ const (
 	RANKED
 )
 
-type ClassicRoom struct {
-	Port       string
-	PlayersIn  int
-	MaxPlayers int
-}
-
-type PracticeRoom struct {
-	Port       string
-	PlayersIn  int
-	MaxPlayers int
-}
-
 // RoomManager handles the queueing and starting of game rooms.
 type RoomManager struct {
-	ClassicRooms  map[string]*ClassicRoom
-	PracticeRooms map[string]*PracticeRoom
+	ClassicRooms  map[int]Room
+	PracticeRooms map[int]Room
+	broker        *event.EventBroker
 	logger        *zap.SugaredLogger
 	rateLimiter   *ratelimiter.GlobalRateLimiter
 	mu            sync.Mutex
 }
 
 // NewRoomManager initializes a new RoomManager.
-func NewRoomManager(logger *zap.SugaredLogger, rateLimiter *ratelimiter.GlobalRateLimiter) *RoomManager {
+func NewRoomManager(logger *zap.SugaredLogger, broker *event.EventBroker, rateLimiter *ratelimiter.GlobalRateLimiter) *RoomManager {
 	return &RoomManager{
-		ClassicRooms:  make(map[string]*ClassicRoom),
-		PracticeRooms: make(map[string]*PracticeRoom),
-    rateLimiter: rateLimiter,
+		ClassicRooms:  make(map[int]Room),
+		PracticeRooms: make(map[int]Room),
+		broker:        broker,
+		rateLimiter:   rateLimiter,
 		logger:        logger,
 	}
 }
@@ -82,18 +72,17 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 		return nil
 	}
 
-	allowed, err := rm.rateLimiter.Allow(roomRequest.User, roomRequest.Type(), false)
-
+	// Rate limit checks
+	allowed, err := rm.rateLimiter.Allow(roomRequest.Username, roomRequest.Type(), false)
 	if err != nil {
-		rm.logger.Errorw("[SERVER HANDLER] Failed to retrieve bucket", "error", err, "user", roomRequest.User)
+		rm.logger.Errorw("[SERVER HANDLER] Failed to retrieve bucket", "error", err, "user", roomRequest.Username)
 		return event.RoomSearchMessage{
 			Success: 1,
 			RoomIP:  "",
 		}
 	}
-
 	if !allowed {
-		rm.logger.Warn("[SERVER HANDLER] Rate limit exceed", "username", roomRequest.User)
+		rm.logger.Warn("[SERVER HANDLER] Rate limit exceed", "username", roomRequest.Username)
 		return event.RateLimitResponse{ResponseCh: roomRequest.ResponseCh}
 	}
 
@@ -105,7 +94,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 	roomType := roomRequest.RoomType
 	maxPlayers := getMaxPlayers(roomType)
 
-	rm.logger.Infow("Finding room", "roomType", roomType)
+	rm.logger.Infow("[ROOM MANAGER] finding room", "user", roomRequest.Username, "roomType", roomType)
 
 	// Solo rooms can be started immediately.
 	if roomType == SOLO {
@@ -125,50 +114,24 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 		}
 	}
 
+	// We first search for rooms with open slot
 	switch roomType {
 	case PRACTICE:
 		rm.mu.Lock()
 		defer rm.mu.Unlock()
-
-		// Find an existing room with space
-		for port, room := range rm.PracticeRooms {
-			if room.PlayersIn < room.MaxPlayers {
-				room.PlayersIn++
-				rm.logger.Infow("[ROOM MANAGER] Player joined existing practice room", "port", port, "players", room.PlayersIn)
-
-				if room.PlayersIn == room.MaxPlayers {
-					rm.logger.Infow("[ROOM MANAGER] Practice room is now full, removing from queue", "port", port)
-					delete(rm.ClassicRooms, port)
-				}
-
-				return event.RoomSearchMessage{
-					Success: 0,
-					RoomIP:  port,
-				}
-			}
-		}
+    result :=  findRoom(rm.PracticeRooms, roomRequest, "pratice", rm.broker, rm.logger)
+    if result.Found {
+      return result.Message
+    }
 	case CLASSIC:
 		rm.mu.Lock()
 		defer rm.mu.Unlock()
-
-		// Find an existing room with space
-		for port, room := range rm.ClassicRooms {
-			if room.PlayersIn < room.MaxPlayers {
-				room.PlayersIn++
-				rm.logger.Infow("[ROOM MANAGER] Player joined existing classic room", "port", port, "players", room.PlayersIn)
-
-				if room.PlayersIn == room.MaxPlayers {
-					rm.logger.Infow("[ROOM MANAGER] Classic room is now full, removing from queue", "port", port)
-					delete(rm.ClassicRooms, port)
-				}
-
-				return event.RoomSearchMessage{
-					Success: 0,
-					RoomIP:  port,
-				}
-			}
-		}
+    result := findRoom(rm.ClassicRooms, roomRequest, "classic", rm.broker, rm.logger)
+    if result.Found {
+      return result.Message
+    }
 	}
+
 	// No available rooms, create a new one
 	portMutex.Lock()
 	port := portCounter
@@ -180,30 +143,50 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 
 	portStr := strconv.Itoa(port)
 	maxPlayersStr := strconv.Itoa(maxPlayers)
-	StartGame(portStr, "1", maxPlayersStr)
+	roomID, err := StartGame(portStr, "1", maxPlayersStr)
+	if err != nil {
+		rm.logger.Errorw("[ROOM MANAGER] Failed to create room", "error", err)
+	}
 
 	switch roomType {
 	case PRACTICE:
 		newRoom := &PracticeRoom{
+			RoomID:     roomID,
 			Port:       portStr,
 			PlayersIn:  1,
 			MaxPlayers: maxPlayers,
 		}
-		rm.PracticeRooms[portStr] = newRoom
+		rm.PracticeRooms[roomID] = newRoom
 		rm.logger.Infow("[ROOM MANAGER] Created new pratice room", "port", portStr)
 	case CLASSIC:
 		newRoom := &ClassicRoom{
+			RoomID:     roomID,
 			Port:       portStr,
 			PlayersIn:  1,
 			MaxPlayers: maxPlayers,
 		}
-		rm.ClassicRooms[portStr] = newRoom
+		rm.ClassicRooms[roomID] = newRoom
 		rm.logger.Infow("[ROOM MANAGER] Created new classic room", "port", portStr)
 	}
 
-	return event.RoomSearchMessage{
-		Success: 0,
-		RoomIP:  portStr,
+	// We send the roomID to the message service for the user to be switch
+	regResponseCh := make(chan event.Message, 1)
+	clientRegistration := event.ClientRegistrationMessage{
+		ClientID:   roomRequest.Username,
+		RoomID:     roomID,
+		Conn:       roomRequest.Conn,
+		ResponseCh: regResponseCh,
+	}
+	rm.broker.Publish(clientRegistration)
+	// Wait for client registration to complete
+	regResponse := <-regResponseCh
+	if regResp, ok := regResponse.(event.ClientRegistrationResponse); ok && regResp.Success {
+		rm.logger.Infow("[ROOM MANAGER] New room register", "port", portStr)
+		return event.RoomSearchMessage{
+			Success: 0,
+			RoomID:  roomID,
+			RoomIP:  portStr,
+		}
 	}
 	// Default for other game modes like RANKED for now
 	return event.RoomSearchMessage{

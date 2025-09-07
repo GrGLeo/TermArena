@@ -70,7 +70,7 @@ echo "Starting server service. Output redirected to server.log"
 SERVER_PID=$!
 
 # Wait a moment for services to start up
-sleep 5
+sleep 2
 
 # Check if services are running
 echo "Checking service status..."
