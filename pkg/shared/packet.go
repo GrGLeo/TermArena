@@ -941,8 +941,8 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		if len(data) < 8 {
 			return nil, 0, errors.New("incomplete packet")
 		}
-    roomID := binary.BigEndian.Uint16(data[2:4])
-		roomIP := string(data[4:])
+    roomID := binary.BigEndian.Uint16(data[3:5])
+		roomIP := string(data[5:])
 		packet := &LookRoomPacket{
 			version: version,
 			code:    code,
