@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"log/slog"
 	"math/rand"
 	"net"
 	"os"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/GrGLeo/ctf/pkg/shared"
-	"go.uber.org/zap"
 )
 
 type GameRoom struct {
@@ -22,12 +22,12 @@ type GameRoom struct {
 	points           [2]int
 	playerConnection []*net.TCPConn
 	playerChar       map[string]*Player
-	logger           *zap.SugaredLogger
+	logger           *slog.Logger
 	actionChan       chan *ActionMsg
 	gameMutex        sync.Mutex
 }
 
-func NewGameRoom(number int, logger *zap.SugaredLogger) *GameRoom {
+func NewGameRoom(number int, logger *slog.Logger) *GameRoom {
 	gr := GameRoom{
 		GameID:     GenerateGameID(),
 		RoomSize:   number,
@@ -38,9 +38,9 @@ func NewGameRoom(number int, logger *zap.SugaredLogger) *GameRoom {
 	// Place walls on map
 	// if any error occur we skip the walls placement
 	walls, flags, players, err := LoadConfig("server/game/config.json")
-	logger.Infow("Opening new game room", "roomID", gr.GameID, "type", number)
+	logger.Info("Opening new game room", "component", "game", "roomID", gr.GameID, "type", number)
 	if err != nil {
-		gr.logger.Warnw("Error while reading the config", "roomID", gr.GameID, "error", err.Error())
+		gr.logger.Warn("Error while reading the config", "roomID", gr.GameID, "error", err.Error())
 	} else {
 		board := InitBoard(walls, flags, players)
 		gr.board = board
@@ -61,13 +61,13 @@ func (gr *GameRoom) AddPlayer(conn *net.TCPConn) {
 	gr.playerConnection = append(gr.playerConnection, conn)
 	// Send the initial grid to the player
 	go gr.ListenToConnection(conn)
-	gr.logger.Infow("Player joined", "id", conn.RemoteAddr())
+	gr.logger.Info("Player joined", "id", conn.RemoteAddr())
 }
 
 func (gr *GameRoom) StartGame() {
 	if len(gr.playerConnection) == gr.RoomSize {
 		// Game init
-		gr.logger.Infow("Game starting", "roomID", gr.GameID)
+		gr.logger.Info("Game starting", "roomID", gr.GameID)
 		gr.SendGameStart()
 		gr.sendInitGrid()
 		time.Sleep(1 * time.Second)
@@ -101,7 +101,7 @@ func (gr *GameRoom) StartGame() {
 				}
 				gr.board.Update()
 				if err := gr.broadcastState(); err != nil {
-					gr.logger.Infoln(err.Error())
+					gr.logger.Info(err.Error())
 					return
 				}
 			}
@@ -110,12 +110,12 @@ func (gr *GameRoom) StartGame() {
 }
 
 func (gr *GameRoom) CloseGame(success int) {
-	gr.logger.Infow("Closing game", "roomID", gr.GameID)
+	gr.logger.Info("Closing game", "roomID", gr.GameID)
 	closeGamePacket := shared.NewGameClosePacket(success)
 	data := closeGamePacket.Serialize()
 	for _, conn := range gr.playerConnection {
 		if _, err := conn.Write(data); err != nil {
-			gr.logger.Infow("Failed to send close game message")
+			gr.logger.Info("Failed to send close game message")
 		}
 		// we close the connection for now.
 		// Client who receive message will recontact the server
@@ -133,7 +133,7 @@ func (gr *GameRoom) sendInitGrid() {
 	for _, conn := range gr.playerConnection {
 		_, err := conn.Write(data)
 		if err != nil {
-			gr.logger.Warnw("Failed to send initial board to player", "roomID", gr.GameID, "id", conn.RemoteAddr(), "error", err)
+			gr.logger.Warn("Failed to send initial board to player", "roomID", gr.GameID, "id", conn.RemoteAddr(), "error", err)
 			return
 		}
 	}
@@ -148,7 +148,7 @@ func (gr *GameRoom) broadcastState() error {
 	totalCells := len(grid) * len(grid[0])
 	// If more than 50% of the board has change we resend the board
 	if len(deltas) > totalCells/2 {
-		gr.logger.Infow("Sending back full board", "roomID", gr.GameID)
+		gr.logger.Info("Sending back full board", "roomID", gr.GameID)
 		encodedBoard := RunLengthEncode(grid)
 		length := len(encodedBoard)
 		packet := shared.NewBoardPacket(0, 0, 0, 0, 0, length, gr.points, encodedBoard)
@@ -180,7 +180,7 @@ func (gr *GameRoom) SendGameStart() {
 			// For now we stop the game
 			os.Exit(1)
 		}
-		gr.logger.Infow("Send start game", "id", conn.RemoteAddr().String())
+		gr.logger.Info("Send start game", "id", conn.RemoteAddr().String())
 	}
 }
 
@@ -196,9 +196,9 @@ func (gr *GameRoom) HandleAction() {
 			player, exists := gr.playerChar[actionMsg.ConnAddr]
 			if exists {
 				player.Action = actionType(actionMsg.Action)
-				//gr.logger.Infow("Processed action", "roomID", gr.GameID, "conn", actionMsg.ConnAddr, "action", player.Action)
+				//gr.logger.Info("Processed action", "roomID", gr.GameID, "conn", actionMsg.ConnAddr, "action", player.Action)
 			} else {
-				gr.logger.Warnw("No player found for connection", "roomID", gr.GameID, "conn", actionMsg.ConnAddr)
+				gr.logger.Warn("No player found for connection", "roomID", gr.GameID, "conn", actionMsg.ConnAddr)
 			}
 			gr.gameMutex.Unlock()
 		}
@@ -206,7 +206,7 @@ func (gr *GameRoom) HandleAction() {
 }
 
 func (gr *GameRoom) ListenToConnection(conn *net.TCPConn) {
-	gr.logger.Infow("Started listening to connection", "roomID", gr.GameID, "id", conn.RemoteAddr())
+	gr.logger.Info("Started listening to connection", "roomID", gr.GameID, "id", conn.RemoteAddr())
 
 	buffer := make([]byte, 1024)
 
@@ -214,17 +214,17 @@ func (gr *GameRoom) ListenToConnection(conn *net.TCPConn) {
 		n, err := conn.Read(buffer)
 		if err != nil {
 			if err.Error() == "EOF" {
-				gr.logger.Infow("Client disconnected", "ip", conn.RemoteAddr())
+				gr.logger.Info("Client disconnected", "ip", conn.RemoteAddr())
 				// Client disconnected cleanly
 			} else {
-				gr.logger.Warnf("Error reading from connection %s: %v", conn.RemoteAddr(), err)
+				gr.logger.Warn("Error reading from connection %s: %v", conn.RemoteAddr(), err)
 			}
 			return
 		}
 		if n > 0 {
 			message, _, err := shared.DeSerialize(buffer[:n])
 			if err != nil {
-				gr.logger.Infow("Error deserializing packet", "ip", conn.RemoteAddr(), "error", err)
+				gr.logger.Info("Error deserializing packet", "ip", conn.RemoteAddr(), "error", err)
 			}
 			switch msg := message.(type) {
 			case *shared.ActionPacket:

@@ -2,13 +2,13 @@ package manager
 
 import (
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"os"
 	"os/exec"
 	"time"
 
 	"github.com/GrGLeo/ctf/server/event"
-	"go.uber.org/zap"
 )
 
 type Room interface {
@@ -76,16 +76,16 @@ func StartGame(ip, map_id, max_players string) (int, error) {
 	return RoomID, nil
 }
 
-func findRoom(rooms map[int]Room, roomRequest event.RoomRequestMessage, roomType string, broker *event.EventBroker, logger *zap.SugaredLogger) FindRoomResult {
-	logger.Info("lookForRoom enter")
+func findRoom(rooms map[int]Room, roomRequest event.RoomRequestMessage, roomType string, broker *event.EventBroker, logger *slog.Logger) FindRoomResult {
+	logger.Debug("lookForRoom enter", "component", "room_manager")
 	// Find an existing room with space
 	for roomID, room := range rooms {
 		if room.GetPlayersIn() < room.GetMaxPlayers() {
 			room.SetPlayersIn(room.GetMaxPlayers() + 1)
-			logger.Infow(fmt.Sprintf("[ROOM MANAGER] Player joined existing %s room", roomType), "port", room.GetPort(), "players", room.GetPlayersIn())
+			logger.Info("Player joined existing room", "component", "room_manager", "room_type", roomType, "port", room.GetPort(), "players", room.GetPlayersIn())
 
 			if room.GetPlayersIn() == room.GetMaxPlayers() {
-				logger.Infow(fmt.Sprintf("[ROOM MANAGER] %s room is now full, removing from queue", roomType), "port", room.GetPort())
+				logger.Info("Room is now full, removing from queue", "component", "room_manager", "room_type", roomType, "port", room.GetPort())
 				delete(rooms, roomID)
 			}
 
@@ -102,7 +102,7 @@ func findRoom(rooms map[int]Room, roomRequest event.RoomRequestMessage, roomType
 			// Wait for client registration to complete
 			regResponse := <-regResponseCh
 			if regResp, ok := regResponse.(event.ClientRegistrationResponse); ok && !regResp.Success {
-				logger.Infow("[ROOM MANAGER] Existing practice room register", "port", room.GetPort())
+				logger.Info("Existing room register", "component", "room_manager", "port", room.GetPort())
 			}
 
 			return FindRoomResult{

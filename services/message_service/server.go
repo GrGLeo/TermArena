@@ -33,7 +33,7 @@ func (s *MessageServer) Start() error {
 		return fmt.Errorf("failed to listen: %w", err)
 	}
 	s.grpcServer = grpc.NewServer()
-	s.logger.Info("gRPC server starting", "host", s.config.Host, "port", s.config.Port, "service", "MessageService")
+	s.logger.Info("gRPC server starting", "host", s.config.Host, "port", s.config.Port, "component", "MessageService")
 	pb.RegisterMessageServiceServer(s.grpcServer, s.handler)
 
 	return s.grpcServer.Serve(lis)

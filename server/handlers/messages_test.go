@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net"
 	"testing"
 	"time"
@@ -11,7 +12,6 @@ import (
 	connmanager "github.com/GrGLeo/ctf/server/conn_manager"
 	"github.com/GrGLeo/ctf/server/event"
 	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
@@ -91,7 +91,7 @@ func createTestRateLimiter() *ratelimiter.GlobalRateLimiter {
 }
 
 // Helper function to create test MessagesServiceClient
-func createTestMessagesServiceClient(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger, mockRateLimiter *ratelimiter.GlobalRateLimiter) *MessagesServiceClient {
+func createTestMessagesServiceClient(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *slog.Logger, mockRateLimiter *ratelimiter.GlobalRateLimiter) *MessagesServiceClient {
 	if mockClient == nil {
 		mockClient = &mockMessageServiceClient{}
 	}
@@ -99,7 +99,7 @@ func createTestMessagesServiceClient(mockClient *mockMessageServiceClient, mockC
 		mockConnMgr = connmanager.NewConnectionManager()
 	}
 	if mockLogger == nil {
-		mockLogger = zap.NewNop().Sugar()
+		mockLogger = slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{Level: slog.LevelError + 1}))
 	}
 	if mockRateLimiter == nil {
 		mockRateLimiter = createTestRateLimiter()
@@ -127,7 +127,7 @@ func TestMessagesServiceClient_HandleClientRegistration(t *testing.T) {
 	tests := []struct {
 		name           string
 		req            event.ClientRegistrationMessage
-		mockSetup      func(*mockMessageServiceClient, *connmanager.ConnectionManager, *zap.SugaredLogger)
+		mockSetup      func(*mockMessageServiceClient, *connmanager.ConnectionManager, *slog.Logger)
 		expectedResult func(event.Message) bool
 	}{
 		{
@@ -137,7 +137,7 @@ func TestMessagesServiceClient_HandleClientRegistration(t *testing.T) {
 				RoomID:   1,
 				Conn:     &net.TCPConn{}, // Use real TCPConn
 			},
-			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger) {
+			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *slog.Logger) {
 				mockClient.RegisterClientFunc = func(ctx context.Context, req *pb.RegisterClientRequest, opts ...grpc.CallOption) (*pb.RegisterClientResponse, error) {
 					return &pb.RegisterClientResponse{}, nil
 				}
@@ -154,7 +154,7 @@ func TestMessagesServiceClient_HandleClientRegistration(t *testing.T) {
 				RoomID:   1,
 				Conn:     &net.TCPConn{},
 			},
-			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger) {
+			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *slog.Logger) {
 				mockClient.RegisterClientFunc = func(ctx context.Context, req *pb.RegisterClientRequest, opts ...grpc.CallOption) (*pb.RegisterClientResponse, error) {
 					return nil, errors.New("gRPC connection failed")
 				}
@@ -171,7 +171,7 @@ func TestMessagesServiceClient_HandleClientRegistration(t *testing.T) {
 				RoomID:   5,
 				Conn:     &net.TCPConn{},
 			},
-			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger) {
+			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *slog.Logger) {
 				mockClient.RegisterClientFunc = func(ctx context.Context, req *pb.RegisterClientRequest, opts ...grpc.CallOption) (*pb.RegisterClientResponse, error) {
 					if req.Client != "client2" || req.RoomId != "5" {
 						t.Errorf("expected client='client2', roomId='5', got client='%s', roomId='%s'", req.Client, req.RoomId)
@@ -190,7 +190,7 @@ func TestMessagesServiceClient_HandleClientRegistration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &mockMessageServiceClient{}
 			mockConnMgr := connmanager.NewConnectionManager()
-			mockLogger := zap.NewNop().Sugar()
+			mockLogger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{Level: slog.LevelError + 1}))
 
 			if tt.mockSetup != nil {
 				tt.mockSetup(mockClient, mockConnMgr, mockLogger)
@@ -210,7 +210,7 @@ func TestMessagesServiceClient_HandleClientUnregistration(t *testing.T) {
 	tests := []struct {
 		name           string
 		req            event.ClientUnregistrationMessage
-		mockSetup      func(*mockMessageServiceClient, *connmanager.ConnectionManager, *zap.SugaredLogger)
+		mockSetup      func(*mockMessageServiceClient, *connmanager.ConnectionManager, *slog.Logger)
 		expectedResult func(event.Message) bool
 	}{
 		{
@@ -218,7 +218,7 @@ func TestMessagesServiceClient_HandleClientUnregistration(t *testing.T) {
 			req: event.ClientUnregistrationMessage{
 				ClientID: "client1",
 			},
-			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger) {
+			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *slog.Logger) {
 				mockClient.UnregisterClientFunc = func(ctx context.Context, req *pb.UnregisterClientRequest, opts ...grpc.CallOption) (*pb.UnregisterClientResponse, error) {
 					return &pb.UnregisterClientResponse{}, nil
 				}
@@ -233,7 +233,7 @@ func TestMessagesServiceClient_HandleClientUnregistration(t *testing.T) {
 			req: event.ClientUnregistrationMessage{
 				ClientID: "client1",
 			},
-			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger) {
+			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *slog.Logger) {
 				mockClient.UnregisterClientFunc = func(ctx context.Context, req *pb.UnregisterClientRequest, opts ...grpc.CallOption) (*pb.UnregisterClientResponse, error) {
 					return nil, errors.New("gRPC connection failed")
 				}
@@ -248,7 +248,7 @@ func TestMessagesServiceClient_HandleClientUnregistration(t *testing.T) {
 			req: event.ClientUnregistrationMessage{
 				ClientID: "client2",
 			},
-			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger) {
+			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *slog.Logger) {
 				mockClient.UnregisterClientFunc = func(ctx context.Context, req *pb.UnregisterClientRequest, opts ...grpc.CallOption) (*pb.UnregisterClientResponse, error) {
 					if req.Client != "client2" {
 						t.Errorf("expected client='client2', got client='%s'", req.Client)
@@ -266,7 +266,7 @@ func TestMessagesServiceClient_HandleClientUnregistration(t *testing.T) {
 			req: event.ClientUnregistrationMessage{
 				ClientID: "client1",
 			},
-			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger) {
+			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *slog.Logger) {
 				mockClient.UnregisterClientFunc = func(ctx context.Context, req *pb.UnregisterClientRequest, opts ...grpc.CallOption) (*pb.UnregisterClientResponse, error) {
 					return nil, errors.New("gRPC connection failed")
 				}
@@ -281,7 +281,7 @@ func TestMessagesServiceClient_HandleClientUnregistration(t *testing.T) {
 			req: event.ClientUnregistrationMessage{
 				ClientID: "client2",
 			},
-			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger) {
+			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *slog.Logger) {
 				mockClient.UnregisterClientFunc = func(ctx context.Context, req *pb.UnregisterClientRequest, opts ...grpc.CallOption) (*pb.UnregisterClientResponse, error) {
 					if req.Client != "client2" {
 						t.Errorf("expected client='client2', got client='%s'", req.Client)
@@ -300,7 +300,7 @@ func TestMessagesServiceClient_HandleClientUnregistration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &mockMessageServiceClient{}
 			mockConnMgr := connmanager.NewConnectionManager()
-			mockLogger := zap.NewNop().Sugar()
+			mockLogger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{Level: slog.LevelError + 1}))
 
 			if tt.mockSetup != nil {
 				tt.mockSetup(mockClient, mockConnMgr, mockLogger)
@@ -320,7 +320,7 @@ func TestMessagesServiceClient_HandleRouteMessage(t *testing.T) {
 	tests := []struct {
 		name           string
 		req            event.MessageRequestMessage
-		mockSetup      func(*mockMessageServiceClient, *connmanager.ConnectionManager, *zap.SugaredLogger)
+		mockSetup      func(*mockMessageServiceClient, *connmanager.ConnectionManager, *slog.Logger)
 		expectedResult func(event.Message) bool
 	}{
 		{
@@ -330,7 +330,7 @@ func TestMessagesServiceClient_HandleRouteMessage(t *testing.T) {
 				Message:    "Hello everyone",
 				ResponseCh: make(chan event.Message, 1),
 			},
-			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger) {
+			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *slog.Logger) {
 				mockClient.RouteMessageFunc = func(ctx context.Context, req *pb.RouteMessageRequest, opts ...grpc.CallOption) (*pb.RouteMessageResponse, error) {
 					if req.Sender != "client1" || req.Content != "Hello everyone" {
 						t.Errorf("expected sender='client1', content='Hello everyone', got sender='%s', content='%s'", req.Sender, req.Content)
@@ -362,7 +362,7 @@ func TestMessagesServiceClient_HandleRouteMessage(t *testing.T) {
 				Message:    "Hello",
 				ResponseCh: make(chan event.Message, 1),
 			},
-			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger) {
+			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *slog.Logger) {
 				mockClient.RouteMessageFunc = func(ctx context.Context, req *pb.RouteMessageRequest, opts ...grpc.CallOption) (*pb.RouteMessageResponse, error) {
 					return nil, errors.New("gRPC connection failed")
 				}
@@ -379,7 +379,7 @@ func TestMessagesServiceClient_HandleRouteMessage(t *testing.T) {
 				Message:    "",
 				ResponseCh: make(chan event.Message, 1),
 			},
-			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger) {
+			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *slog.Logger) {
 				mockClient.RouteMessageFunc = func(ctx context.Context, req *pb.RouteMessageRequest, opts ...grpc.CallOption) (*pb.RouteMessageResponse, error) {
 					return &pb.RouteMessageResponse{
 						Receivers: []string{},
@@ -399,7 +399,7 @@ func TestMessagesServiceClient_HandleRouteMessage(t *testing.T) {
 				Message:    "/client2 Secret message",
 				ResponseCh: make(chan event.Message, 1),
 			},
-			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *zap.SugaredLogger) {
+			mockSetup: func(mockClient *mockMessageServiceClient, mockConnMgr *connmanager.ConnectionManager, mockLogger *slog.Logger) {
 				mockClient.RouteMessageFunc = func(ctx context.Context, req *pb.RouteMessageRequest, opts ...grpc.CallOption) (*pb.RouteMessageResponse, error) {
 					return &pb.RouteMessageResponse{
 						Receivers: []string{"client2"},
@@ -418,7 +418,7 @@ func TestMessagesServiceClient_HandleRouteMessage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &mockMessageServiceClient{}
 			mockConnMgr := connmanager.NewConnectionManager()
-			mockLogger := zap.NewNop().Sugar()
+			mockLogger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{Level: slog.LevelError + 1}))
 
 			if tt.mockSetup != nil {
 				tt.mockSetup(mockClient, mockConnMgr, mockLogger)
@@ -454,7 +454,7 @@ func BenchmarkHandleClientRegistration(b *testing.B) {
 		},
 	}
 	mockConnMgr := connmanager.NewConnectionManager()
-	mockLogger := zap.NewNop().Sugar()
+	mockLogger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{Level: slog.LevelError + 1}))
 
 	client := createTestMessagesServiceClient(mockClient, mockConnMgr, mockLogger, nil)
 	req := event.ClientRegistrationMessage{
@@ -479,7 +479,7 @@ func BenchmarkHandleRouteMessage(b *testing.B) {
 		},
 	}
 	mockConnMgr := connmanager.NewConnectionManager()
-	mockLogger := zap.NewNop().Sugar()
+	mockLogger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{Level: slog.LevelError + 1}))
 
 	client := createTestMessagesServiceClient(mockClient, mockConnMgr, mockLogger, nil)
 	req := event.MessageRequestMessage{

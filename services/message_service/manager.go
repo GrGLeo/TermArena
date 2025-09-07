@@ -66,7 +66,7 @@ func (mm *MessageManager) RegisterClient(client string, roomID int) error {
 		}
 		mm.roomToClient[roomID][client] = struct{}{}
 
-		mm.logger.Info("Client switched room", "client", client, "old_roomID", oldRoomID, "roomID", roomID)
+		mm.logger.Debug("Client switched room", "client", client, "old_roomID", oldRoomID, "roomID", roomID)
 		return nil
 	}
 
@@ -85,7 +85,7 @@ func (mm *MessageManager) RegisterClient(client string, roomID int) error {
 	}
 	mm.roomToClient[roomID][client] = struct{}{}
 
-	mm.logger.Info("Client registered", "client", client, "roomID", roomID)
+	mm.logger.Debug("Client registered", "client", client, "roomID", roomID)
 	return nil
 
 }
@@ -108,13 +108,13 @@ func (mm *MessageManager) UnregisterClient(client string) error {
 		mm.logger.Warn("Client to unregister not found", "client", client)
 		return fmt.Errorf("Failed to find client %s to unregister", client)
 	}
-	mm.logger.Info("Client unregister", "client", client)
+	mm.logger.Debug("Client unregister", "client", client)
 
 	return nil
 }
 
 func (mm *MessageManager) RouteMessage(sender string, content string) ([]string, string, error) {
-	mm.logger.Info("[MESSAGE MANAGER] RouteMessage called", "sender", sender, "content", content)
+	mm.logger.Debug("[MESSAGE MANAGER] RouteMessage called", "sender", sender, "content", content)
 
 	// Validation step
 	sender = strings.TrimSpace(sender)
@@ -140,10 +140,10 @@ func (mm *MessageManager) RouteMessage(sender string, content string) ([]string,
 		return nil, "", fmt.Errorf("sender %s not registered", sender)
 	}
 
-	mm.logger.Info("[MESSAGE MANAGER] Sender validated", "sender", sender, "room_id", roomID)
+	mm.logger.Debug("[MESSAGE MANAGER] Sender validated", "sender", sender, "room_id", roomID)
 
 	target, processedMessage := parseMessage(content, sender)
-	mm.logger.Info("[MESSAGE MANAGER] Message parsed", "original_content", content, "target", target, "processed_message", processedMessage)
+	mm.logger.Debug("[MESSAGE MANAGER] Message parsed", "original_content", content, "target", target, "processed_message", processedMessage)
 
 	mm.roomLock.RLock()
 	roomClients := mm.roomToClient[roomID]
@@ -154,7 +154,7 @@ func (mm *MessageManager) RouteMessage(sender string, content string) ([]string,
 		return nil, "", fmt.Errorf("room %d not found", roomID)
 	}
 
-	mm.logger.Info("[MESSAGE MANAGER] Room found", "room_id", roomID, "clients_in_room", len(roomClients))
+	mm.logger.Debug("[MESSAGE MANAGER] Room found", "room_id", roomID, "clients_in_room", len(roomClients))
 
 	var receivers []string
 
@@ -165,26 +165,26 @@ func (mm *MessageManager) RouteMessage(sender string, content string) ([]string,
 		for client := range roomClients {
 			receivers = append(receivers, client)
 		}
-		mm.logger.Info("[MESSAGE MANAGER] Broadcasting to all in room", "sender", sender, "receivers", receivers)
+		mm.logger.Debug("[MESSAGE MANAGER] Broadcasting to all in room", "sender", sender, "receivers", receivers)
 	case "":
 		// Regular room message - exclude sender
 		receivers = make([]string, 0, len(roomClients)-1)
 		for client := range roomClients {
 			receivers = append(receivers, client)
 		}
-		mm.logger.Info("[MESSAGE MANAGER] Room message", "sender", sender, "receivers", receivers)
+		mm.logger.Debug("[MESSAGE MANAGER] Room message", "sender", sender, "receivers", receivers)
 	default:
 		// Whisper to specific user
 		if _, exists := roomClients[target]; exists {
 			receivers = []string{target}
-			mm.logger.Info("[MESSAGE MANAGER] Whisper message", "sender", sender, "target", target)
+			mm.logger.Debug("[MESSAGE MANAGER] Whisper message", "sender", sender, "target", target)
 		} else {
 			mm.logger.Error("[MESSAGE MANAGER] Target user not in room", "target", target, "room_id", roomID)
 			return nil, "", fmt.Errorf("target user %s not in room", target)
 		}
 	}
 
-	mm.logger.Info("[MESSAGE MANAGER] RouteMessage completed", "sender", sender, "receivers_count", len(receivers), "final_message", processedMessage)
+	mm.logger.Debug("[MESSAGE MANAGER] RouteMessage completed", "sender", sender, "receivers_count", len(receivers), "final_message", processedMessage)
 	return receivers, processedMessage, nil
 }
 

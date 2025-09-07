@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/GrGLeo/ctf/server/proto/auth"
 	pb "github.com/GrGLeo/ctf/server/proto/auth"
 	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -19,10 +19,10 @@ type AuthClient struct {
 	Client      pb.AuthServiceClient
 	broker      *event.EventBroker
 	rateLimiter *ratelimiter.GlobalRateLimiter
-	logger      *zap.SugaredLogger
+	logger      *slog.Logger
 }
 
-func NewAuthClient(broker *event.EventBroker, logger *zap.SugaredLogger, rateLimiter *ratelimiter.GlobalRateLimiter) (*AuthClient, error) {
+func NewAuthClient(broker *event.EventBroker, logger *slog.Logger, rateLimiter *ratelimiter.GlobalRateLimiter) (*AuthClient, error) {
 	authServiceAddr := os.Getenv("AUTH_SERVICE_ADDR")
 	if authServiceAddr == "" {
 		authServiceAddr = "localhost:50051"
@@ -44,7 +44,7 @@ func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 	req := msg.(event.RegisterRequestMessage)
 	ip, err := shared.ExtractIP(req.Conn)
 	if err != nil {
-		ac.logger.Errorw("[SERVER HANDLER] failed to extract TCP IP from connection", "error", err)
+		ac.logger.Error("failed to extract TCP IP from connection", "component", "auth", "error", err)
 		return event.RegisterResponseMessage{
 			Success:   false,
 			Message:   "Failed to extract TCP IP",
@@ -55,7 +55,7 @@ func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 	allowed, err := ac.rateLimiter.Allow(ip, req.Type(), true)
 
 	if err != nil {
-		ac.logger.Errorw("[SERVER HANDLER] Failed to retrieve bucket", "error", err, "ip", ip)
+		ac.logger.Error("Failed to retrieve bucket", "component", "auth", "error", err, "ip", ip)
 		return event.RegisterResponseMessage{
 			Success:   false,
 			Message:   "Internal server error",
@@ -65,7 +65,7 @@ func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 	}
 
 	if !allowed {
-		ac.logger.Warn("[SERVER HANDLER] Rate limit exceed", "ip", ip, "username", req.Username)
+		ac.logger.Warn("Rate limit exceed", "component", "auth", "ip", ip, "username", req.Username)
 		return event.RateLimitResponse{ResponseCh: req.ResponseCh}
 	}
 
@@ -78,7 +78,7 @@ func (ac *AuthClient) HandleRegistration(msg event.Message) event.Message {
 	})
 
 	if err != nil {
-		ac.logger.Errorw("[SERVER HANDLER] gRPC Register call failed", "error", err, "username", req.Username)
+		ac.logger.Error("gRPC Register call failed", "component", "auth", "error", err, "username", req.Username)
 		return event.RegisterResponseMessage{
 			Success:   false,
 			Message:   "Internal server error",
@@ -108,7 +108,7 @@ func (ac *AuthClient) HandleLoginChallenge(msg event.Message) event.Message {
 	req := msg.(event.LoginChallengeRequestMessage)
 	ip, err := shared.ExtractIP(req.Conn)
 	if err != nil {
-		ac.logger.Errorw("[SERVER HANDLER] Failed to extract TCP IP from connection", "error", err)
+		ac.logger.Error("Failed to extract TCP IP from connection", "component", "auth", "error", err)
 		return event.LoginChallengeResponseMessage{
 			Challenge: nil,
 			Conn:      req.Conn,
@@ -117,7 +117,7 @@ func (ac *AuthClient) HandleLoginChallenge(msg event.Message) event.Message {
 	allowed, err := ac.rateLimiter.Allow(ip, req.Type(), true)
 
 	if err != nil {
-		ac.logger.Errorw("[SERVER HANDLER] Failed to retrieve bucket", "error", err, "ip", ip)
+		ac.logger.Error("Failed to retrieve bucket", "component", "auth", "error", err, "ip", ip)
 		return event.LoginChallengeResponseMessage{
 			Challenge: nil,
 			Conn:      req.Conn,
@@ -125,7 +125,7 @@ func (ac *AuthClient) HandleLoginChallenge(msg event.Message) event.Message {
 	}
 
 	if !allowed {
-		ac.logger.Warn("[SERVER HANDLER] Rate limit exceed", "ip", ip, "username", req.Username)
+		ac.logger.Warn("Rate limit exceed", "component", "auth", "ip", ip, "username", req.Username)
 		return event.RateLimitResponse{ResponseCh: req.ResponseCh}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -177,9 +177,9 @@ func (ac *AuthClient) HandleAuth(msg event.Message) event.Message {
 	// When the client connect the room is the main lobby with ID 0
 	regResponseCh := make(chan event.Message, 1)
 	clientRegistration := event.ClientRegistrationMessage{
-		ClientID:  req.Username,
-		RoomID:    0,
-		Conn:      req.Conn,
+		ClientID:   req.Username,
+		RoomID:     0,
+		Conn:       req.Conn,
 		ResponseCh: regResponseCh,
 	}
 	ac.broker.Publish(clientRegistration)

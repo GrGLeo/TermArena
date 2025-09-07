@@ -1,12 +1,12 @@
 package manager
 
 import (
+	"log/slog"
 	"strconv"
 	"sync"
 
 	"github.com/GrGLeo/ctf/server/event"
 	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
-	"go.uber.org/zap"
 )
 
 var (
@@ -26,13 +26,13 @@ type RoomManager struct {
 	ClassicRooms  map[int]Room
 	PracticeRooms map[int]Room
 	broker        *event.EventBroker
-	logger        *zap.SugaredLogger
+	logger        *slog.Logger
 	rateLimiter   *ratelimiter.GlobalRateLimiter
 	mu            sync.Mutex
 }
 
 // NewRoomManager initializes a new RoomManager.
-func NewRoomManager(logger *zap.SugaredLogger, broker *event.EventBroker, rateLimiter *ratelimiter.GlobalRateLimiter) *RoomManager {
+func NewRoomManager(logger *slog.Logger, broker *event.EventBroker, rateLimiter *ratelimiter.GlobalRateLimiter) *RoomManager {
 	return &RoomManager{
 		ClassicRooms:  make(map[int]Room),
 		PracticeRooms: make(map[int]Room),
@@ -75,26 +75,26 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 	// Rate limit checks
 	allowed, err := rm.rateLimiter.Allow(roomRequest.Username, roomRequest.Type(), false)
 	if err != nil {
-		rm.logger.Errorw("[SERVER HANDLER] Failed to retrieve bucket", "error", err, "user", roomRequest.Username)
+		rm.logger.Error("Failed to retrieve bucket", "component", "room_manager", "error", err, "user", roomRequest.Username)
 		return event.RoomSearchMessage{
 			Success: 1,
 			RoomIP:  "",
 		}
 	}
 	if !allowed {
-		rm.logger.Warn("[SERVER HANDLER] Rate limit exceed", "username", roomRequest.Username)
+		rm.logger.Warn("Rate limit exceed", "component", "room_manager", "username", roomRequest.Username)
 		return event.RateLimitResponse{ResponseCh: roomRequest.ResponseCh}
 	}
 
 	if err := roomRequest.Validate(); err != nil {
-		rm.logger.Errorw("Invalid RoomRequestMessage", "error", err)
+		rm.logger.Error("Invalid RoomRequestMessage", "component", "room_manager", "error", err)
 		return nil
 	}
 
 	roomType := roomRequest.RoomType
 	maxPlayers := getMaxPlayers(roomType)
 
-	rm.logger.Infow("[ROOM MANAGER] finding room", "user", roomRequest.Username, "roomType", roomType)
+	rm.logger.Info("Finding room", "component", "room_manager", "user", roomRequest.Username, "roomType", roomType)
 
 	// Solo rooms can be started immediately.
 	if roomType == SOLO {
@@ -119,17 +119,17 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 	case PRACTICE:
 		rm.mu.Lock()
 		defer rm.mu.Unlock()
-    result :=  findRoom(rm.PracticeRooms, roomRequest, "pratice", rm.broker, rm.logger)
-    if result.Found {
-      return result.Message
-    }
+		result := findRoom(rm.PracticeRooms, roomRequest, "pratice", rm.broker, rm.logger)
+		if result.Found {
+			return result.Message
+		}
 	case CLASSIC:
 		rm.mu.Lock()
 		defer rm.mu.Unlock()
-    result := findRoom(rm.ClassicRooms, roomRequest, "classic", rm.broker, rm.logger)
-    if result.Found {
-      return result.Message
-    }
+		result := findRoom(rm.ClassicRooms, roomRequest, "classic", rm.broker, rm.logger)
+		if result.Found {
+			return result.Message
+		}
 	}
 
 	// No available rooms, create a new one
@@ -145,7 +145,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 	maxPlayersStr := strconv.Itoa(maxPlayers)
 	roomID, err := StartGame(portStr, "1", maxPlayersStr)
 	if err != nil {
-		rm.logger.Errorw("[ROOM MANAGER] Failed to create room", "error", err)
+		rm.logger.Error("Failed to create room", "component", "room_manager", "error", err)
 	}
 
 	switch roomType {
@@ -157,7 +157,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 			MaxPlayers: maxPlayers,
 		}
 		rm.PracticeRooms[roomID] = newRoom
-		rm.logger.Infow("[ROOM MANAGER] Created new pratice room", "port", portStr)
+		rm.logger.Info("Created new practice room", "component", "room_manager", "port", portStr)
 	case CLASSIC:
 		newRoom := &ClassicRoom{
 			RoomID:     roomID,
@@ -166,7 +166,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 			MaxPlayers: maxPlayers,
 		}
 		rm.ClassicRooms[roomID] = newRoom
-		rm.logger.Infow("[ROOM MANAGER] Created new classic room", "port", portStr)
+		rm.logger.Info("Created new classic room", "component", "room_manager", "port", portStr)
 	}
 
 	// We send the roomID to the message service for the user to be switch
@@ -181,7 +181,7 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 	// Wait for client registration to complete
 	regResponse := <-regResponseCh
 	if regResp, ok := regResponse.(event.ClientRegistrationResponse); ok && regResp.Success {
-		rm.logger.Infow("[ROOM MANAGER] New room register", "port", portStr)
+		rm.logger.Info("New room register", "component", "room_manager", "port", portStr)
 		return event.RoomSearchMessage{
 			Success: 0,
 			RoomID:  roomID,

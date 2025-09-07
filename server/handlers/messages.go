@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"time"
@@ -11,7 +12,6 @@ import (
 	conm "github.com/GrGLeo/ctf/server/conn_manager"
 	"github.com/GrGLeo/ctf/server/event"
 	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -20,10 +20,10 @@ type MessagesServiceClient struct {
 	Client      pb.MessageServiceClient
 	connManager *conm.ConnectionManager
 	rateLimiter *ratelimiter.GlobalRateLimiter
-	logger      *zap.SugaredLogger
+	logger      *slog.Logger
 }
 
-func NewMessageServiceClient(connManager *conm.ConnectionManager, logger *zap.SugaredLogger, rateLimiter *ratelimiter.GlobalRateLimiter) (*MessagesServiceClient, error) {
+func NewMessageServiceClient(connManager *conm.ConnectionManager, logger *slog.Logger, rateLimiter *ratelimiter.GlobalRateLimiter) (*MessagesServiceClient, error) {
 	messageServiceAddr := os.Getenv("MESSAGE_SERVICE_ADDR")
 	if messageServiceAddr == "" {
 		messageServiceAddr = "localhost:8083"
@@ -52,7 +52,7 @@ func (ms *MessagesServiceClient) HandleClientRegistration(msg event.Message) eve
 	})
 
 	if err != nil {
-		ms.logger.Errorw("gRPC Register call failed", "error", err, "client_id", req.ClientID)
+		ms.logger.Error("gRPC Register call failed", "component", "messages", "error", err, "client_id", req.ClientID)
 		return event.ClientRegistrationResponse{
 			Success:  false,
 			Message:  "Failed to register with message service",
@@ -77,7 +77,7 @@ func (ms *MessagesServiceClient) HandleClientUnregistration(msg event.Message) e
 	})
 
 	if err != nil {
-		ms.logger.Errorw("gRPC Unregister call failed", "error", err, "client_id", req.ClientID)
+		ms.logger.Error("gRPC Unregister call failed", "component", "messages", "error", err, "client_id", req.ClientID)
 		return event.ClientUnregistrationResponse{
 			Success:  false,
 			Message:  "Failed to unregister with message service",
@@ -96,7 +96,7 @@ func (ms *MessagesServiceClient) HandleRouteMessage(msg event.Message) event.Mes
 	allowed, err := ms.rateLimiter.Allow(req.User, req.Type(), false)
 
 	if err != nil {
-		ms.logger.Errorw("[SERVER HANDLER] Failed to retrieve bucket", "error", err, "user", req.User)
+		ms.logger.Error("Failed to retrieve bucket", "component", "messages", "error", err, "user", req.User)
 		return event.MessageErrorResponse{
 			Error:      fmt.Sprintf("Failed to route message: %v", err),
 			ResponseCh: req.ResponseCh,
@@ -104,28 +104,28 @@ func (ms *MessagesServiceClient) HandleRouteMessage(msg event.Message) event.Mes
 	}
 
 	if !allowed {
-		ms.logger.Warn("[SERVER HANDLER] Rate limit exceed", "username", req.User)
+		ms.logger.Warn("Rate limit exceed", "component", "messages", "username", req.User)
 		return event.RateLimitResponse{ResponseCh: req.ResponseCh}
 	}
-	ms.logger.Infow("[SERVER HANDLER] HandleRouteMessage called", "sender", req.Sender, "message", req.Message)
+	ms.logger.Info("HandleRouteMessage called", "component", "messages", "sender", req.Sender, "message", req.Message)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	ms.logger.Infow("[SERVER HANDLER] Calling message service", "sender", req.Sender)
+	ms.logger.Debug("Calling message service", "component", "messages", "sender", req.Sender)
 	resp, err := ms.Client.RouteMessage(ctx, &pb.RouteMessageRequest{
 		Sender:  req.Sender,
 		Content: req.Message,
 	})
 	if err != nil {
-		ms.logger.Errorw("[SERVER HANDLER] gRPC Route call failed", "error", err, "sender", req.Sender)
+		ms.logger.Error("gRPC Route call failed", "component", "messages", "error", err, "sender", req.Sender)
 		return event.MessageErrorResponse{
 			Error:      fmt.Sprintf("Failed to route message: %v", err),
 			ResponseCh: req.ResponseCh,
 		}
 	}
 
-	ms.logger.Infow("[SERVER HANDLER] Message service responded", "receivers", resp.Receivers, "response_content", resp.Content)
+	ms.logger.Debug("Message service responded", "component", "messages", "receivers", resp.Receivers, "response_content", resp.Content)
 	return event.MessageResponseMessage{
 		Receivers:  resp.Receivers,
 		Message:    resp.Content,
