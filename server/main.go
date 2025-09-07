@@ -155,10 +155,6 @@ func ProcessClient(conn *net.TCPConn, log *zap.SugaredLogger, broker *event.Even
 					if _, err := conn.Write(responsePacket); err != nil {
 						log.Errorw("[SERVER] Error writing response to client", "error", err)
 					}
-					// Special case for room search where connection ownership changes
-					if _, ok := response.(event.RoomSearchMessage); ok {
-						return
-					}
 					data = data[bytesConsumed:]
 				}
 			}
@@ -191,7 +187,7 @@ func main() {
     log.Fatalln("[SERVER] Failed to create rate limiter", err)
   }
 
-	roomManager := manager.NewRoomManager(log, rateLimiter)
+	roomManager := manager.NewRoomManager(log, broker, rateLimiter)
 	log.Info("[SERVER] New room manager initialize")
 
 	authClient, err := handler.NewAuthClient(broker, log, rateLimiter)

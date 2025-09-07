@@ -46,7 +46,7 @@ func CreateMessage(packet shared.Packet, conn *net.TCPConn, connManager *conm.Co
 		return RoomRequestMessage{
 			RoomType:   pkt.RoomType,
 			Conn:       conn,
-			User:       user,
+			Username:       user,
 			ResponseCh: responseChan,
 		}, nil
 	case *shared.RoomCreatePacket:
@@ -243,7 +243,7 @@ func (m ClientUnregistrationResponse) ResponseChan() chan Message { return nil }
 
 type RoomRequestMessage struct {
 	RoomType int
-	User     string
+	Username     string
 	Conn     *net.TCPConn
 	// ResponseCh is the channel to send the response to.
 	ResponseCh chan Message
@@ -304,7 +304,7 @@ func (rc RoomCreateMessage) ResponseChan() chan Message { return rc.ResponseCh }
 
 type RoomSearchMessage struct {
 	Success int
-	RoomID  string
+	RoomID  int
 	RoomIP  string
 }
 
