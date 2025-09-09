@@ -29,7 +29,7 @@ func NewLogger(level string) *slog.Logger {
 		Level: logLevel,
 	})
 
-	return slog.New(handler).With("service", "message_service")
+	return slog.New(handler).With("component", "message_service")
 }
 
 func main() {
@@ -50,7 +50,7 @@ func main() {
 	}()
 
 	<-quit
-	logger.Info("Shutting down Message service ...")
+	logger.Debug("Shutting down Message service ...")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.ShutdownTimeoutSeconds)*time.Second)
 	defer cancel()
 
@@ -59,5 +59,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Info("Service exited")
+	logger.Debug("Service exited")
 }

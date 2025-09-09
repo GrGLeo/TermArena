@@ -12,6 +12,8 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 use tokio::time::{Duration, Instant, sleep};
 use std::env;
+use tracing::{info, warn, error, debug};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod config;
 mod errors;
@@ -35,7 +37,7 @@ struct CliArgs {
 }
 
 async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mutex<GameManager>>) {
-    println!("Handler task started for connection from: {:?}", addr);
+    debug!(component = "game", address = %addr, "client handler started");
 
     let (reader, mut writer) = split(stream);
     let mut buf_reader = BufReader::new(reader);
@@ -47,9 +49,9 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
         .await
         .is_err()
     {
-        eprintln!("Error reading initial packet header from {:?}", addr);
+        error!(component = "game", address = %addr, "failed to read initial packet header");
         if let Err(e) = writer.shutdown().await {
-            eprintln!("Error shutting down stream for {:?}: {}", addr, e);
+            error!(component = "game", address = %addr, error = %e, "failed to shutdown stream");
         }
         return;
     }
@@ -61,20 +63,17 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
         // Code for SpellSelectionPacket
         let mut spell_payload = [0; 2]; // Read spell1 and spell2
         if buf_reader.read_exact(&mut spell_payload).await.is_err() {
-            eprintln!("Error reading spell payload from {:?}", addr);
+            error!(component = "game", address = %addr, "failed to read spell payload");
             if let Err(e) = writer.shutdown().await {
-                eprintln!("Error shutting down stream for {:?}: {}", addr, e);
+                error!(component = "game", address = %addr, error = %e, "failed to shutdown stream");
             }
             return;
         }
         (spell_payload[0], spell_payload[1])
     } else {
-        eprintln!(
-            "Invalid initial packet from {:?}: Version={}, Code={}",
-            addr, version, code
-        );
+        warn!(component = "game", address = %addr, version = version, code = code, "invalid initial packet");
         if let Err(e) = writer.shutdown().await {
-            eprintln!("Error shutting down stream for {:?}: {}", addr, e);
+            error!(component = "game", address = %addr, error = %e, "failed to shutdown stream");
         }
         return;
     };
@@ -87,18 +86,15 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
         if let Some(id) = manager.add_player(spell1, spell2) {
             player_id = id;
             manager.client_channel.insert(id, tx);
-            println!(
-                "Player {} ({:?}) joined with spells {} and {}",
-                id, addr, spell1, spell2
-            );
+            info!(component = "game", player_id = id, address = %addr, spell1 = spell1, spell2 = spell2, "player joined");
         } else {
-            println!("Rejecting connection from {:?}: Server is full.", addr);
+            warn!(component = "game", address = %addr, "connection rejected - server full");
             let rejection_msg = "Server is full. Try again later.\n";
             if let Err(e) = writer.write_all(rejection_msg.as_bytes()).await {
-                eprintln!("Error sending rejection message to {:?}: {}", addr, e);
+                error!(component = "game", address = %addr, error = %e, "failed to send rejection message");
             }
             if let Err(e) = writer.shutdown().await {
-                eprintln!("Error shutting down rejected stream for {:?}: {}", addr, e);
+                error!(component = "game", address = %addr, error = %e, "failed to shutdown rejected stream");
             }
             return;
         }
@@ -109,17 +105,14 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
     let _ = spawn(async move {
         while let Some(message) = rx.recv().await {
             if writer.write_all(&message).await.is_err() {
-                eprintln!(
-                    "Error writting message to client {}, connection likely closed.",
-                    player_id
-                );
+                error!(component = "game", player_id = player_id, "failed to write message to client");
                 rx.close();
                 break;
             }
         }
-        println!("Writer task for player {} ending.", player_id);
+        debug!(component = "game", player_id = player_id, "writer task ending");
         if let Err(e) = writer.shutdown().await {
-            eprintln!("Error shutting down writer for player {}: {}", player_id, e);
+            error!(component = "game", player_id = player_id, error = %e, "failed to shutdown writer");
         }
     });
 
@@ -128,7 +121,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
     {
         let manager = game_manager.lock().await;
         if manager.game_started {
-            println!("Sending StartPacket to all client");
+            info!(component = "game", "sending start packet to all clients");
             for player_id in manager.client_channel.keys() {
                 let message = StartPacket::new(0).serialize();
                 manager.send_to_player(*player_id, message).await;
@@ -137,20 +130,20 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
     }
 
     // -- Read Client Action loop --
-    println!("Listening for Player {} ({:?}) actions...", player_id, addr);
+    debug!(component = "game", player_id = player_id, address = %addr, "listening for player actions");
     loop {
         let mut packet_header = [0; 2]; // Read version and code
         if buf_reader.read_exact(&mut packet_header).await.is_err() {
-            eprintln!("Error reading packet header from {:?}", addr);
+            error!(component = "game", address = %addr, "failed to read packet header");
             break;
         }
-        println!("Packet header: {:?}", packet_header);
+        debug!(component = "game", address = %addr, ?packet_header, "packet header received");
 
         let version = packet_header[0];
         let code = packet_header[1];
 
         if version != 1 {
-            eprintln!("Invalid packet version from {:?}: {}", addr, version);
+            warn!(component = "game", address = %addr, version = version, "invalid packet version");
             break;
         }
 
@@ -159,7 +152,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
                 // Action Packet
                 let mut action_payload = [0; 1];
                 if buf_reader.read_exact(&mut action_payload).await.is_err() {
-                    eprintln!("Error reading action payload from {:?}", addr);
+                    error!(component = "game", address = %addr, "failed to read action payload");
                     break;
                 }
                 let mut manager = game_manager.lock().await;
@@ -167,7 +160,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
             }
             17 => {
                 // Shop Request Packet
-                println!("Got a requests shop packet");
+                debug!(component = "game", player_id = player_id, "shop request received");
                 let manager = game_manager.lock().await;
                 if let Some(champion) = manager.get_champion(&player_id) {
                     let message =
@@ -175,14 +168,14 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
                             .serialize();
                     manager.send_to_player(player_id, message).await;
                 } else {
-                    println!("Player: {} champion not found", player_id);
+                    warn!(component = "game", player_id = player_id, "champion not found for shop request");
                 }
             }
             19 => {
                 // Purchase Item Packet
                 let mut purchase_payload = [0; 2];
                 if buf_reader.read_exact(&mut purchase_payload).await.is_err() {
-                    eprintln!("Error reading purchase payload from {:?}", addr);
+                    error!(component = "game", address = %addr, "failed to read purchase payload");
                     break;
                 }
                 if let Ok(packet) = PurchaseItemPacket::deserialize(&purchase_payload) {
@@ -195,7 +188,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
                     {
                         if let Some(champion) = manager.get_mut_champion(&player_id) {
                             if let Err(e) = champion.add_item(item) {
-                                eprintln!("Player {} failed to buy item: {}", player_id, e);
+                                error!(component = "game", player_id = player_id, error = %e, "failed to buy item");
                             } else {
                                 // Send back the updated champion stats
                                 let message = ShopResponsePacket::new(
@@ -210,44 +203,50 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
                 }
             }
             _ => {
-                eprintln!("Invalid packet code from {:?}: {}", addr, code);
+                warn!(component = "game", address = %addr, code = code, "invalid packet code");
                 break;
             }
         }
     }
-    println!("Reader loop for player {} ({:?}) ended.", player_id, addr);
+    debug!(component = "game", player_id = player_id, address = %addr, "reader loop ended");
 
     // -- CLeanup --
     {
         let mut manager = game_manager.lock().await;
         manager.remove_player(&player_id);
     }
-    println!(
-        "Handler task for player {} ({:?}) finished cleanup.",
-        player_id, addr
-    );
+    debug!(component = "game", player_id = player_id, address = %addr, "handler task cleanup finished");
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize structured logging
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "game=info".into()),
+        )
+        .with(tracing_subscriber::fmt::layer().json())
+        .init();
+
     // Change to the parent directory (root) to ensure correct relative paths
     let mut current_dir = env::current_dir()?;
     if current_dir.ends_with("bin") {
         current_dir.pop();
         env::set_current_dir(&current_dir)?;
-        println!("Changed working directory to: {:?}", current_dir);
+        debug!(component = "game", directory = %current_dir.display(), "working directory changed");
     }
 
     let args = CliArgs::parse();
-    let address = format!("0.0.0.0:{}", args.port);
+    let address = format!("0.0.0:{}", args.port);
     let listener = TcpListener::bind(&address).await?;
-    println!("Server listening  on {}", address);
+    info!(component = "game", address = %address, "game server listening");
 
     let config = config::GameConfig::load("services/game/stats.toml", "services/game/spells.toml", "services/game/items.toml")
         .expect("Failed to load game configuration");
     let game_manager = GameManager::new(config, args.max_players);
     let arc_gm = Arc::new(Mutex::new(game_manager));
-    println!("GameManager created and wrapped.");
+    info!(component = "game", "game manager initialized");
 
     // -- Game Tick Task --
     let tick_manager = Arc::clone(&arc_gm);
@@ -271,17 +270,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 let manager = tick_manager.lock().await;
                 for (player_id, message) in updates {
-                    println!("Message length to be sent: {:?}", message.len());
+                    debug!(component = "game", player_id = player_id, message_len = message.len(), "sending game update");
                     manager.send_to_player(player_id, message).await;
                 }
                 drop(manager);
                 if let Some(duration) = TICK_RATE.checked_sub(start_time.elapsed()) {
                     sleep(duration).await
                 }
-                println!("TOTAL TICK TIME: {:?}", starting_time.elapsed());
+                debug!(component = "game", tick_time = ?starting_time.elapsed(), "game tick completed");
             } else {
                 sleep(Duration::from_secs(5)).await;
-                println!("Waiting for all players to connect...");
+                debug!(component = "game", "waiting for players to connect");
             }
         }
     });
@@ -290,14 +289,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         match listener.accept().await {
             Ok((stream, addr)) => {
-                println!("Accepted connection form {:?}", addr);
+                info!(component = "game", address = %addr, "connection accepted");
                 let game_manager_for_task = Arc::clone(&arc_gm);
                 spawn(async move {
                     handle_client(stream, addr, game_manager_for_task).await;
                 });
             }
             Err(e) => {
-                eprintln!("Error accepting connection: {}", e);
+                error!(component = "game", error = %e, "failed to accept connection");
                 let _ = sleep(Duration::from_secs(1));
             }
         }

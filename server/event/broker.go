@@ -2,10 +2,10 @@ package event
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
 	"maps"
 )
 
@@ -14,7 +14,7 @@ import (
 type EventBroker struct {
 	eventQueue     *Queue
 	subscribers    map[string][]func(Message) Message
-	logger         *zap.SugaredLogger
+	logger         *slog.Logger
 	mu             sync.Mutex
 	jobChannel     chan Message
 	workerPoolSize int
@@ -28,7 +28,7 @@ type EventBroker struct {
 
 // NewEventBroker initializes and returns a new EventBroker instance.
 // It sets up the event queue, subscriber map, and logger.
-func NewEventBroker(logger *zap.SugaredLogger, workerPoolSize int) *EventBroker {
+func NewEventBroker(logger *slog.Logger, workerPoolSize int) *EventBroker {
 	return &EventBroker{
 		eventQueue:     NewQueue(),
 		subscribers:    make(map[string][]func(Message) Message),
@@ -57,7 +57,7 @@ func (eb *EventBroker) Subscribe(eventType string, callback func(Message) Messag
 
 // Start initializes the worker pool and begins processing messages.
 func (eb *EventBroker) Start() {
-	eb.logger.Info("[BROKER] Starting event broker")
+	eb.logger.Info("Starting event broker", "component", "broker")
 	for i := range eb.workerPoolSize {
 		go eb.worker(i)
 	}
@@ -66,7 +66,7 @@ func (eb *EventBroker) Start() {
 
 // StartWithMonitoring initializes the worker pool, monitoring, and begins processing messages.
 func (eb *EventBroker) StartWithMonitoring(ctx context.Context) {
-	eb.logger.Info("[BROKER] Starting event broker with monitoring")
+	eb.logger.Info("Starting event broker with monitoring", "component", "broker")
 	for i := range eb.workerPoolSize {
 		go eb.worker(i)
 	}
@@ -76,7 +76,7 @@ func (eb *EventBroker) StartWithMonitoring(ctx context.Context) {
 
 // dispatch is responsible for dequeuing messages and distributing them to workers.
 func (eb *EventBroker) dispatch() {
-	eb.logger.Info("[BROKER] Starting dispatcher")
+	eb.logger.Info("Starting dispatcher", "component", "broker")
 	for {
 		msg := eb.eventQueue.Dequeue()
 		eb.jobChannel <- msg
@@ -85,7 +85,7 @@ func (eb *EventBroker) dispatch() {
 
 // worker processes messages from the job channel with timeout protection.
 func (eb *EventBroker) worker(id int) {
-	eb.logger.Infow("[BROKER] Starting worker", "id", id)
+	eb.logger.Info("Starting worker", "component", "broker", "worker_id", id)
 
 	// Initialize worker health tracking
 	eb.healthMu.Lock()
@@ -104,7 +104,7 @@ func (eb *EventBroker) worker(id int) {
 		eb.healthMu.Unlock()
 
 		eventType := msg.Type()
-		eb.logger.Infow("[BROKER] Processing message", "worker_id", id, "message_type", eventType)
+		eb.logger.Info("Processing message", "component", "broker", "worker_id", id, "message_type", eventType)
 
 		// Process message with timeout protection
 		respMsg := eb.processMessageWithTimeout(id, msg)
@@ -113,9 +113,9 @@ func (eb *EventBroker) worker(id int) {
 		if msg.ResponseChan() != nil {
 			select {
 			case msg.ResponseChan() <- respMsg:
-				eb.logger.Infow("[BROKER] Response sent successfully", "worker_id", id, "message_type", eventType)
+				eb.logger.Debug("Response sent successfully", "component", "broker", "worker_id", id, "message_type", eventType)
 			case <-time.After(5 * time.Second):
-				eb.logger.Errorw("[BROKER] Failed to send response - channel blocked", "worker_id", id, "message_type", eventType)
+				eb.logger.Error("Failed to send response - channel blocked", "component", "broker", "worker_id", id, "message_type", eventType)
 			}
 		}
 
@@ -130,7 +130,7 @@ func (eb *EventBroker) worker(id int) {
 		eb.healthMu.Unlock()
 	}
 
-	eb.logger.Infow("[BROKER] Worker shutting down", "id", id)
+	eb.logger.Info("Worker shutting down", "component", "broker", "worker_id", id)
 }
 
 // processMessageWithTimeout processes a message with a 10-second timeout
@@ -144,7 +144,8 @@ func (eb *EventBroker) processMessageWithTimeout(workerID int, msg Message) Mess
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				eb.logger.Errorw("[BROKER] Worker panic during message processing",
+				eb.logger.Error("Worker panic during message processing",
+					"component", "broker",
 					"worker_id", workerID,
 					"message_type", eventType,
 					"panic", r)
@@ -159,7 +160,7 @@ func (eb *EventBroker) processMessageWithTimeout(workerID int, msg Message) Mess
 			for _, callback := range callbacks {
 				respMsg = callback(msg)
 				if respMsg != nil {
-					eb.logger.Infow("[BROKER] Response message generated", "worker_id", workerID, "message_type", respMsg.Type())
+					eb.logger.Debug("Response message generated", "component", "broker", "worker_id", workerID, "message_type", respMsg.Type())
 				}
 			}
 		}
@@ -172,7 +173,8 @@ func (eb *EventBroker) processMessageWithTimeout(workerID int, msg Message) Mess
 		return result
 
 	case <-time.After(10 * time.Second):
-		eb.logger.Errorw("[BROKER] Worker timeout - message processing took too long",
+		eb.logger.Error("Worker timeout - message processing took too long",
+			"component", "broker",
 			"worker_id", workerID,
 			"message_type", eventType,
 			"timeout_seconds", 10)
@@ -186,7 +188,7 @@ func (eb *EventBroker) processMessageWithTimeout(workerID int, msg Message) Mess
 
 // monitorWorkers monitors the health and availability of workers
 func (eb *EventBroker) monitorWorkers(ctx context.Context) {
-	eb.logger.Info("[BROKER] Starting worker health monitoring")
+	eb.logger.Info("Starting worker health monitoring", "component", "broker")
 
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
@@ -194,7 +196,7 @@ func (eb *EventBroker) monitorWorkers(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			eb.logger.Info("[BROKER] Worker monitoring shutting down")
+			eb.logger.Info("Worker monitoring shutting down", "component", "broker")
 			return
 
 		case <-ticker.C:
@@ -210,7 +212,8 @@ func (eb *EventBroker) performHealthCheck() {
 	queueSize := len(eb.jobChannel)
 
 	// Log current status
-	eb.logger.Infow("[BROKER] Worker health check",
+	eb.logger.Info("Worker health check",
+		"component", "broker",
 		"active_workers", activeWorkers,
 		"total_workers", eb.workerPoolSize,
 		"available_capacity", availableCapacity,
@@ -220,14 +223,16 @@ func (eb *EventBroker) performHealthCheck() {
 
 	// Check for potential issues
 	if availableCapacity == 0 {
-		eb.logger.Warnw("[BROKER] All workers are active - potential bottleneck",
+		eb.logger.Warn("All workers are active - potential bottleneck",
+			"component", "broker",
 			"active_workers", activeWorkers,
 			"queue_size", queueSize,
 		)
 	}
 
 	if availableCapacity < eb.workerPoolSize/4 {
-		eb.logger.Warnw("[BROKER] Low worker availability detected",
+		eb.logger.Warn("Low worker availability detected",
+			"component", "broker",
 			"active_workers", activeWorkers,
 			"available_capacity", availableCapacity,
 			"threshold", eb.workerPoolSize/4,
@@ -235,7 +240,8 @@ func (eb *EventBroker) performHealthCheck() {
 	}
 
 	if queueSize > eb.workerPoolSize*2 {
-		eb.logger.Errorw("[BROKER] Large message queue detected - workers may be stuck",
+		eb.logger.Error("Large message queue detected - workers may be stuck",
+			"component", "broker",
 			"queue_size", queueSize,
 			"worker_pool_size", eb.workerPoolSize,
 		)
@@ -260,7 +266,8 @@ func (eb *EventBroker) checkForStuckWorkers() {
 	eb.healthMu.RUnlock()
 
 	if len(stuckWorkers) > 0 {
-		eb.logger.Errorw("[BROKER] Stuck workers detected",
+		eb.logger.Error("Stuck workers detected",
+			"component", "broker",
 			"stuck_worker_ids", stuckWorkers,
 			"stuck_count", len(stuckWorkers),
 			"threshold_minutes", stuckThreshold.Minutes(),
@@ -272,7 +279,8 @@ func (eb *EventBroker) checkForStuckWorkers() {
 			lastActivity := eb.workerHealth[workerID]
 			eb.healthMu.RUnlock()
 
-			eb.logger.Errorw("[BROKER] Stuck worker details",
+			eb.logger.Error("Stuck worker details",
+				"component", "broker",
 				"worker_id", workerID,
 				"last_activity", lastActivity,
 				"time_since_activity", now.Sub(lastActivity),

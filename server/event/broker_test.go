@@ -2,14 +2,13 @@ package event
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 func TestWorkerMonitoring(t *testing.T) {
-	logger := zap.NewNop().Sugar()
+	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{Level: slog.LevelError + 1}))
 	broker := NewEventBroker(logger, 3)
 
 	// Test initial state
@@ -23,7 +22,7 @@ func TestWorkerMonitoring(t *testing.T) {
 }
 
 func TestWorkerHealthTracking(t *testing.T) {
-	logger := zap.NewNop().Sugar()
+	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{Level: slog.LevelError + 1}))
 	broker := NewEventBroker(logger, 2)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -51,7 +50,7 @@ func TestWorkerHealthTracking(t *testing.T) {
 }
 
 func TestStuckWorkerDetection(t *testing.T) {
-	logger := zap.NewNop().Sugar()
+	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{Level: slog.LevelError + 1}))
 	broker := NewEventBroker(logger, 1)
 
 	// Manually set a worker as having old activity
@@ -74,7 +73,7 @@ func TestStuckWorkerDetection(t *testing.T) {
 }
 
 func TestWorkerTimeout(t *testing.T) {
-	logger := zap.NewNop().Sugar()
+	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{Level: slog.LevelError + 1}))
 	broker := NewEventBroker(logger, 1)
 
 	// Create a slow message handler that takes more than 10 seconds

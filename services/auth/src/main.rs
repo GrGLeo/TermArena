@@ -1,6 +1,8 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::{Request, Response, Status, transport::Server};
+use tracing::{info, warn, error};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 pub mod auth {
     tonic::include_proto!("auth");
@@ -30,7 +32,7 @@ impl AuthService for TermArenaAuthService {
     ) -> Result<Response<RegisterResponse>, Status> {
         let req = request.into_inner();
         let username_for_log = req.username.clone(); // Clone for logging
-        println!("[AUTH] Registering user: {}", username_for_log);
+        info!(component = "auth", user = %username_for_log, "user registration started");
 
         let conn = self.db.lock().await;
         let username = req.username.clone();
@@ -50,7 +52,7 @@ impl AuthService for TermArenaAuthService {
         match res {
             Ok(_) => {
                 // Username registered, now we need to generate a challenge
-                println!("[AUTH] Starting challenge creation for user: {}", username_for_log);
+                info!(component = "auth", user = %username_for_log, "challenge creation started");
                 let mut challenge = [0u8; 32];
                 rand::thread_rng().fill_bytes(&mut challenge);
 
@@ -66,14 +68,14 @@ impl AuthService for TermArenaAuthService {
                         }
                     })
                     .await;
-                println!("[AUTH] Challenge stored for user: {}", username_for_log);
+                info!(component = "auth", user = %username_for_log, "challenge stored");
 
                 if let Err(e) = res {
-                    eprintln!("[AUTH] Failed to store challenge for {}: {}", req.username, e);
+                    error!(component = "auth", user = %req.username, error = %e, "failed to store challenge");
                     return Err(Status::internal("Failed to prepare login challenge"));
                 }
 
-                println!("[AUTH] Challenge created for user: {}", username_for_log);
+                info!(component = "auth", user = %username_for_log, "challenge created");
 
                 Ok(Response::new(RegisterResponse {
                     success: true,
@@ -82,7 +84,7 @@ impl AuthService for TermArenaAuthService {
                 }))
             }
             Err(e) => {
-                println!("[AUTH] Failed to register user {}: {}", username_for_log, e);
+                warn!(component = "auth", user = %username_for_log, error = %e, "user registration failed");
                 Ok(Response::new(RegisterResponse {
                     success: false,
                     message: "Username may already be taken.".into(),
@@ -97,7 +99,7 @@ impl AuthService for TermArenaAuthService {
         request: Request<GetLoginChallengeRequest>,
     ) -> Result<Response<GetLoginChallengeResponse>, Status> {
         let req = request.into_inner();
-        println!("[AUTH] Generating challenge for user: {}", req.username);
+        info!(component = "auth", user = %req.username, "generating login challenge");
 
         let mut challenge = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut challenge);
@@ -117,7 +119,7 @@ impl AuthService for TermArenaAuthService {
             .await;
 
         if let Err(e) = res {
-            eprintln!("[AUTH] Failed to store challenge for {}: {}", req.username, e);
+            error!(component = "auth", user = %req.username, error = %e, "failed to store challenge");
             return Err(Status::internal("Failed to prepare login challenge"));
         }
 
@@ -132,7 +134,7 @@ impl AuthService for TermArenaAuthService {
     ) -> Result<Response<AuthentificateResponse>, Status> {
         let req = request.into_inner();
         let username_for_log = req.username.clone(); // Clone for logging
-        println!("[AUTH] Authenticating user: {}", username_for_log);
+        info!(component = "auth", user = %username_for_log, "user authentication started");
 
         let db = self.db.lock().await;
 
@@ -186,16 +188,13 @@ impl AuthService for TermArenaAuthService {
             )
             .is_ok()
         {
-            println!("[AUTH] Successfully authenticated user: {}", username_for_log);
+            info!(component = "auth", user = %username_for_log, "user authentication successful");
             Ok(Response::new(AuthentificateResponse {
                 success: true,
                 message: "Authentication successful".into(),
             }))
         } else {
-            println!(
-                "[AUTH] Authentication failed (invalid signature) for user: {}",
-                username_for_log
-            );
+            warn!(component = "auth", user = %username_for_log, "authentication failed - invalid signature");
             Ok(Response::new(AuthentificateResponse {
                 success: false,
                 message: "Invalid signature.".into(),
@@ -206,6 +205,15 @@ impl AuthService for TermArenaAuthService {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize structured logging
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "auth=info".into()),
+        )
+        .with(tracing_subscriber::fmt::layer().json())
+        .init();
+
     let addr = "0.0.0.0:50051".parse()?;
 
     let conn = Connection::open("auth.db").await?;
@@ -231,11 +239,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .await?;
 
-    println!("[AUTH] Database is ready.");
+    info!(component = "auth", "database initialized");
 
     let auth_service = TermArenaAuthService { db };
 
-    println!("[AUTH] AuthService listening on {}", addr);
+    info!(component = "auth", address = %addr, "auth service starting");
 
     Server::builder()
         .add_service(AuthServiceServer::new(auth_service))
