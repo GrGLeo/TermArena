@@ -108,13 +108,6 @@ func ProcessClient(conn *net.TCPConn, log *slog.Logger, broker *event.EventBroke
 					continue
 				}
 
-				// Log message processing
-				if msg.Type() == "message_request" {
-					if reqMsg, ok := msg.(event.MessageRequestMessage); ok {
-						log.Info("MessageRequest received", "component", "server", "sender", reqMsg.Sender, "message", reqMsg.Message, "ip", conn.RemoteAddr())
-					}
-				}
-
 				// Unified logic: publish message, wait for response, create packet, send response.
 				log.Debug("Publishing message to broker", "component", "server", "message_type", msg.Type(), "ip", conn.RemoteAddr())
 				broker.Publish(msg)
