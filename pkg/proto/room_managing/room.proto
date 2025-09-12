@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package room_manager;
+
+option go_package = "pkg/shared/proto/room_manager";
+
+message UserInfo {
+  string username = 1;
+  string team = 2;
+  string spell1 = 3;
+  string spell2 = 4;
+}
+
+message RoomInfo {
+  string roomID = 1;
+  string roomPort = 2;
+  string roomType = 3;
+}
+
+service RoomService {
+  rpc LookRoom(LookRoomRequest) returns (LookRoomResponse);
+  rpc UpdateSpell(UpdateSpellRequest) returns (UpdateSpellResponse);
+  rpc RoomDone(RoomDoneRequest) returns (RoomDoneResponse);
+  rpc QuitRoom(QuitRoomRequest) returns (QuitRoomResponse);
+  rpc RoomInfo(RoomInfoRequest) returns (RoomInfoResponse);
+}
+
+// --- LookRoomService
+message LookRoomRequest {
+  string username = 1;
+  string roomType = 2;
+}
+
+message LookRoomResponse { repeated RoomInfo room = 1; }
+
+// --- UpdatedSpellServce ---
+message UpdateSpellRequest {
+  string username = 1;
+  string spell1 = 2;
+  string spell2 = 3;
+}
+
+message UpdateSpellResponse { bool succes = 1; }
+
+// --- RoomDoneService ---
+message RoomDoneRequest {
+  string username = 1;
+  string roomID = 2;
+}
+
+message RoomDoneResponse { bool succes = 1; }
+
+// --- QuitRoomService ---
+message QuitRoomRequest {
+  string username = 1;
+  string roomID = 2;
+}
+
+message QuitRoomResponse { bool success = 1; }
+
+// --- RoomInfoService ---
+message RoomInfoRequest { string roomID = 1; }
+
+message RoomInfoResponse { repeated UserInfo users = 1; }
