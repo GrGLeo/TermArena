@@ -404,7 +404,7 @@ func (m model) View() string {
 
 	// Center the entire content on screen using lipgloss.Place
 	// Using actual terminal dimensions for proper centering
-	centeredContent := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Top, content)
+	centeredContent := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 
 	return centeredContent
 }
