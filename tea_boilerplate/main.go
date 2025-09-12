@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -241,9 +243,21 @@ type model struct {
 	spellSelection SpellSelectionModel
 	activePanel    int // 0 = blue, 1 = red, 2 = spells
 	width, height  int // Terminal dimensions
+	viewport       viewport.Model
+	textInput      textinput.Model
 }
 
 func initialModel() model {
+	// Initialize viewport for messaging
+	vp := viewport.New(76, 8) // Fixed size: 80 width - 4 for padding
+	vp.SetContent("Welcome to TermArena!\n\nThis is the messaging area.\nMessages will appear here...\n")
+
+	// Initialize text input for chat
+	ti := textinput.New()
+	ti.Placeholder = "Type your message here..."
+	ti.Width = 76 // Fixed size: 80 width - 4 for padding
+	ti.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+
 	return model{
 		blueTeam:       NewTeamPanel("Blue", 4),
 		redTeam:        NewTeamPanel("Red", 4),
@@ -252,6 +266,8 @@ func initialModel() model {
 		activePanel:    0,   // Start with Blue team panel
 		width:          120, // Default width
 		height:         30,  // Default height
+		viewport:       vp,
+		textInput:      ti,
 	}
 }
 
@@ -265,6 +281,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update terminal dimensions
 		m.width = msg.Width
 		m.height = msg.Height
+		// Note: Messaging components use fixed sizes, not dynamic
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -352,20 +369,42 @@ func (m model) View() string {
 	// Combine all three panels side by side
 	allPanelsView := lipgloss.JoinHorizontal(lipgloss.Top, bluePanel, spellPanel, redPanel)
 
-	// Controls
-	controls := "\nControls:\n" +
-		"  Tab - Switch panels (Blue -> Spells -> Red)\n" +
-		"  A - Add player to active team\n" +
-		"  ↑/↓ or j/k - Navigate spells\n" +
-		"  Enter - Select spell\n" +
-		"  Q - Quit"
+	// Messaging section
+	messagingStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("205")).
+		Padding(1, 2).
+		Margin(1, 0).
+		Width(138) // Fixed width for messaging
 
-	// Combine panels and controls
-	content := allPanelsView + controls
+	messagingTitle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("205")).
+		Bold(true).
+		Render("💬 Chat")
+
+	messagingContent := messagingTitle + "\n" + m.viewport.View()
+
+	// Text input section
+	inputStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		Padding(0, 1).
+		Margin(0, 0, 1, 0).
+		Width(138) // Fixed width for text input
+
+	inputContent := inputStyle.Render(m.textInput.View())
+
+	// Combine everything vertically
+	content := lipgloss.JoinVertical(
+		lipgloss.Left,
+		allPanelsView,
+		messagingStyle.Render(messagingContent),
+		inputContent,
+	)
 
 	// Center the entire content on screen using lipgloss.Place
 	// Using actual terminal dimensions for proper centering
-	centeredContent := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+	centeredContent := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Top, content)
 
 	return centeredContent
 }
