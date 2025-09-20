@@ -333,12 +333,13 @@ func (cp *RoomJoinPacket) Serialize() []byte {
 }
 
 type LookRoomPacket struct {
-	version, code   int
-	Success, RoomID int
-	RoomIP          string
+	version, code int
+	Success       bool
+	RoomID        int
+	RoomIP        string
 }
 
-func NewLookRoomPacket(success, roomID int, roomIP string) *LookRoomPacket {
+func NewLookRoomPacket(success bool, roomID int, roomIP string) *LookRoomPacket {
 	return &LookRoomPacket{
 		version: 1,
 		code:    9,
@@ -354,7 +355,11 @@ func (lp *LookRoomPacket) Serialize() []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(byte(lp.version))
 	buf.WriteByte(byte(lp.code))
-	buf.WriteByte(byte(lp.Success))
+  if lp.Success {
+	  buf.WriteByte(1)
+  } else {
+	  buf.WriteByte(0)
+  }
 	binary.Write(&buf, binary.BigEndian, uint16(lp.RoomID))
 	buf.WriteString(lp.RoomIP)
 	return buf.Bytes()
@@ -941,12 +946,13 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		if len(data) < 8 {
 			return nil, 0, errors.New("incomplete packet")
 		}
-    roomID := binary.BigEndian.Uint16(data[3:5])
+		roomID := binary.BigEndian.Uint16(data[3:5])
 		roomIP := string(data[5:])
+    success := data[2] == 1
 		packet := &LookRoomPacket{
 			version: version,
 			code:    code,
-			Success: int(data[2]),
+			Success: success,
 			RoomID:  int(roomID),
 			RoomIP:  roomIP,
 		}

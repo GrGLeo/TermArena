@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	pb "github.com/GrGLeo/ctf/pkg/shared/proto/message"
-	conm "github.com/GrGLeo/ctf/server/conn_manager"
-	"github.com/GrGLeo/ctf/server/event"
-	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
+	pb "github.com/GrGLeo/TermArena/pkg/shared/proto/message"
+	conm "github.com/GrGLeo/TermArena/server/conn_manager"
+	"github.com/GrGLeo/TermArena/server/event"
+	ratelimiter "github.com/GrGLeo/TermArena/server/rate_limiter"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -48,7 +48,7 @@ func (ms *MessagesServiceClient) HandleClientRegistration(msg event.Message) eve
 
 	_, err := ms.Client.RegisterClient(ctx, &pb.RegisterClientRequest{
 		Client: req.ClientID,
-		RoomId: strconv.Itoa(req.RoomID),
+		RoomId: strconv.Itoa(int(req.RoomID)),
 	})
 
 	if err != nil {

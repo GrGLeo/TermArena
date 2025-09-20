@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/GrGLeo/ctf/server/event"
-	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
+	"github.com/GrGLeo/TermArena/server/event"
+	ratelimiter "github.com/GrGLeo/TermArena/server/rate_limiter"
 )
 
 var (
@@ -18,8 +18,7 @@ const (
 	SOLO = iota
 	PRACTICE
 	CLASSIC
-	RANKED
-)
+	RANKED)
 
 // RoomManager handles the queueing and starting of game rooms.
 type RoomManager struct {
@@ -76,8 +75,8 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 	allowed, err := rm.rateLimiter.Allow(roomRequest.Username, roomRequest.Type(), false)
 	if err != nil {
 		rm.logger.Error("Failed to retrieve bucket", "component", "room_manager", "error", err, "user", roomRequest.Username)
-		return event.RoomSearchMessage{
-			Success: 1,
+		return event.LookRoomResponseMessage{
+			Success: false,
 			RoomIP:  "",
 		}
 	}
@@ -108,8 +107,8 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 
 		portStr := strconv.Itoa(port)
 		StartGame(portStr, "1", "1")
-		return event.RoomSearchMessage{
-			Success: 0,
+		return event.LookRoomResponseMessage{
+			Success: true,
 			RoomIP:  portStr,
 		}
 	}
@@ -182,15 +181,15 @@ func (rm *RoomManager) FindRoom(msg event.Message) event.Message {
 	regResponse := <-regResponseCh
 	if regResp, ok := regResponse.(event.ClientRegistrationResponse); ok && regResp.Success {
 		rm.logger.Info("New room register", "component", "room_manager", "port", portStr)
-		return event.RoomSearchMessage{
-			Success: 0,
+		return event.LookRoomResponseMessage{
+			Success: true,
 			RoomID:  roomID,
 			RoomIP:  portStr,
 		}
 	}
 	// Default for other game modes like RANKED for now
-	return event.RoomSearchMessage{
-		Success: 0,
+	return event.LookRoomResponseMessage{
+		Success: false,
 		RoomIP:  "50052", // Placeholder
 	}
 }

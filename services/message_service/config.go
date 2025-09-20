@@ -56,7 +56,7 @@ func NewConfig() *Config {
 
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
-		logLevel = "info"
+		logLevel = "debug"
 	}
 
 	workerPoolSize := os.Getenv("WORKER_POOL_SIZE")

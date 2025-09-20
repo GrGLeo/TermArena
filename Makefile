@@ -1,17 +1,19 @@
-.PHONY: all build build-auth build-game build-server build-message build-client clean run-auth run-message run-game run-server run-client run-simulation test package deploy
+.PHONY: all build build-auth build-game build-server build-message build-room-manager build-client clean run-auth run-message run-game run-server run-room-manager run-client run-simulation test package deploy
 
 all: build
 
-build: build-auth build-game build-server build-message build-client
+build: build-auth build-game build-server build-message build-room-manager build-client
 
 build-auth:
 	@echo "Building auth service..."
-	@rm bin/auth
+	@mkdir -p bin
+	@rm -f bin/auth
 	cd services/auth && cargo build --release && mv target/release/auth ../../bin/auth
 
 build-game:
 	@echo "Building game engine..."
-	@rm bin/game
+	@mkdir -p bin
+	@rm -f bin/game
 	cd services/game && cargo build --release && mv target/release/game ../../bin/game
 
 build-server:
@@ -23,6 +25,11 @@ build-message:
 	@echo "Building message service..."
 	@mkdir -p bin
 	cd services/message_service && go build -o ../../bin/message_service .
+
+build-room-manager:
+	@echo "Building room manager service..."
+	@mkdir -p bin
+	cd services/room_manager_service/cmd && go build -o ../../../bin/room_manager_service .
 
 build-client:
 	@echo "Building client..."
@@ -42,6 +49,10 @@ run-auth:
 run-message:
 	@echo "Running message service..."
 	./bin/message_service
+
+run-room-manager:
+	@echo "Running room manager service..."
+	./bin/room_manager_service
 
 run-game:
 	@echo "Running game engine..."
@@ -76,9 +87,11 @@ deploy: package
 	ssh leo@endurace.cloud "pkill server || true"
 	ssh leo@endurace.cloud "pkill game || true"
 	ssh leo@endurace.cloud "pkill message_service || true"
+	ssh leo@endurace.cloud "pkill room_manager_service || true"
 	scp bin/auth leo@endurace.cloud:/home/leo/bin/
 	scp bin/server leo@endurace.cloud:/home/leo/bin/
 	scp bin/message_service leo@endurace.cloud:/home/leo/bin/
+	scp bin/room_manager_service leo@endurace.cloud:/home/leo/bin/
 	scp bin/game leo@endurace.cloud:/home/leo/game/target/debug/
 	scp services/game/spells.toml leo@endurace.cloud:/home/leo/game/
 	scp services/game/items.toml leo@endurace.cloud:/home/leo/game/

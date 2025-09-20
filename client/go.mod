@@ -1,9 +1,9 @@
-module github.com/GrGLeo/ctf/client
+module github.com/GrGLeo/TermArena/client
 
 go 1.23.2
 
 require (
-	github.com/GrGLeo/ctf/pkg/shared v0.0.0
+	github.com/GrGLeo/TermArena/pkg/shared v0.0.0
 	github.com/charmbracelet/bubbles v0.20.0
 	github.com/charmbracelet/bubbletea v1.2.4
 	github.com/charmbracelet/lipgloss v1.0.0
@@ -31,8 +31,8 @@ require (
 	golang.org/x/text v0.21.0 // indirect
 )
 
-replace github.com/GrGLeo/ctf/pkg/shared => ../pkg/shared
+replace github.com/GrGLeo/TermArena/pkg/shared => ../pkg/shared
 
-replace github.com/GrGLeo/ctf/server => ../server
+replace github.com/GrGLeo/TermArena/server => ../server
 
-exclude github.com/GrGLeo/ctf v0.0.0-20250825162123-973788692dfd
+exclude github.com/GrGLeo/TermArena v0.0.0-20250825162123-973788692dfd

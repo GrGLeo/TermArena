@@ -50,7 +50,7 @@ code 0: player in queue
 code 1: error putting player in queue
 */
 type LookRoomMsg struct {
-	Code   int
+	Code   bool
 	RoomID int
 	RoomIP string
 }

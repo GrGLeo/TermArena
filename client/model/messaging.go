@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GrGLeo/ctf/client/communication"
+	"github.com/GrGLeo/TermArena/client/communication"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"

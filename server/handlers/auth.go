@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/GrGLeo/ctf/pkg/shared"
-	"github.com/GrGLeo/ctf/server/event"
-	"github.com/GrGLeo/ctf/server/proto/auth"
-	pb "github.com/GrGLeo/ctf/server/proto/auth"
-	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
+	"github.com/GrGLeo/TermArena/pkg/shared"
+	"github.com/GrGLeo/TermArena/server/event"
+	"github.com/GrGLeo/TermArena/server/proto/auth"
+	pb "github.com/GrGLeo/TermArena/server/proto/auth"
+	ratelimiter "github.com/GrGLeo/TermArena/server/rate_limiter"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

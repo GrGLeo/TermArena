@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"net"
 
-	pb "github.com/GrGLeo/ctf_game/pkg/shared/proto/message"
+	pb "github.com/GrGLeo/TermArena/pkg/shared/proto/message"
 	"google.golang.org/grpc"
 )
 

@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/GrGLeo/ctf/server/rate_limiter"
+	"github.com/GrGLeo/TermArena/server/rate_limiter"
 )
 
 func TestNewGlobalRateLimiter(t *testing.T) {

@@ -6,38 +6,35 @@ option go_package = "pkg/shared/proto/room_manager";
 
 message UserInfo {
   string username = 1;
-  string team = 2;
-  string spell1 = 3;
-  string spell2 = 4;
-}
-
-message RoomInfo {
-  string roomID = 1;
-  string roomPort = 2;
-  string roomType = 3;
+  uint32 team = 2;
+  uint32 spell1 = 3;
+  uint32 spell2 = 4;
 }
 
 service RoomService {
   rpc LookRoom(LookRoomRequest) returns (LookRoomResponse);
-  rpc UpdateSpell(UpdateSpellRequest) returns (UpdateSpellResponse);
-  rpc RoomDone(RoomDoneRequest) returns (RoomDoneResponse);
-  rpc QuitRoom(QuitRoomRequest) returns (QuitRoomResponse);
-  rpc RoomInfo(RoomInfoRequest) returns (RoomInfoResponse);
+  //rpc UpdateSpell(UpdateSpellRequest) returns (UpdateSpellResponse);
+  //rpc RoomDone(RoomDoneRequest) returns (RoomDoneResponse);
+  //rpc QuitRoom(QuitRoomRequest) returns (QuitRoomResponse);
+  //rpc RoomInfo(RoomInfoRequest) returns (RoomInfoResponse);
 }
 
 // --- LookRoomService
 message LookRoomRequest {
   string username = 1;
-  string roomType = 2;
+  uint32 roomType = 2;
 }
 
-message LookRoomResponse { repeated RoomInfo room = 1; }
+message LookRoomResponse {
+ uint32 roomID = 1;
+ uint32 team = 3;
+}
 
 // --- UpdatedSpellServce ---
 message UpdateSpellRequest {
   string username = 1;
-  string spell1 = 2;
-  string spell2 = 3;
+  uint32 spell1 = 2;
+  uint32 spell2 = 3;
 }
 
 message UpdateSpellResponse { bool succes = 1; }
@@ -45,7 +42,7 @@ message UpdateSpellResponse { bool succes = 1; }
 // --- RoomDoneService ---
 message RoomDoneRequest {
   string username = 1;
-  string roomID = 2;
+  uint32 roomID = 2;
 }
 
 message RoomDoneResponse { bool succes = 1; }
@@ -53,12 +50,12 @@ message RoomDoneResponse { bool succes = 1; }
 // --- QuitRoomService ---
 message QuitRoomRequest {
   string username = 1;
-  string roomID = 2;
+  uint32 roomID = 2;
 }
 
 message QuitRoomResponse { bool success = 1; }
 
 // --- RoomInfoService ---
-message RoomInfoRequest { string roomID = 1; }
+message RoomInfoRequest { uint32 roomID = 1; }
 
 message RoomInfoResponse { repeated UserInfo users = 1; }

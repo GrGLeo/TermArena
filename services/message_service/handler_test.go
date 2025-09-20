@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	pb "github.com/GrGLeo/ctf_game/pkg/shared/proto/message"
+	pb "github.com/GrGLeo/TermArena/pkg/shared/proto/message"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"slices"

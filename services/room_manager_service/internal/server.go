@@ -1,33 +1,46 @@
 package internal
 
 import (
+	"context"
+	"fmt"
 	"log/slog"
-  "fmt"
+	"net"
 
-	pb "github.com/GrGLeo/ctf_game/pkg/shared/proto/message"
+	pb "github.com/GrGLeo/TermArena/pkg/shared/proto/room_manager"
+	config "github.com/GrGLeo/TermArena/services/room_manager_service/config"
 	"google.golang.org/grpc"
 )
 
-type Server struct {
-	config *Config
-	logger *slog.Logger
-  handler *RoomManagerHandler
-	server *grpc.Server
+type RoomServer struct {
+	config     *config.Config
+	logger     *slog.Logger
+	handler    *RoomHandler
+	grpcServer *grpc.Server
 }
 
-func (s *MessageServer) Start() error {
+func NewRoomServer(config *config.Config, logger *slog.Logger) *RoomServer {
+	manager := NewRoomManager(config.MaxRoom, logger)
+	handler := NewRoomHandler(manager, logger)
+	return &RoomServer{
+		config:  config,
+		logger:  logger,
+		handler: handler,
+	}
+}
+
+func (s *RoomServer) Start() error {
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.config.Host, s.config.Port))
 	if err != nil {
 		return fmt.Errorf("failed to listen: %w", err)
 	}
 	s.grpcServer = grpc.NewServer()
-	s.logger.Info("gRPC server starting", "host", s.config.Host, "port", s.config.Port, "component", "MessageService")
-	pb.RegisterMessageServiceServer(s.grpcServer, s.handler)
+	s.logger.Info("gRPC server starting", "host", s.config.Host, "port", s.config.Port)
+	pb.RegisterRoomServiceServer(s.grpcServer, s.handler)
 
 	return s.grpcServer.Serve(lis)
 }
 
-func (s *MessageServer) Shutdown(ctx context.Context) error {
+func (s *RoomServer) Shutdown(ctx context.Context) error {
 	s.logger.Info("Initiating graceful shutdown", "timeout_seconds", s.config.ShutdownTimeoutSeconds)
 	done := make(chan struct{})
 	go func() {

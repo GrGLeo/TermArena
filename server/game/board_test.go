@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/GrGLeo/ctf/server/game"
+	"github.com/GrGLeo/TermArena/server/game"
 )
 
 

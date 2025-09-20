@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/GrGLeo/ctf/server/event"
+	"github.com/GrGLeo/TermArena/server/event"
 )
 
 type Room interface {
@@ -47,7 +47,7 @@ func (r *PracticeRoom) SetPlayersIn(p int) { r.PlayersIn = p }
 
 type FindRoomResult struct {
 	Found   bool
-	Message event.RoomSearchMessage
+	Message event.LookRoomResponseMessage
 }
 
 func StartGame(ip, map_id, max_players string) (int, error) {
@@ -107,8 +107,8 @@ func findRoom(rooms map[int]Room, roomRequest event.RoomRequestMessage, roomType
 
 			return FindRoomResult{
 				Found: true,
-				Message: event.RoomSearchMessage{
-					Success: 0,
+				Message: event.LookRoomResponseMessage{
+					Success: true,
 					RoomID:  roomID,
 					RoomIP:  room.GetPort(),
 				},
@@ -117,6 +117,6 @@ func findRoom(rooms map[int]Room, roomRequest event.RoomRequestMessage, roomType
 	}
 	return FindRoomResult{
 		Found:   false,
-		Message: event.RoomSearchMessage{},
+		Message: event.LookRoomResponseMessage{},
 	}
 }

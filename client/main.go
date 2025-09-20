@@ -5,8 +5,8 @@ import (
 	"log"
 	"net"
 
-	"github.com/GrGLeo/ctf/client/communication"
-	"github.com/GrGLeo/ctf/client/model"
+	"github.com/GrGLeo/TermArena/client/communication"
+	"github.com/GrGLeo/TermArena/client/model"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

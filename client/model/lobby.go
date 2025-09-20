@@ -5,7 +5,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/GrGLeo/ctf/client/communication"
+	"github.com/GrGLeo/TermArena/client/communication"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"

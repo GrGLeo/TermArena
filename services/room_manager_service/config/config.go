@@ -12,6 +12,7 @@ type Config struct {
 	Host                   string
 	Port                   int
 	MaxRoom                int
+	LogLevel               string
 	ShutdownTimeoutSeconds int
 }
 
@@ -21,14 +22,14 @@ func NewConfig() *Config {
 		fmt.Printf("Warning: .env file not found. Using environment variables. %v\n", err)
 	}
 
-	host := os.Getenv("MESSAGE_SERVICE_HOST")
+	host := os.Getenv("ROOM_MANAGER_HOST")
 	if host == "" {
 		host = "localhost"
 	}
-	port := os.Getenv("MESSAGE_SERVICE_PORT")
+	port := os.Getenv("ROOM_MANAGER_PORT")
 	intPort, err := strconv.Atoi(port)
 	if err != nil {
-		intPort = 8083
+		intPort = 8084
 	}
 
 	logLevel := os.Getenv("LOG_LEVEL")
@@ -39,7 +40,7 @@ func NewConfig() *Config {
 	maxRoom := os.Getenv("ROOM_MANAGER_MAX_ROOM")
 	intMaxRoom, err := strconv.Atoi(maxRoom)
 	if err != nil {
-    intMaxRoom = 25
+		intMaxRoom = 100
 	}
 
 	shutdownTimeout := os.Getenv("SHUTDOWN_TIMEOUT_SECONDS")
@@ -52,6 +53,7 @@ func NewConfig() *Config {
 		Host:                   host,
 		Port:                   intPort,
 		MaxRoom:                intMaxRoom,
+		LogLevel:               logLevel,
 		ShutdownTimeoutSeconds: intShutdownTimeout,
 	}
 }

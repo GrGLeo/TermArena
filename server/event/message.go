@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/GrGLeo/ctf/pkg/shared"
-	conm "github.com/GrGLeo/ctf/server/conn_manager"
+	"github.com/GrGLeo/TermArena/pkg/shared"
+	conm "github.com/GrGLeo/TermArena/server/conn_manager"
 )
 
 type Message interface {
@@ -89,7 +89,7 @@ func CreatePacketFromMessage(msg Message) ([]byte, error) {
 	case AuthResponseMessage:
 		packet := shared.NewAuthResponsePacket(m.Success, m.Message, m.SessionToken)
 		return packet.Serialize(), nil
-	case RoomSearchMessage:
+	case LookRoomResponseMessage:
 		packet := shared.NewLookRoomPacket(m.Success, m.RoomID, m.RoomIP)
 		return packet.Serialize(), nil
 	case MessageResponseMessage:
@@ -181,7 +181,7 @@ func (m AuthResponseMessage) ResponseChan() chan Message { return nil }
 // --- CLIENT REGISTRATION ---
 type ClientRegistrationMessage struct {
 	ClientID   string
-	RoomID     int
+	RoomID     uint32
 	Conn       *net.TCPConn
 	ResponseCh chan Message
 }
@@ -302,20 +302,21 @@ func (rc RoomCreateMessage) Validate() error {
 }
 func (rc RoomCreateMessage) ResponseChan() chan Message { return rc.ResponseCh }
 
-type RoomSearchMessage struct {
-	Success int
+type LookRoomResponseMessage struct {
+	Success bool
 	RoomID  int
 	RoomIP  string
+  ResponseCh chan Message
 }
 
-func (rs RoomSearchMessage) Type() string { return "search-room" }
-func (rs RoomSearchMessage) Validate() error {
-	if rs.Success == 1 {
+func (rs LookRoomResponseMessage) Type() string { return "search-room" }
+func (rs LookRoomResponseMessage) Validate() error {
+	if rs.Success == false {
 		return errors.New("Failed to search for a room")
 	}
 	return nil
 }
-func (rs RoomSearchMessage) ResponseChan() chan Message { return nil }
+func (rs LookRoomResponseMessage) ResponseChan() chan Message { return rs.ResponseCh }
 
 type MessageRequestMessage struct {
 	Sender     string // TODO: to be removed in issue #159

@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/GrGLeo/ctf/pkg/shared"
+	"github.com/GrGLeo/TermArena/pkg/shared"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
