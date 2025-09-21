@@ -13,9 +13,9 @@ message UserInfo {
 
 service RoomService {
   rpc LookRoom(LookRoomRequest) returns (LookRoomResponse);
+  rpc QuitRoom(QuitRoomRequest) returns (QuitRoomResponse);
   //rpc UpdateSpell(UpdateSpellRequest) returns (UpdateSpellResponse);
   //rpc RoomDone(RoomDoneRequest) returns (RoomDoneResponse);
-  //rpc QuitRoom(QuitRoomRequest) returns (QuitRoomResponse);
   //rpc RoomInfo(RoomInfoRequest) returns (RoomInfoResponse);
 }
 

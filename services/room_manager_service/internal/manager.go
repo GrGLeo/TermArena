@@ -27,7 +27,8 @@ func (p *Player) UpdateSpells(spells Spells) {
 
 type Room struct {
 	mu         sync.RWMutex
-	nextTeam   Team
+	blueCount  int
+	redCount   int
 	maxPlayers int
 	Players    map[string]*Player
 }
@@ -44,28 +45,47 @@ func NewRoom(roomType RoomType) *Room {
 	}
 	players := make(map[string]*Player)
 	return &Room{
-		nextTeam:   BLUETEAM,
 		maxPlayers: maxPlayers,
 		Players:    players,
+		blueCount:  0,
+		redCount:   0,
 	}
 }
 
 func (r *Room) AddPlayer(username string) (Team, RoomStatus) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	newPlayer := NewPlayer(r.nextTeam)
-	team := r.nextTeam
-	if r.nextTeam == BLUETEAM {
-		r.nextTeam = REDTEAM
+
+	var team Team
+	if r.blueCount <= r.redCount {
+		team = BLUETEAM
+		r.blueCount++
 	} else {
-		r.nextTeam = BLUETEAM
+		team = REDTEAM
+		r.redCount++
 	}
+
+	newPlayer := NewPlayer(team)
 	r.Players[username] = newPlayer
 	if len(r.Players) == r.maxPlayers {
 		return team, LOBBY
 	} else {
 		return team, WAITING
 	}
+}
+
+func (r *Room) RemovePlayer(username string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if player, exist := r.Players[username]; exist {
+		if player.playerTeam == BLUETEAM {
+			r.blueCount--
+		} else {
+			r.redCount--
+		}
+	}
+	delete(r.Players, username)
 }
 
 func (r *Room) UpdatePlayerSpell(username string, spellOne, spellTwo int) {
@@ -89,10 +109,18 @@ type RoomManager struct {
 	maxRoom     int
 	roomCounter int
 	logger      *slog.Logger
-	rooms       map[RoomType]map[RoomStatus]map[RoomID]*Room
+	roomLookup  map[RoomID]struct {
+		roomType   RoomType
+		roomStatus RoomStatus
+	}
+	rooms map[RoomType]map[RoomStatus]map[RoomID]*Room
 }
 
 func NewRoomManager(maxRoom int, logger *slog.Logger) *RoomManager {
+	roomLookup := make(map[RoomID]struct {
+		roomType   RoomType
+		roomStatus RoomStatus
+	})
 	rooms := make(map[RoomType]map[RoomStatus]map[RoomID]*Room)
 	for _, rt := range []RoomType{SANDBOX, PRACTICE, CLASSIC} {
 		rooms[rt] = make(map[RoomStatus]map[RoomID]*Room)
@@ -101,10 +129,11 @@ func NewRoomManager(maxRoom int, logger *slog.Logger) *RoomManager {
 		}
 	}
 	rm := &RoomManager{
-    maxRoom: maxRoom,
-    roomCounter: 0,
-		logger: logger,
-		rooms:  rooms,
+		maxRoom:     maxRoom,
+		roomCounter: 0,
+		roomLookup:  roomLookup,
+		logger:      logger,
+		rooms:       rooms,
 	}
 	return rm
 }
@@ -116,11 +145,15 @@ func (rm *RoomManager) MoveRoom(roomStatusIn, roomStatusOut RoomStatus, roomType
 	if room, exist := rm.rooms[roomType][roomStatusIn][roomID]; exist {
 		delete(rm.rooms[roomType][roomStatusIn], roomID)
 		rm.rooms[roomType][roomStatusOut][roomID] = room
+		rm.roomLookup[roomID] = struct {
+			roomType   RoomType
+			roomStatus RoomStatus
+		}{roomType, roomStatusOut}
 		rm.logger.Info("room moved", "roomType", roomType, "roomStatusIn", roomStatusIn, "roomStatusOut", roomStatusOut)
 	}
 }
 
-func (rm *RoomManager) LookRoom(username string, roomType RoomType) (Team, RoomID) {
+func (rm *RoomManager) LookRoom(username string, roomType RoomType) (Team, RoomID, RoomStatus) {
 	// Check WAITING room
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
@@ -130,42 +163,86 @@ func (rm *RoomManager) LookRoom(username string, roomType RoomType) (Team, RoomI
 			if status == LOBBY {
 				delete(rm.rooms[roomType][WAITING], roomID)
 				rm.rooms[roomType][LOBBY][roomID] = room
+				rm.roomLookup[roomID] = struct {
+					roomType   RoomType
+					roomStatus RoomStatus
+				}{roomType, LOBBY}
 				rm.logger.Info("room moved", "roomType", roomType, "roomStatusIn", "WAITING", "roomStatusOut", "LOBBY")
 				go func() {
 					<-time.After(1 * time.Minute)
 					rm.mu.Lock()
 					delete(rm.rooms[roomType][LOBBY], roomID)
 					rm.rooms[roomType][READY][roomID] = room
+					rm.roomLookup[roomID] = struct {
+						roomType   RoomType
+						roomStatus RoomStatus
+					}{roomType, READY}
 					rm.logger.Info("room moved", "roomType", roomType, "roomStatusIn", "LOBBY", "roomStatusOut", "READY")
 					rm.mu.Unlock()
 				}()
 			}
-			return team, roomID
+			return team, roomID, status
 		}
 	}
 	// We need to create the room
-  if rm.roomCounter >= rm.maxRoom {
-    // TODO: we should throw an error server full or something
-  }
-  rm.roomCounter += 1
+	if rm.roomCounter >= rm.maxRoom {
+		// TODO: we should throw an error server full or something
+	}
+	rm.roomCounter += 1
 	newRoom := NewRoom(roomType)
 	team, status := newRoom.AddPlayer(username)
 	roomID := GenerateRoomID()
 	if status == LOBBY {
 		rm.rooms[roomType][LOBBY][roomID] = newRoom
+		rm.roomLookup[roomID] = struct {
+			roomType   RoomType
+			roomStatus RoomStatus
+		}{roomType, LOBBY}
 		rm.logger.Info("room moved", "roomType", roomType, "roomStatusIn", "WAITING", "roomStatusOut", "LOBBY")
 		go func() {
 			<-time.After(1 * time.Minute)
 			rm.mu.Lock()
 			delete(rm.rooms[roomType][LOBBY], roomID)
 			rm.rooms[roomType][READY][roomID] = newRoom
+			rm.roomLookup[roomID] = struct {
+				roomType   RoomType
+				roomStatus RoomStatus
+			}{roomType, READY}
 			rm.logger.Info("room moved", "roomType", roomType, "roomStatusIn", "LOBBY", "roomStatusOut", "READY")
 			rm.mu.Unlock()
 		}()
 	} else {
 		rm.rooms[roomType][WAITING][roomID] = newRoom
+		rm.roomLookup[roomID] = struct {
+			roomType   RoomType
+			roomStatus RoomStatus
+		}{roomType, WAITING}
 	}
-	return team, roomID
+	return team, roomID, status
+}
+
+func (rm *RoomManager) RemovePlayer(roomID RoomID, username string) error {
+  rm.mu.Lock()
+  defer rm.mu.Unlock()
+
+  if meta, exist := rm.roomLookup[roomID]; exist {
+    if room, exist := rm.rooms[meta.roomType][meta.roomStatus][roomID]; exist {
+      room.RemovePlayer(username)
+      return nil
+    }
+  }
+  return errors.New("room or player not found")
+}
+
+func (rm *RoomManager) GetRoom(roomID RoomID) (*Room, RoomType, RoomStatus, bool) {
+	rm.mu.RLock()
+	defer rm.mu.RUnlock()
+	if meta, exist := rm.roomLookup[roomID]; exist {
+		if room, exists := rm.rooms[meta.roomType][meta.roomStatus][roomID]; exists {
+			return room, meta.roomType, meta.roomStatus, true
+		}
+	}
+	return nil, 0, 0, false
 }
 
 func (rm *RoomManager) GetRoomInfo(roomType RoomType, roomID RoomID) ([]*pb.UserInfo, error) {

@@ -28,8 +28,11 @@ func TestNewRoom(t *testing.T) {
 			if len(room.Players) != 0 {
 				t.Errorf("NewRoom() should start with empty players map, got %v", len(room.Players))
 			}
-			if room.nextTeam != BLUETEAM {
-				t.Errorf("NewRoom() should start with BLUETEAM, got %v", room.nextTeam)
+			if room.blueCount != 0 {
+				t.Errorf("NewRoom() should start with blueCount 0, got %v", room.blueCount)
+			}
+			if room.redCount != 0 {
+				t.Errorf("NewRoom() should start with redCount 0, got %v", room.redCount)
 			}
 		})
 	}
@@ -91,6 +94,96 @@ func TestRoom_UpdatePlayerSpell(t *testing.T) {
 	}
 	if player.playerSpells[1] != 2 {
 		t.Errorf("UpdatePlayerSpell() spell2 should be 2, got %v", player.playerSpells[1])
+	}
+}
+
+func TestRoom_RemovePlayer(t *testing.T) {
+	room := NewRoom(PRACTICE)
+
+	// Add players
+	room.AddPlayer("alice")   // BLUE
+	room.AddPlayer("bob")     // RED
+	room.AddPlayer("charlie") // BLUE
+
+	if len(room.Players) != 3 {
+		t.Errorf("Should have 3 players, got %d", len(room.Players))
+	}
+	if room.blueCount != 2 {
+		t.Errorf("Blue count should be 2, got %d", room.blueCount)
+	}
+	if room.redCount != 1 {
+		t.Errorf("Red count should be 1, got %d", room.redCount)
+	}
+
+	// Remove a blue player
+	room.RemovePlayer("alice")
+	if len(room.Players) != 2 {
+		t.Errorf("Should have 2 players after remove, got %d", len(room.Players))
+	}
+	if room.blueCount != 1 {
+		t.Errorf("Blue count should be 1 after remove, got %d", room.blueCount)
+	}
+	if room.redCount != 1 {
+		t.Errorf("Red count should remain 1, got %d", room.redCount)
+	}
+	if _, exists := room.Players["alice"]; exists {
+		t.Errorf("Alice should be removed")
+	}
+
+	// Remove non-existent player
+	room.RemovePlayer("nonexistent")
+	if len(room.Players) != 2 {
+		t.Errorf("Should still have 2 players, got %d", len(room.Players))
+	}
+	if room.blueCount != 1 {
+		t.Errorf("Blue count should still be 1, got %d", room.blueCount)
+	}
+	if room.redCount != 1 {
+		t.Errorf("Red count should still be 1, got %d", room.redCount)
+	}
+}
+
+func TestRoom_TeamBalancingWithRemove(t *testing.T) {
+	room := NewRoom(PRACTICE)
+
+	// Add 4 players: should be 2 blue, 2 red
+	room.AddPlayer("p1") // BLUE
+	room.AddPlayer("p2") // RED
+	room.AddPlayer("p3") // BLUE
+	room.AddPlayer("p4") // RED
+
+	if room.blueCount != 2 || room.redCount != 2 {
+		t.Errorf("Initial: expected 2 blue 2 red, got blue %d red %d", room.blueCount, room.redCount)
+	}
+
+	// Remove a blue player: now 1 blue, 2 red
+	room.RemovePlayer("p1")
+	if room.blueCount != 1 || room.redCount != 2 {
+		t.Errorf("After remove p1: expected 1 blue 2 red, got blue %d red %d", room.blueCount, room.redCount)
+	}
+
+	// Add new player: should go to blue to balance (1 <= 2)
+	team, _ := room.AddPlayer("p5")
+	if team != BLUETEAM {
+		t.Errorf("p5 should be assigned BLUETEAM, got %v", team)
+	}
+	if room.blueCount != 2 || room.redCount != 2 {
+		t.Errorf("After add p5: expected 2 blue 2 red, got blue %d red %d", room.blueCount, room.redCount)
+	}
+
+	// Remove a red player: now 2 blue, 1 red
+	room.RemovePlayer("p2")
+	if room.blueCount != 2 || room.redCount != 1 {
+		t.Errorf("After remove p2: expected 2 blue 1 red, got blue %d red %d", room.blueCount, room.redCount)
+	}
+
+	// Add another: should go to red (2 > 1)
+	team, _ = room.AddPlayer("p6")
+	if team != REDTEAM {
+		t.Errorf("p6 should be assigned REDTEAM, got %v", team)
+	}
+	if room.blueCount != 2 || room.redCount != 2 {
+		t.Errorf("After add p6: expected 2 blue 2 red, got blue %d red %d", room.blueCount, room.redCount)
 	}
 }
 
@@ -309,7 +402,7 @@ func TestRoom_GetUsernamesEdgeCases(t *testing.T) {
 
 func TestRoomManager_LookRoom_NoWaitingRoom(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-  maxRoom := 100
+	maxRoom := 100
 	rm := NewRoomManager(maxRoom, logger)
 
 	team, roomID := rm.LookRoom("alice", PRACTICE)
@@ -333,7 +426,7 @@ func TestRoomManager_LookRoom_NoWaitingRoom(t *testing.T) {
 
 func TestRoomManager_LookRoom_ExistingWaitingNotFull(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-  maxRoom := 100
+	maxRoom := 100
 	rm := NewRoomManager(maxRoom, logger)
 
 	// Create a waiting room with 1 player
@@ -360,7 +453,7 @@ func TestRoomManager_LookRoom_ExistingWaitingNotFull(t *testing.T) {
 
 func TestRoomManager_LookRoom_ExistingWaitingFull(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-  maxRoom := 100
+	maxRoom := 100
 	rm := NewRoomManager(maxRoom, logger)
 
 	// For PRACTICE, max 4 players
@@ -389,7 +482,7 @@ func TestRoomManager_LookRoom_ExistingWaitingFull(t *testing.T) {
 
 func TestRoomManager_LookRoom_DifferentRoomTypes(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-  maxRoom := 100
+	maxRoom := 100
 	rm := NewRoomManager(maxRoom, logger)
 
 	tests := []struct {
@@ -448,7 +541,7 @@ func BenchmarkRoom_AddPlayerConcurrent(b *testing.B) {
 
 func BenchmarkRoomManager_LookRoom(b *testing.B) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-  maxRoom := 100
+	maxRoom := 100
 	rm := NewRoomManager(maxRoom, logger)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -459,7 +552,7 @@ func BenchmarkRoomManager_LookRoom(b *testing.B) {
 
 func BenchmarkRoomManager_LookRoomConcurrent(b *testing.B) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-  maxRoom := 100
+	maxRoom := 100
 	rm := NewRoomManager(maxRoom, logger)
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
