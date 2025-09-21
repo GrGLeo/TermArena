@@ -181,7 +181,7 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 				msgs <- AuthResultMsg{Success: msg.Success, Message: msg.Message, SessionToken: msg.SessionToken}
 			case *shared.LookRoomPacket:
 				log.Printf("Sending LookRoomMsg: %+v", msg)
-				msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID, RoomIP: msg.RoomIP}
+				msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID}
 			case *shared.GameStartPacket:
 				log.Println("Game started packet found")
 				log.Printf("Sending GameStartMsg: %+v", msg)

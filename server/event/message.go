@@ -90,7 +90,7 @@ func CreatePacketFromMessage(msg Message) ([]byte, error) {
 		packet := shared.NewAuthResponsePacket(m.Success, m.Message, m.SessionToken)
 		return packet.Serialize(), nil
 	case LookRoomResponseMessage:
-		packet := shared.NewLookRoomPacket(m.Success, m.RoomID, m.RoomIP)
+		packet := shared.NewLookRoomPacket(m.Success, m.RoomID)
 		return packet.Serialize(), nil
 	case MessageResponseMessage:
 		packet := shared.NewMessageResponsePacket(m.Message)
@@ -304,7 +304,7 @@ func (rc RoomCreateMessage) ResponseChan() chan Message { return rc.ResponseCh }
 
 type LookRoomResponseMessage struct {
 	Success bool
-	RoomID  int
+	RoomID  uint32
 	RoomIP  string
   ResponseCh chan Message
 }

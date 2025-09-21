@@ -71,7 +71,7 @@ func (rs *RoomServiceClient) HandleLookRoom(msg event.Message) event.Message {
 		rs.logger.Error("gRPC LookRoom call failed", "component", "messages", "error", err, "client_id", req.Username)
 		return event.LookRoomResponseMessage{
 			Success: false,
-			RoomID:  int(res.RoomID),
+			RoomID:  res.RoomID,
 		}
 	}
 
@@ -89,7 +89,7 @@ func (rs *RoomServiceClient) HandleLookRoom(msg event.Message) event.Message {
 	//_ = <-regResponseCh
 	return event.LookRoomResponseMessage{
 		Success: true,
-		RoomID:  int(res.RoomID),
+		RoomID:  res.RoomID,
     ResponseCh: req.ResponseCh,
 	}
 }

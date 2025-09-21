@@ -51,7 +51,7 @@ code 1: error putting player in queue
 */
 type LookRoomMsg struct {
 	Code   bool
-	RoomID int
+	RoomID uint32
 	RoomIP string
 }
 

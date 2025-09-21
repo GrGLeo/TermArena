@@ -326,7 +326,7 @@ type CreateModel struct {
 	roomIDInput   textinput.Model
 	width, height int
 	looking       bool
-	roomID        int
+	roomID        uint32
 	conn          *net.TCPConn
 	spinner       spinner.Model
 	inputFocused  bool
