@@ -19,6 +19,7 @@ code 6: send a find room
 code 7: send a create room
 code 8: send a join room
 code 9: looking for a room response
+code 33: move to lobby room packet
 ---
 code 10: game start  response
 code 11: send action
@@ -353,12 +354,38 @@ func (lp *LookRoomPacket) Serialize() []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(byte(lp.version))
 	buf.WriteByte(byte(lp.code))
-  if lp.Success {
-	  buf.WriteByte(1)
-  } else {
-	  buf.WriteByte(0)
-  }
+	if lp.Success {
+		buf.WriteByte(1)
+	} else {
+		buf.WriteByte(0)
+	}
 	binary.Write(&buf, binary.BigEndian, uint32(lp.RoomID))
+	return buf.Bytes()
+}
+
+type MoveLobbyPacket struct {
+	version, code int
+	Move          bool
+}
+
+func NewMoveLobbyPacket() *MoveLobbyPacket {
+	return &MoveLobbyPacket{
+		version: 1,
+		code:    33,
+		Move:    true,
+	}
+}
+func (ml *MoveLobbyPacket) Version() int { return ml.version }
+func (ml *MoveLobbyPacket) Code() int    { return ml.code }
+func (ml *MoveLobbyPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(ml.version))
+	buf.WriteByte(byte(ml.code))
+	if ml.Move {
+		buf.WriteByte(1)
+	} else {
+		buf.WriteByte(0)
+	}
 	return buf.Bytes()
 }
 
@@ -943,13 +970,25 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		if len(data) < 7 {
 			return nil, 0, errors.New("incomplete packet")
 		}
-    success := data[2] == 1
+		success := data[2] == 1
 		roomID := binary.BigEndian.Uint32(data[3:7])
 		packet := &LookRoomPacket{
 			version: version,
 			code:    code,
 			Success: success,
 			RoomID:  roomID,
+		}
+		return packet, len(data), nil
+
+	case 33: //MoveLobbyPacket
+		if len(data) < 3 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		move := data[2] == 1
+		packet := &MoveLobbyPacket{
+			version: version,
+			code:    code,
+			Move:    move,
 		}
 		return packet, len(data), nil
 

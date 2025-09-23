@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RoomService_LookRoom_FullMethodName = "/room_manager.RoomService/LookRoom"
-	RoomService_QuitRoom_FullMethodName = "/room_manager.RoomService/QuitRoom"
+	RoomService_LookRoom_FullMethodName          = "/room_manager.RoomService/LookRoom"
+	RoomService_QuitRoom_FullMethodName          = "/room_manager.RoomService/QuitRoom"
+	RoomService_NotifyRoomChanges_FullMethodName = "/room_manager.RoomService/NotifyRoomChanges"
 )
 
 // RoomServiceClient is the client API for RoomService service.
@@ -29,6 +30,7 @@ const (
 type RoomServiceClient interface {
 	LookRoom(ctx context.Context, in *LookRoomRequest, opts ...grpc.CallOption) (*LookRoomResponse, error)
 	QuitRoom(ctx context.Context, in *QuitRoomRequest, opts ...grpc.CallOption) (*QuitRoomResponse, error)
+	NotifyRoomChanges(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[Ack, RoomChangeNotification], error)
 }
 
 type roomServiceClient struct {
@@ -59,12 +61,26 @@ func (c *roomServiceClient) QuitRoom(ctx context.Context, in *QuitRoomRequest, o
 	return out, nil
 }
 
+func (c *roomServiceClient) NotifyRoomChanges(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[Ack, RoomChangeNotification], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &RoomService_ServiceDesc.Streams[0], RoomService_NotifyRoomChanges_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[Ack, RoomChangeNotification]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RoomService_NotifyRoomChangesClient = grpc.BidiStreamingClient[Ack, RoomChangeNotification]
+
 // RoomServiceServer is the server API for RoomService service.
 // All implementations must embed UnimplementedRoomServiceServer
 // for forward compatibility.
 type RoomServiceServer interface {
 	LookRoom(context.Context, *LookRoomRequest) (*LookRoomResponse, error)
 	QuitRoom(context.Context, *QuitRoomRequest) (*QuitRoomResponse, error)
+	NotifyRoomChanges(grpc.BidiStreamingServer[Ack, RoomChangeNotification]) error
 	mustEmbedUnimplementedRoomServiceServer()
 }
 
@@ -80,6 +96,9 @@ func (UnimplementedRoomServiceServer) LookRoom(context.Context, *LookRoomRequest
 }
 func (UnimplementedRoomServiceServer) QuitRoom(context.Context, *QuitRoomRequest) (*QuitRoomResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QuitRoom not implemented")
+}
+func (UnimplementedRoomServiceServer) NotifyRoomChanges(grpc.BidiStreamingServer[Ack, RoomChangeNotification]) error {
+	return status.Errorf(codes.Unimplemented, "method NotifyRoomChanges not implemented")
 }
 func (UnimplementedRoomServiceServer) mustEmbedUnimplementedRoomServiceServer() {}
 func (UnimplementedRoomServiceServer) testEmbeddedByValue()                     {}
@@ -138,6 +157,13 @@ func _RoomService_QuitRoom_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RoomService_NotifyRoomChanges_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(RoomServiceServer).NotifyRoomChanges(&grpc.GenericServerStream[Ack, RoomChangeNotification]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RoomService_NotifyRoomChangesServer = grpc.BidiStreamingServer[Ack, RoomChangeNotification]
+
 // RoomService_ServiceDesc is the grpc.ServiceDesc for RoomService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -154,6 +180,13 @@ var RoomService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RoomService_QuitRoom_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "NotifyRoomChanges",
+			Handler:       _RoomService_NotifyRoomChanges_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "pkg/proto/room_managing/room.proto",
 }

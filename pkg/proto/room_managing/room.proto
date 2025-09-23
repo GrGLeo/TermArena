@@ -14,9 +14,10 @@ message UserInfo {
 service RoomService {
   rpc LookRoom(LookRoomRequest) returns (LookRoomResponse);
   rpc QuitRoom(QuitRoomRequest) returns (QuitRoomResponse);
-  //rpc UpdateSpell(UpdateSpellRequest) returns (UpdateSpellResponse);
-  //rpc RoomDone(RoomDoneRequest) returns (RoomDoneResponse);
-  //rpc RoomInfo(RoomInfoRequest) returns (RoomInfoResponse);
+  rpc NotifyRoomChanges(stream Ack) returns (stream RoomChangeNotification);
+  // rpc UpdateSpell(UpdateSpellRequest) returns (UpdateSpellResponse);
+  // rpc RoomDone(RoomDoneRequest) returns (RoomDoneResponse);
+  // rpc RoomInfo(RoomInfoRequest) returns (RoomInfoResponse);
 }
 
 // --- LookRoomService
@@ -26,8 +27,8 @@ message LookRoomRequest {
 }
 
 message LookRoomResponse {
- uint32 roomID = 1;
- uint32 team = 3;
+  uint32 roomID = 1;
+  uint32 team = 3;
 }
 
 // --- UpdatedSpellServce ---
@@ -54,6 +55,13 @@ message QuitRoomRequest {
 }
 
 message QuitRoomResponse { bool success = 1; }
+
+// --- RoomChangeService ---
+message RoomChangeNotification {
+  uint32 roomID = 1;
+  repeated string usernames = 2;
+}
+message Ack { bool success = 1; }
 
 // --- RoomInfoService ---
 message RoomInfoRequest { uint32 roomID = 1; }

@@ -493,6 +493,103 @@ func (x *QuitRoomResponse) GetSuccess() bool {
 	return false
 }
 
+// --- RoomChangeService ---
+type RoomChangeNotification struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RoomID        uint32                 `protobuf:"varint,1,opt,name=roomID,proto3" json:"roomID,omitempty"`
+	Usernames     []string               `protobuf:"bytes,2,rep,name=usernames,proto3" json:"usernames,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomChangeNotification) Reset() {
+	*x = RoomChangeNotification{}
+	mi := &file_pkg_proto_room_managing_room_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomChangeNotification) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomChangeNotification) ProtoMessage() {}
+
+func (x *RoomChangeNotification) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_proto_room_managing_room_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomChangeNotification.ProtoReflect.Descriptor instead.
+func (*RoomChangeNotification) Descriptor() ([]byte, []int) {
+	return file_pkg_proto_room_managing_room_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *RoomChangeNotification) GetRoomID() uint32 {
+	if x != nil {
+		return x.RoomID
+	}
+	return 0
+}
+
+func (x *RoomChangeNotification) GetUsernames() []string {
+	if x != nil {
+		return x.Usernames
+	}
+	return nil
+}
+
+type Ack struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Ack) Reset() {
+	*x = Ack{}
+	mi := &file_pkg_proto_room_managing_room_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Ack) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Ack) ProtoMessage() {}
+
+func (x *Ack) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_proto_room_managing_room_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Ack.ProtoReflect.Descriptor instead.
+func (*Ack) Descriptor() ([]byte, []int) {
+	return file_pkg_proto_room_managing_room_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *Ack) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
 // --- RoomInfoService ---
 type RoomInfoRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -503,7 +600,7 @@ type RoomInfoRequest struct {
 
 func (x *RoomInfoRequest) Reset() {
 	*x = RoomInfoRequest{}
-	mi := &file_pkg_proto_room_managing_room_proto_msgTypes[9]
+	mi := &file_pkg_proto_room_managing_room_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -515,7 +612,7 @@ func (x *RoomInfoRequest) String() string {
 func (*RoomInfoRequest) ProtoMessage() {}
 
 func (x *RoomInfoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_room_managing_room_proto_msgTypes[9]
+	mi := &file_pkg_proto_room_managing_room_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -528,7 +625,7 @@ func (x *RoomInfoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoomInfoRequest.ProtoReflect.Descriptor instead.
 func (*RoomInfoRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_room_managing_room_proto_rawDescGZIP(), []int{9}
+	return file_pkg_proto_room_managing_room_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *RoomInfoRequest) GetRoomID() uint32 {
@@ -547,7 +644,7 @@ type RoomInfoResponse struct {
 
 func (x *RoomInfoResponse) Reset() {
 	*x = RoomInfoResponse{}
-	mi := &file_pkg_proto_room_managing_room_proto_msgTypes[10]
+	mi := &file_pkg_proto_room_managing_room_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -559,7 +656,7 @@ func (x *RoomInfoResponse) String() string {
 func (*RoomInfoResponse) ProtoMessage() {}
 
 func (x *RoomInfoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_room_managing_room_proto_msgTypes[10]
+	mi := &file_pkg_proto_room_managing_room_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -572,7 +669,7 @@ func (x *RoomInfoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoomInfoResponse.ProtoReflect.Descriptor instead.
 func (*RoomInfoResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_room_managing_room_proto_rawDescGZIP(), []int{10}
+	return file_pkg_proto_room_managing_room_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RoomInfoResponse) GetUsers() []*UserInfo {
@@ -613,14 +710,20 @@ const file_pkg_proto_room_managing_room_proto_rawDesc = "" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x16\n" +
 	"\x06roomID\x18\x02 \x01(\rR\x06roomID\",\n" +
 	"\x10QuitRoomResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"N\n" +
+	"\x16RoomChangeNotification\x12\x16\n" +
+	"\x06roomID\x18\x01 \x01(\rR\x06roomID\x12\x1c\n" +
+	"\tusernames\x18\x02 \x03(\tR\tusernames\"\x1f\n" +
+	"\x03Ack\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\")\n" +
 	"\x0fRoomInfoRequest\x12\x16\n" +
 	"\x06roomID\x18\x01 \x01(\rR\x06roomID\"@\n" +
 	"\x10RoomInfoResponse\x12,\n" +
-	"\x05users\x18\x01 \x03(\v2\x16.room_manager.UserInfoR\x05users2\xa3\x01\n" +
+	"\x05users\x18\x01 \x03(\v2\x16.room_manager.UserInfoR\x05users2\xf5\x01\n" +
 	"\vRoomService\x12I\n" +
 	"\bLookRoom\x12\x1d.room_manager.LookRoomRequest\x1a\x1e.room_manager.LookRoomResponse\x12I\n" +
-	"\bQuitRoom\x12\x1d.room_manager.QuitRoomRequest\x1a\x1e.room_manager.QuitRoomResponseB\x1fZ\x1dpkg/shared/proto/room_managerb\x06proto3"
+	"\bQuitRoom\x12\x1d.room_manager.QuitRoomRequest\x1a\x1e.room_manager.QuitRoomResponse\x12P\n" +
+	"\x11NotifyRoomChanges\x12\x11.room_manager.Ack\x1a$.room_manager.RoomChangeNotification(\x010\x01B\x1fZ\x1dpkg/shared/proto/room_managerb\x06proto3"
 
 var (
 	file_pkg_proto_room_managing_room_proto_rawDescOnce sync.Once
@@ -634,31 +737,35 @@ func file_pkg_proto_room_managing_room_proto_rawDescGZIP() []byte {
 	return file_pkg_proto_room_managing_room_proto_rawDescData
 }
 
-var file_pkg_proto_room_managing_room_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_pkg_proto_room_managing_room_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_pkg_proto_room_managing_room_proto_goTypes = []any{
-	(*UserInfo)(nil),            // 0: room_manager.UserInfo
-	(*LookRoomRequest)(nil),     // 1: room_manager.LookRoomRequest
-	(*LookRoomResponse)(nil),    // 2: room_manager.LookRoomResponse
-	(*UpdateSpellRequest)(nil),  // 3: room_manager.UpdateSpellRequest
-	(*UpdateSpellResponse)(nil), // 4: room_manager.UpdateSpellResponse
-	(*RoomDoneRequest)(nil),     // 5: room_manager.RoomDoneRequest
-	(*RoomDoneResponse)(nil),    // 6: room_manager.RoomDoneResponse
-	(*QuitRoomRequest)(nil),     // 7: room_manager.QuitRoomRequest
-	(*QuitRoomResponse)(nil),    // 8: room_manager.QuitRoomResponse
-	(*RoomInfoRequest)(nil),     // 9: room_manager.RoomInfoRequest
-	(*RoomInfoResponse)(nil),    // 10: room_manager.RoomInfoResponse
+	(*UserInfo)(nil),               // 0: room_manager.UserInfo
+	(*LookRoomRequest)(nil),        // 1: room_manager.LookRoomRequest
+	(*LookRoomResponse)(nil),       // 2: room_manager.LookRoomResponse
+	(*UpdateSpellRequest)(nil),     // 3: room_manager.UpdateSpellRequest
+	(*UpdateSpellResponse)(nil),    // 4: room_manager.UpdateSpellResponse
+	(*RoomDoneRequest)(nil),        // 5: room_manager.RoomDoneRequest
+	(*RoomDoneResponse)(nil),       // 6: room_manager.RoomDoneResponse
+	(*QuitRoomRequest)(nil),        // 7: room_manager.QuitRoomRequest
+	(*QuitRoomResponse)(nil),       // 8: room_manager.QuitRoomResponse
+	(*RoomChangeNotification)(nil), // 9: room_manager.RoomChangeNotification
+	(*Ack)(nil),                    // 10: room_manager.Ack
+	(*RoomInfoRequest)(nil),        // 11: room_manager.RoomInfoRequest
+	(*RoomInfoResponse)(nil),       // 12: room_manager.RoomInfoResponse
 }
 var file_pkg_proto_room_managing_room_proto_depIdxs = []int32{
-	0, // 0: room_manager.RoomInfoResponse.users:type_name -> room_manager.UserInfo
-	1, // 1: room_manager.RoomService.LookRoom:input_type -> room_manager.LookRoomRequest
-	7, // 2: room_manager.RoomService.QuitRoom:input_type -> room_manager.QuitRoomRequest
-	2, // 3: room_manager.RoomService.LookRoom:output_type -> room_manager.LookRoomResponse
-	8, // 4: room_manager.RoomService.QuitRoom:output_type -> room_manager.QuitRoomResponse
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0,  // 0: room_manager.RoomInfoResponse.users:type_name -> room_manager.UserInfo
+	1,  // 1: room_manager.RoomService.LookRoom:input_type -> room_manager.LookRoomRequest
+	7,  // 2: room_manager.RoomService.QuitRoom:input_type -> room_manager.QuitRoomRequest
+	10, // 3: room_manager.RoomService.NotifyRoomChanges:input_type -> room_manager.Ack
+	2,  // 4: room_manager.RoomService.LookRoom:output_type -> room_manager.LookRoomResponse
+	8,  // 5: room_manager.RoomService.QuitRoom:output_type -> room_manager.QuitRoomResponse
+	9,  // 6: room_manager.RoomService.NotifyRoomChanges:output_type -> room_manager.RoomChangeNotification
+	4,  // [4:7] is the sub-list for method output_type
+	1,  // [1:4] is the sub-list for method input_type
+	1,  // [1:1] is the sub-list for extension type_name
+	1,  // [1:1] is the sub-list for extension extendee
+	0,  // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_pkg_proto_room_managing_room_proto_init() }
@@ -672,7 +779,7 @@ func file_pkg_proto_room_managing_room_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_room_managing_room_proto_rawDesc), len(file_pkg_proto_room_managing_room_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

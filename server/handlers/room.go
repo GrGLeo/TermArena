@@ -3,10 +3,12 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"time"
 
+	"github.com/GrGLeo/TermArena/pkg/shared"
 	pb "github.com/GrGLeo/TermArena/pkg/shared/proto/room_manager"
 	conm "github.com/GrGLeo/TermArena/server/conn_manager"
 	"github.com/GrGLeo/TermArena/server/event"
@@ -16,11 +18,14 @@ import (
 )
 
 type RoomServiceClient struct {
-	Client      pb.RoomServiceClient
-	connManager *conm.ConnectionManager
-	broker      *event.EventBroker
-	rateLimiter *ratelimiter.GlobalRateLimiter
-	logger      *slog.Logger
+	Client        pb.RoomServiceClient
+	connManager   *conm.ConnectionManager
+	broker        *event.EventBroker
+	rateLimiter   *ratelimiter.GlobalRateLimiter
+	logger        *slog.Logger
+	stream        pb.RoomService_NotifyRoomChangesClient
+	streamContext context.Context
+	steamCancel   context.CancelFunc
 }
 
 func NewRoomServiceClient(connManager *conm.ConnectionManager, broker *event.EventBroker, logger *slog.Logger, rateLimiter *ratelimiter.GlobalRateLimiter) (*RoomServiceClient, error) {
@@ -33,13 +38,28 @@ func NewRoomServiceClient(connManager *conm.ConnectionManager, broker *event.Eve
 		return nil, err
 	}
 	client := pb.NewRoomServiceClient(conn)
-	return &RoomServiceClient{
-		Client:      client,
-		connManager: connManager,
-    broker: broker,
-		rateLimiter: rateLimiter,
-		logger:      logger,
-	}, nil
+
+	streamCtx, streamCancel := context.WithCancel(context.Background())
+	stream, err := client.NotifyRoomChanges(streamCtx)
+	if err != nil {
+		streamCancel() // Clean up context
+		return nil, fmt.Errorf("failed to open stream: %w", err)
+	}
+	roomClient := &RoomServiceClient{
+		Client:        client,
+		connManager:   connManager,
+		broker:        broker,
+		rateLimiter:   rateLimiter,
+		logger:        logger,
+		stream:        stream,
+		streamContext: streamCtx,
+		steamCancel:   streamCancel,
+	}
+
+	go roomClient.handleNotifications()
+
+	return roomClient, nil
+
 }
 
 func (rs *RoomServiceClient) HandleLookRoom(msg event.Message) event.Message {
@@ -88,8 +108,61 @@ func (rs *RoomServiceClient) HandleLookRoom(msg event.Message) event.Message {
 	// Wait for client registration to complete
 	//_ = <-regResponseCh
 	return event.LookRoomResponseMessage{
-		Success: true,
-		RoomID:  res.RoomID,
-    ResponseCh: req.ResponseCh,
+		Success:    true,
+		RoomID:     res.RoomID,
+		ResponseCh: req.ResponseCh,
+	}
+}
+
+func (rs *RoomServiceClient) handleNotifications() {
+	rs.logger.Info("Stream connected. Waiting for notifications...")
+	for {
+		select {
+		// Check if the stream context is done (e.g., canceled)
+		case <-rs.streamContext.Done():
+			rs.logger.Info("Stream closed or canceled")
+			return
+
+		default:
+			// Receive a notification from the server
+			notification, err := rs.stream.Recv()
+			if err == io.EOF {
+				rs.logger.Info("Server closed the stream")
+				return
+			}
+			if err != nil {
+				rs.logger.Error("Failed to receive notification", "error", err)
+				return
+			}
+
+			rs.logger.Info(
+				"Received notification",
+				"room_id", notification.RoomID,
+				"message", notification.Usernames,
+			)
+
+			// Send an Ack back to the server
+			ack := &pb.Ack{
+				Success: true,
+			}
+			if err := rs.stream.Send(ack); err != nil {
+				rs.logger.Error("Failed to send Ack", "error", err)
+				return
+			}
+			rs.logger.Info("Sent Ack", "room_id", notification.RoomID)
+
+			packet := shared.NewMoveLobbyPacket()
+			data := packet.Serialize()
+
+			for _, receiverID := range notification.Usernames {
+				if receiverConn, exist := rs.connManager.GetConn(receiverID); exist {
+					if _, err := receiverConn.Write(data); err != nil {
+						rs.logger.Error("Error writing response to client", "component", "server", "receiver", receiverID, "error", err)
+					}
+				} else {
+					rs.logger.Warn("Could not find connection for receiver", "component", "server", "receiver", receiverID)
+				}
+			}
+    }
 	}
 }
