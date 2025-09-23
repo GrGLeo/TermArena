@@ -68,17 +68,17 @@ func (rs *RoomServiceClient) HandleLookRoom(msg event.Message) event.Message {
 	// Rate limiting checks
 	allowed, err := rs.rateLimiter.Allow(req.Username, req.Type(), false)
 	if err != nil {
-		rs.logger.Error("Failed to retrieve bucket", "component", "messages", "error", err, "user", req.Username)
+		rs.logger.Error("Failed to retrieve bucket", "component", "room_manager", "error", err, "user", req.Username)
 		return event.MessageErrorResponse{
 			Error:      fmt.Sprintf("Failed to route message: %v", err),
 			ResponseCh: req.ResponseCh,
 		}
 	}
 	if !allowed {
-		rs.logger.Warn("Rate limit exceed", "component", "messages", "username", req.Username)
+		rs.logger.Warn("Rate limit exceed", "component", "room_manager", "username", req.Username)
 		return event.RateLimitResponse{ResponseCh: req.ResponseCh}
 	}
-	rs.logger.Info("HandleLookRoom called", "component", "messages", "sender", req.Username, "roomType", req.RoomType)
+	rs.logger.Info("HandleLookRoom called", "component", "room_manager", "sender", req.Username, "roomType", req.RoomType)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -88,7 +88,7 @@ func (rs *RoomServiceClient) HandleLookRoom(msg event.Message) event.Message {
 	})
 
 	if err != nil {
-		rs.logger.Error("gRPC LookRoom call failed", "component", "messages", "error", err, "client_id", req.Username)
+		rs.logger.Error("gRPC LookRoom call failed", "component", "room_manager", "error", err, "client_id", req.Username)
 		return event.LookRoomResponseMessage{
 			Success: false,
 			RoomID:  res.RoomID,
@@ -112,6 +112,31 @@ func (rs *RoomServiceClient) HandleLookRoom(msg event.Message) event.Message {
 		RoomID:     res.RoomID,
 		ResponseCh: req.ResponseCh,
 	}
+}
+
+func (rs *RoomServiceClient) HandleUpdateSpell(msg event.Message) event.Message {
+	req := msg.(event.UpdateSpellReqMessage)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	res, err := rs.Client.UpdateSpell(ctx, &pb.UpdateSpellRequest{
+		Username: req.Username,
+		RomType:  uint32(req.RoomType),
+		RoomID:   uint32(req.RoomID),
+		Spell1:   uint32(req.SpellOne),
+		Spell2:   uint32(req.SpellTwo),
+	})
+	if err != nil {
+		rs.logger.Error("gRPC UpdateSpell call failed", "component", "room_manager", "error", err, "client_id", req.Username)
+	}
+
+	return event.UpdateSpellResMessage{
+    Usernames: res.Usernames,
+    Username: req.Username,
+    SpellOne: req.SpellOne,
+    SpellTwo: req.SpellTwo,
+    ResponseCh: req.ResponseCh,
+  }
+
 }
 
 func (rs *RoomServiceClient) handleNotifications() {
@@ -151,7 +176,7 @@ func (rs *RoomServiceClient) handleNotifications() {
 			}
 			rs.logger.Info("Sent Ack", "room_id", notification.RoomID)
 
-			packet := shared.NewMoveToLobbyPacket(notification.UserInfos)
+			packet := shared.NewMoveToLobbyPacket(notification.RoomID, notification.UserInfos)
 			data := packet.Serialize()
 
 			for _, userInfo := range notification.UserInfos {

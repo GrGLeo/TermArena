@@ -22,6 +22,7 @@ const (
 	RoomService_LookRoom_FullMethodName          = "/room_manager.RoomService/LookRoom"
 	RoomService_QuitRoom_FullMethodName          = "/room_manager.RoomService/QuitRoom"
 	RoomService_NotifyRoomChanges_FullMethodName = "/room_manager.RoomService/NotifyRoomChanges"
+	RoomService_UpdateSpell_FullMethodName       = "/room_manager.RoomService/UpdateSpell"
 )
 
 // RoomServiceClient is the client API for RoomService service.
@@ -31,6 +32,7 @@ type RoomServiceClient interface {
 	LookRoom(ctx context.Context, in *LookRoomRequest, opts ...grpc.CallOption) (*LookRoomResponse, error)
 	QuitRoom(ctx context.Context, in *QuitRoomRequest, opts ...grpc.CallOption) (*QuitRoomResponse, error)
 	NotifyRoomChanges(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[Ack, RoomChangeNotification], error)
+	UpdateSpell(ctx context.Context, in *UpdateSpellRequest, opts ...grpc.CallOption) (*UpdateSpellResponse, error)
 }
 
 type roomServiceClient struct {
@@ -74,6 +76,16 @@ func (c *roomServiceClient) NotifyRoomChanges(ctx context.Context, opts ...grpc.
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type RoomService_NotifyRoomChangesClient = grpc.BidiStreamingClient[Ack, RoomChangeNotification]
 
+func (c *roomServiceClient) UpdateSpell(ctx context.Context, in *UpdateSpellRequest, opts ...grpc.CallOption) (*UpdateSpellResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateSpellResponse)
+	err := c.cc.Invoke(ctx, RoomService_UpdateSpell_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RoomServiceServer is the server API for RoomService service.
 // All implementations must embed UnimplementedRoomServiceServer
 // for forward compatibility.
@@ -81,6 +93,7 @@ type RoomServiceServer interface {
 	LookRoom(context.Context, *LookRoomRequest) (*LookRoomResponse, error)
 	QuitRoom(context.Context, *QuitRoomRequest) (*QuitRoomResponse, error)
 	NotifyRoomChanges(grpc.BidiStreamingServer[Ack, RoomChangeNotification]) error
+	UpdateSpell(context.Context, *UpdateSpellRequest) (*UpdateSpellResponse, error)
 	mustEmbedUnimplementedRoomServiceServer()
 }
 
@@ -99,6 +112,9 @@ func (UnimplementedRoomServiceServer) QuitRoom(context.Context, *QuitRoomRequest
 }
 func (UnimplementedRoomServiceServer) NotifyRoomChanges(grpc.BidiStreamingServer[Ack, RoomChangeNotification]) error {
 	return status.Errorf(codes.Unimplemented, "method NotifyRoomChanges not implemented")
+}
+func (UnimplementedRoomServiceServer) UpdateSpell(context.Context, *UpdateSpellRequest) (*UpdateSpellResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateSpell not implemented")
 }
 func (UnimplementedRoomServiceServer) mustEmbedUnimplementedRoomServiceServer() {}
 func (UnimplementedRoomServiceServer) testEmbeddedByValue()                     {}
@@ -164,6 +180,24 @@ func _RoomService_NotifyRoomChanges_Handler(srv interface{}, stream grpc.ServerS
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type RoomService_NotifyRoomChangesServer = grpc.BidiStreamingServer[Ack, RoomChangeNotification]
 
+func _RoomService_UpdateSpell_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateSpellRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoomServiceServer).UpdateSpell(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RoomService_UpdateSpell_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoomServiceServer).UpdateSpell(ctx, req.(*UpdateSpellRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RoomService_ServiceDesc is the grpc.ServiceDesc for RoomService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -178,6 +212,10 @@ var RoomService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "QuitRoom",
 			Handler:    _RoomService_QuitRoom_Handler,
+		},
+		{
+			MethodName: "UpdateSpell",
+			Handler:    _RoomService_UpdateSpell_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

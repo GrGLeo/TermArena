@@ -15,7 +15,7 @@ service RoomService {
   rpc LookRoom(LookRoomRequest) returns (LookRoomResponse);
   rpc QuitRoom(QuitRoomRequest) returns (QuitRoomResponse);
   rpc NotifyRoomChanges(stream Ack) returns (stream RoomChangeNotification);
-  // rpc UpdateSpell(UpdateSpellRequest) returns (UpdateSpellResponse);
+  rpc UpdateSpell(UpdateSpellRequest) returns (UpdateSpellResponse);
   // rpc RoomDone(RoomDoneRequest) returns (RoomDoneResponse);
   // rpc RoomInfo(RoomInfoRequest) returns (RoomInfoResponse);
 }
@@ -34,11 +34,16 @@ message LookRoomResponse {
 // --- UpdatedSpellServce ---
 message UpdateSpellRequest {
   string username = 1;
-  uint32 spell1 = 2;
-  uint32 spell2 = 3;
+  uint32 romType = 3;
+  uint32 roomID = 2;
+  uint32 spell1 = 4;
+  uint32 spell2 = 5;
 }
 
-message UpdateSpellResponse { bool succes = 1; }
+message UpdateSpellResponse {
+  repeated string usernames = 1;
+  UserInfo user = 2;
+}
 
 // --- RoomDoneService ---
 message RoomDoneRequest {

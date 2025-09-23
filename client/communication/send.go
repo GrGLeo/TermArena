@@ -141,6 +141,19 @@ func SendMessage(conn *net.TCPConn, sender, message string) error {
 	return err
 }
 
+func SendUpdateSpell(conn *net.TCPConn, roomType, roomID int, username string, spells []int) error {
+	log.Printf("[CLIENT] SendUpateSpell: sender=%s, spells='%d|%d'", username, spells[0], spells[1])
+  spellPacket := shared.NewUpdateSpellReqPacket(roomType, roomID, username, spells[0], spells[1])
+  data := spellPacket.Serialize()
+	_, err := conn.Write(data)
+	if err != nil {
+		log.Printf("[CLIENT] UpdateSpell: ERROR writing to connection: %v", err)
+	} else {
+		log.Printf("[CLIENT] UpdateSpell: SUCCESS - spells sent to server")
+	}
+	return err
+}
+
 func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 	var data []byte
 	buf := make([]byte, 4096)
@@ -192,7 +205,8 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 						Spell2:   int(ui.Spell2),
 					})
 				}
-				msgs <- MoveLobbyRoomMsg{UserInfos: userInfos}
+        log.Printf("Sending MoveLobbyRoomMsg: %+v", msg)
+        msgs <- MoveLobbyRoomMsg{RoomID: int(msg.RoomID), UserInfos: userInfos}
 			case *shared.GameStartPacket:
 				log.Println("Game started packet found")
 				log.Printf("Sending GameStartMsg: %+v", msg)

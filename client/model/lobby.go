@@ -21,6 +21,7 @@ type LobbyModel struct {
 	conn           *net.TCPConn
 	looking        bool
 	width, height  int
+	RoomType       int
 	Username       string
 }
 
@@ -91,6 +92,7 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.tabSelected == 0 {
 		var qm tea.Model
 		qm, cmd = m.queueModel.Update(msg)
+    m.RoomType = m.queueModel.roomType
 		m.queueModel = qm.(QueueModel)
 	} else if m.tabSelected == 1 {
 		var cm tea.Model
@@ -162,6 +164,7 @@ func (m LobbyModel) View() string {
 
 type QueueModel struct {
 	options       []string
+	roomType      int
 	selected      int
 	width, height int
 	looking       bool
@@ -209,6 +212,7 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEsc, tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyEnter:
+			m.roomType = m.selected
 			selectedOption := m.options[m.selected]
 			communication.SendRoomRequestPacket(m.conn, m.selected)
 			log.Println("Selected option:", selectedOption)

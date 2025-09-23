@@ -88,10 +88,10 @@ func (r *Room) RemovePlayer(username string) {
 	delete(r.Players, username)
 }
 
-func (r *Room) UpdatePlayerSpell(username string, spellOne, spellTwo int) {
+func (r *Room) UpdatePlayerSpell(username string, spells Spells) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.Players[username].UpdateSpells(Spells{spellOne, spellTwo})
+	r.Players[username].UpdateSpells(spells)
 }
 
 func (r *Room) GetUsernames() []string {
@@ -234,6 +234,18 @@ func (rm *RoomManager) RemovePlayer(roomID RoomID, username string) error {
 	return errors.New("room or player not found")
 }
 
+func (rm *RoomManager) UpdatePlayerSpell(roomType RoomType, roomID RoomID, username string, spells Spells) ([]string, error) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+  rm.logger.Info("roomType", roomType, "roomID", roomID)
+	if room, exist := rm.rooms[roomType][LOBBY][roomID]; exist {
+		room.UpdatePlayerSpell(username, spells)
+    usernames := room.GetUsernames()
+		return usernames, nil
+	}
+	return nil, errors.New("room not found")
+}
+
 func (rm *RoomManager) GetRoom(roomID RoomID) (*Room, RoomType, RoomStatus, bool) {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
@@ -243,16 +255,6 @@ func (rm *RoomManager) GetRoom(roomID RoomID) (*Room, RoomType, RoomStatus, bool
 		}
 	}
 	return nil, 0, 0, false
-}
-
-func (rm *RoomManager) GetRoomUsers(roomType RoomType, roomStatus RoomStatus, roomID RoomID) ([]string, error) {
-	rm.mu.RLock()
-	defer rm.mu.RUnlock()
-	if room, exist := rm.rooms[roomType][roomStatus][roomID]; exist {
-		users := room.GetUsernames()
-		return users, nil
-	}
-	return nil, errors.New("room not found")
 }
 
 func (rm *RoomManager) GetRoomInfo(roomType RoomType, roomStatus RoomStatus, roomID RoomID) ([]*pb.UserInfo, error) {

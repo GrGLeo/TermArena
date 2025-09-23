@@ -74,6 +74,8 @@ func (tp *TeamPanel) Display() string {
 type LobbyRoomModel struct {
 	cursor         int
 	blueTeam       *TeamPanel
+	roomType       int
+	roomID         int
 	redTeam        *TeamPanel
 	SpellSelection SpellSelectionModel
 	activePanel    int // 0 = message, 1 = spells
@@ -87,7 +89,7 @@ type LobbyRoomModel struct {
 	styles         *Styles
 }
 
-func NewLobbyRoomModel(conn *net.TCPConn, username string) LobbyRoomModel {
+func NewLobbyRoomModel(conn *net.TCPConn, username string, roomType int, roomID int) LobbyRoomModel {
 	// Initialize viewport for messaging
 	vp := viewport.New(76, 8) // Fixed size: 80 width - 4 for padding
 	vp.SetContent("Welcome to TermArena!\n\nThis is the messaging area.\nMessages will appear here...\n")
@@ -97,10 +99,13 @@ func NewLobbyRoomModel(conn *net.TCPConn, username string) LobbyRoomModel {
 	ti.Placeholder = "Type your message here..."
 	ti.Width = 76 // Fixed size: 80 width - 4 for padding
 	ti.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	ti.Focus()
 
 	return LobbyRoomModel{
 		blueTeam:       NewTeamPanel("Blue", 4),
 		redTeam:        NewTeamPanel("Red", 4),
+		roomType:       roomType,
+		roomID:         roomID,
 		SpellSelection: NewSpellSelection(DefaultStyles()),
 		activePanel:    0,   // Start with message panel
 		Width:          120, // Default width
@@ -134,26 +139,11 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
-	case timer.TickMsg:
-		var cmd tea.Cmd
-		m.timer, cmd = m.timer.Update(msg)
-		return m, cmd
-	case timer.TimeoutMsg:
-		// Timer expired, perhaps show message
-		m.addMessage(Message{
-			Content:   "Time's up! Room is ready.",
-			SenderID:  "System",
-			Timestamp: time.Now(),
-			IsSystem:  true,
-		})
-		m.updateViewport()
-		return m, nil
 	case tea.WindowSizeMsg:
 		// Update terminal dimensions
 		m.Width = msg.Width
 		m.Height = msg.Height
 		m.SpellSelection.SetDimension(m.Height, m.Width)
-		// Note: Messaging components use fixed sizes, not dynamic
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
@@ -186,10 +176,18 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.updateViewport()
 				return m, nil
+			} else if m.activePanel == 1 {
+				// Handle spell selection
+				newModel, _ := m.SpellSelection.Update(msg)
+				m.SpellSelection = newModel.(SpellSelectionModel)
+        spellOne := m.SpellSelection.Spells[0].ID
+        spellTwo := m.SpellSelection.Spells[1].ID
+        spells := []int{spellOne, spellTwo}
+        communication.SendUpdateSpell(m.conn, m.roomType, m.roomID, m.username, spells)
 			}
 		default:
 			switch msg.String() {
-			case "ctrl+c", "q":
+			case "ctrl+c":
 				return m, tea.Quit
 			case "tab":
 				// Switch between message and spells
@@ -308,7 +306,7 @@ func (m LobbyRoomModel) View() string {
 	}
 
 	content := lipgloss.JoinVertical(
-		lipgloss.Left,
+		lipgloss.Center,
 		allPanelsView,
 		messagingStyle.Render(messagingContent),
 		inputContent,

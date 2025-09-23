@@ -198,8 +198,10 @@ func (x *LookRoomResponse) GetTeam() uint32 {
 type UpdateSpellRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	Spell1        uint32                 `protobuf:"varint,2,opt,name=spell1,proto3" json:"spell1,omitempty"`
-	Spell2        uint32                 `protobuf:"varint,3,opt,name=spell2,proto3" json:"spell2,omitempty"`
+	RomType       uint32                 `protobuf:"varint,3,opt,name=romType,proto3" json:"romType,omitempty"`
+	RoomID        uint32                 `protobuf:"varint,2,opt,name=roomID,proto3" json:"roomID,omitempty"`
+	Spell1        uint32                 `protobuf:"varint,4,opt,name=spell1,proto3" json:"spell1,omitempty"`
+	Spell2        uint32                 `protobuf:"varint,5,opt,name=spell2,proto3" json:"spell2,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -241,6 +243,20 @@ func (x *UpdateSpellRequest) GetUsername() string {
 	return ""
 }
 
+func (x *UpdateSpellRequest) GetRomType() uint32 {
+	if x != nil {
+		return x.RomType
+	}
+	return 0
+}
+
+func (x *UpdateSpellRequest) GetRoomID() uint32 {
+	if x != nil {
+		return x.RoomID
+	}
+	return 0
+}
+
 func (x *UpdateSpellRequest) GetSpell1() uint32 {
 	if x != nil {
 		return x.Spell1
@@ -257,7 +273,8 @@ func (x *UpdateSpellRequest) GetSpell2() uint32 {
 
 type UpdateSpellResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Succes        bool                   `protobuf:"varint,1,opt,name=succes,proto3" json:"succes,omitempty"`
+	Usernames     []string               `protobuf:"bytes,1,rep,name=usernames,proto3" json:"usernames,omitempty"`
+	User          *UserInfo              `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -292,11 +309,18 @@ func (*UpdateSpellResponse) Descriptor() ([]byte, []int) {
 	return file_pkg_proto_room_managing_room_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *UpdateSpellResponse) GetSucces() bool {
+func (x *UpdateSpellResponse) GetUsernames() []string {
 	if x != nil {
-		return x.Succes
+		return x.Usernames
 	}
-	return false
+	return nil
+}
+
+func (x *UpdateSpellResponse) GetUser() *UserInfo {
+	if x != nil {
+		return x.User
+	}
+	return nil
 }
 
 // --- RoomDoneService ---
@@ -694,13 +718,16 @@ const file_pkg_proto_room_managing_room_proto_rawDesc = "" +
 	"\broomType\x18\x02 \x01(\rR\broomType\">\n" +
 	"\x10LookRoomResponse\x12\x16\n" +
 	"\x06roomID\x18\x01 \x01(\rR\x06roomID\x12\x12\n" +
-	"\x04team\x18\x03 \x01(\rR\x04team\"`\n" +
+	"\x04team\x18\x03 \x01(\rR\x04team\"\x92\x01\n" +
 	"\x12UpdateSpellRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\x12\x16\n" +
-	"\x06spell1\x18\x02 \x01(\rR\x06spell1\x12\x16\n" +
-	"\x06spell2\x18\x03 \x01(\rR\x06spell2\"-\n" +
-	"\x13UpdateSpellResponse\x12\x16\n" +
-	"\x06succes\x18\x01 \x01(\bR\x06succes\"E\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x18\n" +
+	"\aromType\x18\x03 \x01(\rR\aromType\x12\x16\n" +
+	"\x06roomID\x18\x02 \x01(\rR\x06roomID\x12\x16\n" +
+	"\x06spell1\x18\x04 \x01(\rR\x06spell1\x12\x16\n" +
+	"\x06spell2\x18\x05 \x01(\rR\x06spell2\"_\n" +
+	"\x13UpdateSpellResponse\x12\x1c\n" +
+	"\tusernames\x18\x01 \x03(\tR\tusernames\x12*\n" +
+	"\x04user\x18\x02 \x01(\v2\x16.room_manager.UserInfoR\x04user\"E\n" +
 	"\x0fRoomDoneRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x16\n" +
 	"\x06roomID\x18\x02 \x01(\rR\x06roomID\"*\n" +
@@ -720,11 +747,12 @@ const file_pkg_proto_room_managing_room_proto_rawDesc = "" +
 	"\x0fRoomInfoRequest\x12\x16\n" +
 	"\x06roomID\x18\x01 \x01(\rR\x06roomID\"@\n" +
 	"\x10RoomInfoResponse\x12,\n" +
-	"\x05users\x18\x01 \x03(\v2\x16.room_manager.UserInfoR\x05users2\xf5\x01\n" +
+	"\x05users\x18\x01 \x03(\v2\x16.room_manager.UserInfoR\x05users2\xc9\x02\n" +
 	"\vRoomService\x12I\n" +
 	"\bLookRoom\x12\x1d.room_manager.LookRoomRequest\x1a\x1e.room_manager.LookRoomResponse\x12I\n" +
 	"\bQuitRoom\x12\x1d.room_manager.QuitRoomRequest\x1a\x1e.room_manager.QuitRoomResponse\x12P\n" +
-	"\x11NotifyRoomChanges\x12\x11.room_manager.Ack\x1a$.room_manager.RoomChangeNotification(\x010\x01B\x1fZ\x1dpkg/shared/proto/room_managerb\x06proto3"
+	"\x11NotifyRoomChanges\x12\x11.room_manager.Ack\x1a$.room_manager.RoomChangeNotification(\x010\x01\x12R\n" +
+	"\vUpdateSpell\x12 .room_manager.UpdateSpellRequest\x1a!.room_manager.UpdateSpellResponseB\x1fZ\x1dpkg/shared/proto/room_managerb\x06proto3"
 
 var (
 	file_pkg_proto_room_managing_room_proto_rawDescOnce sync.Once
@@ -755,19 +783,22 @@ var file_pkg_proto_room_managing_room_proto_goTypes = []any{
 	(*RoomInfoResponse)(nil),       // 12: room_manager.RoomInfoResponse
 }
 var file_pkg_proto_room_managing_room_proto_depIdxs = []int32{
-	0,  // 0: room_manager.RoomChangeNotification.user_infos:type_name -> room_manager.UserInfo
-	0,  // 1: room_manager.RoomInfoResponse.users:type_name -> room_manager.UserInfo
-	1,  // 2: room_manager.RoomService.LookRoom:input_type -> room_manager.LookRoomRequest
-	7,  // 3: room_manager.RoomService.QuitRoom:input_type -> room_manager.QuitRoomRequest
-	10, // 4: room_manager.RoomService.NotifyRoomChanges:input_type -> room_manager.Ack
-	2,  // 5: room_manager.RoomService.LookRoom:output_type -> room_manager.LookRoomResponse
-	8,  // 6: room_manager.RoomService.QuitRoom:output_type -> room_manager.QuitRoomResponse
-	9,  // 7: room_manager.RoomService.NotifyRoomChanges:output_type -> room_manager.RoomChangeNotification
-	5,  // [5:8] is the sub-list for method output_type
-	2,  // [2:5] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	0,  // 0: room_manager.UpdateSpellResponse.user:type_name -> room_manager.UserInfo
+	0,  // 1: room_manager.RoomChangeNotification.user_infos:type_name -> room_manager.UserInfo
+	0,  // 2: room_manager.RoomInfoResponse.users:type_name -> room_manager.UserInfo
+	1,  // 3: room_manager.RoomService.LookRoom:input_type -> room_manager.LookRoomRequest
+	7,  // 4: room_manager.RoomService.QuitRoom:input_type -> room_manager.QuitRoomRequest
+	10, // 5: room_manager.RoomService.NotifyRoomChanges:input_type -> room_manager.Ack
+	3,  // 6: room_manager.RoomService.UpdateSpell:input_type -> room_manager.UpdateSpellRequest
+	2,  // 7: room_manager.RoomService.LookRoom:output_type -> room_manager.LookRoomResponse
+	8,  // 8: room_manager.RoomService.QuitRoom:output_type -> room_manager.QuitRoomResponse
+	9,  // 9: room_manager.RoomService.NotifyRoomChanges:output_type -> room_manager.RoomChangeNotification
+	4,  // 10: room_manager.RoomService.UpdateSpell:output_type -> room_manager.UpdateSpellResponse
+	7,  // [7:11] is the sub-list for method output_type
+	3,  // [3:7] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_pkg_proto_room_managing_room_proto_init() }

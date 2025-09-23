@@ -136,6 +136,9 @@ func ProcessClient(conn *net.TCPConn, log *slog.Logger, broker *event.EventBroke
 						}
 					}
 					data = data[bytesConsumed:]
+        case event.UpdateSpellResMessage:
+					log.Warn("UpdateSpellResMessage found", "component", "server")
+
 				default:
 					responsePacket, err := event.CreatePacketFromMessage(resp)
 					if err != nil {
@@ -216,6 +219,7 @@ func main() {
 
 	// Subscribe existing room handlers
 	broker.Subscribe("find-room", roomManager.HandleLookRoom)
+	broker.Subscribe("update-spell-request", roomManager.HandleUpdateSpell)
 	//broker.Subscribe("create-room", roomManager.CreateRoom)
 	//broker.Subscribe("join-room", roomManager.JoinRoom)
 

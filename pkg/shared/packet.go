@@ -21,7 +21,6 @@ code 6: send a find room
 code 7: send a create room
 code 8: send a join room
 code 9: looking for a room response
-code 33: move to lobby room packet
 code 34: move to lobby room with users packet
 ---
 code 10: game start  response
@@ -366,41 +365,17 @@ func (lp *LookRoomPacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
-type MoveLobbyPacket struct {
-	version, code int
-	Move          bool
-}
-
-func NewMoveLobbyPacket() *MoveLobbyPacket {
-	return &MoveLobbyPacket{
-		version: 1,
-		code:    33,
-		Move:    true,
-	}
-}
-func (ml *MoveLobbyPacket) Version() int { return ml.version }
-func (ml *MoveLobbyPacket) Code() int    { return ml.code }
-func (ml *MoveLobbyPacket) Serialize() []byte {
-	var buf bytes.Buffer
-	buf.WriteByte(byte(ml.version))
-	buf.WriteByte(byte(ml.code))
-	if ml.Move {
-		buf.WriteByte(1)
-	} else {
-		buf.WriteByte(0)
-	}
-	return buf.Bytes()
-}
-
 type MoveToLobbyPacket struct {
 	version, code int
+	RoomID        uint32
 	UserInfos     []*pb.UserInfo
 }
 
-func NewMoveToLobbyPacket(userInfos []*pb.UserInfo) *MoveToLobbyPacket {
+func NewMoveToLobbyPacket(roomID uint32, userInfos []*pb.UserInfo) *MoveToLobbyPacket {
 	return &MoveToLobbyPacket{
 		version:   1,
 		code:      34,
+		RoomID:    roomID,
 		UserInfos: userInfos,
 	}
 }
@@ -411,6 +386,7 @@ func (ml *MoveToLobbyPacket) Serialize() []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(byte(ml.version))
 	buf.WriteByte(byte(ml.code))
+	binary.Write(&buf, binary.BigEndian, uint32(ml.RoomID))
 	numUsers := uint32(len(ml.UserInfos))
 	binary.Write(&buf, binary.BigEndian, numUsers)
 	for _, ui := range ml.UserInfos {
@@ -421,6 +397,69 @@ func (ml *MoveToLobbyPacket) Serialize() []byte {
 		binary.Write(&buf, binary.BigEndian, uint32(ui.Spell1))
 		binary.Write(&buf, binary.BigEndian, uint32(ui.Spell2))
 	}
+	return buf.Bytes()
+}
+
+type UpdateSpellReqPacket struct {
+	version, code      int
+	RoomType           int
+	RoomID             int
+	Username           string
+	SpellOne, SpellTwo int
+}
+
+func NewUpdateSpellReqPacket(roomType int, roomID int, username string, spellOne, spellTwo int) *UpdateSpellReqPacket {
+	return &UpdateSpellReqPacket{
+		version:  1,
+		code:     35,
+		RoomType: roomType,
+		RoomID:   roomID,
+		Username: username,
+		SpellOne: spellOne,
+		SpellTwo: spellTwo,
+	}
+}
+func (us *UpdateSpellReqPacket) Version() int { return us.version }
+func (us *UpdateSpellReqPacket) Code() int    { return us.code }
+func (us *UpdateSpellReqPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(us.version))
+	buf.WriteByte(byte(us.code))
+	buf.WriteByte(byte(us.RoomType))
+	binary.Write(&buf, binary.BigEndian, uint32(us.RoomID))
+	binary.Write(&buf, binary.BigEndian, uint16(len(us.Username)))
+	buf.WriteString(us.Username)
+	buf.WriteByte(byte(us.SpellOne))
+	buf.WriteByte(byte(us.SpellTwo))
+	return buf.Bytes()
+}
+
+type UpdateSpellResPacket struct {
+	version, code      int
+	Username           string
+	SpellOne, SpellTwo int
+}
+
+func NewUpdateSpellResPacket(username string, spellOne, spellTwo int) *UpdateSpellResPacket {
+	return &UpdateSpellResPacket{
+		version:  1,
+		code:     36,
+		Username: username,
+		SpellOne: spellOne,
+		SpellTwo: spellTwo,
+	}
+}
+
+func (us *UpdateSpellResPacket) Version() int { return us.version }
+func (us *UpdateSpellResPacket) Code() int    { return us.code }
+func (us *UpdateSpellResPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(us.version))
+	buf.WriteByte(byte(us.code))
+	binary.Write(&buf, binary.BigEndian, uint16(len(us.Username)))
+	buf.WriteString(us.Username)
+	buf.WriteByte(byte(us.SpellOne))
+	buf.WriteByte(byte(us.SpellTwo))
 	return buf.Bytes()
 }
 
@@ -1015,24 +1054,13 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, len(data), nil
 
-	case 33: //MoveLobbyPacket
-		if len(data) < 3 {
-			return nil, 0, errors.New("incomplete packet")
-		}
-		move := data[2] == 1
-		packet := &MoveLobbyPacket{
-			version: version,
-			code:    code,
-			Move:    move,
-		}
-		return packet, 3, nil
-
 	case 34: // MoveToLobbyPacket
-		if len(data) < 6 { // version, code, numUsers uint32
+		if len(data) < 10 { // version, code, RoomID uint32, numUsers uint32
 			return nil, 0, errors.New("incomplete packet")
 		}
-		numUsers := binary.BigEndian.Uint32(data[2:6])
-		offset := 6
+		roomID := binary.BigEndian.Uint32(data[2:6])
+		numUsers := binary.BigEndian.Uint32(data[6:10])
+		offset := 10
 		var userInfos []*pb.UserInfo
 		for i := uint32(0); i < numUsers; i++ {
 			if len(data) < offset+2 {
@@ -1065,9 +1093,61 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		packet := &MoveToLobbyPacket{
 			version:   version,
 			code:      code,
+			RoomID:    roomID,
 			UserInfos: userInfos,
 		}
 		return packet, offset, nil
+
+	case 35: // UpdateSpellReqPacket
+		if len(data) < 11 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		roomType := int(data[2])
+		roomID := binary.BigEndian.Uint32(data[3:7])
+		usernameLen := binary.BigEndian.Uint16(data[7:9])
+		offset := 9 + int(usernameLen)
+		if len(data) < offset+2 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		username := string(data[9:offset])
+		spellOne := int(data[offset])
+		spellTwo := int(data[offset+1])
+		totalLen := offset + 2
+		if len(data) < totalLen {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		packet := &UpdateSpellReqPacket{
+			version:  version,
+			code:     code,
+			RoomType: roomType,
+			RoomID:   int(roomID),
+			Username: username,
+			SpellOne: spellOne,
+			SpellTwo: spellTwo,
+		}
+		return packet, totalLen, nil
+
+	case 36: // UpdateSpellResPacket
+		if len(data) < 6 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		usernameLen := binary.BigEndian.Uint16(data[2:4])
+		offset := 4 + int(usernameLen)
+		username := string(data[9:offset])
+		spellOne := int(data[offset])
+		spellTwo := int(data[offset+1])
+		totalLen := offset + 2
+		if len(data) < totalLen {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		packet := &UpdateSpellResPacket{
+			version:  version,
+			code:     code,
+			Username: username,
+			SpellOne: spellOne,
+			SpellTwo: spellTwo,
+		}
+		return packet, totalLen, nil
 
 	case 10: // GameStartPacket
 		if len(data) < 3 {

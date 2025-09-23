@@ -170,7 +170,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(outCmd, alertCmd)
 		case communication.MoveLobbyRoomMsg:
 			m.state = LobbyRoom
-			m.LobbyRoomModel = model.NewLobbyRoomModel(m.Connection, m.Username)
+			m.LobbyRoomModel = model.NewLobbyRoomModel(m.Connection, m.Username, m.LobbyModel.RoomType, msg.RoomID)
 			// Populate teams with the user infos
 			newmodel, cmd := m.LobbyRoomModel.Update(msg)
 			m.LobbyRoomModel = newmodel.(model.LobbyRoomModel)

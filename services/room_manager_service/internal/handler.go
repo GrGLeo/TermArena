@@ -16,7 +16,7 @@ type ManagerInterface interface {
 	LookRoom(username string, roomType RoomType) (Team, RoomID, RoomStatus)
 	RemovePlayer(roomID RoomID, username string) error
 	GetRoomInfo(roomType RoomType, roomStatus RoomStatus, roomID RoomID) ([]*pb.UserInfo, error)
-	GetRoomUsers(roomType RoomType, roomStatus RoomStatus, roomID RoomID) ([]string, error)
+	UpdatePlayerSpell(roomType RoomType, roomID RoomID, username string, spells Spells) ([]string, error)
 }
 
 type RoomHandler struct {
@@ -87,4 +87,22 @@ func (rh *RoomHandler) NotifyRoomChanges(stream grpc.BidiStreamingServer[pb.Ack,
 			return stream.Context().Err()
 		}
 	}
+}
+
+func (rh *RoomHandler) UpdateSpell(ctx context.Context, req *pb.UpdateSpellRequest) (*pb.UpdateSpellResponse, error) {
+	usernames, err := rh.manager.UpdatePlayerSpell(RoomType(req.RomType), RoomID(req.RoomID), req.Username, Spells{int(req.Spell1), int(req.Spell2)})
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, err.Error())
+	}
+	userInfo := &pb.UserInfo{
+    Username: req.Username,
+    Spell1: req.Spell1,
+    Spell2: req.Spell2,
+  }
+
+	return &pb.UpdateSpellResponse{
+    Usernames: usernames,
+		User: userInfo,
+	}, nil
+
 }

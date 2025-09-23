@@ -65,6 +65,7 @@ type UserInfo struct {
 
 // MoveLobbyRoomMsg enable the switch from lobby to lobby room when the room is full
 type MoveLobbyRoomMsg struct {
+	RoomID    int
 	UserInfos []UserInfo
 }
 
