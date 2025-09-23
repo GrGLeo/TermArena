@@ -1133,7 +1133,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		usernameLen := binary.BigEndian.Uint16(data[2:4])
 		offset := 4 + int(usernameLen)
-		username := string(data[9:offset])
+		username := string(data[4:offset])
 		spellOne := int(data[offset])
 		spellTwo := int(data[offset+1])
 		totalLen := offset + 2

@@ -201,12 +201,14 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 					userInfos = append(userInfos, UserInfo{
 						Username: ui.Username,
 						Team:     int(ui.Team),
-						Spell1:   int(ui.Spell1),
-						Spell2:   int(ui.Spell2),
+						SpellOne:   int(ui.Spell1),
+						SpellTwo:   int(ui.Spell2),
 					})
 				}
         log.Printf("Sending MoveLobbyRoomMsg: %+v", msg)
         msgs <- MoveLobbyRoomMsg{RoomID: int(msg.RoomID), UserInfos: userInfos}
+      case *shared.UpdateSpellResPacket:
+        msgs <- UpdateSpellMsg{Username: msg.Username, SpellOne: msg.SpellOne, SpellTwo: msg.SpellTwo}
 			case *shared.GameStartPacket:
 				log.Println("Game started packet found")
 				log.Printf("Sending GameStartMsg: %+v", msg)

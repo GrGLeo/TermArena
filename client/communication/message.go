@@ -59,14 +59,20 @@ type LookRoomMsg struct {
 type UserInfo struct {
 	Username string
 	Team     int
-	Spell1   int
-	Spell2   int
+	SpellOne int
+	SpellTwo int
 }
 
 // MoveLobbyRoomMsg enable the switch from lobby to lobby room when the room is full
 type MoveLobbyRoomMsg struct {
 	RoomID    int
 	UserInfos []UserInfo
+}
+
+type UpdateSpellMsg struct {
+	Username string
+	SpellOne int
+	SpellTwo int
 }
 
 // GameStart is sent by the server once the number of player are matched

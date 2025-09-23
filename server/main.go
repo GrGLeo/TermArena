@@ -136,9 +136,25 @@ func ProcessClient(conn *net.TCPConn, log *slog.Logger, broker *event.EventBroke
 						}
 					}
 					data = data[bytesConsumed:]
-        case event.UpdateSpellResMessage:
+				case event.UpdateSpellResMessage:
 					log.Warn("UpdateSpellResMessage found", "component", "server")
-
+					responsePacket, err := event.CreatePacketFromMessage(resp)
+					if err != nil {
+						log.Error("Error creating packet from message", "component", "server", "error", err)
+						data = data[bytesConsumed:]
+						continue
+					}
+					for _, receiverID := range resp.Usernames {
+						receiverConn, exist := connManager.GetConn(receiverID)
+						if exist {
+							if _, err := receiverConn.Write(responsePacket); err != nil {
+								log.Error("Error writing response to client", "component", "server", "receiver", receiverID, "error", err)
+							}
+						} else {
+							log.Warn("Could not find connection for receiver", "component", "server", "receiver", receiverID)
+						}
+					}
+					data = data[bytesConsumed:]
 				default:
 					responsePacket, err := event.CreatePacketFromMessage(resp)
 					if err != nil {
@@ -149,7 +165,7 @@ func ProcessClient(conn *net.TCPConn, log *slog.Logger, broker *event.EventBroke
 					if _, err := conn.Write(responsePacket); err != nil {
 						log.Error("Error writing response to client", "component", "server", "ip", conn.RemoteAddr(), "error", err)
 					}
-          log.Info("Packet correctly sent")
+					log.Info("Packet correctly sent")
 					data = data[bytesConsumed:]
 				}
 			}
@@ -185,7 +201,7 @@ func main() {
 		os.Exit(1)
 	}
 
-  roomManager, err := handler.NewRoomServiceClient(connectionManager, broker, log, rateLimiter)
+	roomManager, err := handler.NewRoomServiceClient(connectionManager, broker, log, rateLimiter)
 
 	//roomManager := manager.NewRoomManager(log, broker, rateLimiter)
 	log.Info("New room manager initialized", "component", "server")

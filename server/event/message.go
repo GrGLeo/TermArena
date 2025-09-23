@@ -106,6 +106,9 @@ func CreatePacketFromMessage(msg Message) ([]byte, error) {
 	case LookRoomResponseMessage:
 		packet := shared.NewLookRoomPacket(m.Success, m.RoomID)
 		return packet.Serialize(), nil
+  case UpdateSpellResMessage:
+    packet := shared.NewUpdateSpellResPacket(m.Username, m.SpellOne, m.SpellTwo)
+    return packet.Serialize(), nil
 	case MessageResponseMessage:
 		packet := shared.NewMessageResponsePacket(m.Message)
 		return packet.Serialize(), nil

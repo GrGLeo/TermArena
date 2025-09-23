@@ -129,8 +129,8 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case communication.MoveLobbyRoomMsg:
 		for _, ui := range msg.UserInfos {
 			player := NewPlayer(ui.Username)
-			spell1Name := availableSpells[ui.Spell1].Name
-			spell2Name := availableSpells[ui.Spell2].Name
+			spell1Name := availableSpells[ui.SpellOne].Name
+			spell2Name := availableSpells[ui.SpellTwo].Name
 			player.UpdateSpell(spell1Name, spell2Name)
 			if ui.Team == 0 {
 				m.blueTeam.AddPlayer(player)
