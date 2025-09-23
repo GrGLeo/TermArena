@@ -182,6 +182,8 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 			case *shared.LookRoomPacket:
 				log.Printf("Sending LookRoomMsg: %+v", msg)
 				msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID}
+			case *shared.MoveLobbyPacket:
+				msgs <- MoveLobbyRoomMsg{}
 			case *shared.GameStartPacket:
 				log.Println("Game started packet found")
 				log.Printf("Sending GameStartMsg: %+v", msg)
@@ -218,8 +220,8 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 			case *shared.MessageErrorPacket:
 				log.Printf("[CLIENT] Received message error: %s", msg.Error)
 				msgs <- MessageErrorMsg{Error: msg.Error}
-      case *shared.RateLimitPacket:
-        msgs <- RateLimitMsg{}
+			case *shared.RateLimitPacket:
+				msgs <- RateLimitMsg{}
 			default:
 				log.Printf("Unknown type: %T, raw: %x", packet, data)
 				msgs <- GamePacketMsg{Packet: data}

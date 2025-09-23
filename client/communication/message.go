@@ -12,21 +12,21 @@ type TickMsg struct {
 
 // RegistrationResultMsg is sent by the server as a response to the registration req
 type RegistrationResultMsg struct {
-  Success bool
-  Message string
-  Challenge []byte
+	Success   bool
+	Message   string
+	Challenge []byte
 }
 
 // ChallengeReceivedMsg is sent by the server to pass the challenge
 type ChallengeReceivedMsg struct {
-  Challenge []byte
+	Challenge []byte
 }
 
 // AuthResultMsg is sent by the server to return a sucess based on the signed_challenge
 type AuthResultMsg struct {
-  Success bool
-  Message string
-  SessionToken string
+	Success      bool
+	Message      string
+	SessionToken string
 }
 
 // LoginMsg is used to pass input field to meta model
@@ -54,6 +54,9 @@ type LookRoomMsg struct {
 	RoomID uint32
 	RoomIP string
 }
+
+// MoveLobbyRoomMsg enable the switch from lobby to lobby room when the room is full
+type MoveLobbyRoomMsg struct{}
 
 // GameStart is sent by the server once the number of player are matched
 type GameStartMsg struct {
@@ -97,11 +100,11 @@ type EndGameMsg struct {
 // BoardMsg is used to transfer the board to game model
 type BoardMsg struct {
 	Casting [2]int
-	Health [2]int
-	Mana   [2]int
-	Level  int
-	Xp     [2]int
-	Board  [21][51]int
+	Health  [2]int
+	Mana    [2]int
+	Level   int
+	Xp      [2]int
+	Board   [21][51]int
 }
 
 type DeltaMsg struct {
@@ -136,7 +139,7 @@ type CooldownTickMsg struct{}
 
 // Content of a new received message
 type IncomingMessageMsg struct {
-	Content  string
+	Content string
 }
 
 // Error content of a failed message
@@ -145,4 +148,4 @@ type MessageErrorMsg struct {
 }
 
 // Rate Limit exceed message
-type RateLimitMsg struct {}
+type RateLimitMsg struct{}
