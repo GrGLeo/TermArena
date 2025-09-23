@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"strings"
 	"time"
@@ -139,6 +140,23 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+	case communication.UpdateSpellMsg:
+		spell1Name := availableSpells[msg.SpellOne].Name
+		spell2Name := availableSpells[msg.SpellTwo].Name
+		// Find and update the player
+		for _, player := range m.blueTeam.players {
+			if player.username == msg.Username {
+				player.UpdateSpell(spell1Name, spell2Name)
+				break
+			}
+		}
+		for _, player := range m.redTeam.players {
+			if player.username == msg.Username {
+				player.UpdateSpell(spell1Name, spell2Name)
+				break
+			}
+		}
+		return m, nil
 	case tea.WindowSizeMsg:
 		// Update terminal dimensions
 		m.Width = msg.Width
@@ -180,10 +198,12 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Handle spell selection
 				newModel, _ := m.SpellSelection.Update(msg)
 				m.SpellSelection = newModel.(SpellSelectionModel)
-        spellOne := m.SpellSelection.Spells[0].ID
-        spellTwo := m.SpellSelection.Spells[1].ID
-        spells := []int{spellOne, spellTwo}
-        communication.SendUpdateSpell(m.conn, m.roomType, m.roomID, m.username, spells)
+				spellOne := m.SpellSelection.Spells[m.SpellSelection.SelectedIndices[0]].ID
+				spellTwo := m.SpellSelection.Spells[m.SpellSelection.SelectedIndices[1]].ID
+        log.Printf("spellOne: %d", spellOne)
+        log.Printf("spellTwo: %d", spellTwo)
+				spells := []int{spellOne, spellTwo}
+				communication.SendUpdateSpell(m.conn, m.roomType, m.roomID, m.username, spells)
 			}
 		default:
 			switch msg.String() {
