@@ -15,6 +15,7 @@ const (
 	Intro      = "animation"
 	Login      = "login"
 	Lobby      = "lobby"
+	LobbyRoom  = "lobbyroom"
 	Menu       = "menu"
 	Game       = "game"
 	Shop       = "shop"
@@ -26,6 +27,7 @@ type MetaModel struct {
 	AnimationModel model.AnimationModel
 	AuthModel      model.AuthModel
 	LobbyModel     model.LobbyModel
+	LobbyRoomModel model.LobbyRoomModel
 	GameModel      model.GameModel
 	ShopModel      model.ShopModel
 	GameOverModel  model.GameOverModel
@@ -43,12 +45,14 @@ func NewMetaModel() MetaModel {
 	msgs := make(chan tea.Msg)
 
 	state := Disconnect
-	return MetaModel{
+	meta := MetaModel{
 		state:          state,
 		AnimationModel: model.NewAnimationModel(),
 		msgs:           msgs,
 		alert:          *bubbleup.NewAlertModel(80, true),
 	}
+	// LobbyRoomModel initialized later when needed
+	return meta
 }
 
 func (m MetaModel) Init() tea.Cmd {
@@ -59,6 +63,8 @@ func (m MetaModel) Init() tea.Cmd {
 		return tea.Batch(m.AnimationModel.Init(), m.alert.Init())
 	case Login:
 		return tea.Batch(m.AuthModel.Init(), m.alert.Init())
+	case LobbyRoom:
+		return tea.Batch(m.LobbyRoomModel.Init(), m.alert.Init())
 	}
 	return tea.Batch(communication.AttemptReconnect(), m.alert.Init())
 }
@@ -75,6 +81,9 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.LobbyRoomModel.Width = msg.Width
+		m.LobbyRoomModel.Height = msg.Height
+		m.LobbyRoomModel.SpellSelection.SetDimension(msg.Height, msg.Width)
 	}
 
 	// Always update alert model with current message
@@ -153,11 +162,15 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(communication.AttemptGameConnection(msg.RoomIP), outCmd, alertCmd)
 		case communication.GameConnectionMsg:
 			m.GameConnection = msg.Conn
-			communication.SendSpellSelectionPacket(m.GameConnection, m.LobbyModel.SelectedSpells[0], m.LobbyModel.SelectedSpells[1])
+			//communication.SendSpellSelectionPacket(m.GameConnection, m.LobbyModel.SelectedSpells[0], m.LobbyModel.SelectedSpells[1])
 			go communication.ListenForPackets(m.GameConnection, m.msgs)
 			return m, tea.Batch(outCmd, alertCmd)
 		case communication.GameConnectionFailedMsg:
 			log.Println("Failed to connect to game server after multiple attempts.")
+			return m, tea.Batch(outCmd, alertCmd)
+		case communication.MoveLobbyRoomMsg:
+			m.state = LobbyRoom
+			m.LobbyRoomModel = model.NewLobbyRoomModel(m.Connection, m.Username)
 			return m, tea.Batch(outCmd, alertCmd)
 		case communication.GameStartMsg:
 			m.state = Game
@@ -167,6 +180,11 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		default:
 			return m, tea.Batch(cmd, outCmd, alertCmd)
 		}
+
+	case LobbyRoom:
+		newmodel, cmd = m.LobbyRoomModel.Update(msg)
+		m.LobbyRoomModel = newmodel.(model.LobbyRoomModel)
+		return m, tea.Batch(cmd, outCmd, alertCmd)
 
 	case Game:
 		newmodel, cmd = m.GameModel.Update(msg)
@@ -249,6 +267,8 @@ func (m MetaModel) View() string {
 		content = m.AuthModel.View()
 	case Lobby:
 		content = m.LobbyModel.View()
+	case LobbyRoom:
+		content = m.LobbyRoomModel.View()
 	case Game:
 		content = m.GameModel.View()
 	case Shop:
