@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+
+	pb "github.com/GrGLeo/TermArena/pkg/shared/proto/room_manager"
 )
 
 /*
@@ -20,6 +22,7 @@ code 7: send a create room
 code 8: send a join room
 code 9: looking for a room response
 code 33: move to lobby room packet
+code 34: move to lobby room with users packet
 ---
 code 10: game start  response
 code 11: send action
@@ -385,6 +388,38 @@ func (ml *MoveLobbyPacket) Serialize() []byte {
 		buf.WriteByte(1)
 	} else {
 		buf.WriteByte(0)
+	}
+	return buf.Bytes()
+}
+
+type MoveToLobbyPacket struct {
+	version, code int
+	UserInfos     []*pb.UserInfo
+}
+
+func NewMoveToLobbyPacket(userInfos []*pb.UserInfo) *MoveToLobbyPacket {
+	return &MoveToLobbyPacket{
+		version:   1,
+		code:      34,
+		UserInfos: userInfos,
+	}
+}
+
+func (ml *MoveToLobbyPacket) Version() int { return ml.version }
+func (ml *MoveToLobbyPacket) Code() int    { return ml.code }
+func (ml *MoveToLobbyPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(ml.version))
+	buf.WriteByte(byte(ml.code))
+	numUsers := uint32(len(ml.UserInfos))
+	binary.Write(&buf, binary.BigEndian, numUsers)
+	for _, ui := range ml.UserInfos {
+		usernameLen := uint16(len(ui.Username))
+		binary.Write(&buf, binary.BigEndian, usernameLen)
+		buf.WriteString(ui.Username)
+		binary.Write(&buf, binary.BigEndian, uint32(ui.Team))
+		binary.Write(&buf, binary.BigEndian, uint32(ui.Spell1))
+		binary.Write(&buf, binary.BigEndian, uint32(ui.Spell2))
 	}
 	return buf.Bytes()
 }
@@ -990,7 +1025,49 @@ func DeSerialize(data []byte) (Packet, int, error) {
 			code:    code,
 			Move:    move,
 		}
-		return packet, len(data), nil
+		return packet, 3, nil
+
+	case 34: // MoveToLobbyPacket
+		if len(data) < 6 { // version, code, numUsers uint32
+			return nil, 0, errors.New("incomplete packet")
+		}
+		numUsers := binary.BigEndian.Uint32(data[2:6])
+		offset := 6
+		var userInfos []*pb.UserInfo
+		for i := uint32(0); i < numUsers; i++ {
+			if len(data) < offset+2 {
+				return nil, 0, errors.New("incomplete packet")
+			}
+			usernameLen := binary.BigEndian.Uint16(data[offset : offset+2])
+			offset += 2
+			if len(data) < offset+int(usernameLen) {
+				return nil, 0, errors.New("incomplete packet")
+			}
+			username := string(data[offset : offset+int(usernameLen)])
+			offset += int(usernameLen)
+			if len(data) < offset+12 { // team, spell1, spell2 uint32
+				return nil, 0, errors.New("incomplete packet")
+			}
+			team := binary.BigEndian.Uint32(data[offset : offset+4])
+			offset += 4
+			spell1 := binary.BigEndian.Uint32(data[offset : offset+4])
+			offset += 4
+			spell2 := binary.BigEndian.Uint32(data[offset : offset+4])
+			offset += 4
+			userInfo := &pb.UserInfo{
+				Username: username,
+				Team:     team,
+				Spell1:   spell1,
+				Spell2:   spell2,
+			}
+			userInfos = append(userInfos, userInfo)
+		}
+		packet := &MoveToLobbyPacket{
+			version:   version,
+			code:      code,
+			UserInfos: userInfos,
+		}
+		return packet, offset, nil
 
 	case 10: // GameStartPacket
 		if len(data) < 3 {

@@ -15,7 +15,7 @@ type ManagerInterface interface {
 	MoveRoom(roomStatusIn, roomStatusOut RoomStatus, roomType RoomType, roomID RoomID)
 	LookRoom(username string, roomType RoomType) (Team, RoomID, RoomStatus)
 	RemovePlayer(roomID RoomID, username string) error
-	GetRoomInfo(roomType RoomType, roomID RoomID) ([]*pb.UserInfo, error)
+	GetRoomInfo(roomType RoomType, roomStatus RoomStatus, roomID RoomID) ([]*pb.UserInfo, error)
 	GetRoomUsers(roomType RoomType, roomStatus RoomStatus, roomID RoomID) ([]string, error)
 }
 
@@ -29,7 +29,7 @@ type RoomHandler struct {
 func NewRoomHandler(manager ManagerInterface, logger *slog.Logger) *RoomHandler {
 	return &RoomHandler{
 		manager: manager,
-    changes: make(chan *pb.RoomChangeNotification),
+		changes: make(chan *pb.RoomChangeNotification),
 		logger:  logger,
 	}
 }
@@ -38,10 +38,10 @@ func (rh *RoomHandler) LookRoom(ctx context.Context, req *pb.LookRoomRequest) (*
 	team, roomID, status := rh.manager.LookRoom(req.Username, RoomType(req.RoomType))
 	if status == LOBBY {
 		// Error here should not be possible
-		users, _ := rh.manager.GetRoomUsers(RoomType(req.RoomType), status, roomID)
+		userInfos, _ := rh.manager.GetRoomInfo(RoomType(req.RoomType), status, roomID)
 		notif := &pb.RoomChangeNotification{
 			RoomID:    uint32(roomID),
-			Usernames: users,
+			UserInfos: userInfos,
 		}
 		rh.changes <- notif
 	}
@@ -64,7 +64,7 @@ func (rh *RoomHandler) QuitRoom(ctx context.Context, req *pb.QuitRoomRequest) (*
 }
 
 func (rh *RoomHandler) NotifyRoomChanges(stream grpc.BidiStreamingServer[pb.Ack, pb.RoomChangeNotification]) error {
-  	for {
+	for {
 		select {
 		case notification := <-rh.changes:
 			if err := stream.Send(notification); err != nil {

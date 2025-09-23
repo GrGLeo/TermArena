@@ -59,7 +59,7 @@ message QuitRoomResponse { bool success = 1; }
 // --- RoomChangeService ---
 message RoomChangeNotification {
   uint32 roomID = 1;
-  repeated string usernames = 2;
+  repeated UserInfo user_infos = 2;
 }
 message Ack { bool success = 1; }
 

@@ -138,7 +138,7 @@ func (rs *RoomServiceClient) handleNotifications() {
 			rs.logger.Info(
 				"Received notification",
 				"room_id", notification.RoomID,
-				"message", notification.Usernames,
+				"user_infos", notification.UserInfos,
 			)
 
 			// Send an Ack back to the server
@@ -151,10 +151,11 @@ func (rs *RoomServiceClient) handleNotifications() {
 			}
 			rs.logger.Info("Sent Ack", "room_id", notification.RoomID)
 
-			packet := shared.NewMoveLobbyPacket()
+			packet := shared.NewMoveToLobbyPacket(notification.UserInfos)
 			data := packet.Serialize()
 
-			for _, receiverID := range notification.Usernames {
+			for _, userInfo := range notification.UserInfos {
+				receiverID := userInfo.Username
 				if receiverConn, exist := rs.connManager.GetConn(receiverID); exist {
 					if _, err := receiverConn.Write(data); err != nil {
 						rs.logger.Error("Error writing response to client", "component", "server", "receiver", receiverID, "error", err)
@@ -163,6 +164,6 @@ func (rs *RoomServiceClient) handleNotifications() {
 					rs.logger.Warn("Could not find connection for receiver", "component", "server", "receiver", receiverID)
 				}
 			}
-    }
+		}
 	}
 }

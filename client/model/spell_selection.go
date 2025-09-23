@@ -35,7 +35,7 @@ func NewSpellSelection(styles *Styles) SpellSelectionModel {
 		styles:          styles,
 		Spells:          availableSpells,
 		FocusedIndex:    0,
-		SelectedIndices: [2]int{-1, -1},
+		SelectedIndices: [2]int{0, 1},
 		ActiveSelection: 0,
 	}
 }
@@ -96,8 +96,10 @@ func (m SpellSelectionModel) View() string {
 		}
 
 		selected := " "
-		if m.SelectedIndices[0] == i || m.SelectedIndices[1] == i {
-			selected = "X"
+		if m.SelectedIndices[0] == i {
+			selected = "1"
+		} else if m.SelectedIndices[1] == i {
+			selected = "2"
 		}
 
 		spellNameStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))

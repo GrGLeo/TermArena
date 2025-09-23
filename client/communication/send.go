@@ -182,8 +182,17 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 			case *shared.LookRoomPacket:
 				log.Printf("Sending LookRoomMsg: %+v", msg)
 				msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID}
-			case *shared.MoveLobbyPacket:
-				msgs <- MoveLobbyRoomMsg{}
+			case *shared.MoveToLobbyPacket:
+				var userInfos []UserInfo
+				for _, ui := range msg.UserInfos {
+					userInfos = append(userInfos, UserInfo{
+						Username: ui.Username,
+						Team:     int(ui.Team),
+						Spell1:   int(ui.Spell1),
+						Spell2:   int(ui.Spell2),
+					})
+				}
+				msgs <- MoveLobbyRoomMsg{UserInfos: userInfos}
 			case *shared.GameStartPacket:
 				log.Println("Game started packet found")
 				log.Printf("Sending GameStartMsg: %+v", msg)

@@ -222,16 +222,16 @@ func (rm *RoomManager) LookRoom(username string, roomType RoomType) (Team, RoomI
 }
 
 func (rm *RoomManager) RemovePlayer(roomID RoomID, username string) error {
-  rm.mu.Lock()
-  defer rm.mu.Unlock()
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
 
-  if meta, exist := rm.roomLookup[roomID]; exist {
-    if room, exist := rm.rooms[meta.roomType][meta.roomStatus][roomID]; exist {
-      room.RemovePlayer(username)
-      return nil
-    }
-  }
-  return errors.New("room or player not found")
+	if meta, exist := rm.roomLookup[roomID]; exist {
+		if room, exist := rm.rooms[meta.roomType][meta.roomStatus][roomID]; exist {
+			room.RemovePlayer(username)
+			return nil
+		}
+	}
+	return errors.New("room or player not found")
 }
 
 func (rm *RoomManager) GetRoom(roomID RoomID) (*Room, RoomType, RoomStatus, bool) {
@@ -245,20 +245,20 @@ func (rm *RoomManager) GetRoom(roomID RoomID) (*Room, RoomType, RoomStatus, bool
 	return nil, 0, 0, false
 }
 
-func (rm *RoomManager) GetRoomUsers(roomType RoomType,roomStatus RoomStatus, roomID RoomID) ([]string, error) {
+func (rm *RoomManager) GetRoomUsers(roomType RoomType, roomStatus RoomStatus, roomID RoomID) ([]string, error) {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
 	if room, exist := rm.rooms[roomType][roomStatus][roomID]; exist {
-    users := room.GetUsernames()
-    return users, nil
+		users := room.GetUsernames()
+		return users, nil
 	}
 	return nil, errors.New("room not found")
 }
 
-func (rm *RoomManager) GetRoomInfo(roomType RoomType, roomID RoomID) ([]*pb.UserInfo, error) {
+func (rm *RoomManager) GetRoomInfo(roomType RoomType, roomStatus RoomStatus, roomID RoomID) ([]*pb.UserInfo, error) {
 	rm.mu.RLock()
-	defer rm.mu.Unlock()
-	if room, exist := rm.rooms[roomType][PROGRESS][roomID]; exist {
+	defer rm.mu.RUnlock()
+	if room, exist := rm.rooms[roomType][roomStatus][roomID]; exist {
 		var usersInfo []*pb.UserInfo
 		for username, player := range room.Players {
 			userInfo := &pb.UserInfo{

@@ -171,7 +171,10 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case communication.MoveLobbyRoomMsg:
 			m.state = LobbyRoom
 			m.LobbyRoomModel = model.NewLobbyRoomModel(m.Connection, m.Username)
-			return m, tea.Batch(outCmd, alertCmd)
+			// Populate teams with the user infos
+			newmodel, cmd := m.LobbyRoomModel.Update(msg)
+			m.LobbyRoomModel = newmodel.(model.LobbyRoomModel)
+			return m, tea.Batch(cmd, outCmd, alertCmd)
 		case communication.GameStartMsg:
 			m.state = Game
 			m.GameModel = model.NewGameModel(m.GameConnection)

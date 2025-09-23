@@ -55,8 +55,18 @@ type LookRoomMsg struct {
 	RoomIP string
 }
 
+// UserInfo represents user information in the room
+type UserInfo struct {
+	Username string
+	Team     int
+	Spell1   int
+	Spell2   int
+}
+
 // MoveLobbyRoomMsg enable the switch from lobby to lobby room when the room is full
-type MoveLobbyRoomMsg struct{}
+type MoveLobbyRoomMsg struct {
+	UserInfos []UserInfo
+}
 
 // GameStart is sent by the server once the number of player are matched
 type GameStartMsg struct {

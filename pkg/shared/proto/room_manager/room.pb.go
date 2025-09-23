@@ -497,7 +497,7 @@ func (x *QuitRoomResponse) GetSuccess() bool {
 type RoomChangeNotification struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RoomID        uint32                 `protobuf:"varint,1,opt,name=roomID,proto3" json:"roomID,omitempty"`
-	Usernames     []string               `protobuf:"bytes,2,rep,name=usernames,proto3" json:"usernames,omitempty"`
+	UserInfos     []*UserInfo            `protobuf:"bytes,2,rep,name=user_infos,json=userInfos,proto3" json:"user_infos,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -539,9 +539,9 @@ func (x *RoomChangeNotification) GetRoomID() uint32 {
 	return 0
 }
 
-func (x *RoomChangeNotification) GetUsernames() []string {
+func (x *RoomChangeNotification) GetUserInfos() []*UserInfo {
 	if x != nil {
-		return x.Usernames
+		return x.UserInfos
 	}
 	return nil
 }
@@ -710,10 +710,11 @@ const file_pkg_proto_room_managing_room_proto_rawDesc = "" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x16\n" +
 	"\x06roomID\x18\x02 \x01(\rR\x06roomID\",\n" +
 	"\x10QuitRoomResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"N\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"g\n" +
 	"\x16RoomChangeNotification\x12\x16\n" +
-	"\x06roomID\x18\x01 \x01(\rR\x06roomID\x12\x1c\n" +
-	"\tusernames\x18\x02 \x03(\tR\tusernames\"\x1f\n" +
+	"\x06roomID\x18\x01 \x01(\rR\x06roomID\x125\n" +
+	"\n" +
+	"user_infos\x18\x02 \x03(\v2\x16.room_manager.UserInfoR\tuserInfos\"\x1f\n" +
 	"\x03Ack\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\")\n" +
 	"\x0fRoomInfoRequest\x12\x16\n" +
@@ -754,18 +755,19 @@ var file_pkg_proto_room_managing_room_proto_goTypes = []any{
 	(*RoomInfoResponse)(nil),       // 12: room_manager.RoomInfoResponse
 }
 var file_pkg_proto_room_managing_room_proto_depIdxs = []int32{
-	0,  // 0: room_manager.RoomInfoResponse.users:type_name -> room_manager.UserInfo
-	1,  // 1: room_manager.RoomService.LookRoom:input_type -> room_manager.LookRoomRequest
-	7,  // 2: room_manager.RoomService.QuitRoom:input_type -> room_manager.QuitRoomRequest
-	10, // 3: room_manager.RoomService.NotifyRoomChanges:input_type -> room_manager.Ack
-	2,  // 4: room_manager.RoomService.LookRoom:output_type -> room_manager.LookRoomResponse
-	8,  // 5: room_manager.RoomService.QuitRoom:output_type -> room_manager.QuitRoomResponse
-	9,  // 6: room_manager.RoomService.NotifyRoomChanges:output_type -> room_manager.RoomChangeNotification
-	4,  // [4:7] is the sub-list for method output_type
-	1,  // [1:4] is the sub-list for method input_type
-	1,  // [1:1] is the sub-list for extension type_name
-	1,  // [1:1] is the sub-list for extension extendee
-	0,  // [0:1] is the sub-list for field type_name
+	0,  // 0: room_manager.RoomChangeNotification.user_infos:type_name -> room_manager.UserInfo
+	0,  // 1: room_manager.RoomInfoResponse.users:type_name -> room_manager.UserInfo
+	1,  // 2: room_manager.RoomService.LookRoom:input_type -> room_manager.LookRoomRequest
+	7,  // 3: room_manager.RoomService.QuitRoom:input_type -> room_manager.QuitRoomRequest
+	10, // 4: room_manager.RoomService.NotifyRoomChanges:input_type -> room_manager.Ack
+	2,  // 5: room_manager.RoomService.LookRoom:output_type -> room_manager.LookRoomResponse
+	8,  // 6: room_manager.RoomService.QuitRoom:output_type -> room_manager.QuitRoomResponse
+	9,  // 7: room_manager.RoomService.NotifyRoomChanges:output_type -> room_manager.RoomChangeNotification
+	5,  // [5:8] is the sub-list for method output_type
+	2,  // [2:5] is the sub-list for method input_type
+	2,  // [2:2] is the sub-list for extension type_name
+	2,  // [2:2] is the sub-list for extension extendee
+	0,  // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_pkg_proto_room_managing_room_proto_init() }
