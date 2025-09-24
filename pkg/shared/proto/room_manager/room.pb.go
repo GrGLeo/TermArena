@@ -521,7 +521,8 @@ func (x *QuitRoomResponse) GetSuccess() bool {
 type RoomChangeNotification struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RoomID        uint32                 `protobuf:"varint,1,opt,name=roomID,proto3" json:"roomID,omitempty"`
-	UserInfos     []*UserInfo            `protobuf:"bytes,2,rep,name=user_infos,json=userInfos,proto3" json:"user_infos,omitempty"`
+	Ready         bool                   `protobuf:"varint,2,opt,name=ready,proto3" json:"ready,omitempty"`
+	UserInfos     []*UserInfo            `protobuf:"bytes,3,rep,name=user_infos,json=userInfos,proto3" json:"user_infos,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -561,6 +562,13 @@ func (x *RoomChangeNotification) GetRoomID() uint32 {
 		return x.RoomID
 	}
 	return 0
+}
+
+func (x *RoomChangeNotification) GetReady() bool {
+	if x != nil {
+		return x.Ready
+	}
+	return false
 }
 
 func (x *RoomChangeNotification) GetUserInfos() []*UserInfo {
@@ -737,11 +745,12 @@ const file_pkg_proto_room_managing_room_proto_rawDesc = "" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x16\n" +
 	"\x06roomID\x18\x02 \x01(\rR\x06roomID\",\n" +
 	"\x10QuitRoomResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"g\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"}\n" +
 	"\x16RoomChangeNotification\x12\x16\n" +
-	"\x06roomID\x18\x01 \x01(\rR\x06roomID\x125\n" +
+	"\x06roomID\x18\x01 \x01(\rR\x06roomID\x12\x14\n" +
+	"\x05ready\x18\x02 \x01(\bR\x05ready\x125\n" +
 	"\n" +
-	"user_infos\x18\x02 \x03(\v2\x16.room_manager.UserInfoR\tuserInfos\"\x1f\n" +
+	"user_infos\x18\x03 \x03(\v2\x16.room_manager.UserInfoR\tuserInfos\"\x1f\n" +
 	"\x03Ack\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\")\n" +
 	"\x0fRoomInfoRequest\x12\x16\n" +

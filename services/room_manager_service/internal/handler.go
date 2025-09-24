@@ -41,6 +41,7 @@ func (rh *RoomHandler) LookRoom(ctx context.Context, req *pb.LookRoomRequest) (*
 		userInfos, _ := rh.manager.GetRoomInfo(RoomType(req.RoomType), status, roomID)
 		notif := &pb.RoomChangeNotification{
 			RoomID:    uint32(roomID),
+      Ready: false,
 			UserInfos: userInfos,
 		}
 		rh.changes <- notif

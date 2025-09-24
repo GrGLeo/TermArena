@@ -130,12 +130,12 @@ func (rs *RoomServiceClient) HandleUpdateSpell(msg event.Message) event.Message 
 	}
 
 	return event.UpdateSpellResMessage{
-    Usernames: res.Usernames,
-    Username: req.Username,
-    SpellOne: req.SpellOne,
-    SpellTwo: req.SpellTwo,
-    ResponseCh: req.ResponseCh,
-  }
+		Usernames:  res.Usernames,
+		Username:   req.Username,
+		SpellOne:   req.SpellOne,
+		SpellTwo:   req.SpellTwo,
+		ResponseCh: req.ResponseCh,
+	}
 
 }
 
@@ -163,6 +163,7 @@ func (rs *RoomServiceClient) handleNotifications() {
 			rs.logger.Info(
 				"Received notification",
 				"room_id", notification.RoomID,
+				"ready", notification.Ready,
 				"user_infos", notification.UserInfos,
 			)
 
@@ -176,8 +177,12 @@ func (rs *RoomServiceClient) handleNotifications() {
 			}
 			rs.logger.Info("Sent Ack", "room_id", notification.RoomID)
 
-			packet := shared.NewMoveToLobbyPacket(notification.RoomID, notification.UserInfos)
-			data := packet.Serialize()
+      var data []byte
+			if !notification.Ready {
+				packet := shared.NewMoveToLobbyPacket(notification.RoomID, notification.UserInfos)
+				data = packet.Serialize()
+			} else {
+      }
 
 			for _, userInfo := range notification.UserInfos {
 				receiverID := userInfo.Username

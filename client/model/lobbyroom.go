@@ -206,8 +206,8 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SpellSelection = newModel.(SpellSelectionModel)
 				spellOne := m.SpellSelection.Spells[m.SpellSelection.SelectedIndices[0]].ID
 				spellTwo := m.SpellSelection.Spells[m.SpellSelection.SelectedIndices[1]].ID
-        log.Printf("spellOne: %d", spellOne)
-        log.Printf("spellTwo: %d", spellTwo)
+				log.Printf("spellOne: %d", spellOne)
+				log.Printf("spellTwo: %d", spellTwo)
 				spells := []int{spellOne, spellTwo}
 				communication.SendUpdateSpell(m.conn, m.roomType, m.roomID, m.username, spells)
 			}
@@ -254,6 +254,10 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			IsSystem:  true,
 		})
 		m.updateViewport()
+	case timer.TickMsg:
+		var cmd tea.Cmd
+		m.timer, cmd = m.timer.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -309,7 +313,7 @@ func (m LobbyRoomModel) View() string {
 		Bold(true).
 		Render("💬 Chat")
 
-	messagingContent := messagingTitle + "\n" + m.viewport.View() + "\nTimer: " + m.timer.View()
+	messagingContent := messagingTitle + "\n" + m.viewport.View() + "\nGame start in: " + m.timer.View()
 
 	// Text input section
 	inputStyle := lipgloss.NewStyle().
