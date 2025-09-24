@@ -26,10 +26,10 @@ type RoomHandler struct {
 	logger  *slog.Logger
 }
 
-func NewRoomHandler(manager ManagerInterface, logger *slog.Logger) *RoomHandler {
+func NewRoomHandler(changes chan *pb.RoomChangeNotification, manager ManagerInterface, logger *slog.Logger) *RoomHandler {
 	return &RoomHandler{
 		manager: manager,
-		changes: make(chan *pb.RoomChangeNotification),
+		changes: changes,
 		logger:  logger,
 	}
 }
@@ -41,7 +41,7 @@ func (rh *RoomHandler) LookRoom(ctx context.Context, req *pb.LookRoomRequest) (*
 		userInfos, _ := rh.manager.GetRoomInfo(RoomType(req.RoomType), status, roomID)
 		notif := &pb.RoomChangeNotification{
 			RoomID:    uint32(roomID),
-      Ready: false,
+			Ready:     false,
 			UserInfos: userInfos,
 		}
 		rh.changes <- notif
@@ -68,6 +68,7 @@ func (rh *RoomHandler) NotifyRoomChanges(stream grpc.BidiStreamingServer[pb.Ack,
 	for {
 		select {
 		case notification := <-rh.changes:
+      rh.logger.Info("notification received", "roomID", notification.RoomID, "ready", notification.Ready)
 			if err := stream.Send(notification); err != nil {
 				rh.logger.Error("Failed to send notification: %v", err)
 				return err
@@ -96,14 +97,14 @@ func (rh *RoomHandler) UpdateSpell(ctx context.Context, req *pb.UpdateSpellReque
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
 	userInfo := &pb.UserInfo{
-    Username: req.Username,
-    Spell1: req.Spell1,
-    Spell2: req.Spell2,
-  }
+		Username: req.Username,
+		Spell1:   req.Spell1,
+		Spell2:   req.Spell2,
+	}
 
 	return &pb.UpdateSpellResponse{
-    Usernames: usernames,
-		User: userInfo,
+		Usernames: usernames,
+		User:      userInfo,
 	}, nil
 
 }

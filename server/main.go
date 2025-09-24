@@ -137,7 +137,6 @@ func ProcessClient(conn *net.TCPConn, log *slog.Logger, broker *event.EventBroke
 					}
 					data = data[bytesConsumed:]
 				case event.UpdateSpellResMessage:
-					log.Warn("UpdateSpellResMessage found", "component", "server")
 					responsePacket, err := event.CreatePacketFromMessage(resp)
 					if err != nil {
 						log.Error("Error creating packet from message", "component", "server", "error", err)

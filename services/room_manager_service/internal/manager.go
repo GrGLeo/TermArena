@@ -108,6 +108,7 @@ type RoomManager struct {
 	mu          sync.RWMutex
 	maxRoom     int
 	roomCounter int
+	changes     chan *pb.RoomChangeNotification
 	logger      *slog.Logger
 	roomLookup  map[RoomID]struct {
 		roomType   RoomType
@@ -116,7 +117,7 @@ type RoomManager struct {
 	rooms map[RoomType]map[RoomStatus]map[RoomID]*Room
 }
 
-func NewRoomManager(maxRoom int, logger *slog.Logger) *RoomManager {
+func NewRoomManager(changes chan *pb.RoomChangeNotification, maxRoom int, logger *slog.Logger) *RoomManager {
 	roomLookup := make(map[RoomID]struct {
 		roomType   RoomType
 		roomStatus RoomStatus
@@ -131,6 +132,7 @@ func NewRoomManager(maxRoom int, logger *slog.Logger) *RoomManager {
 	rm := &RoomManager{
 		maxRoom:     maxRoom,
 		roomCounter: 0,
+		changes:     changes,
 		roomLookup:  roomLookup,
 		logger:      logger,
 		rooms:       rooms,
@@ -179,6 +181,16 @@ func (rm *RoomManager) LookRoom(username string, roomType RoomType) (Team, RoomI
 					}{roomType, READY}
 					rm.logger.Info("room moved", "roomType", roomType, "roomStatusIn", "LOBBY", "roomStatusOut", "READY")
 					rm.mu.Unlock()
+					userInfos, err := rm.GetRoomInfo(roomType, READY, roomID)
+					if err != nil {
+						rm.logger.Error("room not exist")
+					}
+					notif := &pb.RoomChangeNotification{
+						RoomID:    uint32(roomID),
+						Ready:     true,
+						UserInfos: userInfos,
+					}
+					rm.changes <- notif
 				}()
 			}
 			return team, roomID, status
@@ -210,6 +222,16 @@ func (rm *RoomManager) LookRoom(username string, roomType RoomType) (Team, RoomI
 			}{roomType, READY}
 			rm.logger.Info("room moved", "roomType", roomType, "roomStatusIn", "LOBBY", "roomStatusOut", "READY")
 			rm.mu.Unlock()
+			userInfos, err := rm.GetRoomInfo(roomType, READY, roomID)
+			if err != nil {
+				rm.logger.Error("room not exist")
+			}
+			notif := &pb.RoomChangeNotification{
+				RoomID:    uint32(roomID),
+				Ready:     true,
+				UserInfos: userInfos,
+			}
+			rm.changes <- notif
 		}()
 	} else {
 		rm.rooms[roomType][WAITING][roomID] = newRoom
@@ -237,10 +259,10 @@ func (rm *RoomManager) RemovePlayer(roomID RoomID, username string) error {
 func (rm *RoomManager) UpdatePlayerSpell(roomType RoomType, roomID RoomID, username string, spells Spells) ([]string, error) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-  rm.logger.Info("roomType", roomType, "roomID", roomID)
+	rm.logger.Info("roomType", roomType, "roomID", roomID)
 	if room, exist := rm.rooms[roomType][LOBBY][roomID]; exist {
 		room.UpdatePlayerSpell(username, spells)
-    usernames := room.GetUsernames()
+		usernames := room.GetUsernames()
 		return usernames, nil
 	}
 	return nil, errors.New("room not found")

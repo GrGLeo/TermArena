@@ -19,8 +19,9 @@ type RoomServer struct {
 }
 
 func NewRoomServer(config *config.Config, logger *slog.Logger) *RoomServer {
-	manager := NewRoomManager(config.MaxRoom, logger)
-	handler := NewRoomHandler(manager, logger)
+  changes := make(chan *pb.RoomChangeNotification, 100)
+	manager := NewRoomManager(changes, config.MaxRoom, logger)
+	handler := NewRoomHandler(changes, manager, logger)
 	return &RoomServer{
 		config:  config,
 		logger:  logger,
