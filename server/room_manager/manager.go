@@ -2,7 +2,6 @@ package manager
 
 import (
 	"log/slog"
-	"strconv"
 	"sync"
 
 	"github.com/GrGLeo/TermArena/server/event"
@@ -18,7 +17,8 @@ const (
 	SOLO = iota
 	PRACTICE
 	CLASSIC
-	RANKED)
+	RANKED
+)
 
 // RoomManager handles the queueing and starting of game rooms.
 type RoomManager struct {

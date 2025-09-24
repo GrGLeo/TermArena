@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/GrGLeo/TermArena/server/event"
@@ -50,16 +51,15 @@ type FindRoomResult struct {
 	Message event.LookRoomResponseMessage
 }
 
-func StartGame(ip, map_id, max_players string) (int, error) {
+func StartGame(ip, max_players string, roomID uint32, usernames []string, teams []string, spell1s []string, spell2s []string) error {
 	command := "./bin/game"
-	args := []string{"--port", ip, "--map", map_id, "--max-players", max_players}
+	args := []string{"--port", ip, "--max-players", max_players, "--usernames", strings.Join(usernames, ","), "--teams", strings.Join(teams, ","), "--spell1s", strings.Join(spell1s, ","), "--spell2s", strings.Join(spell2s, ",")}
 	cmd := exec.Command(command, args...)
 
-	RoomID := rand.Intn(9999) + 1
-	logFileName := fmt.Sprintf("rust_game_%d.log", RoomID)
+	logFileName := fmt.Sprintf("rust_game_%d.log", roomID)
 	logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 066)
 	if err != nil {
-		return 0, error(err)
+		return error(err)
 	}
 	defer logFile.Close()
 
@@ -68,12 +68,12 @@ func StartGame(ip, map_id, max_players string) (int, error) {
 
 	err = cmd.Start()
 	if err != nil {
-		return 0, error(err)
+		return error(err)
 	}
 	fmt.Printf("Rust game server process started with PID: %d on port %s\n", cmd.Process.Pid, ip)
 	fmt.Fprintf(logFile, "Rust game server process started with PID: %d on port %s.\n", cmd.Process.Pid, ip)
 	time.Sleep(1 * time.Second)
-	return RoomID, nil
+	return nil
 }
 
 func findRoom(rooms map[int]Room, roomRequest event.RoomRequestMessage, roomType string, broker *event.EventBroker, logger *slog.Logger) FindRoomResult {
@@ -93,7 +93,7 @@ func findRoom(rooms map[int]Room, roomRequest event.RoomRequestMessage, roomType
 			regResponseCh := make(chan event.Message, 1)
 			clientRegistration := event.ClientRegistrationMessage{
 				ClientID:   roomRequest.Username,
-				RoomID:     roomID,
+				RoomID:     uint32(roomID),
 				Conn:       roomRequest.Conn,
 				ResponseCh: regResponseCh,
 			}
@@ -109,7 +109,7 @@ func findRoom(rooms map[int]Room, roomRequest event.RoomRequestMessage, roomType
 				Found: true,
 				Message: event.LookRoomResponseMessage{
 					Success: true,
-					RoomID:  roomID,
+					RoomID:  uint32(roomID),
 					RoomIP:  room.GetPort(),
 				},
 			}

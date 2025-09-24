@@ -6,6 +6,8 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/GrGLeo/TermArena/pkg/shared"
@@ -13,6 +15,7 @@ import (
 	conm "github.com/GrGLeo/TermArena/server/conn_manager"
 	"github.com/GrGLeo/TermArena/server/event"
 	ratelimiter "github.com/GrGLeo/TermArena/server/rate_limiter"
+	manager "github.com/GrGLeo/TermArena/server/room_manager"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -26,6 +29,7 @@ type RoomServiceClient struct {
 	stream        pb.RoomService_NotifyRoomChangesClient
 	streamContext context.Context
 	steamCancel   context.CancelFunc
+	portCounter   uint32
 }
 
 func NewRoomServiceClient(connManager *conm.ConnectionManager, broker *event.EventBroker, logger *slog.Logger, rateLimiter *ratelimiter.GlobalRateLimiter) (*RoomServiceClient, error) {
@@ -54,6 +58,7 @@ func NewRoomServiceClient(connManager *conm.ConnectionManager, broker *event.Eve
 		stream:        stream,
 		streamContext: streamCtx,
 		steamCancel:   streamCancel,
+		portCounter:   50053,
 	}
 
 	go roomClient.handleNotifications()
@@ -177,12 +182,37 @@ func (rs *RoomServiceClient) handleNotifications() {
 			}
 			rs.logger.Info("Sent Ack", "room_id", notification.RoomID)
 
-      var data []byte
+			var data []byte
 			if !notification.Ready {
 				packet := shared.NewMoveToLobbyPacket(notification.RoomID, notification.UserInfos)
 				data = packet.Serialize()
 			} else {
-      }
+				// Start the game
+				port := atomic.LoadUint32(&rs.portCounter)
+				var usernames []string
+				var teams []string
+				var spell1s []string
+				var spell2s []string
+				for _, ui := range notification.UserInfos {
+					usernames = append(usernames, ui.Username)
+					teams = append(teams, strconv.Itoa(int(ui.Team)))
+					spell1s = append(spell1s, strconv.Itoa(int(ui.Spell1)))
+					spell2s = append(spell2s, strconv.Itoa(int(ui.Spell2)))
+				}
+				portStr := strconv.Itoa(int(port))
+				maxPlayers := strconv.Itoa(len(usernames))
+				err := manager.StartGame(portStr, maxPlayers, notification.RoomID, usernames, teams, spell1s, spell2s)
+				if err != nil {
+					rs.logger.Error("Failed to start game", "error", err)
+				}
+				// Increment port
+				newPort := port + 1
+				if newPort > 50153 {
+					newPort = 50053
+				}
+				atomic.StoreUint32(&rs.portCounter, newPort)
+        // Create a new packet to notify each client the port to connect
+			}
 
 			for _, userInfo := range notification.UserInfos {
 				receiverID := userInfo.Username
