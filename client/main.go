@@ -81,9 +81,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.LobbyRoomModel.Width = msg.Width
-		m.LobbyRoomModel.Height = msg.Height
-		m.LobbyRoomModel.SpellSelection.SetDimension(msg.Height, msg.Width)
+		m.LobbyRoomModel.SetDimension(msg.Width, msg.Height)
 	}
 
 	// Always update alert model with current message
@@ -171,6 +169,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case communication.MoveLobbyRoomMsg:
 			m.state = LobbyRoom
 			m.LobbyRoomModel = model.NewLobbyRoomModel(m.Connection, m.Username, m.LobbyModel.RoomType, msg.RoomID)
+      m.LobbyRoomModel.SetDimension(m.height, m.width)
 			// Populate teams with the user infos
 			newmodel, cmd := m.LobbyRoomModel.Update(msg)
 			m.LobbyRoomModel = newmodel.(model.LobbyRoomModel)

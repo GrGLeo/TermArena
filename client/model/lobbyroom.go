@@ -80,7 +80,7 @@ type LobbyRoomModel struct {
 	redTeam        *TeamPanel
 	SpellSelection SpellSelectionModel
 	activePanel    int // 0 = message, 1 = spells
-	Width, Height  int // Terminal dimensions
+	width, height  int // Terminal dimensions
 	viewport       viewport.Model
 	textInput      textinput.Model
 	timer          timer.Model
@@ -109,8 +109,8 @@ func NewLobbyRoomModel(conn *net.TCPConn, username string, roomType int, roomID 
 		roomID:         roomID,
 		SpellSelection: NewSpellSelection(DefaultStyles()),
 		activePanel:    0,   // Start with message panel
-		Width:          120, // Default width
-		Height:         30,  // Default height
+		width:          120, // Default width
+		height:         30,  // Default height
 		viewport:       vp,
 		textInput:      ti,
 		timer:          timer.NewWithInterval(time.Minute, time.Second),
@@ -119,6 +119,12 @@ func NewLobbyRoomModel(conn *net.TCPConn, username string, roomType int, roomID 
 		username:       username,
 		styles:         DefaultStyles(),
 	}
+}
+
+func (m *LobbyRoomModel) SetDimension(height, width int) {
+	m.height = height
+	m.width = width
+	m.SpellSelection.SetDimension(width, height)
 }
 
 func (m LobbyRoomModel) Init() tea.Cmd {
@@ -159,9 +165,9 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.WindowSizeMsg:
 		// Update terminal dimensions
-		m.Width = msg.Width
-		m.Height = msg.Height
-		m.SpellSelection.SetDimension(m.Height, m.Width)
+		m.width = msg.Width
+		m.height = msg.Height
+		m.SpellSelection.SetDimension(m.height, m.width)
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
@@ -332,7 +338,7 @@ func (m LobbyRoomModel) View() string {
 		inputContent,
 	)
 
-	centeredContent := lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, content)
+	centeredContent := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 
 	return centeredContent
 }
