@@ -157,7 +157,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LobbyModel = newmodel.(model.LobbyModel)
 		switch msg := msg.(type) {
 		case communication.LookRoomMsg:
-			return m, tea.Batch(communication.AttemptGameConnection(msg.RoomIP), outCmd, alertCmd)
+			return m, tea.Batch(outCmd, alertCmd)
 		case communication.GameConnectionMsg:
 			m.GameConnection = msg.Conn
 			//communication.SendSpellSelectionPacket(m.GameConnection, m.LobbyModel.SelectedSpells[0], m.LobbyModel.SelectedSpells[1])
@@ -186,6 +186,10 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case LobbyRoom:
 		newmodel, cmd = m.LobbyRoomModel.Update(msg)
 		m.LobbyRoomModel = newmodel.(model.LobbyRoomModel)
+    switch msg := msg.(type) {
+		case communication.GameServerReadyMsg:
+			return m, tea.Batch(communication.AttemptGameConnection(msg.RoomIP), outCmd, alertCmd)
+    }
 		return m, tea.Batch(cmd, outCmd, alertCmd)
 
 	case Game:

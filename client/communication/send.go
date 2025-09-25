@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/GrGLeo/TermArena/pkg/shared"
@@ -209,6 +210,9 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
         msgs <- MoveLobbyRoomMsg{RoomID: int(msg.RoomID), UserInfos: userInfos}
       case *shared.UpdateSpellResPacket:
         msgs <- UpdateSpellMsg{Username: msg.Username, SpellOne: msg.SpellOne, SpellTwo: msg.SpellTwo}
+      case *shared.GameServerReadyPacket:
+        strRoomIP := strconv.Itoa(int(msg.RoomIP))
+        msgs <- GameServerReadyMsg{strRoomIP}
 			case *shared.GameStartPacket:
 				log.Println("Game started packet found")
 				log.Printf("Sending GameStartMsg: %+v", msg)

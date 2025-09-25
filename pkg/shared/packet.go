@@ -22,6 +22,9 @@ code 7: send a create room
 code 8: send a join room
 code 9: looking for a room response
 code 34: move to lobby room with users packet
+code 35:
+code 36:
+code 37: game server is ready
 ---
 code 10: game start  response
 code 11: send action
@@ -461,6 +464,28 @@ func (us *UpdateSpellResPacket) Serialize() []byte {
 	buf.WriteByte(byte(us.SpellOne))
 	buf.WriteByte(byte(us.SpellTwo))
 	return buf.Bytes()
+}
+
+type GameServerReadyPacket struct {
+  version, code int
+  RoomIP uint16
+}
+
+func NewGameServerReadyPacket(roomIP uint16) *GameServerReadyPacket {
+  return &GameServerReadyPacket{
+    version: 1,
+    code: 37,
+    RoomIP: roomIP,
+  }
+}
+func (gsp *GameServerReadyPacket) Version() int { return gsp.version }
+func (gsp *GameServerReadyPacket) Code() int    { return gsp.code }
+func (gsp *GameServerReadyPacket) Serialize() []byte {
+  var buf bytes.Buffer
+  buf.WriteByte(byte(gsp.version))
+  buf.WriteByte(byte(gsp.code))
+  binary.Write(&buf, binary.BigEndian, gsp.RoomIP)
+  return buf.Bytes()
 }
 
 type GameStartPacket struct {
@@ -1148,6 +1173,18 @@ func DeSerialize(data []byte) (Packet, int, error) {
 			SpellTwo: spellTwo,
 		}
 		return packet, totalLen, nil
+
+  case 37:
+    if len(data) < 4 {
+      return nil, 0, errors.New("incomplete packet")
+    }
+    roomID := binary.BigEndian.Uint16(data[2:4])
+    packet := &GameServerReadyPacket{
+      version: version,
+      code: code,
+      RoomIP: roomID,
+    }
+    return packet, 4, nil
 
 	case 10: // GameStartPacket
 		if len(data) < 3 {

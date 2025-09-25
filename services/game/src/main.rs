@@ -34,6 +34,18 @@ struct CliArgs {
 
     #[arg(long = "max-players", value_name = "MAX_PLAYERS", value_parser = clap::value_parser!(u8), default_value_t = 1)]
     max_players: u8,
+
+    #[arg(long = "usernames", value_name = "USERNAMES", value_delimiter = ',')]
+    usernames: Vec<String>,
+
+    #[arg(long = "teams", value_name = "TEAMS", value_delimiter = ',', value_parser = clap::value_parser!(u8))]
+    teams: Vec<u8>,
+
+    #[arg(long = "spell1s", value_name = "SPELL1S", value_delimiter = ',', value_parser = clap::value_parser!(u8))]
+    spell1s: Vec<u8>,
+
+    #[arg(long = "spell2s", value_name = "SPELL2S", value_delimiter = ',', value_parser = clap::value_parser!(u8))]
+    spell2s: Vec<u8>,
 }
 
 async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mutex<GameManager>>) {

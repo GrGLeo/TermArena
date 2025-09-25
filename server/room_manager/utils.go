@@ -3,7 +3,6 @@ package manager
 import (
 	"fmt"
 	"log/slog"
-	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
@@ -70,8 +69,6 @@ func StartGame(ip, max_players string, roomID uint32, usernames []string, teams 
 	if err != nil {
 		return error(err)
 	}
-	fmt.Printf("Rust game server process started with PID: %d on port %s\n", cmd.Process.Pid, ip)
-	fmt.Fprintf(logFile, "Rust game server process started with PID: %d on port %s.\n", cmd.Process.Pid, ip)
 	time.Sleep(1 * time.Second)
 	return nil
 }

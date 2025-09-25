@@ -75,6 +75,10 @@ type UpdateSpellMsg struct {
 	SpellTwo int
 }
 
+type GameServerReadyMsg struct {
+  RoomIP string
+}
+
 // GameStart is sent by the server once the number of player are matched
 type GameStartMsg struct {
 	Code int

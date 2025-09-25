@@ -212,6 +212,8 @@ func (rs *RoomServiceClient) handleNotifications() {
 				}
 				atomic.StoreUint32(&rs.portCounter, newPort)
         // Create a new packet to notify each client the port to connect
+        packet := shared.NewGameServerReadyPacket(uint16(port))
+        data = packet.Serialize()
 			}
 
 			for _, userInfo := range notification.UserInfos {
