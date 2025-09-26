@@ -6,7 +6,9 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"os/exec"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -15,7 +17,6 @@ import (
 	conm "github.com/GrGLeo/TermArena/server/conn_manager"
 	"github.com/GrGLeo/TermArena/server/event"
 	ratelimiter "github.com/GrGLeo/TermArena/server/rate_limiter"
-	manager "github.com/GrGLeo/TermArena/server/room_manager"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -201,7 +202,7 @@ func (rs *RoomServiceClient) handleNotifications() {
 				}
 				portStr := strconv.Itoa(int(port))
 				maxPlayers := strconv.Itoa(len(usernames))
-				err := manager.StartGame(portStr, maxPlayers, notification.RoomID, usernames, teams, spell1s, spell2s)
+				err := StartGame(portStr, maxPlayers, notification.RoomID, usernames, teams, spell1s, spell2s)
 				if err != nil {
 					rs.logger.Error("Failed to start game", "error", err)
 				}
@@ -228,4 +229,27 @@ func (rs *RoomServiceClient) handleNotifications() {
 			}
 		}
 	}
+}
+
+func StartGame(ip, max_players string, roomID uint32, usernames []string, teams []string, spell1s []string, spell2s []string) error {
+	command := "./bin/game"
+	args := []string{"--port", ip, "--max-players", max_players, "--usernames", strings.Join(usernames, ","), "--teams", strings.Join(teams, ","), "--spell1s", strings.Join(spell1s, ","), "--spell2s", strings.Join(spell2s, ",")}
+	cmd := exec.Command(command, args...)
+
+	logFileName := fmt.Sprintf("rust_game_%d.log", roomID)
+	logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 066)
+	if err != nil {
+		return error(err)
+	}
+	defer logFile.Close()
+
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+
+	err = cmd.Start()
+	if err != nil {
+		return error(err)
+	}
+	time.Sleep(1 * time.Second)
+	return nil
 }

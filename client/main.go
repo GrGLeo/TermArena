@@ -160,7 +160,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(outCmd, alertCmd)
 		case communication.GameConnectionMsg:
 			m.GameConnection = msg.Conn
-			//communication.SendSpellSelectionPacket(m.GameConnection, m.LobbyModel.SelectedSpells[0], m.LobbyModel.SelectedSpells[1])
+			communication.SendUsernamePacket(m.GameConnection, m.Username)
 			go communication.ListenForPackets(m.GameConnection, m.msgs)
 			return m, tea.Batch(outCmd, alertCmd)
 		case communication.GameConnectionFailedMsg:
@@ -186,10 +186,20 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case LobbyRoom:
 		newmodel, cmd = m.LobbyRoomModel.Update(msg)
 		m.LobbyRoomModel = newmodel.(model.LobbyRoomModel)
-    switch msg := msg.(type) {
+		switch msg := msg.(type) {
 		case communication.GameServerReadyMsg:
 			return m, tea.Batch(communication.AttemptGameConnection(msg.RoomIP), outCmd, alertCmd)
-    }
+    case communication.GameConnectionMsg:
+      m.GameConnection = msg.Conn
+      communication.SendUsernamePacket(m.GameConnection, m.Username)
+      go communication.ListenForPackets(m.GameConnection, m.msgs)
+      return m, tea.Batch(outCmd, alertCmd)
+		case communication.GameStartMsg:
+			m.state = Game
+			m.GameModel = model.NewGameModel(m.GameConnection)
+			m.GameModel.SetDimension(m.height, m.width)
+			return m, tea.Batch(m.GameModel.Init(), outCmd, alertCmd)
+		}
 		return m, tea.Batch(cmd, outCmd, alertCmd)
 
 	case Game:

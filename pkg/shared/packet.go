@@ -467,25 +467,25 @@ func (us *UpdateSpellResPacket) Serialize() []byte {
 }
 
 type GameServerReadyPacket struct {
-  version, code int
-  RoomIP uint16
+	version, code int
+	RoomIP        uint16
 }
 
 func NewGameServerReadyPacket(roomIP uint16) *GameServerReadyPacket {
-  return &GameServerReadyPacket{
-    version: 1,
-    code: 37,
-    RoomIP: roomIP,
-  }
+	return &GameServerReadyPacket{
+		version: 1,
+		code:    37,
+		RoomIP:  roomIP,
+	}
 }
 func (gsp *GameServerReadyPacket) Version() int { return gsp.version }
 func (gsp *GameServerReadyPacket) Code() int    { return gsp.code }
 func (gsp *GameServerReadyPacket) Serialize() []byte {
-  var buf bytes.Buffer
-  buf.WriteByte(byte(gsp.version))
-  buf.WriteByte(byte(gsp.code))
-  binary.Write(&buf, binary.BigEndian, gsp.RoomIP)
-  return buf.Bytes()
+	var buf bytes.Buffer
+	buf.WriteByte(byte(gsp.version))
+	buf.WriteByte(byte(gsp.code))
+	binary.Write(&buf, binary.BigEndian, gsp.RoomIP)
+	return buf.Bytes()
 }
 
 type GameStartPacket struct {
@@ -674,28 +674,28 @@ func (egp *EndGamePacket) Serialize() []byte {
 	return buf.Bytes()
 }
 
-type SpellSelectionPacket struct {
-	version, code  int
-	Spell1, Spell2 int
+type UsernamePacket struct {
+	version, code int
+	Username      string
 }
 
-func NewSpellSelectionPacket(spell1, spell2 int) *SpellSelectionPacket {
-	return &SpellSelectionPacket{
-		version: 1,
-		code:    16,
-		Spell1:  spell1,
-		Spell2:  spell2,
+func NewUsernamePacket(username string) *UsernamePacket {
+	return &UsernamePacket{
+		version:  1,
+		code:     16,
+		Username: username,
 	}
 }
 
-func (ssp *SpellSelectionPacket) Version() int { return ssp.version }
-func (ssp *SpellSelectionPacket) Code() int    { return ssp.code }
-func (ssp *SpellSelectionPacket) Serialize() []byte {
+func (ssp *UsernamePacket) Version() int { return ssp.version }
+func (ssp *UsernamePacket) Code() int    { return ssp.code }
+func (ssp *UsernamePacket) Serialize() []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(byte(ssp.version))
 	buf.WriteByte(byte(ssp.code))
-	buf.WriteByte(byte(ssp.Spell1))
-	buf.WriteByte(byte(ssp.Spell2))
+	usernameBytes := []byte(ssp.Username)
+	buf.WriteByte(byte(len(usernameBytes)))
+	buf.Write(usernameBytes)
 	return buf.Bytes()
 }
 
@@ -1174,17 +1174,17 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, totalLen, nil
 
-  case 37:
-    if len(data) < 4 {
-      return nil, 0, errors.New("incomplete packet")
-    }
-    roomID := binary.BigEndian.Uint16(data[2:4])
-    packet := &GameServerReadyPacket{
-      version: version,
-      code: code,
-      RoomIP: roomID,
-    }
-    return packet, 4, nil
+	case 37:
+		if len(data) < 4 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		roomID := binary.BigEndian.Uint16(data[2:4])
+		packet := &GameServerReadyPacket{
+			version: version,
+			code:    code,
+			RoomIP:  roomID,
+		}
+		return packet, 4, nil
 
 	case 10: // GameStartPacket
 		if len(data) < 3 {
@@ -1292,16 +1292,20 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		return packet, 3, nil
 
 	case 16: // SpellSelectionPacket
-		if len(data) < 4 {
+		if len(data) < 3 {
 			return nil, 0, errors.New("incomplete packet")
 		}
-		packet := &SpellSelectionPacket{
-			version: version,
-			code:    code,
-			Spell1:  int(data[2]),
-			Spell2:  int(data[3]),
+		usernameLen := int(data[2])
+		if len(data) < 3+usernameLen {
+			return nil, 0, errors.New("incomplete packet")
 		}
-		return packet, 4, nil
+		username := string(data[3 : 3+usernameLen])
+		packet := &UsernamePacket{
+			version:  version,
+			code:     code,
+			Username: username,
+		}
+		return packet, 3 + usernameLen, nil
 
 	case 18: // ShopResponsePacket
 		if len(data) < 24 {

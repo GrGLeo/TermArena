@@ -33,7 +33,7 @@ use spell::Spell;
 use tokio::sync::mpsc;
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     mem::take,
     time::{Duration, Instant},
     usize, vec,
@@ -61,10 +61,26 @@ pub struct GameManager {
     config: GameConfig,
     game_start_time: Option<Instant>,
     initial_monsters_spawned: bool,
+    username_to_player: HashMap<String, PlayerId>,
+    player_to_username: HashMap<PlayerId, String>,
+    pre_champions: HashMap<String, (Team, u8, u8)>,
+    connected_players: HashSet<String>,
 }
 
 impl GameManager {
-    pub fn new(config: GameConfig, max_players: u8) -> Self {
+    pub fn new(config: GameConfig, max_players: u8, usernames: Vec<String>, teams: Vec<u8>, spell1s: Vec<u8>, spell2s: Vec<u8>) -> Self {
+        let mut username_to_player = HashMap::new();
+        let mut player_to_username = HashMap::new();
+        let mut pre_champions = HashMap::new();
+        for (i, username) in usernames.into_iter().enumerate() {
+            let player_id = i + 1;
+            username_to_player.insert(username.clone(), player_id);
+            player_to_username.insert(player_id, username.clone());
+            let team = if teams[i] == 0 { Team::Blue } else { Team::Red };
+            pre_champions.insert(username, (team, spell1s[i], spell2s[i]));
+        }
+        let connected_players = HashSet::new();
+
         let file_path = "services/game/assets/map.json";
         let mut board = match Board::from_json(file_path) {
             Ok(board) => board,
@@ -141,6 +157,10 @@ impl GameManager {
             dead_minion_positions: Vec::new(),
             game_start_time: None,
             initial_monsters_spawned: false,
+            username_to_player,
+            player_to_username,
+            pre_champions,
+            connected_players,
         }
     }
 
@@ -175,63 +195,65 @@ impl GameManager {
         self.player_action.clear();
     }
 
-    pub fn add_player(&mut self, spell1_id: u8, spell2_id: u8) -> Option<PlayerId> {
-        if self.players_count < self.max_players {
-            self.players_count += 1;
-            let player_id = self.players_count;
+    pub fn add_player(&mut self, username: String) -> Option<PlayerId> {
+        if self.connected_players.contains(&username) {
+            return None;
+        }
+        if let Some(&(team, spell1, spell2)) = self.pre_champions.get(&username) {
+            if self.players_count < self.max_players {
+                self.players_count += 1;
+                let player_id = self.username_to_player[&username];
+                self.connected_players.insert(username);
 
-            let team_id = if player_id % 2 != 0 {
-                Team::Blue
-            } else {
-                Team::Red
-            };
+                let (row, col) = if team == Team::Blue {
+                    (149, (player_id - 1) as u16 / 2)
+                } else {
+                    (0, 149 - (player_id - 1) as u16 / 2)
+                };
 
-            let (row, col) = if team_id == Team::Blue {
-                (149, (player_id - 1) as u16 / 2)
-            } else {
-                (0, 149 - (player_id - 1) as u16 / 2)
-            };
-
-            // Assign Champion to player, and place it on the board
-            {
-                // We get the choosen spell
-                let mut selected_spell: HashMap<u8, Box<dyn Spell>> = HashMap::new();
-                if let Some(spell_stats) = self.config.spells.get(&spell1_id) {
-                    selected_spell.insert(
-                        0,
-                        spell::create_spell_from_id(spell1_id, spell_stats.clone()),
+                // Assign Champion to player, and place it on the board
+                {
+                    // We get the choosen spell
+                    let mut selected_spell: HashMap<u8, Box<dyn Spell>> = HashMap::new();
+                    if let Some(spell_stats) = self.config.spells.get(&spell1) {
+                        selected_spell.insert(
+                            0,
+                            spell::create_spell_from_id(spell1, spell_stats.clone()),
+                        );
+                    }
+                    if let Some(spell_stats) = self.config.spells.get(&spell2) {
+                        selected_spell.insert(
+                            1,
+                            spell::create_spell_from_id(spell2, spell_stats.clone()),
+                        );
+                    }
+                    let champion = Champion::new(
+                        player_id,
+                        team,
+                        row,
+                        col,
+                        self.config.champion.clone(),
+                        selected_spell,
+                    );
+                    self.champions.insert(player_id, champion);
+                    self.board.place_cell(
+                        cell::CellContent::Champion(player_id, team),
+                        row as usize,
+                        col as usize,
                     );
                 }
-                if let Some(spell_stats) = self.config.spells.get(&spell2_id) {
-                    selected_spell.insert(
-                        1,
-                        spell::create_spell_from_id(spell2_id, spell_stats.clone()),
-                    );
-                }
-                let champion = Champion::new(
-                    player_id,
-                    team_id,
-                    row,
-                    col,
-                    self.config.champion.clone(),
-                    selected_spell,
-                );
-                self.champions.insert(player_id, champion);
-                self.board.place_cell(
-                    cell::CellContent::Champion(player_id, team_id),
-                    row as usize,
-                    col as usize,
-                );
-            }
 
-            // We check if we can start the game and send a Start to each player
-            println!("players count: {}", self.players_count);
-            if self.players_count == self.max_players {
-                self.game_started = true;
-                self.game_start_time = Some(Instant::now());
-                self.minion_manager.wave_creation_time = Instant::now() + Duration::from_secs(30);
+                // We check if we can start the game and send a Start to each player
+                println!("players count: {}", self.players_count);
+                if self.players_count == self.max_players {
+                    self.game_started = true;
+                    self.game_start_time = Some(Instant::now());
+                    self.minion_manager.wave_creation_time = Instant::now() + Duration::from_secs(30);
+                }
+                Some(player_id)
+            } else {
+                None
             }
-            Some(player_id)
         } else {
             None
         }
@@ -242,6 +264,9 @@ impl GameManager {
             self.players_count -= 1;
             self.player_action.remove(&player_id);
             self.client_channel.remove(&player_id);
+            if let Some(username) = self.player_to_username.get(&player_id) {
+                self.connected_players.remove(username);
+            }
             println!(
                 "Player {} disconnected. Total player now: {}/{}",
                 player_id, self.players_count, self.max_players

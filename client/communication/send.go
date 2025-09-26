@@ -114,9 +114,9 @@ func SendPurchaseItemPacket(conn *net.TCPConn, itemID int) error {
 	return err
 }
 
-func SendSpellSelectionPacket(conn *net.TCPConn, spell1, spell2 int) error {
-	log.Printf("Sending spell selection: %d, %d", spell1, spell2)
-	spellPacket := shared.NewSpellSelectionPacket(spell1, spell2)
+func SendUsernamePacket(conn *net.TCPConn, username string) error {
+	log.Printf("Sending username: %s", username)
+	spellPacket := shared.NewUsernamePacket(username)
 	data := spellPacket.Serialize()
 	_, err := conn.Write(data)
 	return err
@@ -144,8 +144,8 @@ func SendMessage(conn *net.TCPConn, sender, message string) error {
 
 func SendUpdateSpell(conn *net.TCPConn, roomType, roomID int, username string, spells []int) error {
 	log.Printf("[CLIENT] SendUpateSpell: sender=%s, spells='%d|%d'", username, spells[0], spells[1])
-  spellPacket := shared.NewUpdateSpellReqPacket(roomType, roomID, username, spells[0], spells[1])
-  data := spellPacket.Serialize()
+	spellPacket := shared.NewUpdateSpellReqPacket(roomType, roomID, username, spells[0], spells[1])
+	data := spellPacket.Serialize()
 	_, err := conn.Write(data)
 	if err != nil {
 		log.Printf("[CLIENT] UpdateSpell: ERROR writing to connection: %v", err)
@@ -202,17 +202,17 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 					userInfos = append(userInfos, UserInfo{
 						Username: ui.Username,
 						Team:     int(ui.Team),
-						SpellOne:   int(ui.Spell1),
-						SpellTwo:   int(ui.Spell2),
+						SpellOne: int(ui.Spell1),
+						SpellTwo: int(ui.Spell2),
 					})
 				}
-        log.Printf("Sending MoveLobbyRoomMsg: %+v", msg)
-        msgs <- MoveLobbyRoomMsg{RoomID: int(msg.RoomID), UserInfos: userInfos}
-      case *shared.UpdateSpellResPacket:
-        msgs <- UpdateSpellMsg{Username: msg.Username, SpellOne: msg.SpellOne, SpellTwo: msg.SpellTwo}
-      case *shared.GameServerReadyPacket:
-        strRoomIP := strconv.Itoa(int(msg.RoomIP))
-        msgs <- GameServerReadyMsg{strRoomIP}
+				log.Printf("Sending MoveLobbyRoomMsg: %+v", msg)
+				msgs <- MoveLobbyRoomMsg{RoomID: int(msg.RoomID), UserInfos: userInfos}
+			case *shared.UpdateSpellResPacket:
+				msgs <- UpdateSpellMsg{Username: msg.Username, SpellOne: msg.SpellOne, SpellTwo: msg.SpellTwo}
+			case *shared.GameServerReadyPacket:
+				strRoomIP := strconv.Itoa(int(msg.RoomIP))
+				msgs <- GameServerReadyMsg{strRoomIP}
 			case *shared.GameStartPacket:
 				log.Println("Game started packet found")
 				log.Printf("Sending GameStartMsg: %+v", msg)

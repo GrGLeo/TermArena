@@ -54,7 +54,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
     let (reader, mut writer) = split(stream);
     let mut buf_reader = BufReader::new(reader);
 
-    // --- Initial Packet: Spell Selection ---
+    // --- Initial Packet: UsernamePacket ---
     let mut initial_packet_header = [0; 2]; // Read version and code
     if buf_reader
         .read_exact(&mut initial_packet_header)
@@ -71,17 +71,35 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
     let version = initial_packet_header[0];
     let code = initial_packet_header[1];
 
-    let (spell1, spell2) = if version == 1 && code == 16 {
-        // Code for SpellSelectionPacket
-        let mut spell_payload = [0; 2]; // Read spell1 and spell2
-        if buf_reader.read_exact(&mut spell_payload).await.is_err() {
-            error!(component = "game", address = %addr, "failed to read spell payload");
+    let username = if version == 1 && code == 16 {
+        // Code for UsernamePacket 
+        let mut username_len_buf = [0; 1];
+        if buf_reader.read_exact(&mut username_len_buf).await.is_err() {
+            error!(component = "game", address = %addr, "failed to read username len");
             if let Err(e) = writer.shutdown().await {
                 error!(component = "game", address = %addr, error = %e, "failed to shutdown stream");
             }
             return;
         }
-        (spell_payload[0], spell_payload[1])
+        let username_len = username_len_buf[0] as usize;
+        let mut username_buf = vec![0; username_len];
+        if buf_reader.read_exact(&mut username_buf).await.is_err() {
+            error!(component = "game", address = %addr, "failed to read username");
+            if let Err(e) = writer.shutdown().await {
+                error!(component = "game", address = %addr, error = %e, "failed to shutdown stream");
+            }
+            return;
+        }
+        match String::from_utf8(username_buf) {
+            Ok(u) => u,
+            Err(_) => {
+                error!(component = "game", address = %addr, "invalid utf8 in username");
+                if let Err(e) = writer.shutdown().await {
+                    error!(component = "game", address = %addr, error = %e, "failed to shutdown stream");
+                }
+                return;
+            }
+        }
     } else {
         warn!(component = "game", address = %addr, version = version, code = code, "invalid initial packet");
         if let Err(e) = writer.shutdown().await {
@@ -95,13 +113,13 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
 
     {
         let mut manager = game_manager.lock().await;
-        if let Some(id) = manager.add_player(spell1, spell2) {
+        if let Some(id) = manager.add_player(username.clone()) {
             player_id = id;
             manager.client_channel.insert(id, tx);
-            info!(component = "game", player_id = id, address = %addr, spell1 = spell1, spell2 = spell2, "player joined");
+            info!(component = "game", player_id = id, address = %addr, username = %username, "player joined");
         } else {
-            warn!(component = "game", address = %addr, "connection rejected - server full");
-            let rejection_msg = "Server is full. Try again later.\n";
+            warn!(component = "game", address = %addr, "connection rejected - invalid username or server full");
+            let rejection_msg = "Invalid username or server full. Try again later.\n";
             if let Err(e) = writer.write_all(rejection_msg.as_bytes()).await {
                 error!(component = "game", address = %addr, error = %e, "failed to send rejection message");
             }
@@ -250,13 +268,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let args = CliArgs::parse();
+    if args.usernames.len() != args.teams.len() || args.usernames.len() != args.spell1s.len() || args.usernames.len() != args.spell2s.len() {
+        eprintln!("Error: usernames, teams, spell1s, spell2s must have the same length");
+        std::process::exit(1);
+    }
     let address = format!("0.0.0:{}", args.port);
     let listener = TcpListener::bind(&address).await?;
     info!(component = "game", address = %address, "game server listening");
 
     let config = config::GameConfig::load("services/game/stats.toml", "services/game/spells.toml", "services/game/items.toml")
         .expect("Failed to load game configuration");
-    let game_manager = GameManager::new(config, args.max_players);
+    let game_manager = GameManager::new(config, args.max_players, args.usernames, args.teams, args.spell1s, args.spell2s);
     let arc_gm = Arc::new(Mutex::new(game_manager));
     info!(component = "game", "game manager initialized");
 
