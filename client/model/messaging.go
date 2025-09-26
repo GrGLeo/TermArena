@@ -222,7 +222,7 @@ func (m *MessagingModel) updateViewport() {
 					style = m.styles.AllMessage
 				} else if strings.Contains(msg.Content, "(whisper)") {
 					style = m.styles.WhisperMessage
-				} else if strings.Contains(msg.Content, "(room)") {
+				} else if strings.Contains(msg.Content, "(room)") || strings.Contains(msg.Content, "(team)") {
 					style = m.styles.RoomMessage
 				} else {
 					style = m.styles.OtherMessage
