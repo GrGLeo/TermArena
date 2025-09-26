@@ -9,8 +9,9 @@ import (
 
 type MessageManager struct {
 	userToRoom     map[string]uint32
+	userToTeam     map[string]int
 	userLock       sync.RWMutex
-	roomToClient   map[uint32]map[string]struct{}
+	roomToClient   map[uint32]map[int]map[string]struct{}
 	roomLock       sync.RWMutex
 	logger         *slog.Logger
 	maxMessageSize int
@@ -18,10 +19,12 @@ type MessageManager struct {
 
 func NewMessageManager(maxMessageSize int, logger *slog.Logger) *MessageManager {
 	userToRoom := make(map[string]uint32)
-	roomToClient := make(map[uint32]map[string]struct{})
+	userToTeam := make(map[string]int)
+	roomToClient := make(map[uint32]map[int]map[string]struct{})
 
 	return &MessageManager{
 		userToRoom:     userToRoom,
+		userToTeam:     userToTeam,
 		userLock:       sync.RWMutex{},
 		roomToClient:   roomToClient,
 		roomLock:       sync.RWMutex{},
@@ -30,7 +33,7 @@ func NewMessageManager(maxMessageSize int, logger *slog.Logger) *MessageManager 
 	}
 }
 
-func (mm *MessageManager) RegisterClient(client string, roomID uint32) error {
+func (mm *MessageManager) RegisterClient(client string, roomID uint32, teamID int) error {
 	// Input validation
 	client = strings.TrimSpace(client)
 	if client == "" {
@@ -39,6 +42,7 @@ func (mm *MessageManager) RegisterClient(client string, roomID uint32) error {
 
 	mm.userLock.RLock()
 	oldRoomID, exist := mm.userToRoom[client]
+	oldTeamID := mm.userToTeam[client]
 	mm.userLock.RUnlock()
 
 	// In this case we do not need to modify the client room
@@ -58,19 +62,25 @@ func (mm *MessageManager) RegisterClient(client string, roomID uint32) error {
 
 		// past room is updated
 		mm.userToRoom[client] = roomID
-		delete(mm.roomToClient[oldRoomID], client)
+		mm.userToTeam[client] = teamID
+		delete(mm.roomToClient[oldRoomID][oldTeamID], client)
 
-		// create the room if it doesnt exist
+		// create the room/team if it doesnt exist
 		if mm.roomToClient[roomID] == nil {
-			mm.roomToClient[roomID] = make(map[string]struct{})
+			mm.logger.Info("info", "roomID", roomID)
+			mm.roomToClient[roomID] = make(map[int]map[string]struct{})
 		}
-		mm.roomToClient[roomID][client] = struct{}{}
+		if mm.roomToClient[roomID][teamID] == nil {
+			mm.logger.Info("info", "roomID", roomID, "teamID", teamID)
+			mm.roomToClient[roomID][teamID] = make(map[string]struct{})
+		}
+		mm.roomToClient[roomID][teamID][client] = struct{}{}
 
-		mm.logger.Debug("Client switched room", "client", client, "old_roomID", oldRoomID, "roomID", roomID)
+		mm.logger.Debug("Client switched room", "client", client, "old_roomID", oldRoomID, "roomID", roomID, "old_TeamID", oldTeamID, "teamID", teamID)
 		return nil
 	}
 
-	// If the user doesnt exist with adapt both map
+	// If the user doesnt exist we adapt both map
 	mm.userLock.Lock()
 	defer mm.userLock.Unlock()
 
@@ -78,14 +88,19 @@ func (mm *MessageManager) RegisterClient(client string, roomID uint32) error {
 	defer mm.roomLock.Unlock()
 
 	mm.userToRoom[client] = roomID
+	mm.userToTeam[client] = teamID
 
 	// create the room if it doesnt exist
-	if mm.roomToClient[roomID] == nil {
-		mm.roomToClient[roomID] = make(map[string]struct{})
+	// when a user doesnt exist he should have team 0 by default
+	// no need to check teamID map
+	if mm.roomToClient[roomID][teamID] == nil {
+		mm.roomToClient[roomID] = make(map[int]map[string]struct{})
+		mm.roomToClient[roomID][teamID] = make(map[string]struct{})
 	}
-	mm.roomToClient[roomID][client] = struct{}{}
+	mm.logger.Warn("info", "roomID", roomID, "teamID", teamID, "client", client)
+	mm.roomToClient[roomID][teamID][client] = struct{}{}
 
-	mm.logger.Debug("Client registered", "client", client, "roomID", roomID)
+	mm.logger.Debug("Client registered", "client", client, "roomID", roomID, "teamID", teamID)
 	return nil
 
 }
@@ -98,15 +113,18 @@ func (mm *MessageManager) UnregisterClient(client string) error {
 	defer mm.roomLock.Unlock()
 
 	if roomID, exist := mm.userToRoom[client]; exist {
-		delete(mm.userToRoom, client)
-		delete(mm.roomToClient[roomID], client)
+		if teamID, exist := mm.userToTeam[client]; exist {
+			delete(mm.userToRoom, client)
+			delete(mm.userToTeam, client)
+			delete(mm.roomToClient[roomID][teamID], client)
 
-		if len(mm.roomToClient[roomID]) == 0 {
-			delete(mm.roomToClient, roomID)
+			if len(mm.roomToClient[roomID]) == 0 {
+				delete(mm.roomToClient, roomID)
+			}
+		} else {
+			mm.logger.Warn("Client to unregister not found", "client", client)
+			return fmt.Errorf("Failed to find client %s to unregister", client)
 		}
-	} else {
-		mm.logger.Warn("Client to unregister not found", "client", client)
-		return fmt.Errorf("Failed to find client %s to unregister", client)
 	}
 	mm.logger.Debug("Client unregister", "client", client)
 
@@ -114,7 +132,7 @@ func (mm *MessageManager) UnregisterClient(client string) error {
 }
 
 func (mm *MessageManager) RouteMessage(sender string, content string) ([]string, string, error) {
-	mm.logger.Debug("[MESSAGE MANAGER] RouteMessage called", "sender", sender, "content", content)
+	mm.logger.Debug(" RouteMessage called", "sender", sender, "content", content)
 
 	// Validation step
 	sender = strings.TrimSpace(sender)
@@ -133,62 +151,82 @@ func (mm *MessageManager) RouteMessage(sender string, content string) ([]string,
 
 	mm.userLock.RLock()
 	roomID, exists := mm.userToRoom[sender]
+	teamID := mm.userToTeam[sender] // when roomID is set teamID should be set
 	mm.userLock.RUnlock()
 
 	if !exists {
-		mm.logger.Error("[MESSAGE MANAGER] Sender not registered", "sender", sender)
+		mm.logger.Error("Sender not registered", "sender", sender)
 		return nil, "", fmt.Errorf("sender %s not registered", sender)
 	}
 
-	mm.logger.Debug("[MESSAGE MANAGER] Sender validated", "sender", sender, "room_id", roomID)
+	mm.logger.Debug("Sender validated", "sender", sender, "room_id", roomID)
 
-	target, processedMessage := parseMessage(content, sender)
-	mm.logger.Debug("[MESSAGE MANAGER] Message parsed", "original_content", content, "target", target, "processed_message", processedMessage)
+	var target string
+	var processedMessage string
+	if roomID == 0 {
+		target, processedMessage = parseMessage(content, sender, true)
+		mm.logger.Debug("Message parsed", "original_content", content, "target", target, "processed_message", processedMessage)
+	} else {
+		target, processedMessage = parseMessage(content, sender, false)
+	}
 
 	mm.roomLock.RLock()
 	roomClients := mm.roomToClient[roomID]
 	mm.roomLock.RUnlock()
 
 	if roomClients == nil {
-		mm.logger.Error("[MESSAGE MANAGER] Room not found", "room_id", roomID)
+		mm.logger.Error("Room not found", "room_id", roomID)
 		return nil, "", fmt.Errorf("room %d not found", roomID)
 	}
 
-	mm.logger.Debug("[MESSAGE MANAGER] Room found", "room_id", roomID, "clients_in_room", len(roomClients))
+	mm.logger.Debug("Room found", "room_id", roomID, "clients_in_room", len(roomClients))
 
 	var receivers []string
 
 	switch target {
 	case "all":
-		// Include all clients in room except sender
+		// Include all clients in room
 		receivers = make([]string, 0, len(roomClients)-1)
-		for client := range roomClients {
-			receivers = append(receivers, client)
+		for _, team := range roomClients {
+			for client := range team {
+				receivers = append(receivers, client)
+			}
 		}
-		mm.logger.Debug("[MESSAGE MANAGER] Broadcasting to all in room", "sender", sender, "receivers", receivers)
+		mm.logger.Debug("Broadcasting to all in room", "sender", sender, "receivers", receivers)
 	case "":
-		// Regular room message - exclude sender
-		receivers = make([]string, 0, len(roomClients)-1)
-		for client := range roomClients {
-			receivers = append(receivers, client)
+		if roomID == 0 {
+			// Room message, for the general lobby
+			receivers = make([]string, 0, len(roomClients)-1)
+			for _, team := range roomClients {
+				for client := range team {
+					receivers = append(receivers, client)
+				}
+			}
+		} else {
+			// Team message outside of general lobby
+			team := roomClients[teamID]
+			for client := range team {
+				receivers = append(receivers, client)
+			}
 		}
-		mm.logger.Debug("[MESSAGE MANAGER] Room message", "sender", sender, "receivers", receivers)
+
+		mm.logger.Debug("Room message", "sender", sender, "receivers", receivers)
 	default:
 		// Whisper to specific user
-		if _, exists := roomClients[target]; exists {
+		if _, exists := mm.userToRoom[target]; exists {
 			receivers = []string{target}
-			mm.logger.Debug("[MESSAGE MANAGER] Whisper message", "sender", sender, "target", target)
+			mm.logger.Debug("Whisper message", "sender", sender, "target", target)
 		} else {
-			mm.logger.Error("[MESSAGE MANAGER] Target user not in room", "target", target, "room_id", roomID)
+			mm.logger.Error("Target user not online", "target", target)
 			return nil, "", fmt.Errorf("target user %s not in room", target)
 		}
 	}
 
-	mm.logger.Debug("[MESSAGE MANAGER] RouteMessage completed", "sender", sender, "receivers_count", len(receivers), "final_message", processedMessage)
+	mm.logger.Debug("RouteMessage completed", "sender", sender, "receivers_count", len(receivers), "final_message", processedMessage)
 	return receivers, processedMessage, nil
 }
 
-func parseMessage(content, sender string) (string, string) {
+func parseMessage(content, sender string, isLooby bool) (string, string) {
 	// First we extract the target of the message
 	parts := strings.Fields(content)
 
@@ -209,5 +247,9 @@ func parseMessage(content, sender string) (string, string) {
 			return target, fmt.Sprintf("(whisper) %s: %s", sender, messageContent)
 		}
 	}
-	return "", fmt.Sprintf("(room) %s: %s", sender, content)
+	if isLooby {
+		return "", fmt.Sprintf("(room) %s: %s", sender, content)
+	} else {
+		return "", fmt.Sprintf("(team) %s: %s", sender, content)
+	}
 }

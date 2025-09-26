@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 	"time"
 
 	pb "github.com/GrGLeo/TermArena/pkg/shared/proto/message"
@@ -48,7 +47,8 @@ func (ms *MessagesServiceClient) HandleClientRegistration(msg event.Message) eve
 
 	_, err := ms.Client.RegisterClient(ctx, &pb.RegisterClientRequest{
 		Client: req.ClientID,
-		RoomId: strconv.Itoa(int(req.RoomID)),
+		RoomId: req.RoomID,
+    TeamId: req.TeamID,
 	})
 
 	if err != nil {

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log/slog"
-	"strconv"
 	"strings"
 
 	pb "github.com/GrGLeo/TermArena/pkg/shared/proto/message"
@@ -13,7 +12,7 @@ import (
 
 // ManagerInterface defines the contract for message management
 type ManagerInterface interface {
-	RegisterClient(client string, roomID uint32) error
+	RegisterClient(client string, roomID uint32, teamID int) error
 	UnregisterClient(client string) error
 	RouteMessage(sender string, content string) ([]string, string, error)
 }
@@ -32,15 +31,15 @@ func NewMessageHandler(manager ManagerInterface, logger *slog.Logger) *MessageHa
 }
 
 func (mh *MessageHandler) RouteMessage(ctx context.Context, req *pb.RouteMessageRequest) (*pb.RouteMessageResponse, error) {
-	mh.logger.Debug("[MESSAGE SERVICE] RouteMessage called", "sender", req.Sender, "content", req.Content)
+	mh.logger.Debug("RouteMessage called", "sender", req.Sender, "content", req.Content)
 
 	receivers, message, err := mh.manager.RouteMessage(req.Sender, req.Content)
 	if err != nil {
-		mh.logger.Error("[MESSAGE SERVICE] Failed to route message", "sender", req.Sender, "error", err)
+		mh.logger.Error("Failed to route message", "sender", req.Sender, "error", err)
 		return nil, MapToGRPCError(err)
 	}
 
-	mh.logger.Debug("[MESSAGE SERVICE] RouteMessage completed", "sender", req.Sender, "receivers", receivers, "processed_message", message)
+	mh.logger.Debug("RouteMessage completed", "sender", req.Sender, "receivers", receivers, "processed_message", message)
 	return &pb.RouteMessageResponse{
 		Receivers: receivers,
 		Content:   message,
@@ -51,12 +50,9 @@ func (mh *MessageHandler) RegisterClient(ctx context.Context, req *pb.RegisterCl
 	if req.Client == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "client ID cannot be empty")
 	}
-	roomID, err := strconv.Atoi(req.RoomId)
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to parse room ID")
-	}
+	roomID := req.RoomId
 
-	err = mh.manager.RegisterClient(req.Client, uint32(roomID))
+  err := mh.manager.RegisterClient(req.Client, roomID, int(req.TeamId))
 	if err != nil {
 		mh.logger.Error("Failed to register client", "client", req.Client, "error", err)
 		return nil, MapToGRPCError(err)

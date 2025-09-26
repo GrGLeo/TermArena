@@ -66,14 +66,14 @@ func CreateMessage(packet shared.Packet, conn *net.TCPConn, connManager *conm.Co
 		if !exist {
 			return nil, fmt.Errorf("failed to find associated user")
 		}
-    return UpdateSpellReqMessage{
-      RoomType: pkt.RoomType,
-      RoomID: pkt.RoomID,
-      Username: pkt.Username,
-      SpellOne: pkt.SpellOne,
-      SpellTwo: pkt.SpellTwo,
-      ResponseCh: responseChan,
-    }, nil
+		return UpdateSpellReqMessage{
+			RoomType:   pkt.RoomType,
+			RoomID:     pkt.RoomID,
+			Username:   pkt.Username,
+			SpellOne:   pkt.SpellOne,
+			SpellTwo:   pkt.SpellTwo,
+			ResponseCh: responseChan,
+		}, nil
 
 	case *shared.MessagePacket:
 		user, exist := connManager.GetUser(conn)
@@ -106,9 +106,9 @@ func CreatePacketFromMessage(msg Message) ([]byte, error) {
 	case LookRoomResponseMessage:
 		packet := shared.NewLookRoomPacket(m.Success, m.RoomID)
 		return packet.Serialize(), nil
-  case UpdateSpellResMessage:
-    packet := shared.NewUpdateSpellResPacket(m.Username, m.SpellOne, m.SpellTwo)
-    return packet.Serialize(), nil
+	case UpdateSpellResMessage:
+		packet := shared.NewUpdateSpellResPacket(m.Username, m.SpellOne, m.SpellTwo)
+		return packet.Serialize(), nil
 	case MessageResponseMessage:
 		packet := shared.NewMessageResponsePacket(m.Message)
 		return packet.Serialize(), nil
@@ -199,6 +199,7 @@ func (m AuthResponseMessage) ResponseChan() chan Message { return nil }
 type ClientRegistrationMessage struct {
 	ClientID   string
 	RoomID     uint32
+	TeamID     uint32
 	Conn       *net.TCPConn
 	ResponseCh chan Message
 }
@@ -350,12 +351,12 @@ func (ml MoveToLobbyMessage) Validate() error {
 func (ml MoveToLobbyMessage) ResponseChan() chan Message { return nil }
 
 type UpdateSpellReqMessage struct {
-	RoomType int
-	RoomID   int
-	Username string
-	SpellOne int
-	SpellTwo int
-  ResponseCh chan Message
+	RoomType   int
+	RoomID     int
+	Username   string
+	SpellOne   int
+	SpellTwo   int
+	ResponseCh chan Message
 }
 
 func (usm UpdateSpellReqMessage) Type() string { return "update-spell-request" }
@@ -374,15 +375,16 @@ func (usm UpdateSpellReqMessage) Validate() error {
 func (usm UpdateSpellReqMessage) ResponseChan() chan Message { return usm.ResponseCh }
 
 type UpdateSpellResMessage struct {
-  Usernames []string
-  Username string
-  SpellOne int
-  SpellTwo int
-  ResponseCh chan Message
+	Usernames  []string
+	Username   string
+	SpellOne   int
+	SpellTwo   int
+	ResponseCh chan Message
 }
+
 func (usm UpdateSpellResMessage) Type() string { return "update-spell-response" }
 func (usm UpdateSpellResMessage) Validate() error {
-  return nil
+	return nil
 }
 func (usm UpdateSpellResMessage) ResponseChan() chan Message { return usm.ResponseCh }
 

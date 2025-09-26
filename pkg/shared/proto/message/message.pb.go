@@ -129,8 +129,9 @@ func (x *RouteMessageResponse) GetContent() string {
 // === REGISTER MESSAGE ===
 type RegisterClientRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Client        string                 `protobuf:"bytes,1,opt,name=client,proto3" json:"client,omitempty"`               // Unique client identifier (e.g., user ID or session token)
-	RoomId        string                 `protobuf:"bytes,2,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"` // The room ID where the client wants to receive messages
+	Client        string                 `protobuf:"bytes,1,opt,name=client,proto3" json:"client,omitempty"`                // Unique client identifier (e.g., user ID or session token)
+	RoomId        uint32                 `protobuf:"varint,2,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"` // The room ID where the client wants to receive messages
+	TeamId        uint32                 `protobuf:"varint,3,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -172,11 +173,18 @@ func (x *RegisterClientRequest) GetClient() string {
 	return ""
 }
 
-func (x *RegisterClientRequest) GetRoomId() string {
+func (x *RegisterClientRequest) GetRoomId() uint32 {
 	if x != nil {
 		return x.RoomId
 	}
-	return ""
+	return 0
+}
+
+func (x *RegisterClientRequest) GetTeamId() uint32 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
 }
 
 type RegisterClientResponse struct {
@@ -306,10 +314,11 @@ const file_pkg_proto_message_message_proto_rawDesc = "" +
 	"\acontent\x18\x02 \x01(\tR\acontent\"N\n" +
 	"\x14RouteMessageResponse\x12\x1c\n" +
 	"\treceivers\x18\x01 \x03(\tR\treceivers\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\tR\acontent\"H\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\"a\n" +
 	"\x15RegisterClientRequest\x12\x16\n" +
 	"\x06client\x18\x01 \x01(\tR\x06client\x12\x17\n" +
-	"\aroom_id\x18\x02 \x01(\tR\x06roomId\"\x18\n" +
+	"\aroom_id\x18\x02 \x01(\rR\x06roomId\x12\x17\n" +
+	"\ateam_id\x18\x03 \x01(\rR\x06teamId\"\x18\n" +
 	"\x16RegisterClientResponse\"1\n" +
 	"\x17UnregisterClientRequest\x12\x16\n" +
 	"\x06client\x18\x01 \x01(\tR\x06client\"\x1a\n" +

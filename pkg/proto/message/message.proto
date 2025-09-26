@@ -36,7 +36,8 @@ message RouteMessageResponse {
 // === REGISTER MESSAGE ===
 message RegisterClientRequest {
   string client = 1;   // Unique client identifier (e.g., user ID or session token)
-  string room_id = 2;  // The room ID where the client wants to receive messages
+  uint32 room_id = 2;  // The room ID where the client wants to receive messages
+  uint32 team_id = 3;
 }
 
 message RegisterClientResponse {

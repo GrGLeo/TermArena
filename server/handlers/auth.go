@@ -179,6 +179,7 @@ func (ac *AuthClient) HandleAuth(msg event.Message) event.Message {
 	clientRegistration := event.ClientRegistrationMessage{
 		ClientID:   req.Username,
 		RoomID:     0,
+		TeamID:     0,
 		Conn:       req.Conn,
 		ResponseCh: regResponseCh,
 	}

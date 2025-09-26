@@ -106,6 +106,7 @@ func (rs *RoomServiceClient) HandleLookRoom(msg event.Message) event.Message {
 	clientRegistration := event.ClientRegistrationMessage{
 		ClientID:   req.Username,
 		RoomID:     res.RoomID,
+		TeamID:     res.Team,
 		Conn:       req.Conn,
 		ResponseCh: regResponseCh,
 	}
@@ -212,9 +213,9 @@ func (rs *RoomServiceClient) handleNotifications() {
 					newPort = 50053
 				}
 				atomic.StoreUint32(&rs.portCounter, newPort)
-        // Create a new packet to notify each client the port to connect
-        packet := shared.NewGameServerReadyPacket(uint16(port))
-        data = packet.Serialize()
+				// Create a new packet to notify each client the port to connect
+				packet := shared.NewGameServerReadyPacket(uint16(port))
+				data = packet.Serialize()
 			}
 
 			for _, userInfo := range notification.UserInfos {
