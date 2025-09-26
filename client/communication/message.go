@@ -12,21 +12,21 @@ type TickMsg struct {
 
 // RegistrationResultMsg is sent by the server as a response to the registration req
 type RegistrationResultMsg struct {
-  Success bool
-  Message string
-  Challenge []byte
+	Success   bool
+	Message   string
+	Challenge []byte
 }
 
 // ChallengeReceivedMsg is sent by the server to pass the challenge
 type ChallengeReceivedMsg struct {
-  Challenge []byte
+	Challenge []byte
 }
 
 // AuthResultMsg is sent by the server to return a sucess based on the signed_challenge
 type AuthResultMsg struct {
-  Success bool
-  Message string
-  SessionToken string
+	Success      bool
+	Message      string
+	SessionToken string
 }
 
 // LoginMsg is used to pass input field to meta model
@@ -50,9 +50,33 @@ code 0: player in queue
 code 1: error putting player in queue
 */
 type LookRoomMsg struct {
-	Code   int
-	RoomID int
+	Code   bool
+	RoomID uint32
 	RoomIP string
+}
+
+// UserInfo represents user information in the room
+type UserInfo struct {
+	Username string
+	Team     int
+	SpellOne int
+	SpellTwo int
+}
+
+// MoveLobbyRoomMsg enable the switch from lobby to lobby room when the room is full
+type MoveLobbyRoomMsg struct {
+	RoomID    int
+	UserInfos []UserInfo
+}
+
+type UpdateSpellMsg struct {
+	Username string
+	SpellOne int
+	SpellTwo int
+}
+
+type GameServerReadyMsg struct {
+  RoomIP string
 }
 
 // GameStart is sent by the server once the number of player are matched
@@ -97,11 +121,11 @@ type EndGameMsg struct {
 // BoardMsg is used to transfer the board to game model
 type BoardMsg struct {
 	Casting [2]int
-	Health [2]int
-	Mana   [2]int
-	Level  int
-	Xp     [2]int
-	Board  [21][51]int
+	Health  [2]int
+	Mana    [2]int
+	Level   int
+	Xp      [2]int
+	Board   [21][51]int
 }
 
 type DeltaMsg struct {
@@ -136,7 +160,7 @@ type CooldownTickMsg struct{}
 
 // Content of a new received message
 type IncomingMessageMsg struct {
-	Content  string
+	Content string
 }
 
 // Error content of a failed message
@@ -145,4 +169,4 @@ type MessageErrorMsg struct {
 }
 
 // Rate Limit exceed message
-type RateLimitMsg struct {}
+type RateLimitMsg struct{}

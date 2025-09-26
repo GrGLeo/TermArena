@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GrGLeo/ctf/client/communication"
+	"github.com/GrGLeo/TermArena/client/communication"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/GrGLeo/ctf/client/communication"
+	"github.com/GrGLeo/TermArena/client/communication"
 )
 
 func TestDecodeRLE(t *testing.T) {

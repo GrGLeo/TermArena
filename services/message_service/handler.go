@@ -6,14 +6,14 @@ import (
 	"strconv"
 	"strings"
 
-	pb "github.com/GrGLeo/ctf_game/pkg/shared/proto/message"
+	pb "github.com/GrGLeo/TermArena/pkg/shared/proto/message"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 // ManagerInterface defines the contract for message management
 type ManagerInterface interface {
-	RegisterClient(client string, roomID int) error
+	RegisterClient(client string, roomID uint32) error
 	UnregisterClient(client string) error
 	RouteMessage(sender string, content string) ([]string, string, error)
 }
@@ -56,7 +56,7 @@ func (mh *MessageHandler) RegisterClient(ctx context.Context, req *pb.RegisterCl
 		return nil, status.Errorf(codes.InvalidArgument, "failed to parse room ID")
 	}
 
-	err = mh.manager.RegisterClient(req.Client, roomID)
+	err = mh.manager.RegisterClient(req.Client, uint32(roomID))
 	if err != nil {
 		mh.logger.Error("Failed to register client", "client", req.Client, "error", err)
 		return nil, MapToGRPCError(err)

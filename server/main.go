@@ -6,13 +6,14 @@ import (
 	"net"
 	"os"
 
-	conm "github.com/GrGLeo/ctf/server/conn_manager"
-	"github.com/GrGLeo/ctf/server/event"
-	handler "github.com/GrGLeo/ctf/server/handlers"
-	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
-	manager "github.com/GrGLeo/ctf/server/room_manager"
+	conm "github.com/GrGLeo/TermArena/server/conn_manager"
+	"github.com/GrGLeo/TermArena/server/event"
+	handler "github.com/GrGLeo/TermArena/server/handlers"
+	ratelimiter "github.com/GrGLeo/TermArena/server/rate_limiter"
 
-	"github.com/GrGLeo/ctf/pkg/shared"
+	//manager "github.com/GrGLeo/TermArena/server/room_manager"
+
+	"github.com/GrGLeo/TermArena/pkg/shared"
 	"github.com/joho/godotenv"
 )
 
@@ -29,7 +30,7 @@ var (
 )
 
 func init() {
-	godotenv.Load()
+	godotenv.Load("server/.env")
 	env = os.Getenv("ENV")
 	port = os.Getenv("SERVER")
 	rateLimiterConfigPath = os.Getenv("RATE_LIMITER_CONFIG_PATH")
@@ -135,6 +136,24 @@ func ProcessClient(conn *net.TCPConn, log *slog.Logger, broker *event.EventBroke
 						}
 					}
 					data = data[bytesConsumed:]
+				case event.UpdateSpellResMessage:
+					responsePacket, err := event.CreatePacketFromMessage(resp)
+					if err != nil {
+						log.Error("Error creating packet from message", "component", "server", "error", err)
+						data = data[bytesConsumed:]
+						continue
+					}
+					for _, receiverID := range resp.Usernames {
+						receiverConn, exist := connManager.GetConn(receiverID)
+						if exist {
+							if _, err := receiverConn.Write(responsePacket); err != nil {
+								log.Error("Error writing response to client", "component", "server", "receiver", receiverID, "error", err)
+							}
+						} else {
+							log.Warn("Could not find connection for receiver", "component", "server", "receiver", receiverID)
+						}
+					}
+					data = data[bytesConsumed:]
 				default:
 					responsePacket, err := event.CreatePacketFromMessage(resp)
 					if err != nil {
@@ -145,6 +164,7 @@ func ProcessClient(conn *net.TCPConn, log *slog.Logger, broker *event.EventBroke
 					if _, err := conn.Write(responsePacket); err != nil {
 						log.Error("Error writing response to client", "component", "server", "ip", conn.RemoteAddr(), "error", err)
 					}
+					log.Info("Packet correctly sent")
 					data = data[bytesConsumed:]
 				}
 			}
@@ -180,7 +200,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	roomManager := manager.NewRoomManager(log, broker, rateLimiter)
+	roomManager, err := handler.NewRoomServiceClient(connectionManager, broker, log, rateLimiter)
+
+	//roomManager := manager.NewRoomManager(log, broker, rateLimiter)
 	log.Info("New room manager initialized", "component", "server")
 
 	authClient, err := handler.NewAuthClient(broker, log, rateLimiter)
@@ -211,9 +233,10 @@ func main() {
 	broker.Subscribe("message_request", messagesClient.HandleRouteMessage)
 
 	// Subscribe existing room handlers
-	broker.Subscribe("find-room", roomManager.FindRoom)
-	broker.Subscribe("create-room", roomManager.CreateRoom)
-	broker.Subscribe("join-room", roomManager.JoinRoom)
+	broker.Subscribe("find-room", roomManager.HandleLookRoom)
+	broker.Subscribe("update-spell-request", roomManager.HandleUpdateSpell)
+	//broker.Subscribe("create-room", roomManager.CreateRoom)
+	//broker.Subscribe("join-room", roomManager.JoinRoom)
 
 	go HandleClient(ctx, server, connChannel)
 	for conn := range connChannel {

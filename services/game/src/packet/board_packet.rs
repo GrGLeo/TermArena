@@ -1,6 +1,8 @@
 use bytes::BufMut;
 use bytes::BytesMut;
 
+use super::CODE_BOARD;
+
 #[derive(Debug)]
 pub struct BoardPacket {
     pub version: u8,
@@ -34,7 +36,7 @@ impl BoardPacket {
         let length = encoded_board.len().try_into().unwrap();
         BoardPacket {
             version: 1,
-            code: 12,
+            code: CODE_BOARD,
             cast_time,
             cast_duration,
             health,
@@ -101,7 +103,7 @@ mod tests {
         );
 
         assert_eq!(packet.version, 1);
-        assert_eq!(packet.code, 12);
+        assert_eq!(packet.code, CODE_BOARD);
         assert_eq!(packet.cast_time, cast_time);
         assert_eq!(packet.cast_duration, cast_duration);
         assert_eq!(packet.health, 400);

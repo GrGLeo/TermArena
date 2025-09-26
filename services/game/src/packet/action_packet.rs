@@ -29,7 +29,7 @@ mod tests {
     #[test]
     fn test_action_packet_deserialize() {
         // Test case with a valid byte slice
-        let valid_bytes: [u8; 3] = [1, 11, 3]; // version=1, code=8, action=3
+        let valid_bytes: [u8; 3] = [1, 101, 3]; // version=1, code=101, action=3
         let packet_result = ActionPacket::deserialize(&valid_bytes);
 
         assert!(
@@ -49,7 +49,7 @@ mod tests {
         );
 
         // Test case with an invalid byte slice length (too short)
-        let invalid_bytes_short: [u8; 2] = [1, 11];
+        let invalid_bytes_short: [u8; 2] = [1, 101];
         let packet_result_short = ActionPacket::deserialize(&invalid_bytes_short);
 
         assert!(
@@ -63,7 +63,7 @@ mod tests {
         );
 
         // Test case with an invalid byte slice length (too long)
-        let invalid_bytes_long: [u8; 4] = [1, 11, 3, 99];
+        let invalid_bytes_long: [u8; 4] = [1, 101, 3, 99];
         let packet_result_long = ActionPacket::deserialize(&invalid_bytes_long);
 
         assert!(

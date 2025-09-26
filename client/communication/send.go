@@ -6,9 +6,10 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"time"
 
-	"github.com/GrGLeo/ctf/pkg/shared"
+	"github.com/GrGLeo/TermArena/pkg/shared"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -113,9 +114,9 @@ func SendPurchaseItemPacket(conn *net.TCPConn, itemID int) error {
 	return err
 }
 
-func SendSpellSelectionPacket(conn *net.TCPConn, spell1, spell2 int) error {
-	log.Printf("Sending spell selection: %d, %d", spell1, spell2)
-	spellPacket := shared.NewSpellSelectionPacket(spell1, spell2)
+func SendUsernamePacket(conn *net.TCPConn, username string) error {
+	log.Printf("Sending username: %s", username)
+	spellPacket := shared.NewUsernamePacket(username)
 	data := spellPacket.Serialize()
 	_, err := conn.Write(data)
 	return err
@@ -137,6 +138,19 @@ func SendMessage(conn *net.TCPConn, sender, message string) error {
 		log.Printf("[CLIENT] SendMessage: ERROR writing to connection: %v", err)
 	} else {
 		log.Printf("[CLIENT] SendMessage: SUCCESS - message sent to server")
+	}
+	return err
+}
+
+func SendUpdateSpell(conn *net.TCPConn, roomType, roomID int, username string, spells []int) error {
+	log.Printf("[CLIENT] SendUpateSpell: sender=%s, spells='%d|%d'", username, spells[0], spells[1])
+	spellPacket := shared.NewUpdateSpellReqPacket(roomType, roomID, username, spells[0], spells[1])
+	data := spellPacket.Serialize()
+	_, err := conn.Write(data)
+	if err != nil {
+		log.Printf("[CLIENT] UpdateSpell: ERROR writing to connection: %v", err)
+	} else {
+		log.Printf("[CLIENT] UpdateSpell: SUCCESS - spells sent to server")
 	}
 	return err
 }
@@ -181,7 +195,24 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 				msgs <- AuthResultMsg{Success: msg.Success, Message: msg.Message, SessionToken: msg.SessionToken}
 			case *shared.LookRoomPacket:
 				log.Printf("Sending LookRoomMsg: %+v", msg)
-				msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID, RoomIP: msg.RoomIP}
+				msgs <- LookRoomMsg{Code: msg.Success, RoomID: msg.RoomID}
+			case *shared.MoveToLobbyPacket:
+				var userInfos []UserInfo
+				for _, ui := range msg.UserInfos {
+					userInfos = append(userInfos, UserInfo{
+						Username: ui.Username,
+						Team:     int(ui.Team),
+						SpellOne: int(ui.Spell1),
+						SpellTwo: int(ui.Spell2),
+					})
+				}
+				log.Printf("Sending MoveLobbyRoomMsg: %+v", msg)
+				msgs <- MoveLobbyRoomMsg{RoomID: int(msg.RoomID), UserInfos: userInfos}
+			case *shared.UpdateSpellResPacket:
+				msgs <- UpdateSpellMsg{Username: msg.Username, SpellOne: msg.SpellOne, SpellTwo: msg.SpellTwo}
+			case *shared.GameServerReadyPacket:
+				strRoomIP := strconv.Itoa(int(msg.RoomIP))
+				msgs <- GameServerReadyMsg{strRoomIP}
 			case *shared.GameStartPacket:
 				log.Println("Game started packet found")
 				log.Printf("Sending GameStartMsg: %+v", msg)
@@ -218,8 +249,8 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 			case *shared.MessageErrorPacket:
 				log.Printf("[CLIENT] Received message error: %s", msg.Error)
 				msgs <- MessageErrorMsg{Error: msg.Error}
-      case *shared.RateLimitPacket:
-        msgs <- RateLimitMsg{}
+			case *shared.RateLimitPacket:
+				msgs <- RateLimitMsg{}
 			default:
 				log.Printf("Unknown type: %T, raw: %x", packet, data)
 				msgs <- GamePacketMsg{Packet: data}

@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GrGLeo/ctf/pkg/shared"
+	"github.com/GrGLeo/TermArena/pkg/shared"
 )
 
 type TestClient struct {

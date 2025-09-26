@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/GrGLeo/ctf/pkg/shared"
-	conm "github.com/GrGLeo/ctf/server/conn_manager"
+	"github.com/GrGLeo/TermArena/pkg/shared"
+	conm "github.com/GrGLeo/TermArena/server/conn_manager"
 )
 
 type Message interface {
@@ -61,6 +61,20 @@ func CreateMessage(packet shared.Packet, conn *net.TCPConn, connManager *conm.Co
 			Conn:       conn,
 			ResponseCh: responseChan,
 		}, nil
+	case *shared.UpdateSpellReqPacket:
+		_, exist := connManager.GetUser(conn)
+		if !exist {
+			return nil, fmt.Errorf("failed to find associated user")
+		}
+    return UpdateSpellReqMessage{
+      RoomType: pkt.RoomType,
+      RoomID: pkt.RoomID,
+      Username: pkt.Username,
+      SpellOne: pkt.SpellOne,
+      SpellTwo: pkt.SpellTwo,
+      ResponseCh: responseChan,
+    }, nil
+
 	case *shared.MessagePacket:
 		user, exist := connManager.GetUser(conn)
 		if !exist {
@@ -89,9 +103,12 @@ func CreatePacketFromMessage(msg Message) ([]byte, error) {
 	case AuthResponseMessage:
 		packet := shared.NewAuthResponsePacket(m.Success, m.Message, m.SessionToken)
 		return packet.Serialize(), nil
-	case RoomSearchMessage:
-		packet := shared.NewLookRoomPacket(m.Success, m.RoomID, m.RoomIP)
+	case LookRoomResponseMessage:
+		packet := shared.NewLookRoomPacket(m.Success, m.RoomID)
 		return packet.Serialize(), nil
+  case UpdateSpellResMessage:
+    packet := shared.NewUpdateSpellResPacket(m.Username, m.SpellOne, m.SpellTwo)
+    return packet.Serialize(), nil
 	case MessageResponseMessage:
 		packet := shared.NewMessageResponsePacket(m.Message)
 		return packet.Serialize(), nil
@@ -181,7 +198,7 @@ func (m AuthResponseMessage) ResponseChan() chan Message { return nil }
 // --- CLIENT REGISTRATION ---
 type ClientRegistrationMessage struct {
 	ClientID   string
-	RoomID     int
+	RoomID     uint32
 	Conn       *net.TCPConn
 	ResponseCh chan Message
 }
@@ -252,7 +269,7 @@ type RoomRequestMessage struct {
 func (fm RoomRequestMessage) Type() string { return "find-room" }
 func (fm RoomRequestMessage) Validate() error {
 	if fm.RoomType < 0 || fm.RoomType >= 4 {
-    return errors.New(fmt.Sprintf("Invalid room type: %d", fm.RoomType))
+		return errors.New(fmt.Sprintf("Invalid room type: %d", fm.RoomType))
 	}
 
 	if fm.Conn == nil {
@@ -302,20 +319,72 @@ func (rc RoomCreateMessage) Validate() error {
 }
 func (rc RoomCreateMessage) ResponseChan() chan Message { return rc.ResponseCh }
 
-type RoomSearchMessage struct {
-	Success int
-	RoomID  int
-	RoomIP  string
+type LookRoomResponseMessage struct {
+	Success    bool
+	RoomID     uint32
+	RoomIP     string
+	ResponseCh chan Message
 }
 
-func (rs RoomSearchMessage) Type() string { return "search-room" }
-func (rs RoomSearchMessage) Validate() error {
-	if rs.Success == 1 {
+func (rs LookRoomResponseMessage) Type() string { return "search-room" }
+func (rs LookRoomResponseMessage) Validate() error {
+	if rs.Success == false {
 		return errors.New("Failed to search for a room")
 	}
 	return nil
 }
-func (rs RoomSearchMessage) ResponseChan() chan Message { return nil }
+func (rs LookRoomResponseMessage) ResponseChan() chan Message { return rs.ResponseCh }
+
+type MoveToLobbyMessage struct {
+	Usernames []string
+	RoomID    uint32
+}
+
+func (ml MoveToLobbyMessage) Type() string { return "move-lobby" }
+func (ml MoveToLobbyMessage) Validate() error {
+	if len(ml.Usernames) == 0 {
+		return errors.New("Room cannot be empty when ready")
+	}
+	return nil
+}
+func (ml MoveToLobbyMessage) ResponseChan() chan Message { return nil }
+
+type UpdateSpellReqMessage struct {
+	RoomType int
+	RoomID   int
+	Username string
+	SpellOne int
+	SpellTwo int
+  ResponseCh chan Message
+}
+
+func (usm UpdateSpellReqMessage) Type() string { return "update-spell-request" }
+func (usm UpdateSpellReqMessage) Validate() error {
+	if usm.RoomType == 0 || usm.RoomID == 0 {
+		return errors.New("Room information missing to perform spell update")
+	}
+	if usm.Username == "" {
+		return errors.New("Username missing to perform spell update")
+	}
+	if usm.SpellOne == usm.SpellTwo {
+		return errors.New("Spells cannot be identical")
+	}
+	return nil
+}
+func (usm UpdateSpellReqMessage) ResponseChan() chan Message { return usm.ResponseCh }
+
+type UpdateSpellResMessage struct {
+  Usernames []string
+  Username string
+  SpellOne int
+  SpellTwo int
+  ResponseCh chan Message
+}
+func (usm UpdateSpellResMessage) Type() string { return "update-spell-response" }
+func (usm UpdateSpellResMessage) Validate() error {
+  return nil
+}
+func (usm UpdateSpellResMessage) ResponseChan() chan Message { return usm.ResponseCh }
 
 type MessageRequestMessage struct {
 	Sender     string // TODO: to be removed in issue #159

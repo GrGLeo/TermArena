@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/GrGLeo/ctf/pkg/shared/proto/message"
-	connmanager "github.com/GrGLeo/ctf/server/conn_manager"
-	"github.com/GrGLeo/ctf/server/event"
-	ratelimiter "github.com/GrGLeo/ctf/server/rate_limiter"
+	pb "github.com/GrGLeo/TermArena/pkg/shared/proto/message"
+	connmanager "github.com/GrGLeo/TermArena/server/conn_manager"
+	"github.com/GrGLeo/TermArena/server/event"
+	ratelimiter "github.com/GrGLeo/TermArena/server/rate_limiter"
 	"google.golang.org/grpc"
 )
 

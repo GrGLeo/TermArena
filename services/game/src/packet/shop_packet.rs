@@ -3,6 +3,8 @@ use bytes::BufMut;
 use bytes::BytesMut;
 use std::io::Cursor;
 
+use super::{CODE_SHOP_RESPONSE, CODE_PURCHASE_ITEM};
+
 pub struct ShopRequestPacket {
     pub version: u8,
     pub code: u8,
@@ -35,7 +37,7 @@ impl ShopResponsePacket {
     pub fn new(stats: (u16, u16, u16, u16, u16), inventory: Vec<u16>) -> Self {
         ShopResponsePacket {
             version: 1,
-            code: 18,
+            code: CODE_SHOP_RESPONSE,
             health: stats.0,
             mana: stats.1,
             damage: stats.2,
@@ -83,7 +85,7 @@ impl PurchaseItemPacket {
 
         Ok(PurchaseItemPacket {
             version: 1, // Version and code are handled in the main loop
-            code: 18,
+            code: CODE_PURCHASE_ITEM,
             item_id,
         })
     }

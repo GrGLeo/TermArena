@@ -1,9 +1,9 @@
-module github.com/GrGLeo/ctf/server
+module github.com/GrGLeo/TermArena/server
 
 go 1.23.2
 
 require (
-	github.com/GrGLeo/ctf/pkg/shared v0.0.0
+	github.com/GrGLeo/TermArena/pkg/shared v0.0.0
 	github.com/joho/godotenv v1.5.1
 	google.golang.org/grpc v1.71.1
 	google.golang.org/protobuf v1.36.4
@@ -17,6 +17,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
 )
 
-replace github.com/GrGLeo/ctf/pkg/shared => ../pkg/shared
+replace github.com/GrGLeo/TermArena/pkg/shared => ../pkg/shared
 
-exclude github.com/GrGLeo/ctf v0.0.0-20250825162123-973788692dfd
+exclude github.com/GrGLeo/TermArena v0.0.0-20250825162123-973788692dfd

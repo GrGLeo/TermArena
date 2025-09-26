@@ -8,17 +8,17 @@ import (
 )
 
 type MessageManager struct {
-	userToRoom     map[string]int
+	userToRoom     map[string]uint32
 	userLock       sync.RWMutex
-	roomToClient   map[int]map[string]struct{}
+	roomToClient   map[uint32]map[string]struct{}
 	roomLock       sync.RWMutex
 	logger         *slog.Logger
 	maxMessageSize int
 }
 
 func NewMessageManager(maxMessageSize int, logger *slog.Logger) *MessageManager {
-	userToRoom := make(map[string]int)
-	roomToClient := make(map[int]map[string]struct{})
+	userToRoom := make(map[string]uint32)
+	roomToClient := make(map[uint32]map[string]struct{})
 
 	return &MessageManager{
 		userToRoom:     userToRoom,
@@ -30,7 +30,7 @@ func NewMessageManager(maxMessageSize int, logger *slog.Logger) *MessageManager 
 	}
 }
 
-func (mm *MessageManager) RegisterClient(client string, roomID int) error {
+func (mm *MessageManager) RegisterClient(client string, roomID uint32) error {
 	// Input validation
 	client = strings.TrimSpace(client)
 	if client == "" {

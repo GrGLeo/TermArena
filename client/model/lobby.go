@@ -5,7 +5,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/GrGLeo/ctf/client/communication"
+	"github.com/GrGLeo/TermArena/client/communication"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,35 +13,32 @@ import (
 )
 
 type LobbyModel struct {
-	styles              *Styles
-	tabSelected         int
-	queueModel          QueueModel
-	createModel         CreateModel
-	spellSelectionModel SpellSelectionModel
-	messagingModel      MessagingModel
-	conn                *net.TCPConn
-	looking             bool
-	width, height       int
-	SelectedSpells      [2]int
-	Username            string
+	styles         *Styles
+	tabSelected    int
+	queueModel     QueueModel
+	createModel    CreateModel
+	messagingModel MessagingModel
+	conn           *net.TCPConn
+	looking        bool
+	width, height  int
+	RoomType       int
+	Username       string
 }
 
 func NewLobbyModel(conn *net.TCPConn, username string) LobbyModel {
 	queueModel := NewQueueModel(conn)
 	createModel := NewCreateModel(conn)
 	s := DefaultStyles()
-	spellSelectionModel := NewSpellSelection(s)
 	messagingModel := NewMessagingModel(conn, username)
 
 	return LobbyModel{
-		styles:              s,
-		tabSelected:         0,
-		queueModel:          queueModel,
-		createModel:         createModel,
-		spellSelectionModel: spellSelectionModel,
-		messagingModel:      messagingModel,
-		conn:                conn,
-		Username:            username,
+		styles:         s,
+		tabSelected:    0,
+		queueModel:     queueModel,
+		createModel:    createModel,
+		messagingModel: messagingModel,
+		conn:           conn,
+		Username:       username,
 	}
 }
 
@@ -57,7 +54,6 @@ func (m *LobbyModel) SetDimension(height, width int) {
 	m.width = width
 	m.queueModel.SetDimension(height, width)
 	m.createModel.SetDimension(height, width)
-	m.spellSelectionModel.SetDimension(height, width)
 	m.messagingModel.SetDimension(width, height)
 }
 
@@ -66,7 +62,7 @@ func (m *LobbyModel) SetLooking(search bool) {
 }
 
 func (m LobbyModel) Init() tea.Cmd {
-	return m.spellSelectionModel.Init()
+	return m.messagingModel.Init()
 }
 
 func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -79,19 +75,12 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "left":
-			m.tabSelected = (m.tabSelected - 1 + 4) % 4
+			m.tabSelected = (m.tabSelected - 1 + 3) % 3
 		case "right":
-			m.tabSelected = (m.tabSelected + 1) % 4
+			m.tabSelected = (m.tabSelected + 1) % 3
 		case "esc", "ctrl+c":
 			return m, tea.Quit
 		}
-	case SpellsSelectedMsg:
-		m.SelectedSpells = msg.SpellIDs
-		log.Printf("LobbyModel received selected spells: %v", m.SelectedSpells)
-	case TabLeftMsg:
-		m.tabSelected = (m.tabSelected - 1 + 4) % 4
-	case TabRightMsg:
-		m.tabSelected = (m.tabSelected + 1) % 4
 	case communication.IncomingMessageMsg, communication.MessageErrorMsg:
 		// Always handle incoming messages regardless of current tab
 		var mm tea.Model
@@ -101,18 +90,15 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.tabSelected == 0 {
-		var ssm tea.Model
-		ssm, cmd = m.spellSelectionModel.Update(msg)
-		m.spellSelectionModel = ssm.(SpellSelectionModel)
-	} else if m.tabSelected == 1 {
 		var qm tea.Model
 		qm, cmd = m.queueModel.Update(msg)
+    m.RoomType = m.queueModel.roomType
 		m.queueModel = qm.(QueueModel)
-	} else if m.tabSelected == 2 {
+	} else if m.tabSelected == 1 {
 		var cm tea.Model
 		cm, cmd = m.createModel.Update(msg)
 		m.createModel = cm.(CreateModel)
-	} else if m.tabSelected == 3 {
+	} else if m.tabSelected == 2 {
 		var mm tea.Model
 		mm, cmd = m.messagingModel.Update(msg)
 		m.messagingModel = mm.(MessagingModel)
@@ -126,12 +112,11 @@ func (m LobbyModel) View() string {
 	var content string
 
 	// Render Tabs based on selection
-	spellSelectionTabStr := "Spell Selection"
 	joinGameTabStr := "Join a game"
 	createGameTabStr := "Create a game"
 	messagingTabStr := "Messaging"
 
-	tabs := []string{spellSelectionTabStr, joinGameTabStr, createGameTabStr, messagingTabStr}
+	tabs := []string{joinGameTabStr, createGameTabStr, messagingTabStr}
 
 	for i, tab := range tabs {
 		if i == m.tabSelected {
@@ -142,12 +127,10 @@ func (m LobbyModel) View() string {
 	}
 
 	if m.tabSelected == 0 {
-		content = m.spellSelectionModel.View()
-	} else if m.tabSelected == 1 {
 		content = m.queueModel.View()
-	} else if m.tabSelected == 2 {
+	} else if m.tabSelected == 1 {
 		content = m.createModel.View()
-	} else if m.tabSelected == 3 {
+	} else if m.tabSelected == 2 {
 		content = m.messagingModel.View()
 	}
 
@@ -181,6 +164,7 @@ func (m LobbyModel) View() string {
 
 type QueueModel struct {
 	options       []string
+	roomType      int
 	selected      int
 	width, height int
 	looking       bool
@@ -228,6 +212,7 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEsc, tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyEnter:
+			m.roomType = m.selected
 			selectedOption := m.options[m.selected]
 			communication.SendRoomRequestPacket(m.conn, m.selected)
 			log.Println("Selected option:", selectedOption)
@@ -281,8 +266,8 @@ func (m QueueModel) View() string {
 		Render(
 			"TermArena is a MOBA game. Each team needs to destroy the enemy base.\n" +
 				"To progress on the map you will need to beat minions, destroy tower, fight enemy champion.\n" +
-        "Each 30 seconds minions are spawn, they will follow there respective lane.\n" +
-        "Jungle monster respawn after 90 seconds.\n" +
+				"Each 30 seconds minions are spawn, they will follow there respective lane.\n" +
+				"Jungle monster respawn after 90 seconds.\n" +
 				"Player can move around the map using w,a,s,d.\n" +
 				"Spell selected are bind to q and e.",
 		)
@@ -326,7 +311,7 @@ type CreateModel struct {
 	roomIDInput   textinput.Model
 	width, height int
 	looking       bool
-	roomID        int
+	roomID        uint32
 	conn          *net.TCPConn
 	spinner       spinner.Model
 	inputFocused  bool

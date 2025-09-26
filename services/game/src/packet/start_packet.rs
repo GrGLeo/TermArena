@@ -1,6 +1,8 @@
 use bytes::BufMut;
 use bytes::BytesMut;
 
+use super::CODE_GAME_START;
+
 #[derive(Debug)]
 pub struct StartPacket {
     pub version: u8,
@@ -12,7 +14,7 @@ impl StartPacket {
     pub fn new(success: u8) -> Self {
         StartPacket {
             version: 1,
-            code: 10,
+            code: CODE_GAME_START,
             success,
         }
     }
@@ -37,14 +39,14 @@ mod tests {
         let success_fail = 0;
         let packet_fail = StartPacket::new(success_fail);
         assert_eq!(packet_fail.version, 1);
-        assert_eq!(packet_fail.code, 10);
+        assert_eq!(packet_fail.code, CODE_GAME_START);
         assert_eq!(packet_fail.success, success_fail);
 
         // Test case with success = 1
         let success_ok = 1;
         let packet_ok = StartPacket::new(success_ok);
         assert_eq!(packet_ok.version, 1);
-        assert_eq!(packet_ok.code, 10);
+        assert_eq!(packet_ok.code, CODE_GAME_START);
         assert_eq!(packet_ok.success, success_ok);
     }
 
