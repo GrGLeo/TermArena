@@ -46,6 +46,7 @@ graph TD
     A[Client] -->|TCP| B(Go Server)
     B -->|gRPC| C{Auth Service}
     B -->|gRPC| E{Message Service}
+    B -->|gRPC| F{Room Manager Service}
     B -->|Spawns| D(Rust Game Server)
     A <-->|TCP| D
 ```
@@ -53,8 +54,8 @@ graph TD
 ### Data Flow
 
 1. **Authentication**: Client connects to Go Server → Auth Service verifies credentials
-2. **Room Management**: Go Server coordinates matchmaking and room creation
-3. **Game Launch**: Go Server spawns dedicated Rust Game Server for each match
+2. **Room Management**: Client requests room → Go Server queries Room Manager Service for room assignment → Room Manager Service handles matchmaking, team balancing, and room state
+3. **Game Launch**: Go Server spawns dedicated Rust Game Server for each match when room is ready
 4. **Real-time Gameplay**: Client connects directly to Rust Game Server for low-latency gameplay
 5. **Messaging**: Client sends message to Go Server → Server queries Message Service for routes and parsed message → Message Service returns routes and parsed message to Server → Server distributes to receivers
 
@@ -67,6 +68,7 @@ graph TD
 - **`client/` (Go)**: Terminal-based user interface with real-time rendering and input handling
 - **`services/auth/` (Rust)**: Secure authentication service using RSA challenge-response mechanism
 - **`services/message_service/` (Go)**: Real-time messaging system supporting broadcast and private messages
+- **`services/room_manager_service/` (Go)**: Room lifecycle management, player matchmaking, and team balancing
 
 ### Supporting Infrastructure
 
@@ -112,6 +114,7 @@ cd services/auth && cargo build --release
 cd server && go build -o ../bin/server .
 cd client && go build -o ../bin/client .
 cd services/message_service && go build -o ../../bin/message_service .
+cd services/room_manager_service/cmd && go build -o ../../../bin/room_manager_service .
 ```
 
 ## Usage
@@ -127,10 +130,13 @@ make run-auth
 # Terminal 2: Message Service
 make run-message
 
-# Terminal 3: Game Server
+# Terminal 3: Room Manager Service
+make run-room-manager
+
+# Terminal 4: Game Server
 make run-server
 
-# Terminal 4: Client
+# Terminal 5: Client
 make run-client
 ```
 
@@ -212,6 +218,7 @@ Uses SSH-style challenge-response mechanism:
 
 #### Game Communication
 - **Go Server**: Lobby management, matchmaking, room coordination
+- **Room Manager Service**: Room state management, player assignment, team balancing
 - **Rust Game Server**: Real-time gameplay, state synchronization
 - **Message Service**: Real-time player communication
 
@@ -246,7 +253,8 @@ term_arena/
 ├── services/
 │   ├── game/            # Rust game engine
 │   ├── auth/            # Rust authentication service
-│   └── message_service/ # Go messaging service
+│   ├── message_service/ # Go messaging service
+│   └── room_manager_service/ # Go room management service
 ├── shared/              # Common Go utilities
 ├── pkg/proto/           # Protocol buffer definitions
 ├── docs/                # Documentation
@@ -293,6 +301,7 @@ cd test/e2e && go run game_simulation.go
 - [Networking Protocol](docs/detailed/networking.md) - Complete packet reference
 - [Authentication Flow](docs/detailed/auth_rust.md) - Auth service integration
 - [Message Service](docs/detailed/message_service.md) - Real-time messaging
+- [Room Manager Service](docs/detailed/room_manager_service.md) - Room lifecycle and matchmaking
 
 ### Game Systems
 - [Buff Mechanism](docs/detailed/game/buff_mechanism.md) - Status effect system
@@ -328,6 +337,7 @@ go version
 netstat -tlnp | grep :50051
 netstat -tlnp | grep :8082
 netstat -tlnp | grep :8083
+netstat -tlnp | grep :8084
 
 # Kill conflicting processes
 sudo fuser -k 50051/tcp
@@ -341,11 +351,13 @@ sudo fuser -k 8083/tcp
 ps aux | grep auth
 ps aux | grep game
 ps aux | grep server
+ps aux | grep room_manager
 
 # Check logs
 tail -f auth.log
 tail -f game.log
 tail -f server.log
+tail -f room_manager.log
 ```
 
 ### Debug Mode
