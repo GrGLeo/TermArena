@@ -20,6 +20,8 @@ mod errors;
 mod game;
 mod packet;
 
+use packet::{CODE_USERNAME, CODE_ACTION, CODE_SHOP_REQUEST, CODE_PURCHASE_ITEM};
+
 const TICK_RATE: Duration = Duration::from_millis(40);
 
 // Cli Parser
@@ -71,7 +73,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
     let version = initial_packet_header[0];
     let code = initial_packet_header[1];
 
-    let username = if version == 1 && code == 16 {
+    let username = if version == 1 && code == CODE_USERNAME {
         // Code for UsernamePacket 
         let mut username_len_buf = [0; 1];
         if buf_reader.read_exact(&mut username_len_buf).await.is_err() {
@@ -178,7 +180,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
         }
 
         match code {
-            11 => {
+            CODE_ACTION => {
                 // Action Packet
                 let mut action_payload = [0; 1];
                 if buf_reader.read_exact(&mut action_payload).await.is_err() {
@@ -188,7 +190,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
                 let mut manager = game_manager.lock().await;
                 manager.store_player_action(player_id, action_payload[0]);
             }
-            17 => {
+            CODE_SHOP_REQUEST => {
                 // Shop Request Packet
                 debug!(component = "game", player_id = player_id, "shop request received");
                 let manager = game_manager.lock().await;
@@ -201,7 +203,7 @@ async fn handle_client(stream: TcpStream, addr: SocketAddr, game_manager: Arc<Mu
                     warn!(component = "game", player_id = player_id, "champion not found for shop request");
                 }
             }
-            19 => {
+            CODE_PURCHASE_ITEM => {
                 // Purchase Item Packet
                 let mut purchase_payload = [0; 2];
                 if buf_reader.read_exact(&mut purchase_payload).await.is_err() {

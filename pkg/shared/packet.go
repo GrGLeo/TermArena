@@ -10,38 +10,45 @@ import (
 )
 
 /*
-code 0: register user request (username + pubkey)
-code 1: register user response (success, message, challenge)
-code 2: login challenge request (username)
-code 3: login challenge response (challenge)
-code 4: auth request (username + signed challenge)
-code 5: auth response (success, message, session_token)
----
-code 6: send a find room
-code 7: send a create room
-code 8: send a join room
-code 9: looking for a room response
-code 34: move to lobby room with users packet
-code 35:
-code 36:
-code 37: game server is ready
----
-code 10: game start  response
-code 11: send action
-code 12: receive RLEboard
-code 13: receive Delta
-code 14: game close
-code 15: game end
-code 16: spell selection
-code 17: shop request
-code 18: shop response
-code 19: purchase item
----
-code 100: message packet (sender + message content)
-code 101: message response (routed message content)
-code 102: message error (error description)
----
-code 255: error message for rate limit exceed
+Packet Code Organization (0-255)
+
+Authentication packets (0-49):
+  0: register user request (username + pubkey)
+  1: register user response (success, message, challenge)
+  2: login challenge request (username)
+  3: login challenge response (challenge)
+  4: auth request (username + signed challenge)
+  5: auth response (success, message, session_token)
+
+Room management packets (50-99):
+  50: send a find room
+  51: send a create room
+  52: send a join room
+  53: looking for a room response
+  54: move to lobby room with users packet
+  55: update spell request
+  56: update spell response
+  57: game server is ready
+
+Game packets (100-149):
+  100: game start response
+  101: send action
+  102: receive RLEboard
+  103: receive Delta
+  104: game close
+  105: game end
+  106: spell selection
+  107: shop request
+  108: shop response
+  109: purchase item
+
+Message packets (150-199):
+  150: message packet (sender + message content)
+  151: message response (routed message content)
+  152: message error (error description)
+
+Special packets (250-255):
+  255: error message for rate limit exceed
 */
 
 type Packet interface {
@@ -63,7 +70,7 @@ type RegisterRequestPacket struct {
 func NewRegisterRequestPacket(username string, publicKey []byte) *RegisterRequestPacket {
 	return &RegisterRequestPacket{
 		version:   1,
-		code:      0,
+		code:      CodeRegisterRequest,
 		Username:  username,
 		PublicKey: publicKey,
 	}
@@ -100,7 +107,7 @@ type RegisterResponsePacket struct {
 func NewRegisterResponsePacket(success bool, message string, challenge []byte) *RegisterResponsePacket {
 	return &RegisterResponsePacket{
 		version:   1,
-		code:      1,
+		code:      CodeRegisterResponse,
 		Success:   success,
 		Message:   message,
 		Challenge: challenge,
@@ -141,7 +148,7 @@ type LoginChallengeRequestPacket struct {
 func NewLoginChallengeRequestPacket(username string) *LoginChallengeRequestPacket {
 	return &LoginChallengeRequestPacket{
 		version:  1,
-		code:     2,
+		code:     CodeLoginChallengeRequest,
 		Username: username,
 	}
 }
@@ -169,7 +176,7 @@ type LoginChallengeResponsePacket struct {
 func NewLoginChallengeResponsePacket(challenge []byte) *LoginChallengeResponsePacket {
 	return &LoginChallengeResponsePacket{
 		version:   1,
-		code:      3,
+		code:      CodeLoginChallengeResponse,
 		Challenge: challenge,
 	}
 }
@@ -198,7 +205,7 @@ type AuthRequestPacket struct {
 func NewAuthRequestPacket(username string, signedChallenge []byte) *AuthRequestPacket {
 	return &AuthRequestPacket{
 		version:         1,
-		code:            4,
+		code:            CodeAuthRequest,
 		Username:        username,
 		SignedChallenge: signedChallenge,
 	}
@@ -235,7 +242,7 @@ type AuthResponsePacket struct {
 func NewAuthResponsePacket(success bool, message, sessionToken string) *AuthResponsePacket {
 	return &AuthResponsePacket{
 		version:      1,
-		code:         5,
+		code:         CodeAuthResponse,
 		Success:      success,
 		Message:      message,
 		SessionToken: sessionToken,
@@ -278,7 +285,7 @@ type RoomRequestPacket struct {
 func NewRoomRequestPacket(RoomType int) *RoomRequestPacket {
 	return &RoomRequestPacket{
 		version:  1,
-		code:     6,
+		code:     CodeRoomRequest,
 		RoomType: RoomType,
 	}
 }
@@ -300,7 +307,7 @@ type RoomCreatePacket struct {
 func NewRoomCreatePacket(RoomType int) *RoomCreatePacket {
 	return &RoomCreatePacket{
 		version:  1,
-		code:     7,
+		code:     CodeRoomCreate,
 		RoomType: RoomType,
 	}
 }
@@ -323,7 +330,7 @@ type RoomJoinPacket struct {
 func NewRoomJoinPacket(roomID string) *RoomJoinPacket {
 	return &RoomJoinPacket{
 		version: 1,
-		code:    8,
+		code:    CodeRoomJoin,
 		RoomID:  roomID,
 	}
 }
@@ -347,7 +354,7 @@ type LookRoomPacket struct {
 func NewLookRoomPacket(success bool, roomID uint32) *LookRoomPacket {
 	return &LookRoomPacket{
 		version: 1,
-		code:    9,
+		code:    CodeLookRoom,
 		Success: success,
 		RoomID:  roomID,
 	}
@@ -377,7 +384,7 @@ type MoveToLobbyPacket struct {
 func NewMoveToLobbyPacket(roomID uint32, userInfos []*pb.UserInfo) *MoveToLobbyPacket {
 	return &MoveToLobbyPacket{
 		version:   1,
-		code:      34,
+		code:      CodeMoveToLobby,
 		RoomID:    roomID,
 		UserInfos: userInfos,
 	}
@@ -414,7 +421,7 @@ type UpdateSpellReqPacket struct {
 func NewUpdateSpellReqPacket(roomType int, roomID int, username string, spellOne, spellTwo int) *UpdateSpellReqPacket {
 	return &UpdateSpellReqPacket{
 		version:  1,
-		code:     35,
+		code:     CodeUpdateSpellReq,
 		RoomType: roomType,
 		RoomID:   roomID,
 		Username: username,
@@ -446,7 +453,7 @@ type UpdateSpellResPacket struct {
 func NewUpdateSpellResPacket(username string, spellOne, spellTwo int) *UpdateSpellResPacket {
 	return &UpdateSpellResPacket{
 		version:  1,
-		code:     36,
+		code:     CodeUpdateSpellRes,
 		Username: username,
 		SpellOne: spellOne,
 		SpellTwo: spellTwo,
@@ -474,7 +481,7 @@ type GameServerReadyPacket struct {
 func NewGameServerReadyPacket(roomIP uint16) *GameServerReadyPacket {
 	return &GameServerReadyPacket{
 		version: 1,
-		code:    37,
+		code:    CodeGameServerReady,
 		RoomIP:  roomIP,
 	}
 }
@@ -495,7 +502,7 @@ type GameStartPacket struct {
 func NewGameStartPacket(success int) *GameStartPacket {
 	return &GameStartPacket{
 		version: 1,
-		code:    10,
+		code:    CodeGameStart,
 		Success: success,
 	}
 }
@@ -518,7 +525,7 @@ type ActionPacket struct {
 func NewActionPacket(action int) *ActionPacket {
 	return &ActionPacket{
 		version: 1,
-		code:    11,
+		code:    CodeAction,
 		action:  action,
 	}
 }
@@ -552,7 +559,7 @@ type BoardPacket struct {
 func NewBoardPacket(castTime, castDuration, health, maxHealth, mana, maxMana, level, xp, xpNeeded int, encodedBoard []byte) *BoardPacket {
 	return &BoardPacket{
 		version:      1,
-		code:         12,
+		code:         CodeBoard,
 		CastTime:     castTime,
 		CastDuration: castDuration,
 		Health:       health,
@@ -597,7 +604,7 @@ type DeltaPacket struct {
 func NewDeltaPacket(tickID uint32, points [2]int, deltas [][3]byte) *DeltaPacket {
 	return &DeltaPacket{
 		version: 1,
-		code:    13,
+		code:    CodeDelta,
 		Points:  points,
 		TickID:  tickID,
 		Deltas:  deltas,
@@ -632,7 +639,7 @@ type GameClosePacket struct {
 func NewGameClosePacket(success int) *GameClosePacket {
 	return &GameClosePacket{
 		version: 1,
-		code:    14,
+		code:    CodeGameClose,
 		Success: success,
 	}
 }
@@ -655,7 +662,7 @@ type EndGamePacket struct {
 func NewEndGamePacket(win bool) *EndGamePacket {
 	return &EndGamePacket{
 		version: 1,
-		code:    15,
+		code:    CodeEndGame,
 		Win:     win,
 	}
 }
@@ -682,7 +689,7 @@ type UsernamePacket struct {
 func NewUsernamePacket(username string) *UsernamePacket {
 	return &UsernamePacket{
 		version:  1,
-		code:     16,
+		code:     CodeSpellSelection,
 		Username: username,
 	}
 }
@@ -706,7 +713,7 @@ type ShopRequestPacket struct {
 func NewShopRequestPacket() *ShopRequestPacket {
 	return &ShopRequestPacket{
 		version: 1,
-		code:    17,
+		code:    CodeShopRequest,
 	}
 }
 
@@ -732,7 +739,7 @@ type ShopResponsePacket struct {
 func NewShopResponsePacket(health, mana, attack_damage, armor, gold int, inventory []int) *ShopResponsePacket {
 	return &ShopResponsePacket{
 		version:       1,
-		code:          18,
+		code:          CodeShopResponse,
 		Health:        health,
 		Mana:          mana,
 		Attack_damage: attack_damage,
@@ -770,7 +777,7 @@ type PurchaseItemPacket struct {
 func NewPurchaseItemPacket(itemID int) *PurchaseItemPacket {
 	return &PurchaseItemPacket{
 		version: 1,
-		code:    19,
+		code:    CodePurchaseItem,
 		ItemID:  itemID,
 	}
 }
@@ -793,7 +800,7 @@ type MessagePacket struct {
 func NewMessagePacket(sender, message string) *MessagePacket {
 	return &MessagePacket{
 		version: 1,
-		code:    100,
+		code:    CodeMessage,
 		Sender:  sender,
 		Message: message,
 	}
@@ -820,7 +827,7 @@ type MessageResponsePacket struct {
 func NewMessageResponsePacket(message string) *MessageResponsePacket {
 	return &MessageResponsePacket{
 		version: 1,
-		code:    101,
+		code:    CodeMessageResponse,
 		Message: message,
 	}
 }
@@ -844,7 +851,7 @@ type MessageErrorPacket struct {
 func NewMessageErrorPacket(errorMsg string) *MessageErrorPacket {
 	return &MessageErrorPacket{
 		version: 1,
-		code:    102,
+		code:    CodeMessageError,
 		Error:   errorMsg,
 	}
 }
@@ -867,7 +874,7 @@ type RateLimitPacket struct {
 func NewRateLimitPacket() *RateLimitPacket {
 	return &RateLimitPacket{
 		version: 1,
-		code:    255,
+		code:    CodeRateLimit,
 	}
 }
 
@@ -892,7 +899,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 	code := int(data[1])
 
 	switch code {
-	case 0: // RegisterRequestPacket
+	case CodeRegisterRequest: // RegisterRequestPacket
 		if len(data) < 4 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -916,7 +923,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, totalLen, nil
 
-	case 1: // RegisterResponsePacket
+	case CodeRegisterResponse: // RegisterResponsePacket
 		if len(data) < 3 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -946,7 +953,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, totalLen, nil
 
-	case 2: // LoginChallengeRequestPacket
+	case CodeLoginChallengeRequest: // LoginChallengeRequestPacket
 		if len(data) < 4 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -963,7 +970,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, totalLen, nil
 
-	case 3: // LoginChallengeResponsePacket
+	case CodeLoginChallengeResponse: // LoginChallengeResponsePacket
 		if len(data) < 4 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -980,7 +987,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, totalLen, nil
 
-	case 4: // AuthRequestPacket
+	case CodeAuthRequest: // AuthRequestPacket
 		if len(data) < 4 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1004,7 +1011,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, totalLen, nil
 
-	case 5: // AuthResponsePacket
+	case CodeAuthResponse: // AuthResponsePacket
 		if len(data) < 3 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1034,7 +1041,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, totalLen, nil
 
-	case 6: // RoomRequestPacket
+	case CodeRoomRequest: // RoomRequestPacket
 		if len(data) < 3 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1045,7 +1052,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, 3, nil
 
-	case 7: // RoomCreatePacket
+	case CodeRoomCreate: // RoomCreatePacket
 		if len(data) < 3 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1056,7 +1063,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, 3, nil
 
-	case 8: // RoomJoinPacket
+	case CodeRoomJoin: // RoomJoinPacket
 		roomID := string(data[2:])
 		packet := &RoomJoinPacket{
 			version: version,
@@ -1065,7 +1072,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, len(data), nil
 
-	case 9: // LookRoomPacket
+	case CodeLookRoom: // LookRoomPacket
 		if len(data) < 7 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1079,7 +1086,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, len(data), nil
 
-	case 34: // MoveToLobbyPacket
+	case CodeMoveToLobby: // MoveToLobbyPacket
 		if len(data) < 10 { // version, code, RoomID uint32, numUsers uint32
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1123,7 +1130,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, offset, nil
 
-	case 35: // UpdateSpellReqPacket
+	case CodeUpdateSpellReq: // UpdateSpellReqPacket
 		if len(data) < 11 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1152,7 +1159,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, totalLen, nil
 
-	case 36: // UpdateSpellResPacket
+	case CodeUpdateSpellRes: // UpdateSpellResPacket
 		if len(data) < 6 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1174,7 +1181,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, totalLen, nil
 
-	case 37:
+	case CodeGameServerReady:
 		if len(data) < 4 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1186,7 +1193,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, 4, nil
 
-	case 10: // GameStartPacket
+	case CodeGameStart: // GameStartPacket
 		if len(data) < 3 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1197,7 +1204,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, 3, nil
 
-	case 11: // ActionPacket
+	case CodeAction: // ActionPacket
 		if len(data) < 3 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1208,7 +1215,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, 3, nil
 
-	case 12: // BoardPacket
+	case CodeBoard: // BoardPacket
 		if len(data) < 21 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1244,7 +1251,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, totalLen, nil
 
-	case 13: // DeltaPacket
+	case CodeDelta: // DeltaPacket
 		if len(data) < 10 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1269,7 +1276,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, totalLen, nil
 
-	case 14: // GameClosePacket
+	case CodeGameClose: // GameClosePacket
 		if len(data) < 3 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1280,7 +1287,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, 3, nil
 
-	case 15: // EndGamePacket
+	case CodeEndGame: // EndGamePacket
 		if len(data) < 3 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1291,7 +1298,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, 3, nil
 
-	case 16: // SpellSelectionPacket
+	case CodeSpellSelection: // SpellSelectionPacket
 		if len(data) < 3 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1307,7 +1314,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, 3 + usernameLen, nil
 
-	case 18: // ShopResponsePacket
+	case CodeShopResponse: // ShopResponsePacket
 		if len(data) < 24 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1333,7 +1340,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, 24, nil
 
-	case 19: // PurchaseItemPacket
+	case CodePurchaseItem: // PurchaseItemPacket
 		if len(data) < 4 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1344,7 +1351,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, 4, nil
 
-	case 100: // MessagePacket
+	case CodeMessage: // MessagePacket
 		if len(data) < 6 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1367,7 +1374,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, totalLen, nil
 
-	case 101: // MessageResponsePacket
+	case CodeMessageResponse: // MessageResponsePacket
 		if len(data) < 4 {
 			return nil, 0, errors.New("incomplete packet header")
 		}
@@ -1387,7 +1394,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		return packet, totalLen, nil
 
-	case 102: // MessageErrorPacket
+	case CodeMessageError: // MessageErrorPacket
 		if len(data) < 4 {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1403,7 +1410,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 			Error:   errorMsg,
 		}
 		return packet, totalLen, nil
-	case 255:
+	case CodeRateLimit:
 		if len(data) < 2 {
 			return nil, 0, errors.New("incomplete packet")
 		}

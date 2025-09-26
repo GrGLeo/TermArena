@@ -32,8 +32,8 @@ func TestMessagePacket_Serialize(t *testing.T) {
 			if result[0] != 1 {
 				t.Errorf("Version byte = %d, expected 1", result[0])
 			}
-			if result[1] != 100 {
-				t.Errorf("Code byte = %d, expected 100", result[1])
+			if result[1] != CodeMessage {
+				t.Errorf("Code byte = %d, expected %d", result[1], CodeMessage)
 			}
 
 			// Check sender length field
@@ -82,8 +82,8 @@ func TestMessagePacket_Version(t *testing.T) {
 
 func TestMessagePacket_Code(t *testing.T) {
 	packet := NewMessagePacket("test", "test")
-	if packet.Code() != 100 {
-		t.Errorf("Code() = %d, expected 100", packet.Code())
+	if packet.Code() != CodeMessage {
+		t.Errorf("Code() = %d, expected %d", packet.Code(), CodeMessage)
 	}
 }
 
@@ -280,8 +280,8 @@ func TestMessagePacket_Constructor(t *testing.T) {
 		if packet.Version() != 1 {
 			t.Errorf("Version() = %d, expected 1", packet.Version())
 		}
-		if packet.Code() != 100 {
-			t.Errorf("Code() = %d, expected 100", packet.Code())
+		if packet.Code() != CodeMessage {
+			t.Errorf("Code() = %d, expected %d", packet.Code(), CodeMessage)
 		}
 		if packet.Sender != sender {
 			t.Errorf("Sender = %q, expected %q", packet.Sender, sender)
