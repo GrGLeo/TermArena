@@ -103,11 +103,7 @@ func main() {
 		fmt.Printf("Starting: %s\n", scenario.Name)
 		scenarioStart := time.Now()
 
-		if verbose {
-			err = runTestScenario(scenario)
-		} else {
-			err = runTestScenarioQuiet(scenario)
-		}
+		err = runTestScenario(scenario, !verbose)
 
 		scenarioDuration := time.Since(scenarioStart)
 
@@ -147,7 +143,7 @@ func main() {
 		totalStartTime := time.Now()
 
 		fmt.Println("Running E2E tests... (verbose output suppressed)")
-    fmt.Printf("%d scenarios found...\n", len(testScenarios))
+		fmt.Printf("%d scenarios found...\n", len(testScenarios))
 
 		// Run all test scenarios
 		for i, scenario := range testScenarios {
@@ -156,11 +152,7 @@ func main() {
 
 			// Run test
 			var err error
-			if verbose {
-				err = runTestScenario(scenario)
-			} else {
-				err = runTestScenarioQuiet(scenario)
-			}
+			err = runTestScenario(scenario, !verbose)
 
 			// Record result
 			testResults[i] = err
@@ -213,11 +205,16 @@ func main() {
 	}
 }
 
-// runTestScenarioQuiet runs a test scenario with minimal output
-func runTestScenarioQuiet(scenario TestScenario) error {
-	// Enable quiet mode
-	quietMode = true
-	defer func() { quietMode = false }() // Reset when done
+// runTestScenario runs a test scenario
+func runTestScenario(scenario TestScenario, quiet bool) error {
+	if quiet {
+		quietMode = true
+		defer func() { quietMode = false }()
+	}
+
+	if !quiet {
+		fmt.Printf("Setting up %d clients for test scenario...\n", len(scenario.Clients))
+	}
 
 	// Create test clients
 	clients := make([]*TestClient, len(scenario.Clients))
@@ -231,8 +228,14 @@ func runTestScenarioQuiet(scenario TestScenario) error {
 	}
 
 	// Authenticate all clients with delays to avoid rate limiting
+	if !quiet {
+		fmt.Printf("Authenticating %d clients...\n", len(clients))
+	}
 	for i, client := range clients {
 		if err := client.authenticate(); err != nil {
+			if !quiet {
+				fmt.Printf("Failed to authenticate %s: %v\n", client.username, err)
+			}
 			// Clean up on failure
 			cleanupClients(clients)
 			return fmt.Errorf("failed to authenticate %s: %v", client.username, err)
@@ -240,17 +243,36 @@ func runTestScenarioQuiet(scenario TestScenario) error {
 
 		// Add delay between client authentications to avoid rate limiting
 		if i < len(clients)-1 {
+			if !quiet {
+				fmt.Printf("⏳ Waiting 30.5 seconds before next client authentication...\n")
+			}
 			time.Sleep(30500 * time.Millisecond) // 30.5 seconds
 		}
 	}
 
+	if !quiet {
+		fmt.Printf("All %d clients authenticated successfully!\n", len(clients))
+	}
+
+	// Wait for auth to complete
+	time.Sleep(500 * time.Millisecond)
+
 	// Run the test scenario
+	if !quiet {
+		fmt.Printf("Running test scenario...\n")
+	}
 	if err := scenario.TestFunc(clients); err != nil {
+		if !quiet {
+			fmt.Printf("Test scenario failed: %v\n", err)
+		}
 		cleanupClients(clients)
 		return err
 	}
 
 	// Clean up connections
+	if !quiet {
+		fmt.Printf("Cleaning up connections...\n")
+	}
 	cleanupClients(clients)
 	return nil
 }
@@ -674,55 +696,6 @@ func (c *TestClient) listenForResponses() {
 }
 
 // runTestScenario executes a test scenario with the given clients
-func runTestScenario(scenario TestScenario) error {
-	fmt.Printf("Setting up %d clients for test scenario...\n", len(scenario.Clients))
-
-	// Create test clients
-	clients := make([]*TestClient, len(scenario.Clients))
-	for i, username := range scenario.Clients {
-		clients[i] = createTestClient(username)
-	}
-
-	// Start response listeners for all clients
-	for _, client := range clients {
-		go client.listenForResponses()
-	}
-
-	// Authenticate all clients with delays to avoid rate limiting
-	fmt.Printf("Authenticating %d clients...\n", len(clients))
-	for i, client := range clients {
-		if err := client.authenticate(); err != nil {
-			fmt.Printf("Failed to authenticate %s: %v\n", client.username, err)
-			// Clean up on failure
-			cleanupClients(clients)
-			return err
-		}
-
-		// Add delay between client authentications to avoid rate limiting
-		// Only add delay if there are more clients to authenticate
-		if i < len(clients)-1 {
-			time.Sleep(30500 * time.Millisecond) // 30.5 seconds
-		}
-	}
-
-	fmt.Printf("All %d clients authenticated successfully!\n", len(clients))
-
-	// Wait for auth to complete
-	time.Sleep(500 * time.Millisecond)
-
-	// Run the test scenario
-	fmt.Printf("Running test scenario...\n")
-	if err := scenario.TestFunc(clients); err != nil {
-		fmt.Printf("Test scenario failed: %v\n", err)
-		cleanupClients(clients)
-		return err
-	}
-
-	// Clean up connections
-	fmt.Printf("Cleaning up connections...\n")
-	cleanupClients(clients)
-	return nil
-}
 
 // cleanupClients properly closes all client connections and cleans up resources
 func cleanupClients(clients []*TestClient) {
