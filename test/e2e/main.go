@@ -100,6 +100,7 @@ func main() {
 		}
 		// Run specific test
 		scenario := testScenarios[testIndex-1]
+		fmt.Printf("Starting: %s\n", scenario.Name)
 		scenarioStart := time.Now()
 
 		if verbose {
@@ -115,7 +116,7 @@ func main() {
 			status = "\033[31mFAIL\033[0m"
 			fmt.Printf("   Error: %v\n", err)
 		}
-		fmt.Printf("   Scenario %d: %s - %s (%v)\n", testIndex, status, scenario.Name, scenarioDuration.Round(time.Second))
+		fmt.Printf("   %s (%v)\n", status, scenarioDuration.Round(time.Second))
 
 		// Summary
 		passedCount := 0
@@ -127,29 +128,30 @@ func main() {
 		fmt.Println("E2E TEST RESULTS SUMMARY")
 		fmt.Println(strings.Repeat("=", 60))
 
-		status = "\033[32mPASS\033[0m"
-		if err != nil {
-			status = "\033[31mFAIL\033[0m"
+		allPassed := passedCount == 1
+		resultColor := "\033[32m"
+		if !allPassed {
+			resultColor = "\033[31m"
 		}
-    if testIndex < 10 {
-		  fmt.Printf("Scenario  %d: %s - %s\n", testIndex, status, scenario.Name)
-    } else {
-      fmt.Printf("Scenario %d: %s - %s\n", testIndex, status, scenario.Name)
-    }
+		fmt.Printf("%sResult: %d/%d tests passed\033[0m\n", resultColor, passedCount, 1)
+		if !allPassed {
+			fmt.Printf("  - %s: %v\n", scenario.Name, err)
+		}
 
 		fmt.Println(strings.Repeat("-", 60))
-		fmt.Printf("Result: %d/%d tests passed\n", passedCount, 1)
 		fmt.Printf("Total time: %v\n", totalDuration.Round(time.Second))
 		fmt.Println(strings.Repeat("=", 60))
 	} else {
 		// Track test results
-		testResults := make([]bool, len(testScenarios))
+		testResults := make([]error, len(testScenarios))
 		totalStartTime := time.Now()
 
 		fmt.Println("Running E2E tests... (verbose output suppressed)")
+    fmt.Printf("%d scenarios found...\n", len(testScenarios))
 
 		// Run all test scenarios
 		for i, scenario := range testScenarios {
+			fmt.Printf("%d/%d Starting: %s\n", i+1, len(testScenarios), scenario.Name)
 			scenarioStart := time.Now()
 
 			// Run test
@@ -161,7 +163,7 @@ func main() {
 			}
 
 			// Record result
-			testResults[i] = (err == nil)
+			testResults[i] = err
 			scenarioDuration := time.Since(scenarioStart)
 
 			// Show brief progress
@@ -170,7 +172,7 @@ func main() {
 				status = "\033[31mFAIL\033[0m"
 				fmt.Printf("   Error: %v\n", err)
 			}
-			fmt.Printf("   Scenario %d: %s (%v)\n", i+1, status, scenarioDuration.Round(time.Second))
+			fmt.Printf("   %s (%v)\n", status, scenarioDuration.Round(time.Second))
 
 			// Wait for rate limits to reset between scenarios (except for last scenario)
 			if i < len(testScenarios)-1 {
@@ -181,8 +183,8 @@ func main() {
 		// Print final summary
 		totalDuration := time.Since(totalStartTime)
 		passedCount := 0
-		for _, result := range testResults {
-			if result {
+		for _, err := range testResults {
+			if err == nil {
 				passedCount++
 			}
 		}
@@ -191,16 +193,21 @@ func main() {
 		fmt.Println("E2E TEST RESULTS SUMMARY")
 		fmt.Println(strings.Repeat("=", 60))
 
-		for i, scenario := range testScenarios {
-			status := "\033[32mPASS\033[0m"
-			if !testResults[i] {
-				status = "\033[31mFAIL\033[0m"
+		allPassed := passedCount == len(testScenarios)
+		resultColor := "\033[32m"
+		if !allPassed {
+			resultColor = "\033[31m"
+		}
+		fmt.Printf("%sResult: %d/%d tests passed\033[0m\n", resultColor, passedCount, len(testScenarios))
+		if !allPassed {
+			for i, err := range testResults {
+				if err != nil {
+					fmt.Printf("  - %s: %v\n", testScenarios[i].Name, err)
+				}
 			}
-			fmt.Printf("Scenario %d: %s - %s\n", i+1, status, scenario.Name)
 		}
 
 		fmt.Println(strings.Repeat("-", 60))
-		fmt.Printf("Result: %d/%d tests passed\n", passedCount, len(testScenarios))
 		fmt.Printf("Total time: %v\n", totalDuration.Round(time.Second))
 		fmt.Println(strings.Repeat("=", 60))
 	}
