@@ -14,10 +14,11 @@ rm -f server.log
 rm -f message_service.log
 rm -f room_manager_service.log
 
-echo "Attempting to clear ports 50051, 8082, 8083..."
+echo "Attempting to clear ports 50051, 8082, 8083, 8084..."
 sudo fuser -k 50051/tcp >/dev/null 2>&1 || true
 sudo fuser -k 8082/tcp >/dev/null 2>&1 || true
 sudo fuser -k 8083/tcp >/dev/null 2>&1 || true
+sudo fuser -k 8084/tcp >/dev/null 2>&1 || true
 
 # Set server IP based on environment
 if [ "$APP_ENV" = "prd" ]; then

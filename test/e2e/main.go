@@ -7,11 +7,13 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
+	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,13 +21,15 @@ import (
 )
 
 type TestClient struct {
-	conn          net.Conn
-	privateKey    *rsa.PrivateKey
-	publicKey     []byte
-	username      string
-	challenge     []byte
-	rateLimited   bool
-	lastRateLimit time.Time
+	conn             net.Conn
+	privateKey       *rsa.PrivateKey
+	publicKey        []byte
+	username         string
+	challenge        []byte
+	rateLimited      bool
+	lastRateLimit    time.Time
+	roomID           uint32
+	receivedMessages []string
 }
 
 // Global quiet mode flag
@@ -41,9 +45,9 @@ type TestScenario struct {
 func waitForRateLimitReset() {
 	// Wait for rate limit window to reset (matches client authentication delay)
 	resetTime := 30500 * time.Millisecond // 30.5 seconds
-	fmt.Printf("⏳ Waiting %v for rate limits to reset...\n", resetTime)
+	fmt.Printf("Waiting %v for rate limits to reset...\n", resetTime)
 	time.Sleep(resetTime)
-	fmt.Println("✅ Rate limit reset period completed")
+	fmt.Println("Rate limit reset period completed")
 }
 
 // checkAndWaitForRateLimit checks if any test client is rate limited and waits
@@ -53,11 +57,11 @@ func checkAndWaitForRateLimit(clients []*TestClient) {
 			elapsed := time.Since(client.lastRateLimit)
 			if elapsed < 60*time.Second {
 				waitTime := 65*time.Second - elapsed
-				fmt.Printf("⏳ Client %s was rate limited %v ago, waiting %v for reset...\n",
+				fmt.Printf("Client %s was rate limited %v ago, waiting %v for reset...\n",
 					client.username, elapsed, waitTime)
 				time.Sleep(waitTime)
 				client.rateLimited = false // Reset the flag
-				fmt.Printf("✅ Rate limit reset for %s\n", client.username)
+				fmt.Printf("Rate limit reset for %s\n", client.username)
 			} else {
 				client.rateLimited = false // Reset if enough time has passed
 			}
@@ -68,6 +72,11 @@ func checkAndWaitForRateLimit(clients []*TestClient) {
 func main() {
 	fmt.Println("=== MESSAGE SYSTEM E2E TEST CLIENT ===")
 
+	var verbose bool
+	flag.BoolVar(&verbose, "v", false, "enable verbose output")
+	flag.Parse()
+	args := flag.Args()
+
 	// Test scenarios - reusing users 1-4 for all tests
 	testScenarios := []TestScenario{
 		{Name: "Basic Two Client Test", Clients: []string{"user1", "user2"}, TestFunc: basicTwoClientTest},
@@ -76,67 +85,123 @@ func main() {
 		{Name: "Broadcast Message Test (No Rate Limit)", Clients: []string{"user1", "user2", "user3", "user4"}, TestFunc: broadcastMessageTest},
 		{Name: "Error Handling Test", Clients: []string{"user1", "user2"}, TestFunc: errorHandlingTest},
 		{Name: "Concurrent Messaging Test (No Rate Limit)", Clients: []string{"user1", "user2", "user3", "user4"}, TestFunc: concurrentMessagingTest},
+		{Name: "Look Room Test", Clients: []string{"user1", "user2", "user3", "user4"}, TestFunc: lookRoomTest},
 		{Name: "Registration Rate Limit Test", Clients: []string{"user1"}, TestFunc: registrationRateLimitTest},
 		{Name: "Authentication Rate Limit Test", Clients: []string{"user1"}, TestFunc: authRateLimitTest},
 		{Name: "Message Rate Limit Test", Clients: []string{"user1"}, TestFunc: messageRateLimitTest},
 	}
-
-	// Track test results
-	testResults := make([]bool, len(testScenarios))
-	totalStartTime := time.Now()
-
-	fmt.Println("Running E2E tests... (verbose output suppressed)")
-
-	// Run all test scenarios
-	for i, scenario := range testScenarios {
+	if len(args) > 0 {
+		testIndex, err := strconv.Atoi(args[0])
+		if err != nil {
+			fmt.Printf("Invalid test index: %v\n", err)
+			return
+		}
+		if testIndex < 1 || testIndex > len(testScenarios) {
+			fmt.Printf("Test index out of range: %d (1-%d)\n", testIndex, len(testScenarios))
+			return
+		}
+		// Run specific test
+		scenario := testScenarios[testIndex-1]
 		scenarioStart := time.Now()
 
-		// Run test quietly (suppress verbose output)
-		err := runTestScenarioQuiet(scenario)
+		if verbose {
+			err = runTestScenario(scenario)
+		} else {
+			err = runTestScenarioQuiet(scenario)
+		}
 
-		// Record result
-		testResults[i] = (err == nil)
 		scenarioDuration := time.Since(scenarioStart)
 
-		// Show brief progress
-		status := "✅ PASS"
+		status := "PASS"
 		if err != nil {
-			status = "❌ FAIL"
+			status = "FAIL"
 			fmt.Printf("   Error: %v\n", err)
 		}
-		fmt.Printf("   Scenario %d: %s (%v)\n", i+1, status, scenarioDuration.Round(time.Second))
+		fmt.Printf("   Scenario %d: %s - %s (%v)\n", testIndex, status, scenario.Name, scenarioDuration.Round(time.Second))
 
-		// Wait for rate limits to reset between scenarios (except for last scenario)
-		if i < len(testScenarios)-1 {
-			waitForRateLimitReset()
+		// Summary
+		passedCount := 0
+		if err == nil {
+			passedCount = 1
 		}
-	}
+		totalDuration := scenarioDuration
+		fmt.Println("\n" + strings.Repeat("=", 60))
+		fmt.Println("E2E TEST RESULTS SUMMARY")
+		fmt.Println(strings.Repeat("=", 60))
 
-	// Print final summary
-	totalDuration := time.Since(totalStartTime)
-	passedCount := 0
-	for _, result := range testResults {
-		if result {
-			passedCount++
+		status = "PASS"
+		if err != nil {
+			status = "FAIL"
 		}
-	}
+		fmt.Printf("Scenario %d: %s - %s\n", testIndex, status, scenario.Name)
 
-	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("📊 E2E TEST RESULTS SUMMARY")
-	fmt.Println(strings.Repeat("=", 60))
+		fmt.Println(strings.Repeat("-", 60))
+		fmt.Printf("Result: %d/%d tests passed\n", passedCount, 1)
+		fmt.Printf("Total time: %v\n", totalDuration.Round(time.Second))
+		fmt.Println(strings.Repeat("=", 60))
+	} else {
+		// Track test results
+		testResults := make([]bool, len(testScenarios))
+		totalStartTime := time.Now()
 
-	for i, scenario := range testScenarios {
-		status := "✅ PASS"
-		if !testResults[i] {
-			status = "❌ FAIL"
+		fmt.Println("Running E2E tests... (verbose output suppressed)")
+
+		// Run all test scenarios
+		for i, scenario := range testScenarios {
+			scenarioStart := time.Now()
+
+			// Run test
+			var err error
+			if verbose {
+				err = runTestScenario(scenario)
+			} else {
+				err = runTestScenarioQuiet(scenario)
+			}
+
+			// Record result
+			testResults[i] = (err == nil)
+			scenarioDuration := time.Since(scenarioStart)
+
+			// Show brief progress
+			status := "PASS"
+			if err != nil {
+				status = "FAIL"
+				fmt.Printf("   Error: %v\n", err)
+			}
+			fmt.Printf("   Scenario %d: %s (%v)\n", i+1, status, scenarioDuration.Round(time.Second))
+
+			// Wait for rate limits to reset between scenarios (except for last scenario)
+			if i < len(testScenarios)-1 {
+				waitForRateLimitReset()
+			}
 		}
-		fmt.Printf("Scenario %d: %s - %s\n", i+1, status, scenario.Name)
-	}
 
-	fmt.Println(strings.Repeat("-", 60))
-	fmt.Printf("Result: %d/%d tests passed\n", passedCount, len(testScenarios))
-	fmt.Printf("Total time: %v\n", totalDuration.Round(time.Second))
-	fmt.Println(strings.Repeat("=", 60))
+		// Print final summary
+		totalDuration := time.Since(totalStartTime)
+		passedCount := 0
+		for _, result := range testResults {
+			if result {
+				passedCount++
+			}
+		}
+
+		fmt.Println("\n" + strings.Repeat("=", 60))
+		fmt.Println("E2E TEST RESULTS SUMMARY")
+		fmt.Println(strings.Repeat("=", 60))
+
+		for i, scenario := range testScenarios {
+			status := "PASS"
+			if !testResults[i] {
+				status = "FAIL"
+			}
+			fmt.Printf("Scenario %d: %s - %s\n", i+1, status, scenario.Name)
+		}
+
+		fmt.Println(strings.Repeat("-", 60))
+		fmt.Printf("Result: %d/%d tests passed\n", passedCount, len(testScenarios))
+		fmt.Printf("Total time: %v\n", totalDuration.Round(time.Second))
+		fmt.Println(strings.Repeat("=", 60))
+	}
 }
 
 // runTestScenarioQuiet runs a test scenario with minimal output
@@ -195,11 +260,13 @@ func createTestClient(username string) *TestClient {
 	}
 
 	return &TestClient{
-		conn:       conn,
-		privateKey: privateKey,
-		publicKey:  publicKey,
-		username:   username,
-		challenge:  nil,
+		conn:             conn,
+		privateKey:       privateKey,
+		publicKey:        publicKey,
+		username:         username,
+		challenge:        nil,
+		roomID:           0,
+		receivedMessages: make([]string, 0),
 	}
 }
 
@@ -303,18 +370,18 @@ func registrationRateLimitTest(clients []*TestClient) error {
 
 	// Wait for rate limit response
 	if !quietMode {
-		fmt.Println("⏳ Waiting for rate limit response...")
+		fmt.Println("Waiting for rate limit response...")
 	}
 	time.Sleep(3 * time.Second)
 
 	// Check if rate limit was triggered
 	if client.rateLimited {
 		if !quietMode {
-			fmt.Println("✅ Rate limit successfully triggered for registration")
+			fmt.Println("Rate limit successfully triggered for registration")
 		}
 	} else {
 		if !quietMode {
-			fmt.Println("⚠️  Rate limit may not have been triggered - check server logs")
+			fmt.Println("Rate limit may not have been triggered - check server logs")
 		}
 	}
 
@@ -350,18 +417,18 @@ func authRateLimitTest(clients []*TestClient) error {
 
 	// Wait for rate limit response
 	if !quietMode {
-		fmt.Println("⏳ Waiting for rate limit response...")
+		fmt.Println("Waiting for rate limit response...")
 	}
 	time.Sleep(3 * time.Second)
 
 	// Check if rate limit was triggered
 	if client.rateLimited {
 		if !quietMode {
-			fmt.Println("✅ Rate limit successfully triggered for authentication")
+			fmt.Println("Rate limit successfully triggered for authentication")
 		}
 	} else {
 		if !quietMode {
-			fmt.Println("⚠️  Rate limit may not have been triggered - check server logs")
+			fmt.Println(" Rate limit may not have been triggered - check server logs")
 		}
 	}
 
@@ -398,18 +465,18 @@ func messageRateLimitTest(clients []*TestClient) error {
 
 	// Wait for rate limit to be triggered
 	if !quietMode {
-		fmt.Println("⏳ Waiting for rate limit response...")
+		fmt.Println("Waiting for rate limit response...")
 	}
 	time.Sleep(4 * time.Second)
 
 	// Check if rate limit was triggered
 	if client.rateLimited {
 		if !quietMode {
-			fmt.Println("✅ Rate limit successfully triggered for messages")
+			fmt.Println("Rate limit successfully triggered for messages")
 		}
 	} else {
 		if !quietMode {
-			fmt.Println("⚠️  Rate limit may not have been triggered - check server logs")
+			fmt.Println("Rate limit may not have been triggered - check server logs")
 		}
 	}
 
@@ -562,6 +629,7 @@ func (c *TestClient) listenForResponses() {
 			}
 
 		case *shared.MessageResponsePacket:
+			c.receivedMessages = append(c.receivedMessages, p.Message)
 			if !quietMode {
 				fmt.Printf("[%s] MESSAGE RESPONSE at %d: '%s'\n", c.username, timestamp, p.Message)
 			}
@@ -569,6 +637,12 @@ func (c *TestClient) listenForResponses() {
 		case *shared.MessageErrorPacket:
 			if !quietMode {
 				fmt.Printf("[%s] MESSAGE ERROR at %d: '%s'\n", c.username, timestamp, p.Error)
+			}
+
+		case *shared.LookRoomPacket:
+			c.roomID = p.RoomID
+			if !quietMode {
+				fmt.Printf("[%s] LOOK ROOM RESPONSE at %d: Success=%v, RoomID=%d\n", c.username, timestamp, p.Success, p.RoomID)
 			}
 
 		case *shared.RateLimitPacket:
@@ -591,7 +665,7 @@ func (c *TestClient) listenForResponses() {
 }
 
 // runTestScenario executes a test scenario with the given clients
-func runTestScenario(scenario TestScenario) {
+func runTestScenario(scenario TestScenario) error {
 	fmt.Printf("Setting up %d clients for test scenario...\n", len(scenario.Clients))
 
 	// Create test clients
@@ -612,13 +686,13 @@ func runTestScenario(scenario TestScenario) {
 			fmt.Printf("Failed to authenticate %s: %v\n", client.username, err)
 			// Clean up on failure
 			cleanupClients(clients)
-			return
+			return err
 		}
 
 		// Add delay between client authentications to avoid rate limiting
 		// Only add delay if there are more clients to authenticate
 		if i < len(clients)-1 {
-			fmt.Printf("⏳ Waiting 30.5 seconds before next client authentication...\n")
+			fmt.Printf("Waiting 30.5 seconds before next client authentication...\n")
 			time.Sleep(30500 * time.Millisecond) // 30.5 seconds
 		}
 	}
@@ -632,11 +706,14 @@ func runTestScenario(scenario TestScenario) {
 	fmt.Printf("Running test scenario...\n")
 	if err := scenario.TestFunc(clients); err != nil {
 		fmt.Printf("Test scenario failed: %v\n", err)
+		cleanupClients(clients)
+		return err
 	}
 
 	// Clean up connections
 	fmt.Printf("Cleaning up connections...\n")
 	cleanupClients(clients)
+	return nil
 }
 
 // cleanupClients properly closes all client connections and cleans up resources
@@ -838,5 +915,87 @@ func concurrentMessagingTest(clients []*TestClient) error {
 		fmt.Println("Concurrent messaging test completed")
 	}
 	time.Sleep(3 * time.Second)
+	return nil
+}
+
+// lookRoomTest - Test LookRoom with 4 clients, validate same roomID, then team message
+func lookRoomTest(clients []*TestClient) error {
+	if len(clients) != 4 {
+		return fmt.Errorf("need exactly 4 clients")
+	}
+
+	if !quietMode {
+		fmt.Println("Starting Look Room test...")
+	}
+
+	// Send RoomRequest for each client
+	for _, client := range clients {
+		packet := shared.NewRoomRequestPacket(1)
+		data := packet.Serialize()
+
+		_, err := client.conn.Write(data)
+		if err != nil {
+			return fmt.Errorf("failed to send room request for %s: %v", client.username, err)
+		}
+
+		if !quietMode {
+			fmt.Printf("%s sent room request\n", client.username)
+		}
+	}
+
+	// Wait for responses
+	time.Sleep(3 * time.Second)
+
+	// Check all got same roomID
+	var roomID uint32
+	for i, client := range clients {
+		if client.roomID == 0 {
+			return fmt.Errorf("%s did not receive room response", client.username)
+		}
+		if i == 0 {
+			roomID = client.roomID
+		} else if client.roomID != roomID {
+			return fmt.Errorf("clients have different roomIDs: %d vs %d", roomID, client.roomID)
+		}
+	}
+
+	if !quietMode {
+		fmt.Printf("All clients joined room %d\n", roomID)
+	}
+
+	// Wait for registration
+	time.Sleep(1 * time.Second)
+
+	// user1 sends team message
+	client1 := clients[0]
+	teamMessage := "hello team"
+	client1.sendMessage(teamMessage)
+
+	if !quietMode {
+		fmt.Printf("%s sent team message: %s\n", client1.username, teamMessage)
+	}
+
+	// Wait for message responses
+	time.Sleep(2 * time.Second)
+
+	// Count how many received (team) message
+	teamReceivers := 0
+	for _, client := range clients {
+		for _, msg := range client.receivedMessages {
+			if strings.HasPrefix(msg, "(team)") {
+				teamReceivers++
+				break
+			}
+		}
+	}
+
+	if teamReceivers != 2 {
+		return fmt.Errorf("expected 2 team receivers, got %d", teamReceivers)
+	}
+
+	if !quietMode {
+		fmt.Printf("Team message sent, %d clients received\n", teamReceivers)
+	}
+
 	return nil
 }
