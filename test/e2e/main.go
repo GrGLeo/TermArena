@@ -45,9 +45,7 @@ type TestScenario struct {
 func waitForRateLimitReset() {
 	// Wait for rate limit window to reset (matches client authentication delay)
 	resetTime := 30500 * time.Millisecond // 30.5 seconds
-	fmt.Printf("Waiting %v for rate limits to reset...\n", resetTime)
 	time.Sleep(resetTime)
-	fmt.Println("Rate limit reset period completed")
 }
 
 // checkAndWaitForRateLimit checks if any test client is rate limited and waits
@@ -112,9 +110,9 @@ func main() {
 
 		scenarioDuration := time.Since(scenarioStart)
 
-		status := "PASS"
+		status := "\033[32mPASS\033[0m"
 		if err != nil {
-			status = "FAIL"
+			status = "\033[31mFAIL\033[0m"
 			fmt.Printf("   Error: %v\n", err)
 		}
 		fmt.Printf("   Scenario %d: %s - %s (%v)\n", testIndex, status, scenario.Name, scenarioDuration.Round(time.Second))
@@ -129,11 +127,15 @@ func main() {
 		fmt.Println("E2E TEST RESULTS SUMMARY")
 		fmt.Println(strings.Repeat("=", 60))
 
-		status = "PASS"
+		status = "\033[32mPASS\033[0m"
 		if err != nil {
-			status = "FAIL"
+			status = "\033[31mFAIL\033[0m"
 		}
-		fmt.Printf("Scenario %d: %s - %s\n", testIndex, status, scenario.Name)
+    if testIndex < 10 {
+		  fmt.Printf("Scenario  %d: %s - %s\n", testIndex, status, scenario.Name)
+    } else {
+      fmt.Printf("Scenario %d: %s - %s\n", testIndex, status, scenario.Name)
+    }
 
 		fmt.Println(strings.Repeat("-", 60))
 		fmt.Printf("Result: %d/%d tests passed\n", passedCount, 1)
@@ -163,9 +165,9 @@ func main() {
 			scenarioDuration := time.Since(scenarioStart)
 
 			// Show brief progress
-			status := "PASS"
+			status := "\033[32mPASS\033[0m"
 			if err != nil {
-				status = "FAIL"
+				status = "\033[31mFAIL\033[0m"
 				fmt.Printf("   Error: %v\n", err)
 			}
 			fmt.Printf("   Scenario %d: %s (%v)\n", i+1, status, scenarioDuration.Round(time.Second))
@@ -190,9 +192,9 @@ func main() {
 		fmt.Println(strings.Repeat("=", 60))
 
 		for i, scenario := range testScenarios {
-			status := "PASS"
+			status := "\033[32mPASS\033[0m"
 			if !testResults[i] {
-				status = "FAIL"
+				status = "\033[31mFAIL\033[0m"
 			}
 			fmt.Printf("Scenario %d: %s - %s\n", i+1, status, scenario.Name)
 		}
@@ -692,7 +694,6 @@ func runTestScenario(scenario TestScenario) error {
 		// Add delay between client authentications to avoid rate limiting
 		// Only add delay if there are more clients to authenticate
 		if i < len(clients)-1 {
-			fmt.Printf("Waiting 30.5 seconds before next client authentication...\n")
 			time.Sleep(30500 * time.Millisecond) // 30.5 seconds
 		}
 	}
