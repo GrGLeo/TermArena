@@ -42,6 +42,7 @@ impl Spell for WhirlwindSpell {
         &mut self,
         caster: &mut Champion,
         caster_damage: u16,
+        caster_magic_power: u16,
         projectile_manager: &mut ProjectileManager,
     ) {
         // Cooldown check
@@ -60,7 +61,8 @@ impl Spell for WhirlwindSpell {
         self.last_casted = Some(Instant::now());
 
         let spell_damage =
-            (caster_damage as f32 * self.stats.damage_ratio + self.stats.base_damage as f32) as u16;
+            (caster_damage as f32 * self.stats.damage_ratio + self.stats.base_attack_damage as f32) as u16 +
+            (caster_magic_power as f32 * self.stats.magic_ratio + self.stats.base_magic_damage as f32) as u16;
 
         let blueprint = ProjectileBlueprint {
             projectile_type: ProjectileType::Rotationnary,

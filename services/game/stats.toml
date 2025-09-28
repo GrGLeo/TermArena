@@ -5,6 +5,7 @@ armor = 30
 [champion]
 attack_damage = 20
 attack_speed_ms = 2200
+magic_power = 0
 health = 400
 mana = 100
 armor = 20

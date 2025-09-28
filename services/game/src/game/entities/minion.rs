@@ -59,6 +59,7 @@ impl Minion {
         let stats = Stats {
             attack_damage: minion_stats.attack_damage,
             attack_speed: Duration::from_millis(minion_stats.attack_speed_ms),
+            magic_power: 0,
             health: minion_stats.health,
             max_health: minion_stats.health,
             hp_per_sec: 0.0,

@@ -18,6 +18,7 @@ fn mock_champion_stats() -> ChampionStats {
     ChampionStats {
         attack_damage: 50,
         attack_speed_ms: 1000,
+        magic_power: 10,
         health: 500,
         mana: 500,
         armor: 10,
@@ -36,8 +37,10 @@ fn mock_fireball_spell_stats() -> SpellStats {
     SpellStats {
         id: 1,
         mana_cost: 50,
-        damage_ratio: 1.2,
-        base_damage: 60,
+        damage_ratio: 0.,
+        magic_ratio: 1.2,
+        base_attack_damage: 0,
+        base_magic_damage: 60,
         range: 5,
         cooldown_secs: 10,
         speed: 1,
@@ -51,8 +54,10 @@ fn mock_freezewall_spell_stats() -> SpellStats {
     SpellStats {
         id: 0,
         mana_cost: 100,
-        damage_ratio: 0.8,
-        base_damage: 40,
+        damage_ratio: 0.0,
+        magic_ratio: 0.8,
+        base_attack_damage: 0,
+        base_magic_damage: 40,
         range: 3,
         cooldown_secs: 20,
         speed: 1,
@@ -69,7 +74,7 @@ fn test_fireball_cast_creates_projectile() {
     let mut fireball_spell = FireballSpell::new(mock_fireball_spell_stats());
     let mut projectile_manager = ProjectileManager::new();
 
-    fireball_spell.cast(&mut champion, 50, &mut projectile_manager);
+    fireball_spell.cast(&mut champion, 50, 10, &mut projectile_manager);
 
     assert_eq!(projectile_manager.projectiles.len(), 1);
     let projectile = projectile_manager.projectiles.values().next().unwrap();
@@ -92,7 +97,7 @@ fn test_fireball_cast_creates_projectile() {
 
     assert_eq!(
         projectile.payloads,
-        vec![GameplayEffect::Damage((50.0 * 1.2 + 60.0) as u16)]
+        vec![GameplayEffect::Damage((10.0 * 1.2 + 60.0) as u16)]
     );
 }
 
@@ -103,11 +108,11 @@ fn test_fireball_cast_respects_cooldown() {
     let mut projectile_manager = ProjectileManager::new();
 
     // First cast
-    fireball_spell.cast(&mut champion, 50, &mut projectile_manager);
+    fireball_spell.cast(&mut champion, 50, 10, &mut projectile_manager);
     assert_eq!(projectile_manager.projectiles.len(), 1);
 
     // Second cast, should be on cooldown
-    fireball_spell.cast(&mut champion, 50, &mut projectile_manager);
+    fireball_spell.cast(&mut champion, 50, 10, &mut projectile_manager);
     assert_eq!(projectile_manager.projectiles.len(), 1);
 }
 
@@ -118,7 +123,7 @@ fn test_fireball_cast_checks_mana() {
     let mut fireball_spell = FireballSpell::new(mock_fireball_spell_stats());
     let mut projectile_manager = ProjectileManager::new();
 
-    fireball_spell.cast(&mut champion, 50, &mut projectile_manager);
+    fireball_spell.cast(&mut champion, 50, 10, &mut projectile_manager);
 
     assert_eq!(projectile_manager.projectiles.len(), 0);
 }
@@ -130,7 +135,7 @@ fn test_freezewall_cast_creates_multiple_projectiles() {
     let mut freezewall_spell = FreezeWallSpell::new(mock_freezewall_spell_stats());
     let mut projectile_manager = ProjectileManager::new();
 
-    freezewall_spell.cast(&mut champion, 50, &mut projectile_manager);
+    freezewall_spell.cast(&mut champion, 50, 10, &mut projectile_manager);
 
     assert_eq!(projectile_manager.projectiles.len(), 3);
     let mut projectiles: Vec<_> = projectile_manager.projectiles.values().collect();
@@ -190,11 +195,11 @@ fn test_freezewall_cast_respects_cooldown() {
     let mut projectile_manager = ProjectileManager::new();
 
     // First cast
-    freezewall_spell.cast(&mut champion, 50, &mut projectile_manager);
+    freezewall_spell.cast(&mut champion, 50, 10, &mut projectile_manager);
     assert_eq!(projectile_manager.projectiles.len(), 3);
 
     // Second cast, should be on cooldown
-    freezewall_spell.cast(&mut champion, 50, &mut projectile_manager);
+    freezewall_spell.cast(&mut champion, 50, 10, &mut projectile_manager);
     assert_eq!(projectile_manager.projectiles.len(), 3);
 }
 
@@ -205,7 +210,7 @@ fn test_freezewall_cast_checks_mana() {
     let mut freezewall_spell = FreezeWallSpell::new(mock_freezewall_spell_stats());
     let mut projectile_manager = ProjectileManager::new();
 
-    freezewall_spell.cast(&mut champion, 50, &mut projectile_manager);
+    freezewall_spell.cast(&mut champion, 50, 10, &mut projectile_manager);
 
     assert_eq!(projectile_manager.projectiles.len(), 0);
 }

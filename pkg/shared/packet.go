@@ -730,22 +730,24 @@ type ShopResponsePacket struct {
 	version, code int
 	Health        int
 	Mana          int
-	Attack_damage int
+	AttackDamage  int
+	MagicPower    int
 	Armor         int
 	Gold          int
 	Inventory     []int
 }
 
-func NewShopResponsePacket(health, mana, attack_damage, armor, gold int, inventory []int) *ShopResponsePacket {
+func NewShopResponsePacket(health, mana, attackDamage, magicPower, armor, gold int, inventory []int) *ShopResponsePacket {
 	return &ShopResponsePacket{
-		version:       1,
-		code:          CodeShopResponse,
-		Health:        health,
-		Mana:          mana,
-		Attack_damage: attack_damage,
-		Armor:         armor,
-		Gold:          gold,
-		Inventory:     inventory,
+		version:      1,
+		code:         CodeShopResponse,
+		Health:       health,
+		Mana:         mana,
+		AttackDamage: attackDamage,
+		MagicPower:   magicPower,
+		Armor:        armor,
+		Gold:         gold,
+		Inventory:    inventory,
 	}
 }
 
@@ -757,7 +759,8 @@ func (srp *ShopResponsePacket) Serialize() []byte {
 	buf.WriteByte(byte(srp.code))
 	binary.Write(&buf, binary.BigEndian, uint16(srp.Health))
 	binary.Write(&buf, binary.BigEndian, uint16(srp.Mana))
-	binary.Write(&buf, binary.BigEndian, uint16(srp.Attack_damage))
+	binary.Write(&buf, binary.BigEndian, uint16(srp.AttackDamage))
+	binary.Write(&buf, binary.BigEndian, uint16(srp.MagicPower))
 	binary.Write(&buf, binary.BigEndian, uint16(srp.Armor))
 	binary.Write(&buf, binary.BigEndian, uint16(srp.Gold))
 	for i := range 6 {
@@ -1315,30 +1318,32 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		return packet, 3 + usernameLen, nil
 
 	case CodeShopResponse: // ShopResponsePacket
-		if len(data) < 24 {
+		if len(data) < 26 {
 			return nil, 0, errors.New("incomplete packet")
 		}
 		health := int(binary.BigEndian.Uint16(data[2:4]))
 		mana := int(binary.BigEndian.Uint16(data[4:6]))
-		attack_damage := int(binary.BigEndian.Uint16(data[6:8]))
-		armor := int(binary.BigEndian.Uint16(data[8:10]))
-		gold := int(binary.BigEndian.Uint16(data[10:12]))
+		attackDamage := int(binary.BigEndian.Uint16(data[6:8]))
+		magicPower := int(binary.BigEndian.Uint16(data[8:10]))
+		armor := int(binary.BigEndian.Uint16(data[10:12]))
+		gold := int(binary.BigEndian.Uint16(data[12:14]))
 		var inventory []int
 		for i := range 6 {
-			start := 12 + i*2
+			start := 14 + i*2
 			inventory = append(inventory, int(binary.BigEndian.Uint16(data[start:start+2])))
 		}
 		packet := &ShopResponsePacket{
-			version:       version,
-			code:          code,
-			Health:        health,
-			Mana:          mana,
-			Attack_damage: attack_damage,
-			Armor:         armor,
-			Gold:          gold,
-			Inventory:     inventory,
+			version:      version,
+			code:         code,
+			Health:       health,
+			Mana:         mana,
+			AttackDamage: attackDamage,
+			MagicPower:   magicPower,
+			Armor:        armor,
+			Gold:         gold,
+			Inventory:    inventory,
 		}
-		return packet, 24, nil
+		return packet, 26, nil
 
 	case CodePurchaseItem: // PurchaseItemPacket
 		if len(data) < 4 {

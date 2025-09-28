@@ -115,6 +115,7 @@ impl Champion {
         let stats = Stats {
             attack_damage: champion_stats.attack_damage,
             attack_speed: Duration::from_millis(champion_stats.attack_speed_ms),
+            magic_power: champion_stats.magic_power,
             health: champion_stats.health,
             max_health: champion_stats.health,
             hp_per_sec,
@@ -151,11 +152,12 @@ impl Champion {
         }
     }
 
-    pub fn stats(&self) -> (u16, u16, u16, u16, u16) {
+    pub fn stats(&self) -> (u16, u16, u16, u16, u16, u16) {
         (
             self.stats.max_health,
             self.stats.max_mana,
             self.stats.attack_damage,
+            self.stats.magic_power,
             self.stats.armor,
             self.gold,
         )
@@ -315,6 +317,7 @@ impl Champion {
         let mut max_mana = self.champion_stats.mana;
         let mut attack_damage = self.champion_stats.attack_damage;
         let mut attack_speed_ms = self.champion_stats.attack_speed_ms;
+        let mut magic_power = self.champion_stats.magic_power;
         let mut armor = self.champion_stats.armor;
         let mut health_regen_bonus = 0.0;
 
@@ -329,6 +332,9 @@ impl Champion {
         for item in self.inventory.iter().flatten() {
             if let Some(ad) = item.stats.attack_damage {
                 attack_damage += ad as u16;
+            }
+            if let Some(mp) = item.stats.magic_power {
+                magic_power += mp as u16;
             }
             if let Some(h) = item.stats.health {
                 max_health += h as u16;
@@ -349,6 +355,7 @@ impl Champion {
 
         self.stats.attack_damage = attack_damage;
         self.stats.attack_speed = Duration::from_millis(attack_speed_ms);
+        self.stats.magic_power = magic_power;
         self.stats.armor = armor;
         self.stats.max_health = max_health;
         self.stats.max_mana = max_mana;
@@ -401,7 +408,7 @@ impl Champion {
                     return Err(GameError::ChampionBusy);
                 }
                 if let Some(mut spell) = self.spells.remove(&0) {
-                    spell.cast(self, self.stats.attack_damage, projectile_manager);
+                    spell.cast(self, self.stats.attack_damage, self.stats.magic_power, projectile_manager);
                     self.spells.insert(0, spell);
                     return Ok(());
                 }
@@ -412,7 +419,7 @@ impl Champion {
                     return Err(GameError::ChampionBusy);
                 }
                 if let Some(mut spell) = self.spells.remove(&1) {
-                    spell.cast(self, self.stats.attack_damage, projectile_manager);
+                    spell.cast(self, self.stats.attack_damage, self.stats.magic_power, projectile_manager);
                     self.spells.insert(1, spell);
                     return Ok(());
                 }
@@ -705,6 +712,7 @@ mod tests {
         ChampionStats {
             attack_damage: 20,
             attack_speed_ms: 2500,
+            magic_power: 0,
             health: 200,
             mana: 100,
             armor: 5,
@@ -1119,8 +1127,10 @@ mod tests {
             range: 10,
             width: 5,
             speed: 1,
-            base_damage: 20,
+            base_attack_damage: 20,
+            base_magic_damage: 0,
             damage_ratio: 0.8,
+            magic_ratio: 0.,
             effect_duration: Some(5),
             is_heal: Some(false),
         };
@@ -1744,6 +1754,7 @@ mod tests {
             stats: ItemStats {
                 attack_damage: Some(10),
                 attack_speed: None,
+                magic_power: None,
                 health: None,
                 armor: None,
                 mana: None,
@@ -1760,6 +1771,7 @@ mod tests {
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
+                magic_power: None,
                 health: Some(50),
                 armor: Some(5),
                 mana: None,
@@ -1790,6 +1802,7 @@ mod tests {
                 stats: ItemStats {
                     attack_damage: None,
                     attack_speed: None,
+                    magic_power: None,
                     health: None,
                     armor: None,
                     mana: None,
@@ -1809,6 +1822,7 @@ mod tests {
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
+                magic_power: None,
                 health: None,
                 armor: None,
                 mana: None,
@@ -1836,6 +1850,7 @@ mod tests {
             stats: ItemStats {
                 attack_damage: Some(10),
                 attack_speed: None,
+                magic_power: None,
                 health: None,
                 armor: None,
                 mana: None,
@@ -1864,6 +1879,7 @@ mod tests {
             stats: ItemStats {
                 attack_damage: Some(10),
                 attack_speed: None,
+                magic_power: None,
                 health: None,
                 armor: None,
                 mana: None,
@@ -1880,6 +1896,7 @@ mod tests {
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
+                magic_power: None,
                 health: Some(50),
                 armor: Some(5),
                 mana: None,
@@ -1924,6 +1941,7 @@ mod tests {
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
+                magic_power: None,
                 health: None,
                 armor: None,
                 mana: None,
@@ -1956,6 +1974,7 @@ mod tests {
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
+                magic_power: None,
                 health: None,
                 armor: None,
                 mana: None,
@@ -1971,6 +1990,7 @@ mod tests {
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
+                magic_power: None,
                 health: None,
                 armor: None,
                 mana: None,
@@ -2004,6 +2024,7 @@ mod tests {
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
+                magic_power: None,
                 health: Some(50),
                 armor: Some(5),
                 mana: None,
@@ -2106,6 +2127,7 @@ mod tests {
             stats: ItemStats {
                 attack_damage: None,
                 attack_speed: None,
+                magic_power: None,
                 health: None,
                 armor: None,
                 mana: None,
@@ -2197,8 +2219,10 @@ mod tests {
             range: 0,
             width: 0,
             speed: 0,
-            base_damage: 10,
+            base_attack_damage: 10,
+            base_magic_damage: 0,
             damage_ratio: 0.5,
+            magic_ratio: 0.,
             effect_duration: Some(5),
             is_heal: Some(false),
         };

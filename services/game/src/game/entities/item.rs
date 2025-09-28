@@ -14,6 +14,7 @@ pub struct Item {
 pub struct ItemStats {
     pub attack_damage: Option<u32>,
     pub attack_speed: Option<u64>,
+    pub magic_power: Option<u32>,
     pub health: Option<u32>,
     pub mana: Option<u32>,
     pub armor: Option<u32>,

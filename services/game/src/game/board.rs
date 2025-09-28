@@ -411,7 +411,7 @@ mod tests {
 
     #[test]
     fn test_get_cell() {
-        let mut board = Board::new(5, 5);
+        let board = Board::new(5, 5);
 
         // Test valid coordinates
         let cell = board.get_cell(2, 2);
@@ -651,6 +651,7 @@ mod tests {
             health: 100,
             mana: 100,
             attack_damage: 10,
+            magic_power: 0,
             armor: 10,
             attack_speed_ms: 1000,
             xp_per_level: vec![100, 200, 300],

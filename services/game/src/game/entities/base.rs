@@ -19,6 +19,7 @@ impl Base {
         let stats = Stats {
             attack_damage: 0,
             attack_speed: std::time::Duration::from_secs(999),
+            magic_power: 0,
             health: base_stats.health,
             max_health: base_stats.health,
             hp_per_sec: 0.0,

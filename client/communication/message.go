@@ -76,7 +76,7 @@ type UpdateSpellMsg struct {
 }
 
 type GameServerReadyMsg struct {
-  RoomIP string
+	RoomIP string
 }
 
 // GameStart is sent by the server once the number of player are matched
@@ -92,22 +92,24 @@ type GameCloseMsg struct {
 
 // GoToShop is sent after receiving a response from the game
 type GoToShopMsg struct {
-	Health        int
-	Mana          int
-	Attack_damage int
-	Armor         int
-	Gold          int
-	Inventory     []int
+	Health       int
+	Mana         int
+	AttackDamage int
+	MagicPower   int
+	Armor        int
+	Gold         int
+	Inventory    []int
 }
 
 // UpdatePlayerStatsMsg is sent when the player buys an item
 type UpdatePlayerStatsMsg struct {
-	Health        int
-	Mana          int
-	Attack_damage int
-	Armor         int
-	Gold          int
-	Inventory     []int
+	Health       int
+	Mana         int
+	AttackDamage int
+	MagicPower   int
+	Armor        int
+	Gold         int
+	Inventory    []int
 }
 
 // BackToGame is sent when the player press 'p' while in Shop
