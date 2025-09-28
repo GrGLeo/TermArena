@@ -20,15 +20,16 @@ var (
 
 // ShopModel manages the state of the shop UI.
 type ShopModel struct {
-	styles               *Styles
-	Items                []Item
-	FocusedIndex         int
-	height, width        int
-	health, mana         int
-	attack_damage, armor int
-	gold                 int
-	conn                 *net.TCPConn
-	inventory            []int
+	styles                   *Styles
+	Items                    []Item
+	FocusedIndex             int
+	height, width            int
+	health, mana             int
+	attackDamage, magicPower int
+	armor                    int
+	gold                     int
+	conn                     *net.TCPConn
+	inventory                []int
 }
 
 func (m *ShopModel) SetDimension(height, width int) {
@@ -36,18 +37,19 @@ func (m *ShopModel) SetDimension(height, width int) {
 	m.width = width
 }
 
-func NewShopModel(styles *Styles, health, mana, attack_damage, armor, gold int, inventory []int, conn *net.TCPConn) ShopModel {
+func NewShopModel(styles *Styles, health, mana, attackDamage, magicPower, armor, gold int, inventory []int, conn *net.TCPConn) ShopModel {
 	return ShopModel{
-		styles:        styles,
-		Items:         availableItems,
-		FocusedIndex:  0,
-		health:        health,
-		mana:          mana,
-		attack_damage: attack_damage,
-		armor:         armor,
-		gold:          gold,
-		conn:          conn,
-		inventory:     inventory,
+		styles:       styles,
+		Items:        availableItems,
+		FocusedIndex: 0,
+		health:       health,
+		mana:         mana,
+		attackDamage: attackDamage,
+		magicPower:   magicPower,
+		armor:        armor,
+		gold:         gold,
+		conn:         conn,
+		inventory:    inventory,
 	}
 }
 
@@ -61,13 +63,14 @@ type ItemPurchasedMsg struct {
 
 func (m ShopModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-  case communication.GoToShopMsg:
-    m.health = msg.Health
-    m.mana = msg.Mana
-    m.attack_damage = msg.Attack_damage
-    m.armor = msg.Armor
-    m.gold = msg.Gold
-    m.inventory = msg.Inventory
+	case communication.GoToShopMsg:
+		m.health = msg.Health
+		m.mana = msg.Mana
+		m.attackDamage = msg.AttackDamage
+		m.magicPower = msg.MagicPower
+		m.armor = msg.Armor
+		m.gold = msg.Gold
+		m.inventory = msg.Inventory
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, shopUpKey):
@@ -79,11 +82,11 @@ func (m ShopModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.FocusedIndex++
 			}
 		case key.Matches(msg, shopEnterKey):
-				if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Items) {
-					selectedItem := m.Items[m.FocusedIndex]
-					fmt.Printf("Attempting to purchase: %s", selectedItem.Name)
-					communication.SendPurchaseItemPacket(m.conn, selectedItem.ID)
-				}
+			if m.FocusedIndex >= 0 && m.FocusedIndex < len(m.Items) {
+				selectedItem := m.Items[m.FocusedIndex]
+				fmt.Printf("Attempting to purchase: %s", selectedItem.Name)
+				communication.SendPurchaseItemPacket(m.conn, selectedItem.ID)
+			}
 		case key.Matches(msg, shopBackKey):
 			return m, func() tea.Msg {
 				return communication.BackToGameMsg{}
@@ -92,7 +95,8 @@ func (m ShopModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case communication.UpdatePlayerStatsMsg:
 		m.health = msg.Health
 		m.mana = msg.Mana
-		m.attack_damage = msg.Attack_damage
+		m.attackDamage = msg.AttackDamage
+		m.magicPower = msg.MagicPower
 		m.armor = msg.Armor
 		m.gold = msg.Gold
 		m.inventory = msg.Inventory
@@ -126,7 +130,8 @@ func (m ShopModel) View() string {
 	rightPanel.WriteString("Player Stats:\n")
 	rightPanel.WriteString(fmt.Sprintf("  Health: %d\n", m.health))
 	rightPanel.WriteString(fmt.Sprintf("  Mana: %d\n", m.mana))
-	rightPanel.WriteString(fmt.Sprintf("  Attack Damage: %d\n", m.attack_damage))
+	rightPanel.WriteString(fmt.Sprintf("  Attack Damage: %d\n", m.attackDamage))
+	rightPanel.WriteString(fmt.Sprintf("  Magic Power: %d\n", m.magicPower))
 	rightPanel.WriteString(fmt.Sprintf("  Armor: %d\n", m.armor))
 	rightPanel.WriteString(fmt.Sprintf("  Gold: %d\n", m.gold))
 	rightPanel.WriteString("  Inventory:\n")

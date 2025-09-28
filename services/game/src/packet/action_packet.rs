@@ -42,7 +42,7 @@ mod tests {
             packet.version, 1,
             "Deserialized version should match byte slice"
         );
-        assert_eq!(packet.code, 11, "Deserialized code should match byte slice");
+        assert_eq!(packet.code, 101, "Deserialized code should match byte slice");
         assert_eq!(
             packet.action, 3,
             "Deserialized action should match byte slice"

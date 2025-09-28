@@ -42,6 +42,7 @@ impl Spell for HealingWaveSpell {
         &mut self,
         caster: &mut Champion,
         caster_damage: u16,
+        caster_magic_power: u16,
         projectile_manager: &mut ProjectileManager,
     ) {
         if let Some(last_casted) = self.last_casted {
@@ -57,8 +58,10 @@ impl Spell for HealingWaveSpell {
 
         self.last_casted = Some(Instant::now());
 
+
         let heal_amount =
-            (caster_damage as f32 * self.stats.damage_ratio + self.stats.base_damage as f32) as u16;
+            (caster_damage as f32 * self.stats.damage_ratio + self.stats.base_attack_damage as f32) as u16 +
+            (caster_magic_power as f32 * self.stats.magic_ratio + self.stats.base_magic_damage as f32) as u16;
 
         let (wall_center_row, wall_center_col) = match caster.direction {
             Direction::Up => (caster.row.saturating_sub(1), caster.col),
@@ -130,6 +133,7 @@ mod tests {
         ChampionStats {
             attack_damage: 20,
             attack_speed_ms: 2500,
+            magic_power: 10,
             health: 200,
             mana: 100,
             armor: 5,
@@ -158,7 +162,9 @@ mod tests {
             speed: 0,
             width: 3,
             damage_ratio: 0.0,
-            base_damage: 20,
+            magic_ratio: 0.0,
+            base_attack_damage: 0,
+            base_magic_damage: 20,
             effect_duration: None,
             is_heal: Some(true),
         };
@@ -169,7 +175,7 @@ mod tests {
 
         let mut spell = HealingWaveSpell::new(spell_stats);
 
-        spell.cast(&mut champion, 0, &mut projectile_manager);
+        spell.cast(&mut champion, 0, 0, &mut projectile_manager);
 
         assert_eq!(projectile_manager.projectiles.len(), 3);
         let projectile = &projectile_manager.projectiles[&0];

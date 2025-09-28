@@ -41,6 +41,7 @@ pub enum Target {
 pub struct Stats {
     attack_damage: u16,
     attack_speed: Duration,
+    magic_power: u16,
     pub health: u16,
     pub max_health: u16,
     pub hp_per_sec: f32,

@@ -260,6 +260,7 @@ mod tests {
         ChampionStats {
             attack_damage: 20,
             attack_speed_ms: 2500,
+            magic_power: 0,
             health: 200,
             mana: 100,
             armor: 5,

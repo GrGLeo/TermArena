@@ -40,7 +40,8 @@ pub trait Spell: Send + Sync + Debug + 'static {
     fn cast(
         &mut self,
         caster: &mut Champion,
-        caster_damage: u16,
+        caster_attack_damage: u16,
+        caster_magic_power: u16,
         projectile_manager: &mut ProjectileManager,
     );
     fn clone_box(&self) -> Box<dyn Spell>;

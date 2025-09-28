@@ -8,36 +8,42 @@ stats.attack_damage = 10
 
 [[items]]
 id = 2
+name = "Tome of power"
+cost = 450
+stats.magic_power = 10
+
+[[items]]
+id = 3
 name = "Armor of Resilience"
 cost = 300
 stats.armor = 10
 
 [[items]]
-id = 3
+id = 4
 name = "Health Stone"
 cost = 400
 stats.health = 50
 
 [[items]]
-id = 4
+id = 5
 name = "Mana Pendant"
 cost = 400
 stats.mana = 25
 
 [[items]]
-id = 5
+id = 6
 name = "Dagger"
 cost = 200
 stats.attack_speed = 200
 
 [[items]]
-id = 6
+id = 7
 name = "Vial of Renewal"
 cost = 150
 stats.health_regen = 1.0
 
 [[items]]
-id = 7
+id = 8
 name = "Shield of Valor"
 cost = 800
 crafting_cost = 200
@@ -46,7 +52,7 @@ stats.armor = 15
 stats.health = 80
 
 [[items]]
-id = 8
+id = 9
 name = "Double-edged Sword"
 cost = 800
 crafting_cost = 100

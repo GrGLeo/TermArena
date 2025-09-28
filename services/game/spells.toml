@@ -1,3 +1,4 @@
+# freeze_wall
 [[spell]]
 id = 0
 mana_cost = 20
@@ -5,10 +6,13 @@ cooldown_secs = 10
 range = 10
 width = 5
 speed = 1
-base_damage = 10
-damage_ratio = 0.2
+base_attack_damage = 0
+base_magic_damage = 10
+damage_ratio = 0
+magic_ratio = 0.2
 effect_duration = 1
 
+# fireball
 [[spell]]
 id = 1
 mana_cost = 10
@@ -16,9 +20,12 @@ cooldown_secs = 4
 range = 6
 width = 1
 speed = 1
-base_damage = 5
-damage_ratio = 0.4
+base_attack_damage = 0
+base_magic_damage = 5
+damage_ratio = 0.0
+magic_ratio = 0.4
 
+# healing_wave
 [[spell]]
 id = 2
 mana_cost = 40
@@ -26,10 +33,13 @@ cooldown_secs = 15
 range = 8
 width = 3
 speed = 1
-base_damage = 50
-damage_ratio = 0.3
+base_attack_damage = 0
+base_magic_damage = 50
+damage_ratio = 0.0
+magic_ratio = 0.3
 is_heal = true
 
+# whirlwind
 [[spell]]
 id = 3
 mana_cost = 10
@@ -37,9 +47,12 @@ cooldown_secs = 10
 range = 1
 width = 1
 speed = 1
-base_damage = 10
+base_attack_damage = 10
+base_magic_damage = 0
 damage_ratio = 0.3
+magic_ratio = 0
 
+# pierce
 [[spell]]
 id = 4
 mana_cost = 5
@@ -47,6 +60,8 @@ cooldown_secs = 10
 range = 1
 width = 1
 speed = 1
-base_damage = 0
+base_attack_damage = 0
+base_magic_damage = 0
 damage_ratio = 0.1
+magic_ratio = 0
 effect_duration = 5

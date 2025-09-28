@@ -39,6 +39,7 @@ impl Tower {
             stats: Stats {
                 attack_damage: tower_stats.attack_damage,
                 attack_speed: Duration::from_secs(tower_stats.attack_speed_secs),
+                magic_power: 0,
                 health: tower_stats.health,
                 max_health: tower_stats.health,
                 hp_per_sec: 0.0,

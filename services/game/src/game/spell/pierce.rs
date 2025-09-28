@@ -3,13 +3,9 @@ use std::time::{Duration, Instant};
 use crate::config::SpellStats;
 use crate::game::buffs::health_buff::DoTBuff;
 use crate::game::projectile_manager::ProjectileManager;
-use crate::game::{
-    Champion,
-    cell::CellAnimation,
-    entities::{champion::Direction, projectile::GameplayEffect},
-};
+use crate::game::{Champion, entities::projectile::GameplayEffect};
 
-use super::{ProjectileBlueprint, ProjectileType, Spell};
+use super::Spell;
 
 #[derive(Debug, Clone)]
 pub struct PierceSpell {
@@ -43,6 +39,7 @@ impl Spell for PierceSpell {
         &mut self,
         caster: &mut Champion,
         caster_damage: u16,
+        _: u16,
         _projectile_manager: &mut ProjectileManager,
     ) {
         // Cooldown check
@@ -60,12 +57,12 @@ impl Spell for PierceSpell {
 
         self.last_casted = Some(Instant::now());
 
-        let damage_per_sec =
-            (caster_damage as f32 * self.stats.damage_ratio + self.stats.base_damage as f32) as u16;
+        let damage_per_sec = (caster_damage as f32 * self.stats.damage_ratio
+            + self.stats.base_attack_damage as f32) as u16;
         let dot_buff = DoTBuff::new(
             self.stats.effect_duration.unwrap_or(0) as u64,
             damage_per_sec as u8,
-            );
+        );
         let effect = GameplayEffect::Buff(Box::new(dot_buff));
         caster.reset_aa();
         caster.add_effects(effect);

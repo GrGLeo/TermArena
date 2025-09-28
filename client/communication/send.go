@@ -222,7 +222,7 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 				msgs <- GameCloseMsg{Code: msg.Success}
 			case *shared.ShopResponsePacket:
 				log.Println("Sending GoToShopMsg")
-				msgs <- GoToShopMsg{Health: msg.Health, Mana: msg.Mana, Attack_damage: msg.Attack_damage, Armor: msg.Armor, Gold: msg.Gold, Inventory: msg.Inventory}
+				msgs <- GoToShopMsg{Health: msg.Health, Mana: msg.Mana, AttackDamage: msg.AttackDamage, MagicPower: msg.MagicPower, Armor: msg.Armor, Gold: msg.Gold, Inventory: msg.Inventory}
 			case *shared.BoardPacket:
 				board, err := DecodeRLE(msg.EncodedBoard)
 				if err != nil {

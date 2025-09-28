@@ -20,6 +20,7 @@ pub struct BaseStats {
 pub struct ChampionStats {
     pub attack_damage: u16,
     pub attack_speed_ms: u64,
+    pub magic_power: u16,
     pub health: u16,
     pub mana: u16,
     pub armor: u16,
@@ -85,7 +86,9 @@ pub struct SpellStats {
     pub speed: u32,
     pub width: u8,
     pub damage_ratio: f32,
-    pub base_damage: u16,
+    pub magic_ratio: f32,
+    pub base_attack_damage: u16,
+    pub base_magic_damage: u16,
     #[serde(default)]
     pub effect_duration: Option<u8>,
     #[serde(default)]

@@ -28,21 +28,23 @@ pub struct ShopResponsePacket {
     health: u16,
     mana: u16,
     damage: u16,
+    magic: u16,
     armor: u16,
     gold: u16,
     inventory: Vec<u16>,
 }
 
 impl ShopResponsePacket {
-    pub fn new(stats: (u16, u16, u16, u16, u16), inventory: Vec<u16>) -> Self {
+    pub fn new(stats: (u16, u16, u16, u16, u16, u16), inventory: Vec<u16>) -> Self {
         ShopResponsePacket {
             version: 1,
             code: CODE_SHOP_RESPONSE,
             health: stats.0,
             mana: stats.1,
             damage: stats.2,
-            armor: stats.3,
-            gold: stats.4,
+            magic: stats.3,
+            armor: stats.4,
+            gold: stats.5,
             inventory,
         }
     }
@@ -54,6 +56,7 @@ impl ShopResponsePacket {
         buffer.put_u16(self.health);
         buffer.put_u16(self.mana);
         buffer.put_u16(self.damage);
+        buffer.put_u16(self.magic);
         buffer.put_u16(self.armor);
         buffer.put_u16(self.gold);
         // Always write 6 inventory slots
