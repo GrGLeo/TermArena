@@ -1,6 +1,7 @@
 [base]
 health = 4000
 armor = 30
+magic_resistance = 0
 
 [champion]
 attack_damage = 20
