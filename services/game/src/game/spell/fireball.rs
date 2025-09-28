@@ -88,7 +88,7 @@ impl Spell for FireballSpell {
             radius: None,
             total_iteration: None,
             speed: self.stats.speed,
-            payloads: vec![GameplayEffect::Damage(spell_damage)],
+            payloads: vec![GameplayEffect::AttackDamage(spell_damage)],
             visual_cell_type: CellAnimation::FireBall,
         };
         projectile_manager.create_from_blueprint(blueprint);

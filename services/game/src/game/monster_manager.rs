@@ -116,16 +116,15 @@ impl MonsterManager {
                             ) {
                                 if let Some(attack_action) = monster.can_attack() {
                                     if let AttackAction::Melee {
-                                        damage,
                                         mut animation,
-                                        effects: _,
+                                        effects,
                                     } = attack_action
                                     {
                                         animation.attach_target(champion_id);
                                         new_animations.push(animation);
                                         pending_damages.push((
                                             Target::Champion(champion_id),
-                                            vec![GameplayEffect::Damage(damage)],
+                                            effects,
                                         ));
                                     }
                                 }
@@ -380,7 +379,7 @@ mod tests {
         let attacker_id = 42; // Player's ID
 
         // Apply damage effect
-        let effects = vec![GameplayEffect::Damage(30)];
+        let effects = vec![GameplayEffect::AttackDamage(30)];
         manager.apply_effects_to_monster(&monster_id, effects, attacker_id);
 
         // Get the monster to check its new state
@@ -404,7 +403,7 @@ mod tests {
         let attacker_2 = 99; // Second attacker
 
         // First attack sets the aggro
-        manager.apply_effects_to_monster(&monster_id, vec![GameplayEffect::Damage(10)], attacker_1);
+        manager.apply_effects_to_monster(&monster_id, vec![GameplayEffect::AttackDamage(10)], attacker_1);
         let monster = manager.active_monsters.get(&monster_id).unwrap();
         assert_eq!(
             monster.target_champion_id,
@@ -414,7 +413,7 @@ mod tests {
         assert_eq!(monster.stats.health, 90);
 
         // Second attack from a different champion
-        manager.apply_effects_to_monster(&monster_id, vec![GameplayEffect::Damage(10)], attacker_2);
+        manager.apply_effects_to_monster(&monster_id, vec![GameplayEffect::AttackDamage(10)], attacker_2);
         let monster = manager.active_monsters.get(&monster_id).unwrap();
 
         // Verify health is reduced, but target remains unchanged
@@ -544,7 +543,7 @@ mod tests {
         let (target, effect) = &pending_effects[0];
         assert_eq!(*target, Target::Champion(attacker_id));
         assert_eq!(effect.len(), 1);
-        assert_eq!(effect[0], GameplayEffect::Damage(10))
+        assert_eq!(effect[0], GameplayEffect::AttackDamage(10))
     }
 
     #[test]

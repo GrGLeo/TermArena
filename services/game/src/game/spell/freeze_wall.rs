@@ -109,7 +109,7 @@ impl Spell for FreezeWallSpell {
             let mut payloads: Vec<GameplayEffect> = Vec::new();
             if let Some(duration) = self.stats.effect_duration {
                 payloads = vec![
-                    GameplayEffect::Damage(spell_damage),
+                    GameplayEffect::AttackDamage(spell_damage),
                     GameplayEffect::Buff(Box::new(StunBuff::new(duration as u64))),
                 ];
             };

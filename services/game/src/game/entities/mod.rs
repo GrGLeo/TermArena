@@ -17,12 +17,11 @@ pub mod tower;
 
 pub enum AttackAction {
     Melee {
-        damage: u16,
         animation: Box<dyn AnimationTrait>,
         effects: Vec<GameplayEffect>,
     },
     Projectile {
-        damage: u16,
+        effects: Vec<GameplayEffect>,
         speed: u32,
         visual: CellAnimation,
     },

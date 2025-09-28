@@ -263,16 +263,15 @@ impl Minion {
                         if let Some(attack) = self.can_attack() {
                             match attack {
                                 AttackAction::Melee {
-                                    damage,
                                     mut animation,
-                                    effects: _,
+                                    effects: effect,
                                 } => {
                                     animation.attach_target(*id);
                                     new_animations.push(animation);
                                     pending_effects.push((
                                         None,
                                         Target::Tower(*id),
-                                        vec![GameplayEffect::Damage(damage)],
+                                        effect,
                                     ))
                                 }
                                 _ => {}
@@ -283,16 +282,15 @@ impl Minion {
                         if let Some(attack) = self.can_attack() {
                             match attack {
                                 AttackAction::Melee {
-                                    damage,
                                     mut animation,
-                                    effects: _,
+                                    effects: effect,
                                 } => {
                                     animation.attach_target(*id);
                                     new_animations.push(animation);
                                     pending_effects.push((
                                         None,
                                         Target::Minion(*id),
-                                        vec![GameplayEffect::Damage(damage)],
+                                        effect,
                                     ))
                                 }
                                 _ => {}
@@ -303,15 +301,14 @@ impl Minion {
                         if let Some(attack) = self.can_attack() {
                             match attack {
                                 AttackAction::Melee {
-                                    damage,
                                     animation,
-                                    effects: _,
+                                    effects: effect,
                                 } => {
                                     new_animations.push(animation);
                                     pending_effects.push((
                                         None,
                                         Target::Base(*team),
-                                        vec![GameplayEffect::Damage(damage)],
+                                        effect
                                     ))
                                 }
                                 _ => {}
@@ -322,16 +319,15 @@ impl Minion {
                         if let Some(attack) = self.can_attack() {
                             match attack {
                                 AttackAction::Melee {
-                                    damage,
                                     mut animation,
-                                    effects: _,
+                                    effects: effect,
                                 } => {
                                     animation.attach_target(*id);
                                     new_animations.push(animation);
                                     pending_effects.push((
                                         None,
                                         Target::Champion(*id),
-                                        vec![GameplayEffect::Damage(damage)],
+                                        effect
                                     ))
                                 }
                                 _ => {}
@@ -391,7 +387,11 @@ impl Fighter for Minion {
     fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
         for effect in effects.into_iter() {
             match effect {
-                GameplayEffect::Damage(damage) => {
+                GameplayEffect::AttackDamage(damage) => {
+                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+                }
+                GameplayEffect::MagicDamage(damage) => {
                     let reduced_damage = reduced_damage(damage, self.stats.armor);
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                 }
@@ -412,9 +412,8 @@ impl Fighter for Minion {
             self.last_attacked = Instant::now();
             let animation = MeleeAnimation::new(self.minion_id);
             Some(AttackAction::Melee {
-                damage: self.stats.attack_damage,
                 animation: Box::new(animation),
-                effects: Vec::new(),
+                effects: vec![GameplayEffect::AttackDamage(self.stats.attack_damage)],
             })
         } else {
             None

@@ -68,7 +68,14 @@ pub struct GameManager {
 }
 
 impl GameManager {
-    pub fn new(config: GameConfig, max_players: u8, usernames: Vec<String>, teams: Vec<u8>, spell1s: Vec<u8>, spell2s: Vec<u8>) -> Self {
+    pub fn new(
+        config: GameConfig,
+        max_players: u8,
+        usernames: Vec<String>,
+        teams: Vec<u8>,
+        spell1s: Vec<u8>,
+        spell2s: Vec<u8>,
+    ) -> Self {
         let mut username_to_player = HashMap::new();
         let mut player_to_username = HashMap::new();
         let mut pre_champions = HashMap::new();
@@ -216,16 +223,12 @@ impl GameManager {
                     // We get the choosen spell
                     let mut selected_spell: HashMap<u8, Box<dyn Spell>> = HashMap::new();
                     if let Some(spell_stats) = self.config.spells.get(&spell1) {
-                        selected_spell.insert(
-                            0,
-                            spell::create_spell_from_id(spell1, spell_stats.clone()),
-                        );
+                        selected_spell
+                            .insert(0, spell::create_spell_from_id(spell1, spell_stats.clone()));
                     }
                     if let Some(spell_stats) = self.config.spells.get(&spell2) {
-                        selected_spell.insert(
-                            1,
-                            spell::create_spell_from_id(spell2, spell_stats.clone()),
-                        );
+                        selected_spell
+                            .insert(1, spell::create_spell_from_id(spell2, spell_stats.clone()));
                     }
                     let champion = Champion::new(
                         player_id,
@@ -248,7 +251,8 @@ impl GameManager {
                 if self.players_count == self.max_players {
                     self.game_started = true;
                     self.game_start_time = Some(Instant::now());
-                    self.minion_manager.wave_creation_time = Instant::now() + Duration::from_secs(30);
+                    self.minion_manager.wave_creation_time =
+                        Instant::now() + Duration::from_secs(30);
                 }
                 Some(player_id)
             } else {
@@ -409,13 +413,11 @@ impl GameManager {
                             if let Some(attack) = champ.can_attack() {
                                 match attack {
                                     AttackAction::Melee {
-                                        damage,
                                         mut animation,
-                                        mut effects,
+                                        effects,
                                     } => {
                                         animation.attach_target(*id);
                                         new_animations.push(animation);
-                                        effects.push(GameplayEffect::Damage(damage));
                                         pending_effects.push((
                                             Some(*player_id),
                                             Target::Tower(*id),
@@ -430,13 +432,11 @@ impl GameManager {
                             if let Some(attack) = champ.can_attack() {
                                 match attack {
                                     AttackAction::Melee {
-                                        damage,
                                         mut animation,
-                                        mut effects,
+                                        effects,
                                     } => {
                                         animation.attach_target(*id);
                                         new_animations.push(animation);
-                                        effects.push(GameplayEffect::Damage(damage));
                                         pending_effects.push((
                                             Some(*player_id),
                                             Target::Monster(*id),
@@ -451,13 +451,11 @@ impl GameManager {
                             if let Some(attack) = champ.can_attack() {
                                 match attack {
                                     AttackAction::Melee {
-                                        damage,
                                         mut animation,
-                                        mut effects,
+                                        effects,
                                     } => {
                                         animation.attach_target(*id);
                                         new_animations.push(animation);
-                                        effects.push(GameplayEffect::Damage(damage));
                                         pending_effects.push((
                                             Some(*player_id),
                                             Target::Minion(*id),
@@ -472,13 +470,11 @@ impl GameManager {
                             if let Some(attack) = champ.can_attack() {
                                 match attack {
                                     AttackAction::Melee {
-                                        damage,
                                         mut animation,
-                                        mut effects,
+                                        effects,
                                     } => {
                                         animation.attach_target(*id);
                                         new_animations.push(animation);
-                                        effects.push(GameplayEffect::Damage(damage));
                                         pending_effects.push((
                                             Some(*player_id),
                                             Target::Champion(*id),
@@ -493,12 +489,10 @@ impl GameManager {
                             if let Some(attack) = champ.can_attack() {
                                 match attack {
                                     AttackAction::Melee {
-                                        damage,
                                         animation,
-                                        mut effects,
+                                        effects,
                                     } => {
                                         new_animations.push(animation);
-                                        effects.push(GameplayEffect::Damage(damage));
                                         pending_effects.push((
                                             Some(*player_id),
                                             Target::Base(*team),
@@ -660,7 +654,11 @@ impl GameManager {
                 Some((tower.row, tower.col))
             } else if let Some(minion) = self.minion_manager.minions.get(&anim.get_owner_id()) {
                 Some((minion.row, minion.col))
-            } else if let Some(monster) = self.monster_manager.active_monsters.get(&anim.get_owner_id()) {
+            } else if let Some(monster) = self
+                .monster_manager
+                .active_monsters
+                .get(&anim.get_owner_id())
+            {
                 Some((monster.row, monster.col))
             } else {
                 None // Owner might have been removed
@@ -826,15 +824,15 @@ impl GameManager {
                     if let Some(target) = target {
                         if let Some(attack_action) = tower.can_attack() {
                             if let AttackAction::Projectile {
-                                damage,
                                 speed,
                                 visual,
+                                effects,
                             } = attack_action
                             {
                                 projectiles_to_create.push((
                                     tower.tower_id,
                                     target,
-                                    damage,
+                                    effects,
                                     speed,
                                     visual,
                                 ));
@@ -845,7 +843,7 @@ impl GameManager {
             }
         }
         // We create the projectiles
-        for (tower_id, target, damage, speed, visual) in projectiles_to_create {
+        for (tower_id, target, effects, speed, visual) in projectiles_to_create {
             if let Some(tower) = self.towers.get(&tower_id) {
                 self.projectile_manager.create_lockon_projectile(
                     tower.tower_id as u64,
@@ -853,7 +851,7 @@ impl GameManager {
                     target,
                     (tower.row, tower.col),
                     speed,
-                    vec![GameplayEffect::Damage(damage)],
+                    effects,
                     visual,
                 );
             }

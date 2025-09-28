@@ -74,7 +74,7 @@ impl Spell for WhirlwindSpell {
             radius: Some(1),
             total_iteration: Some(8),
             speed: self.stats.speed,
-            payloads: vec![GameplayEffect::Damage(spell_damage)],
+            payloads: vec![GameplayEffect::AttackDamage(spell_damage)],
             visual_cell_type: CellAnimation::FireBall,
         };
         projectile_manager.create_from_blueprint(blueprint);

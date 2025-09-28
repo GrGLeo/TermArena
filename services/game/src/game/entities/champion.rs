@@ -3,6 +3,8 @@ use std::ops::Add;
 use std::time::{Duration, Instant};
 use std::usize;
 
+use rayon::slice::ParallelSliceMut;
+
 use crate::errors::GameError;
 use crate::game::Cell;
 use crate::game::animation::melee::MeleeAnimation;
@@ -572,7 +574,17 @@ impl Fighter for Champion {
     fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
         for effect in effects.into_iter() {
             match effect {
-                GameplayEffect::Damage(damage) => {
+                GameplayEffect::AttackDamage(damage) => {
+                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+                    // Check if champion get killed
+                    if self.stats.health == 0 {
+                        self.death_counter += 1;
+                        let timer = ((self.death_counter as f32).sqrt() * 10.) as u64;
+                        self.death_timer = Instant::now() + Duration::from_secs(timer);
+                    }
+                }
+                GameplayEffect::MagicDamage(damage) => {
                     let reduced_damage = reduced_damage(damage, self.stats.armor);
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                     // Check if champion get killed
@@ -602,9 +614,9 @@ impl Fighter for Champion {
         if self.last_attacked + self.stats.attack_speed < Instant::now() {
             self.last_attacked = Instant::now();
             let animation = MeleeAnimation::new(self.player_id);
-            let effects = self.on_hit_effects.drain(..).collect();
+            let mut effects: Vec<GameplayEffect> = self.on_hit_effects.drain(..).collect();
+            effects.extend(vec![GameplayEffect::AttackDamage(self.stats.attack_damage)]);
             Some(AttackAction::Melee {
-                damage: self.stats.attack_damage,
                 animation: Box::new(animation),
                 effects,
             })
@@ -764,7 +776,7 @@ mod tests {
         let damage = 30;
         let armor = champion.stats.armor as u16;
 
-        champion.take_effect(vec![GameplayEffect::Damage(damage)]);
+        champion.take_effect(vec![GameplayEffect::AttackDamage(damage)]);
 
         // Calculate expected health after damage reduction by armor
         let reduced_damage = reduced_damage(damage, armor);
@@ -791,7 +803,7 @@ mod tests {
         // but for now, we can at least check if it's set to *sometime in the future*
         // and that is_dead returns true immediately after taking lethal damage.
 
-        champion_to_defeat.take_effect(vec![GameplayEffect::Damage(lethal_damage)]);
+        champion_to_defeat.take_effect(vec![GameplayEffect::AttackDamage(lethal_damage)]);
 
         assert_eq!(
             champion_to_defeat.stats.health, 0,
@@ -825,7 +837,7 @@ mod tests {
         champion_already_defeated.stats.health = 0;
         let additional_damage = 10;
 
-        champion_already_defeated.take_effect(vec![GameplayEffect::Damage(additional_damage)]);
+        champion_already_defeated.take_effect(vec![GameplayEffect::AttackDamage(additional_damage)]);
         assert_eq!(
             champion_already_defeated.stats.health, 0,
             "Health should remain at 0 if already defeated"
@@ -2271,13 +2283,13 @@ mod tests {
         assert!(attack_action_opt.is_some());
 
         if let Some(AttackAction::Melee {
-            damage: _,
             animation: _,
             effects,
         }) = attack_action_opt
         {
             // The attack action should contain the on-hit effect.
-            assert_eq!(effects.len(), 1);
+            // We should have the first effect as the on-hit and the second one as the aa
+            assert_eq!(effects.len(), 2);
             match &effects[0] {
                 GameplayEffect::Buff(_) => (),
                 _ => panic!("Effect in attack action should be a buff"),

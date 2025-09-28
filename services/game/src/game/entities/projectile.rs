@@ -11,7 +11,8 @@ use super::Target;
 /// Represents the various effects a projectile can apply upon impact.
 pub enum GameplayEffect {
     /// Applies a specified amount of damage to the target.
-    Damage(u16),
+    AttackDamage(u16),
+    MagicDamage(u16),
     Heal(u16),
     /// Applies a specific buff/debuff to the target
     Buff(Box<dyn Buff>),
@@ -20,7 +21,7 @@ pub enum GameplayEffect {
 impl PartialEq for GameplayEffect {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Damage(l0), Self::Damage(r0)) => l0 == r0,
+            (Self::AttackDamage(l0), Self::AttackDamage(r0)) => l0 == r0,
             (Self::Heal(l0), Self::Heal(r0)) => l0 == r0,
             (Self::Buff(l0), Self::Buff(r0)) => l0.id() == r0.id(),
             _ => false,
@@ -31,7 +32,8 @@ impl PartialEq for GameplayEffect {
 impl Clone for GameplayEffect {
     fn clone(&self) -> Self {
         match self {
-            GameplayEffect::Damage(d) => GameplayEffect::Damage(*d),
+            GameplayEffect::AttackDamage(d) => GameplayEffect::AttackDamage(*d),
+            GameplayEffect::MagicDamage(d) => GameplayEffect::MagicDamage(*d),
             GameplayEffect::Heal(h) => GameplayEffect::Heal(*h),
             GameplayEffect::Buff(b) => GameplayEffect::Buff(b.clone_box()),
         }
@@ -250,7 +252,7 @@ mod tests {
             start_pos,
             end_pos,
             1,
-            vec![GameplayEffect::Damage(50)],
+            vec![GameplayEffect::AttackDamage(50)],
             CellAnimation::TowerHit,
         );
 
@@ -284,7 +286,7 @@ mod tests {
             start_pos,
             target.clone(),
             2,
-            vec![GameplayEffect::Damage(30)],
+            vec![GameplayEffect::AttackDamage(30)],
             CellAnimation::TowerHit,
         );
 
@@ -313,7 +315,7 @@ mod tests {
             start_pos,
             end_pos,
             1, // speed = 1 tick per cell
-            vec![GameplayEffect::Damage(10)],
+            vec![GameplayEffect::AttackDamage(10)],
             CellAnimation::TowerHit,
         );
 
@@ -358,7 +360,7 @@ mod tests {
             start_pos,
             target,
             1, // speed = 1 tick per cell
-            vec![GameplayEffect::Damage(10)],
+            vec![GameplayEffect::AttackDamage(10)],
             CellAnimation::TowerHit,
         );
 
@@ -415,7 +417,7 @@ mod tests {
             start_pos,
             end_pos,
             2, // speed = 2 ticks per cell
-            vec![GameplayEffect::Damage(10)],
+            vec![GameplayEffect::AttackDamage(10)],
             CellAnimation::TowerHit,
         );
 
@@ -463,7 +465,7 @@ mod tests {
             1, // radius
             8, // total_iterations
             2, // speed
-            vec![GameplayEffect::Damage(10)],
+            vec![GameplayEffect::AttackDamage(10)],
             CellAnimation::FireBall,
         );
 

@@ -97,7 +97,7 @@ fn test_fireball_cast_creates_projectile() {
 
     assert_eq!(
         projectile.payloads,
-        vec![GameplayEffect::Damage((10.0 * 1.2 + 60.0) as u16)]
+        vec![GameplayEffect::AttackDamage((10.0 * 1.2 + 60.0) as u16)]
     );
 }
 
