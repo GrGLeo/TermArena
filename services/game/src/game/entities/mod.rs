@@ -50,6 +50,7 @@ pub struct Stats {
     pub max_mana: u16,
     pub mp_per_sec: f32,
     armor: u16,
+    magic_resistance: u16,
 }
 
 pub trait Fighter {
@@ -58,6 +59,10 @@ pub trait Fighter {
     fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell>;
 }
 
-pub fn reduced_damage(damage: u16, armor: u16) -> u16 {
-    damage / (1 + (armor / 100))
+pub fn reduced_damage(damage: u16, armor: u16, magic_resistance: u16, is_magic: bool) -> u16 {
+    if !is_magic{
+        damage / (1 + (armor / 100))
+    } else {
+        damage / (1 + (magic_resistance / 100))
+    }
 }

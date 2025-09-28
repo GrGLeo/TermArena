@@ -53,7 +53,9 @@ impl ProjectileManager {
                 );
             }
             ProjectileType::Rotationnary => {
-                if let (Some(radius), Some(total_iteration)) = (blueprint.radius, blueprint.total_iteration) {
+                if let (Some(radius), Some(total_iteration)) =
+                    (blueprint.radius, blueprint.total_iteration)
+                {
                     self.create_rotationnary_projectile(
                         blueprint.owner_id,
                         blueprint.team_id,
@@ -208,7 +210,7 @@ impl ProjectileManager {
                         projectiles_to_remove.push(*id as u64);
                         continue;
                     }
-                    }
+                },
                 PathingLogic::Rotationnary { .. } => {
                     if let Some(champ) = champions.get(&(projectile.owner_id as usize)) {
                         (champ.row, champ.col)
@@ -216,7 +218,7 @@ impl ProjectileManager {
                         projectiles_to_remove.push(*id as u64);
                         continue;
                     }
-                },
+                }
             };
 
             if let Some(last_pos) = projectile.get_last_drawn_pos() {
@@ -283,7 +285,9 @@ impl ProjectileManager {
                         }
                     }
 
-                    if hit_target && !matches!(projectile.pathing, PathingLogic::Rotationnary { .. }) {
+                    if hit_target
+                        && !matches!(projectile.pathing, PathingLogic::Rotationnary { .. })
+                    {
                         projectiles_to_remove.push(*id);
                         self.animation_to_clean.push((row, col));
                         animation_commands_executable.push(AnimationCommand::Draw {
@@ -371,6 +375,7 @@ mod tests {
             health: 500,
             mana: 100,
             armor: 10,
+            magic_resistance: 0,
             xp_per_level: vec![100, 200],
             level_up_health_increase: 50,
             level_up_attack_damage_increase: 5,
@@ -388,6 +393,7 @@ mod tests {
             attack_speed_secs: 2,
             health: 1000,
             armor: 20,
+            magic_resistance: 0,
             attack_range_row: 7,
             attack_range_col: 9,
         }
@@ -400,6 +406,7 @@ mod tests {
             spawn_col,
             health: 100,
             armor: 5,
+            magic_resistance: 0,
             attack_damage: 10,
             attack_range_row: 1,
             attack_range_col: 1,

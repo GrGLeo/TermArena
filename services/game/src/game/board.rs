@@ -225,7 +225,6 @@ impl Board {
 
         self.add_vision_from_pos(&mut visible_cells, base.position, (29, 29));
 
-
         for tower in towers.values().filter(|t| t.team_id == team) {
             self.add_vision_from_pos(&mut visible_cells, (tower.row, tower.col), (7, 7));
         }
@@ -639,7 +638,7 @@ mod tests {
 
     #[test]
     fn test_compute_visibility() {
-        use crate::config::{ChampionStats, MinionStats, BaseStats};
+        use crate::config::{BaseStats, ChampionStats, MinionStats};
         use crate::game::entities::champion::Champion;
         use std::collections::HashMap;
 
@@ -653,6 +652,7 @@ mod tests {
             attack_damage: 10,
             magic_power: 0,
             armor: 10,
+            magic_resistance: 0,
             attack_speed_ms: 1000,
             xp_per_level: vec![100, 200, 300],
             level_up_health_increase: 50,
@@ -672,6 +672,7 @@ mod tests {
             attack_damage: 5,
             attack_speed_ms: 1000,
             armor: 5,
+            magic_resistance: 0,
             aggro_range_row: 5,
             aggro_range_col: 5,
             attack_range_row: 1,
@@ -682,6 +683,7 @@ mod tests {
         let base_stats = BaseStats {
             health: 5000,
             armor: 10,
+            magic_resistance: 0,
         };
         let base = Base::new(Team::Red, (0, 0), base_stats);
 
@@ -717,6 +719,7 @@ mod tests {
             attack_damage: 5,
             attack_speed_ms: 1000,
             armor: 5,
+            magic_resistance: 0,
             aggro_range_row: 5,
             aggro_range_col: 5,
             attack_range_row: 1,

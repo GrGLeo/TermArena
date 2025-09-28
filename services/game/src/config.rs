@@ -14,6 +14,7 @@ pub struct ItemFile {
 pub struct BaseStats {
     pub health: u16,
     pub armor: u16,
+    pub magic_resistance: u16,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -24,6 +25,7 @@ pub struct ChampionStats {
     pub health: u16,
     pub mana: u16,
     pub armor: u16,
+    pub magic_resistance: u16,
     pub xp_per_level: Vec<u16>,
     pub level_up_health_increase: u16,
     pub level_up_attack_damage_increase: u16,
@@ -40,6 +42,7 @@ pub struct MinionStats {
     pub attack_speed_ms: u64,
     pub health: u16,
     pub armor: u16,
+    pub magic_resistance: u16,
     pub aggro_range_row: u16,
     pub aggro_range_col: u16,
     pub attack_range_row: u16,
@@ -52,6 +55,7 @@ pub struct TowerStats {
     pub attack_speed_secs: u64,
     pub health: u16,
     pub armor: u16,
+    pub magic_resistance: u16,
     pub attack_range_row: u16,
     pub attack_range_col: u16,
 }
@@ -65,6 +69,7 @@ pub struct MonsterStats {
     pub attack_speed_ms: u64,
     pub health: u16,
     pub armor: u16,
+    pub magic_resistance: u16,
     pub aggro_range_row: u8,
     pub aggro_range_col: u8,
     pub attack_range_row: u8,

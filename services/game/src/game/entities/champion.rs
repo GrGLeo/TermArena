@@ -3,8 +3,6 @@ use std::ops::Add;
 use std::time::{Duration, Instant};
 use std::usize;
 
-use rayon::slice::ParallelSliceMut;
-
 use crate::errors::GameError;
 use crate::game::Cell;
 use crate::game::animation::melee::MeleeAnimation;
@@ -127,6 +125,7 @@ impl Champion {
             mana_regen_acc: 0.0,
             mp_per_sec,
             armor: champion_stats.armor,
+            magic_resistance: champion_stats.magic_resistance,
         };
 
         Champion {
@@ -575,7 +574,7 @@ impl Fighter for Champion {
         for effect in effects.into_iter() {
             match effect {
                 GameplayEffect::AttackDamage(damage) => {
-                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, false);
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                     // Check if champion get killed
                     if self.stats.health == 0 {
@@ -585,7 +584,7 @@ impl Fighter for Champion {
                     }
                 }
                 GameplayEffect::MagicDamage(damage) => {
-                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, true);
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                     // Check if champion get killed
                     if self.stats.health == 0 {
@@ -728,6 +727,7 @@ mod tests {
             health: 200,
             mana: 100,
             armor: 5,
+            magic_resistance: 0,
             xp_per_level: vec![
                 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115,
             ],
@@ -779,7 +779,7 @@ mod tests {
         champion.take_effect(vec![GameplayEffect::AttackDamage(damage)]);
 
         // Calculate expected health after damage reduction by armor
-        let reduced_damage = reduced_damage(damage, armor);
+        let reduced_damage = reduced_damage(damage, armor, 0, false);
         let expected_health = initial_health.saturating_sub(reduced_damage);
         assert_eq!(
             champion.stats.health, expected_health,

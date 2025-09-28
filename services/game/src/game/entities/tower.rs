@@ -49,6 +49,7 @@ impl Tower {
                 mp_per_sec: 0.0,
                 mana_regen_acc: 0.0,
                 armor: tower_stats.armor,
+                magic_resistance: tower_stats.magic_resistance,
             },
             tower_stats,
             destroyed: false,
@@ -110,7 +111,7 @@ impl Fighter for Tower {
         for effect in effects.into_iter() {
             match effect {
                 GameplayEffect::AttackDamage(damage) => {
-                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, false);
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                     if self.stats.health == 0 {
                         self.destroyed = true;
@@ -204,6 +205,7 @@ mod tests {
             attack_speed_secs: 3,
             health: 400,
             armor: 8,
+            magic_resistance: 0,
             attack_range_row: 7,
             attack_range_col: 9,
         }
@@ -258,7 +260,7 @@ mod tests {
         tower.take_effect(vec![GameplayEffect::AttackDamage(damage)]);
 
         // Calculate expected health after damage reduction by armor
-        let reduced_damage = reduced_damage(damage, armor);
+        let reduced_damage = reduced_damage(damage, armor, 0, false);
         let expected_health = initial_health.saturating_sub(reduced_damage);
         assert_eq!(
             tower.stats.health, expected_health,

@@ -60,6 +60,7 @@ impl Monster {
             mp_per_sec: 0.0,
             mana_regen_acc: 0.0,
             armor: monster_stats.armor,
+            magic_resistance: monster_stats.magic_resistance,
         };
 
         Monster {
@@ -128,7 +129,7 @@ impl Fighter for Monster {
         for effect in effects.into_iter() {
             match effect {
                 GameplayEffect::AttackDamage(damage) => {
-                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, false);
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                     if self.stats.health == 0 {
                         self.state = MonsterState::Dead;
@@ -137,7 +138,7 @@ impl Fighter for Monster {
                     }
                 }
                 GameplayEffect::MagicDamage(damage) => {
-                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, true);
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                     if self.stats.health == 0 {
                         self.state = MonsterState::Dead;
@@ -217,6 +218,7 @@ mod tests {
             spawn_col: 1,
             health: 100,
             armor: 5,
+            magic_resistance: 0,
             attack_damage: 10,
             attack_range_row: 1,
             attack_range_col: 1,

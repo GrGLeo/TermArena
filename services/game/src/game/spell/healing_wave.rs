@@ -58,10 +58,10 @@ impl Spell for HealingWaveSpell {
 
         self.last_casted = Some(Instant::now());
 
-
-        let heal_amount =
-            (caster_damage as f32 * self.stats.damage_ratio + self.stats.base_attack_damage as f32) as u16 +
-            (caster_magic_power as f32 * self.stats.magic_ratio + self.stats.base_magic_damage as f32) as u16;
+        let heal_amount = (caster_damage as f32 * self.stats.damage_ratio
+            + self.stats.base_attack_damage as f32) as u16
+            + (caster_magic_power as f32 * self.stats.magic_ratio
+                + self.stats.base_magic_damage as f32) as u16;
 
         let (wall_center_row, wall_center_col) = match caster.direction {
             Direction::Up => (caster.row.saturating_sub(1), caster.col),
@@ -137,6 +137,7 @@ mod tests {
             health: 200,
             mana: 100,
             armor: 5,
+            magic_resistance: 0,
             xp_per_level: vec![
                 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115,
             ],

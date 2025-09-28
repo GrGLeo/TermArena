@@ -22,6 +22,7 @@ fn mock_champion_stats() -> ChampionStats {
         health: 500,
         mana: 500,
         armor: 10,
+        magic_resistance: 0,
         xp_per_level: vec![100, 200],
         level_up_health_increase: 50,
         level_up_attack_damage_increase: 5,
@@ -97,7 +98,7 @@ fn test_fireball_cast_creates_projectile() {
 
     assert_eq!(
         projectile.payloads,
-        vec![GameplayEffect::AttackDamage((10.0 * 1.2 + 60.0) as u16)]
+        vec![GameplayEffect::MagicDamage((10.0 * 1.2 + 60.0) as u16)]
     );
 }
 

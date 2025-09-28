@@ -122,10 +122,8 @@ impl MonsterManager {
                                     {
                                         animation.attach_target(champion_id);
                                         new_animations.push(animation);
-                                        pending_damages.push((
-                                            Target::Champion(champion_id),
-                                            effects,
-                                        ));
+                                        pending_damages
+                                            .push((Target::Champion(champion_id), effects));
                                     }
                                 }
                             } else {
@@ -240,6 +238,7 @@ mod tests {
             spawn_col,
             health: 100,
             armor: 5,
+            magic_resistance: 0,
             attack_damage: 10,
             attack_range_row: 1,
             attack_range_col: 1,
@@ -263,6 +262,7 @@ mod tests {
             health: 200,
             mana: 100,
             armor: 5,
+            magic_resistance: 0,
             xp_per_level: vec![
                 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115,
             ],
@@ -403,7 +403,11 @@ mod tests {
         let attacker_2 = 99; // Second attacker
 
         // First attack sets the aggro
-        manager.apply_effects_to_monster(&monster_id, vec![GameplayEffect::AttackDamage(10)], attacker_1);
+        manager.apply_effects_to_monster(
+            &monster_id,
+            vec![GameplayEffect::AttackDamage(10)],
+            attacker_1,
+        );
         let monster = manager.active_monsters.get(&monster_id).unwrap();
         assert_eq!(
             monster.target_champion_id,
@@ -413,7 +417,11 @@ mod tests {
         assert_eq!(monster.stats.health, 90);
 
         // Second attack from a different champion
-        manager.apply_effects_to_monster(&monster_id, vec![GameplayEffect::AttackDamage(10)], attacker_2);
+        manager.apply_effects_to_monster(
+            &monster_id,
+            vec![GameplayEffect::AttackDamage(10)],
+            attacker_2,
+        );
         let monster = manager.active_monsters.get(&monster_id).unwrap();
 
         // Verify health is reduced, but target remains unchanged

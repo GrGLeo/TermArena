@@ -29,6 +29,7 @@ impl Base {
             mp_per_sec: 0.0,
             mana_regen_acc: 0.0,
             armor: base_stats.armor,
+            magic_resistance: base_stats.magic_resistance,
         };
 
         Base {
@@ -74,6 +75,7 @@ mod tests {
         BaseStats {
             health: 5000,
             armor: 10,
+            magic_resistance: 0,
         }
     }
 

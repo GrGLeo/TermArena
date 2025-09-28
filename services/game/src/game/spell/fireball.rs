@@ -41,7 +41,7 @@ impl Spell for FireballSpell {
     fn cast(
         &mut self,
         caster: &mut Champion,
-        caster_damage: u16,
+        _caster_damage: u16,
         caster_magic_power: u16,
         projectile_manager: &mut ProjectileManager,
     ) {
@@ -60,9 +60,8 @@ impl Spell for FireballSpell {
 
         self.last_casted = Some(Instant::now());
 
-        let spell_damage =
-            (caster_damage as f32 * self.stats.damage_ratio + self.stats.base_attack_damage as f32) as u16 +
-            (caster_magic_power as f32 * self.stats.magic_ratio + self.stats.base_magic_damage as f32) as u16;
+        let spell_damage = (caster_magic_power as f32 * self.stats.magic_ratio
+            + self.stats.base_magic_damage as f32) as u16;
 
         let (proj_start_row, proj_start_col) = match caster.direction {
             Direction::Up => (caster.row.saturating_sub(1), caster.col),
@@ -88,7 +87,7 @@ impl Spell for FireballSpell {
             radius: None,
             total_iteration: None,
             speed: self.stats.speed,
-            payloads: vec![GameplayEffect::AttackDamage(spell_damage)],
+            payloads: vec![GameplayEffect::MagicDamage(spell_damage)],
             visual_cell_type: CellAnimation::FireBall,
         };
         projectile_manager.create_from_blueprint(blueprint);

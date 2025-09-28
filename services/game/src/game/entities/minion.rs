@@ -69,6 +69,7 @@ impl Minion {
             mp_per_sec: 0.0,
             mana_regen_acc: 0.0,
             armor: minion_stats.armor,
+            magic_resistance: minion_stats.magic_resistance,
         };
 
         let (row, col, paths) = match team_id {
@@ -388,11 +389,11 @@ impl Fighter for Minion {
         for effect in effects.into_iter() {
             match effect {
                 GameplayEffect::AttackDamage(damage) => {
-                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, false);
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                 }
                 GameplayEffect::MagicDamage(damage) => {
-                    let reduced_damage = reduced_damage(damage, self.stats.armor);
+                    let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, true);
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                 }
                 GameplayEffect::Heal(heal_amount) => {
@@ -527,6 +528,7 @@ mod tests {
             attack_speed_ms: 2500,
             health: 40,
             armor: 0,
+            magic_resistance: 0,
             aggro_range_row: 10,
             aggro_range_col: 10,
             attack_range_row: 3,
