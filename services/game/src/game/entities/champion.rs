@@ -845,6 +845,30 @@ mod tests {
     }
 
     #[test]
+    fn test_magic_damage_reduction() {
+        let mut champion_stats = create_default_champion_stats();
+        champion_stats.magic_resistance = 10; // Set MR to 10 for testing
+        let spell_stats = HashMap::new();
+        let mut champion = Champion::new(1, Team::Red, 2, 2, champion_stats, spell_stats);
+        let initial_health = champion.stats.health;
+        let magic_damage = 100;
+
+        champion.take_effect(vec![GameplayEffect::MagicDamage(magic_damage)]);
+
+        // Calculate expected health after magic damage reduction by MR
+        let reduced_damage = reduced_damage(magic_damage, champion.stats.armor, champion.stats.magic_resistance, true);
+        let expected_health = initial_health.saturating_sub(reduced_damage);
+        assert_eq!(
+            champion.stats.health, expected_health,
+            "Health should be reduced after taking magic damage with MR reduction"
+        );
+        assert!(
+            !champion.is_dead(),
+            "Champion should not be dead after taking magic damage"
+        );
+    }
+
+    #[test]
     fn test_take_action_move() {
         let mut board = create_dummy_board(5, 5);
         let mut pm = ProjectileManager::new();

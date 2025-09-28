@@ -1591,4 +1591,22 @@ mod tests {
             "Should return None when enemies are outside the specified range (col)"
         );
     }
+
+    #[test]
+    fn test_minion_magic_damage_no_reduction() {
+        let minion_stats = create_default_minion_stats();
+        let mut minion = Minion::new(1, Team::Red, Lane::Mid, minion_stats);
+        let initial_health = minion.stats.health;
+        let magic_damage = 50;
+
+        minion.take_effect(vec![GameplayEffect::MagicDamage(magic_damage)]);
+
+        // Since MR=0, damage should not be reduced
+        let reduced_damage = reduced_damage(magic_damage, minion.stats.armor, minion.stats.magic_resistance, true);
+        let expected_health = initial_health.saturating_sub(reduced_damage);
+        assert_eq!(
+            minion.stats.health, expected_health,
+            "Minion health should be reduced by full magic damage since MR=0"
+        );
+    }
 }

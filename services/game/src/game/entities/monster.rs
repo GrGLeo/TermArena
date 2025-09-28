@@ -416,4 +416,41 @@ mod tests {
             "Should be able to respawn after timer expires"
         );
     }
+
+    #[test]
+    fn test_monster_magic_damage_no_reduction() {
+        let monster_stats = MonsterStats {
+            id: "test_monster".to_string(),
+            spawn_row: 10,
+            spawn_col: 10,
+            attack_damage: 20,
+            attack_speed_ms: 2000,
+            health: 200,
+            armor: 10,
+            magic_resistance: 0,
+            aggro_range_row: 5,
+            aggro_range_col: 5,
+            attack_range_row: 3,
+            attack_range_col: 3,
+            leash_range: 20,
+            xp_reward: 10,
+            gold_reward: 50,
+            health_reward: 20,
+            buff_reward: None,
+            respawn_timer_secs: 30,
+        };
+        let mut monster = Monster::new(1, monster_stats);
+        let initial_health = monster.stats.health;
+        let magic_damage = 50;
+
+        monster.take_effect(vec![GameplayEffect::MagicDamage(magic_damage)]);
+
+        // Since MR=0, damage should not be reduced
+        let reduced_damage = reduced_damage(magic_damage, monster.stats.armor, monster.stats.magic_resistance, true);
+        let expected_health = initial_health.saturating_sub(reduced_damage);
+        assert_eq!(
+            monster.stats.health, expected_health,
+            "Monster health should be reduced by full magic damage since MR=0"
+        );
+    }
 }
