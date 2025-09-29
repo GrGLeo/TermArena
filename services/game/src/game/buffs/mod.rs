@@ -1,6 +1,8 @@
 pub mod stun_buff;
 pub mod health_buff;
 pub mod mana_buff;
+pub mod item_buff;
+
 use std::{fmt::Debug, time::Duration};
 
 use health_buff::RedBuff;

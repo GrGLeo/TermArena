@@ -41,6 +41,8 @@ id = 7
 name = "Vial of Renewal"
 cost = 150
 stats.health_regen = 1.0
+stats.buffs = ["health_regen"]
+stats.effects = [1.0]
 
 [[items]]
 id = 8

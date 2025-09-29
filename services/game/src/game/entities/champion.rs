@@ -6,6 +6,7 @@ use std::usize;
 use crate::errors::GameError;
 use crate::game::Cell;
 use crate::game::animation::melee::MeleeAnimation;
+use crate::game::buffs::item_buff::HealthRegenItem;
 use crate::game::buffs::{Buff, HasBuff};
 use crate::game::cell::{CellContent, Team};
 use crate::game::projectile_manager::ProjectileManager;
@@ -203,7 +204,21 @@ impl Champion {
     }
 
     pub fn add_item(&mut self, item: Item) -> Result<(), GameError> {
-        println!("Player inventory: {:?}", self.inventory);
+        // We create the possible buffs from the item
+        let mut buff_item: Vec<Box<dyn Buff>> = Vec::new();
+        if let (Some(buffs), Some(effects)) = (&item.stats.buffs, &item.stats.effects) {
+            for (buff, effect) in buffs.iter().zip(effects.iter()) {
+                match buff.as_str() {
+                    "health_regen_item" => {
+                        let b = HealthRegenItem::new(*effect);
+                        buff_item.push(Box::new(b));
+                    }
+                    _ => {
+                        todo!()
+                    }
+                }
+            }
+        }
 
         // Case 1: Item has crafting requirements
         if let Some(required_ids) = &item.required {
@@ -293,6 +308,10 @@ impl Champion {
                     self.gold -= item.cost as u16;
                     *slot = Some(item);
                     self.recalculate_stats();
+                    for buff in buff_item {
+                        self.active_buffs.insert(buff.id().to_string(), buff);
+                    }
+
                     return Ok(());
                 }
             }
@@ -320,7 +339,6 @@ impl Champion {
         let mut attack_speed_ms = self.champion_stats.attack_speed_ms;
         let mut magic_power = self.champion_stats.magic_power;
         let mut armor = self.champion_stats.armor;
-        let mut health_regen_bonus = 0.0;
 
         if self.level > 1 {
             let level_ups = (self.level - 1) as u16;
@@ -349,9 +367,6 @@ impl Champion {
             if let Some(as_) = item.stats.attack_speed {
                 attack_speed_ms -= as_;
             }
-            if let Some(hr) = item.stats.health_regen {
-                health_regen_bonus += hr;
-            }
         }
 
         self.stats.attack_damage = attack_damage;
@@ -362,7 +377,7 @@ impl Champion {
         self.stats.max_mana = max_mana;
 
         let base_hp_per_sec = self.stats.max_health as f32 * self.champion_stats.health_per_sec;
-        self.stats.hp_per_sec = base_hp_per_sec * (1.0 + health_regen_bonus);
+        self.stats.hp_per_sec = base_hp_per_sec;
 
         let max_health_diff = self.stats.max_health as i32 - old_max_health as i32;
         if max_health_diff > 0 {
@@ -409,7 +424,12 @@ impl Champion {
                     return Err(GameError::ChampionBusy);
                 }
                 if let Some(mut spell) = self.spells.remove(&0) {
-                    spell.cast(self, self.stats.attack_damage, self.stats.magic_power, projectile_manager);
+                    spell.cast(
+                        self,
+                        self.stats.attack_damage,
+                        self.stats.magic_power,
+                        projectile_manager,
+                    );
                     self.spells.insert(0, spell);
                     return Ok(());
                 }
@@ -420,7 +440,12 @@ impl Champion {
                     return Err(GameError::ChampionBusy);
                 }
                 if let Some(mut spell) = self.spells.remove(&1) {
-                    spell.cast(self, self.stats.attack_damage, self.stats.magic_power, projectile_manager);
+                    spell.cast(
+                        self,
+                        self.stats.attack_damage,
+                        self.stats.magic_power,
+                        projectile_manager,
+                    );
                     self.spells.insert(1, spell);
                     return Ok(());
                 }
@@ -535,7 +560,7 @@ impl Champion {
             return (0, 0);
         }
     }
-    
+
     pub fn reset_aa(&mut self) {
         if let Some(instant) = self.last_attacked.checked_sub(self.stats.attack_speed) {
             self.last_attacked = instant
@@ -574,7 +599,12 @@ impl Fighter for Champion {
         for effect in effects.into_iter() {
             match effect {
                 GameplayEffect::AttackDamage(damage) => {
-                    let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, false);
+                    let reduced_damage = reduced_damage(
+                        damage,
+                        self.stats.armor,
+                        self.stats.magic_resistance,
+                        false,
+                    );
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                     // Check if champion get killed
                     if self.stats.health == 0 {
@@ -584,7 +614,8 @@ impl Fighter for Champion {
                     }
                 }
                 GameplayEffect::MagicDamage(damage) => {
-                    let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, true);
+                    let reduced_damage =
+                        reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, true);
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                     // Check if champion get killed
                     if self.stats.health == 0 {
@@ -837,7 +868,8 @@ mod tests {
         champion_already_defeated.stats.health = 0;
         let additional_damage = 10;
 
-        champion_already_defeated.take_effect(vec![GameplayEffect::AttackDamage(additional_damage)]);
+        champion_already_defeated
+            .take_effect(vec![GameplayEffect::AttackDamage(additional_damage)]);
         assert_eq!(
             champion_already_defeated.stats.health, 0,
             "Health should remain at 0 if already defeated"
@@ -856,7 +888,12 @@ mod tests {
         champion.take_effect(vec![GameplayEffect::MagicDamage(magic_damage)]);
 
         // Calculate expected health after magic damage reduction by MR
-        let reduced_damage = reduced_damage(magic_damage, champion.stats.armor, champion.stats.magic_resistance, true);
+        let reduced_damage = reduced_damage(
+            magic_damage,
+            champion.stats.armor,
+            champion.stats.magic_resistance,
+            true,
+        );
         let expected_health = initial_health.saturating_sub(reduced_damage);
         assert_eq!(
             champion.stats.health, expected_health,
