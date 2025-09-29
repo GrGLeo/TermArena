@@ -12,6 +12,12 @@
         <p>Balance game entities, equip items, and see real-time TTK changes</p>
     </header>
 
+    <div class="tabs">
+        <button class="tab-button active" data-tab="ttk">TTK Calculator</button>
+        <button class="tab-button" data-tab="items">Item Efficiency</button>
+    </div>
+
+    <div class="tab-content active" id="ttk-tab">
     <div class="container">
         <!-- Entity Stats Section -->
         <section class="entity-stats">
@@ -69,6 +75,46 @@
                 </tbody>
             </table>
         </section>
+    </div>
+    </div>
+
+    <div class="tab-content" id="items-tab">
+        <div class="container">
+            <!-- Item Efficiency Section -->
+            <section class="item-efficiency">
+                <h2>Item Efficiency</h2>
+                <div id="item-efficiency-list" class="item-list">
+                    <!-- Items will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Crafting Simulator Section -->
+            <section class="crafting-simulator">
+                <h2>Crafting Simulator</h2>
+                <div class="crafting-controls">
+                    <div class="component-selection">
+                        <h3>Select Components</h3>
+                        <div id="component-items" class="component-items">
+                            <!-- Component items will be shown here -->
+                        </div>
+                    </div>
+                    <div class="crafting-inputs">
+                        <h3>Crafting Details</h3>
+                        <label>Craft Cost: <input type="number" id="craft-cost" min="0" value="0"></label>
+                        <div class="resulting-stats">
+                            <h4>Resulting Stats</h4>
+                            <div id="resulting-stats-controls">
+                                <!-- Stat inputs will be added here -->
+                            </div>
+                        </div>
+                        <button id="calculate-craft">Calculate Efficiency</button>
+                    </div>
+                </div>
+                <div id="crafting-result" class="crafting-result">
+                    <!-- Results will be shown here -->
+                </div>
+            </section>
+        </div>
     </div>
 
     <!-- Scripts -->

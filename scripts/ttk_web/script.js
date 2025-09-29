@@ -7,6 +7,7 @@ class TTKCalculator {
         this.currentStats = {};
         this.neutralMonsters = [];
         this.manualModifications = {}; // Store manual stat modifications per entity: {entityName: {stat: value}}
+        this.selectedComponents = []; // For crafting simulator
 
         this.init();
     }
@@ -15,23 +16,31 @@ class TTKCalculator {
         await this.loadConfigFiles();
         this.buildEntityUI();
         this.buildItemUI();
+        this.buildItemEfficiencyUI();
+        this.buildCraftingSimulatorUI();
         this.setupEventListeners();
         this.calculateAndDisplayTTK();
     }
 
     async loadConfigFiles() {
+        console.log('Current location:', window.location.href);
         try {
             let loadErrors = [];
 
             // Load stats.toml
             try {
                 const timestamp = Date.now();
-                const statsResponse = await fetch(`../../services/game/stats.toml?t=${timestamp}`);
+                const statsUrl = `../../services/game/stats.toml?t=${timestamp}`;
+                console.log('Fetching stats from:', statsUrl);
+                const statsResponse = await fetch(statsUrl);
+                console.log('Stats response status:', statsResponse.status);
                 if (!statsResponse.ok) {
                     throw new Error(`HTTP ${statsResponse.status}: ${statsResponse.statusText}`);
                 }
                 const statsText = await statsResponse.text();
+                console.log('Stats text length:', statsText.length);
                 this.stats = TOML.parse(statsText);
+                console.log('Stats loaded successfully');
             } catch (error) {
                 loadErrors.push(`stats.toml: ${error.message}`);
                 console.error('Error loading stats.toml:', error);
@@ -40,13 +49,18 @@ class TTKCalculator {
             // Load items.toml
             try {
                 const timestamp = Date.now();
-                const itemsResponse = await fetch(`../../services/game/items.toml?t=${timestamp}`);
+                const itemsUrl = `../../services/game/items.toml?t=${timestamp}`;
+                console.log('Fetching items from:', itemsUrl);
+                const itemsResponse = await fetch(itemsUrl);
+                console.log('Items response status:', itemsResponse.status);
                 if (!itemsResponse.ok) {
                     throw new Error(`HTTP ${itemsResponse.status}: ${itemsResponse.statusText}`);
                 }
                 const itemsText = await itemsResponse.text();
+                console.log('Items text length:', itemsText.length);
                 const itemsData = TOML.parse(itemsText);
                 this.items = itemsData.items || [];
+                console.log('Items loaded successfully, count:', this.items.length);
             } catch (error) {
                 loadErrors.push(`items.toml: ${error.message}`);
                 console.error('Error loading items.toml:', error);
@@ -187,6 +201,118 @@ class TTKCalculator {
         this.updateEquippedItemsUI();
     }
 
+    buildItemEfficiencyUI() {
+        const itemList = document.getElementById('item-efficiency-list');
+        itemList.innerHTML = '';
+
+        this.items.forEach(item => {
+            const efficiency = this.calculateItemEfficiency(item);
+            const componentInfo = this.getComponentInfo(item);
+
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'item-efficiency-card';
+            itemDiv.innerHTML = `
+                <h5>${item.name}</h5>
+                <p class="cost">Cost: ${item.cost}</p>
+                <div class="item-stats">
+                    ${this.formatItemStats(item.stats)}
+                </div>
+                <p class="efficiency">Efficiency: ${efficiency.toFixed(4)}</p>
+                ${componentInfo ? `<p>Component Cost: ${componentInfo.totalCost}, Efficiency: ${componentInfo.avgEfficiency.toFixed(4)}</p>` : ''}
+            `;
+            itemList.appendChild(itemDiv);
+        });
+    }
+
+    calculateItemEfficiency(item) {
+        if (!item.stats) return 0;
+        const totalStats = Object.values(item.stats).reduce((sum, val) => sum + val, 0);
+        return totalStats / item.cost;
+    }
+
+    getComponentInfo(item) {
+        if (!item.required || !item.crafting_cost) return null;
+        let totalCost = item.crafting_cost;
+        let totalEfficiency = 0;
+        let count = 0;
+        item.required.forEach(reqId => {
+            const comp = this.items.find(i => i.id === reqId);
+            if (comp) {
+                totalCost += comp.cost;
+                totalEfficiency += this.calculateItemEfficiency(comp);
+                count++;
+            }
+        });
+        return {
+            totalCost,
+            avgEfficiency: count > 0 ? totalEfficiency / count : 0
+        };
+    }
+
+    buildCraftingSimulatorUI() {
+        const componentItems = document.getElementById('component-items');
+        componentItems.innerHTML = '';
+
+        this.items.forEach(item => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'component-item';
+            itemDiv.dataset.itemId = item.id;
+            itemDiv.innerHTML = `
+                <h5>${item.name}</h5>
+                <p>Cost: ${item.cost}</p>
+                <div class="item-stats">
+                    ${this.formatItemStats(item.stats)}
+                </div>
+            `;
+            componentItems.appendChild(itemDiv);
+        });
+
+        // Add resulting stats inputs
+        const resultingStatsControls = document.getElementById('resulting-stats-controls');
+        resultingStatsControls.innerHTML = `
+            <label>Health: <input type="number" class="result-stat" data-stat="health" min="0" value="0"></label>
+            <label>Attack Damage: <input type="number" class="result-stat" data-stat="attack_damage" min="0" value="0"></label>
+            <label>Armor: <input type="number" class="result-stat" data-stat="armor" min="0" value="0"></label>
+            <label>Magic Power: <input type="number" class="result-stat" data-stat="magic_power" min="0" value="0"></label>
+            <label>Mana: <input type="number" class="result-stat" data-stat="mana" min="0" value="0"></label>
+            <label>Attack Speed: <input type="number" class="result-stat" data-stat="attack_speed" min="0" value="0"></label>
+            <label>Health Regen: <input type="number" class="result-stat" data-stat="health_regen" min="0" step="0.1" value="0"></label>
+        `;
+    }
+
+    calculateCraftEfficiency() {
+        const craftCost = parseFloat(document.getElementById('craft-cost').value) || 0;
+        const resultingStats = {};
+        document.querySelectorAll('.result-stat').forEach(input => {
+            const value = parseFloat(input.value) || 0;
+            if (value > 0) {
+                resultingStats[input.dataset.stat] = value;
+            }
+        });
+
+        const totalComponentCost = this.selectedComponents.reduce((sum, item) => sum + item.cost, 0);
+        const totalCost = totalComponentCost + craftCost;
+
+        const totalResultStats = Object.values(resultingStats).reduce((sum, val) => sum + val, 0);
+        const efficiency = totalCost > 0 ? totalResultStats / totalCost : 0;
+
+        const componentEfficiency = this.selectedComponents.length > 0 ?
+            this.selectedComponents.reduce((sum, item) => sum + this.calculateItemEfficiency(item), 0) / this.selectedComponents.length : 0;
+
+        const resultDiv = document.getElementById('crafting-result');
+        resultDiv.innerHTML = `
+            <h3>Crafting Result</h3>
+            <p>Components: ${this.selectedComponents.map(i => i.name).join(', ') || 'None'}</p>
+            <p>Total Component Cost: ${totalComponentCost}</p>
+            <p>Craft Cost: ${craftCost}</p>
+            <p>Total Cost: ${totalCost}</p>
+            <p>Resulting Stats: ${this.formatItemStats(resultingStats)}</p>
+            <p>Crafted Efficiency: ${efficiency.toFixed(4)}</p>
+            <p>Average Component Efficiency: ${componentEfficiency.toFixed(4)}</p>
+            <p>Upgrade: ${efficiency > componentEfficiency ? 'Yes' : 'No'}</p>
+        `;
+    }
+
     formatItemStats(stats) {
         if (!stats) return '';
         return Object.entries(stats)
@@ -197,6 +323,13 @@ class TTKCalculator {
 
 
     setupEventListeners() {
+        // Tab switching
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('tab-button')) {
+                this.switchTab(e.target.dataset.tab);
+            }
+        });
+
         // Stat modification buttons
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('btn-increase') || e.target.classList.contains('btn-decrease')) {
@@ -234,6 +367,43 @@ class TTKCalculator {
             this.buildEntityUI();
             this.calculateAndDisplayTTK();
         });
+
+        // Component selection
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.component-item')) {
+                this.toggleComponentSelection(e.target.closest('.component-item'));
+            }
+        });
+
+        // Calculate craft
+        document.getElementById('calculate-craft').addEventListener('click', () => {
+            this.calculateCraftEfficiency();
+        });
+    }
+
+    switchTab(tab) {
+        // Remove active from all tabs and contents
+        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+        // Add active to selected
+        document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+        document.getElementById(`${tab}-tab`).classList.add('active');
+    }
+
+    toggleComponentSelection(itemDiv) {
+        const itemId = parseInt(itemDiv.dataset.itemId);
+        const item = this.items.find(i => i.id === itemId);
+        if (!item) return;
+
+        const index = this.selectedComponents.findIndex(i => i.id === itemId);
+        if (index > -1) {
+            this.selectedComponents.splice(index, 1);
+            itemDiv.classList.remove('selected');
+        } else {
+            this.selectedComponents.push(item);
+            itemDiv.classList.add('selected');
+        }
     }
 
     modifyStat(button) {
