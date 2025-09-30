@@ -44,7 +44,7 @@ impl Fighter for Base {
     fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
         for effect in effects.into_iter() {
             match effect {
-                GameplayEffect::AttackDamage(damage) => {
+                GameplayEffect::PhysicalDamage(damage) => {
                     self.stats.health = self.stats.health.saturating_sub(damage as u16);
                 }
                 // Tower cannot be affected by buff or debuff
@@ -92,13 +92,13 @@ mod tests {
     fn test_take_damage() {
         let base_stats = create_default_base_stats();
         let mut base = Base::new(Team::Red, (10, 10), base_stats);
-        base.take_effect(vec![GameplayEffect::AttackDamage(100)]);
+        base.take_effect(vec![GameplayEffect::PhysicalDamage(100)]);
         assert_eq!(base.stats.health, 4900);
 
-        base.take_effect(vec![GameplayEffect::AttackDamage(5000)]);
+        base.take_effect(vec![GameplayEffect::PhysicalDamage(5000)]);
         assert_eq!(base.stats.health, 0);
 
-        base.take_effect(vec![GameplayEffect::AttackDamage(100)]);
+        base.take_effect(vec![GameplayEffect::PhysicalDamage(100)]);
         assert_eq!(base.stats.health, 0);
     }
 }

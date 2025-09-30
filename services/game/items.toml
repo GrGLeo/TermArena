@@ -2,19 +2,19 @@
 
 [[items]]
 id = 1
-name = "Sword of Power"
+name = "Simple Sword"
 cost = 350
 stats.attack_damage = 10
 
 [[items]]
 id = 2
-name = "Tome of power"
+name = "Tome of Power"
 cost = 450
 stats.magic_power = 10
 
 [[items]]
 id = 3
-name = "Armor of Resilience"
+name = "Leather Armor"
 cost = 300
 stats.armor = 10
 
@@ -41,13 +41,15 @@ id = 7
 name = "Vial of Renewal"
 cost = 150
 stats.health_regen = 1.0
+stats.buffs = ["health_regen_item"]
+stats.effects = [1.0]
 
 [[items]]
 id = 8
 name = "Shield of Valor"
 cost = 800
 crafting_cost = 200
-required = [2, 3]
+required = [3, 4]
 stats.armor = 15
 stats.health = 80
 
@@ -58,3 +60,13 @@ cost = 800
 crafting_cost = 100
 required = [1, 1]
 stats.attack_damage = 25
+
+[[items]]
+id = 10
+name = "Thorn Armor"
+cost = 700
+crafting_cost = 100
+required = [3, 3]
+stats.armor = 20
+stats.buffs = ["thorn_item"]
+stats.effects = [10.0]

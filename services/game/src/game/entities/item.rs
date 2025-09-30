@@ -18,5 +18,6 @@ pub struct ItemStats {
     pub health: Option<u32>,
     pub mana: Option<u32>,
     pub armor: Option<u32>,
-    pub health_regen: Option<f32>,
+    pub buffs: Option<Vec<String>>,
+    pub effects: Option<Vec<f32>>
 }

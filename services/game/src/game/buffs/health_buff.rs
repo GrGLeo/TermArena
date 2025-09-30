@@ -46,6 +46,7 @@ impl Buff for RedBuff {
     }
 }
 
+
 #[derive(Debug, Clone)]
 pub struct DoTBuff {
     pub duration_remaining: Duration,

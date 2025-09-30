@@ -11,7 +11,8 @@ use super::Target;
 /// Represents the various effects a projectile can apply upon impact.
 pub enum GameplayEffect {
     /// Applies a specified amount of damage to the target.
-    AttackDamage(u16),
+    AutoAttackDamage(u16),
+    PhysicalDamage(u16),
     MagicDamage(u16),
     Heal(u16),
     /// Applies a specific buff/debuff to the target
@@ -21,7 +22,8 @@ pub enum GameplayEffect {
 impl PartialEq for GameplayEffect {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::AttackDamage(l0), Self::AttackDamage(r0)) => l0 == r0,
+            (Self::AutoAttackDamage(l0), Self::AutoAttackDamage(r0)) => l0 == r0,
+            (Self::PhysicalDamage(l0), Self::PhysicalDamage(r0)) => l0 == r0,
             (Self::MagicDamage(l0), Self::MagicDamage(r0)) => l0 == r0,
             (Self::Heal(l0), Self::Heal(r0)) => l0 == r0,
             (Self::Buff(l0), Self::Buff(r0)) => l0.id() == r0.id(),
@@ -33,7 +35,8 @@ impl PartialEq for GameplayEffect {
 impl Clone for GameplayEffect {
     fn clone(&self) -> Self {
         match self {
-            GameplayEffect::AttackDamage(d) => GameplayEffect::AttackDamage(*d),
+            GameplayEffect::AutoAttackDamage(d) => GameplayEffect::AutoAttackDamage(*d),
+            GameplayEffect::PhysicalDamage(d) => GameplayEffect::PhysicalDamage(*d),
             GameplayEffect::MagicDamage(d) => GameplayEffect::MagicDamage(*d),
             GameplayEffect::Heal(h) => GameplayEffect::Heal(*h),
             GameplayEffect::Buff(b) => GameplayEffect::Buff(b.clone_box()),
@@ -110,8 +113,7 @@ impl Projectile {
         start_pos: (u16, u16),
         target_id: Target,
         speed: u32,
-        payloads: Vec<GameplayEffect>,
-        visual_cell_type: CellAnimation,
+        payloads: Vec<GameplayEffect>, visual_cell_type: CellAnimation,
     ) -> Self {
         let pathing = PathingLogic::LockOn { target_id };
         Projectile {
@@ -253,7 +255,7 @@ mod tests {
             start_pos,
             end_pos,
             1,
-            vec![GameplayEffect::AttackDamage(50)],
+            vec![GameplayEffect::PhysicalDamage(50)],
             CellAnimation::TowerHit,
         );
 
@@ -287,7 +289,7 @@ mod tests {
             start_pos,
             target.clone(),
             2,
-            vec![GameplayEffect::AttackDamage(30)],
+            vec![GameplayEffect::PhysicalDamage(30)],
             CellAnimation::TowerHit,
         );
 
@@ -316,7 +318,7 @@ mod tests {
             start_pos,
             end_pos,
             1, // speed = 1 tick per cell
-            vec![GameplayEffect::AttackDamage(10)],
+            vec![GameplayEffect::PhysicalDamage(10)],
             CellAnimation::TowerHit,
         );
 
@@ -361,7 +363,7 @@ mod tests {
             start_pos,
             target,
             1, // speed = 1 tick per cell
-            vec![GameplayEffect::AttackDamage(10)],
+            vec![GameplayEffect::PhysicalDamage(10)],
             CellAnimation::TowerHit,
         );
 
@@ -418,7 +420,7 @@ mod tests {
             start_pos,
             end_pos,
             2, // speed = 2 ticks per cell
-            vec![GameplayEffect::AttackDamage(10)],
+            vec![GameplayEffect::PhysicalDamage(10)],
             CellAnimation::TowerHit,
         );
 
@@ -466,7 +468,7 @@ mod tests {
             1, // radius
             8, // total_iterations
             2, // speed
-            vec![GameplayEffect::AttackDamage(10)],
+            vec![GameplayEffect::PhysicalDamage(10)],
             CellAnimation::FireBall,
         );
 

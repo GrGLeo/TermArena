@@ -128,7 +128,16 @@ impl Fighter for Monster {
     fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
         for effect in effects.into_iter() {
             match effect {
-                GameplayEffect::AttackDamage(damage) => {
+                GameplayEffect::AutoAttackDamage(damage) => {
+                    let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, false);
+                    self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+                    if self.stats.health == 0 {
+                        self.state = MonsterState::Dead;
+                        self.target_champion_id = None;
+                        self.death_time = Some(Instant::now());
+                    }
+                }
+                GameplayEffect::PhysicalDamage(damage) => {
                     let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, false);
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                     if self.stats.health == 0 {
@@ -161,7 +170,7 @@ impl Fighter for Monster {
             let animation = MeleeAnimation::new(self.id);
             Some(AttackAction::Melee {
                 animation: Box::new(animation),
-                effects: vec![GameplayEffect::AttackDamage(self.stats.attack_damage)],
+                effects: vec![GameplayEffect::PhysicalDamage(self.stats.attack_damage)],
             })
         } else {
             None
@@ -258,7 +267,7 @@ mod tests {
         let monster_def = create_test_monster_def();
         let mut monster = Monster::new(1, monster_def);
 
-        monster.take_effect(vec![GameplayEffect::AttackDamage(40)]);
+        monster.take_effect(vec![GameplayEffect::PhysicalDamage(40)]);
 
         assert_eq!(monster.stats.health, 60);
         // State should NOT change, as per the new design
@@ -289,7 +298,7 @@ mod tests {
         assert_eq!(monster.state, MonsterState::Aggro);
 
         // Apply lethal damage (more than its health)
-        monster.take_effect(vec![GameplayEffect::AttackDamage(150)]);
+        monster.take_effect(vec![GameplayEffect::PhysicalDamage(150)]);
 
         // Verify the monster is dead
         assert_eq!(monster.stats.health, 0);
@@ -321,7 +330,7 @@ mod tests {
         if let Some(AttackAction::Melee { animation: _, effects }) = attack_action {
             if let Some(effect) = effects.get(0) {
                 match effect {
-                    GameplayEffect::AttackDamage(damage) => assert_eq!(*damage, 10), // From create_test_monster_def
+                    GameplayEffect::PhysicalDamage(damage) => assert_eq!(*damage, 10), // From create_test_monster_def
                     _ => {},
                 }
             }
@@ -376,7 +385,7 @@ mod tests {
         let board = Board::new(20, 20);
 
         // Damage the monster and make it return
-        monster.take_effect(vec![GameplayEffect::AttackDamage(50)]);
+        monster.take_effect(vec![GameplayEffect::PhysicalDamage(50)]);
         monster.start_returning(&board);
         assert_eq!(monster.stats.health, 50);
         assert_eq!(monster.state, MonsterState::Returning);
