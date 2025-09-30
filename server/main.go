@@ -164,7 +164,6 @@ func ProcessClient(conn *net.TCPConn, log *slog.Logger, broker *event.EventBroke
 					if _, err := conn.Write(responsePacket); err != nil {
 						log.Error("Error writing response to client", "component", "server", "ip", conn.RemoteAddr(), "error", err)
 					}
-					log.Info("Packet correctly sent")
 					data = data[bytesConsumed:]
 				}
 			}
@@ -196,7 +195,8 @@ func main() {
 
 	rateLimiter, err := ratelimiter.NewGlobalRateLimiter(rateLimiterConfigPath)
 	if err != nil {
-		log.Error("Failed to create rate limiter", "component", "server", "error", err)
+    path, _ := os.Getwd()
+		log.Error("Failed to create rate limiter", "component", "server", "error", err, "path", rateLimiterConfigPath, "current_path", path)
 		os.Exit(1)
 	}
 
