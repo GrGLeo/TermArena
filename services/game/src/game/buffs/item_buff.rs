@@ -42,3 +42,36 @@ impl Buff for HealthRegenItem {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ThornDamageItem {
+    damage: f32
+}
+
+impl ThornDamageItem {
+    pub fn new(damage: f32) -> ThornDamageItem {
+        ThornDamageItem {
+            damage
+        }
+    }
+}
+
+impl Buff for ThornDamageItem {
+    fn id(&self) -> &str {
+        "thorn_item"
+    }
+
+    fn on_apply(&mut self, _target: &mut dyn super::HasBuff) {
+    }
+
+    fn on_tick(&mut self, _target: &mut dyn super::HasBuff) -> bool {
+        return false
+    }
+
+    fn on_remove(&mut self, _target: &mut dyn super::HasBuff) {
+    }
+
+    fn clone_box(&self) -> Box<dyn Buff> {
+        Box::new(self.clone())
+    }
+}
+
