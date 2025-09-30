@@ -598,7 +598,22 @@ impl Fighter for Champion {
     fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
         for effect in effects.into_iter() {
             match effect {
-                GameplayEffect::AttackDamage(damage) => {
+                GameplayEffect::AutoAttackDamage(damage) => {
+                    let reduced_damage = reduced_damage(
+                        damage,
+                        self.stats.armor,
+                        self.stats.magic_resistance,
+                        false,
+                    );
+                    self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+                    // Check if champion get killed
+                    if self.stats.health == 0 {
+                        self.death_counter += 1;
+                        let timer = ((self.death_counter as f32).sqrt() * 10.) as u64;
+                        self.death_timer = Instant::now() + Duration::from_secs(timer);
+                    }
+                }
+                GameplayEffect::PhysicalDamage(damage) => {
                     let reduced_damage = reduced_damage(
                         damage,
                         self.stats.armor,
@@ -645,7 +660,9 @@ impl Fighter for Champion {
             self.last_attacked = Instant::now();
             let animation = MeleeAnimation::new(self.player_id);
             let mut effects: Vec<GameplayEffect> = self.on_hit_effects.drain(..).collect();
-            effects.extend(vec![GameplayEffect::AttackDamage(self.stats.attack_damage)]);
+            effects.extend(vec![GameplayEffect::AutoAttackDamage(
+                self.stats.attack_damage,
+            )]);
             Some(AttackAction::Melee {
                 animation: Box::new(animation),
                 effects,
@@ -807,7 +824,7 @@ mod tests {
         let damage = 30;
         let armor = champion.stats.armor as u16;
 
-        champion.take_effect(vec![GameplayEffect::AttackDamage(damage)]);
+        champion.take_effect(vec![GameplayEffect::PhysicalDamage(damage)]);
 
         // Calculate expected health after damage reduction by armor
         let reduced_damage = reduced_damage(damage, armor, 0, false);
@@ -834,7 +851,7 @@ mod tests {
         // but for now, we can at least check if it's set to *sometime in the future*
         // and that is_dead returns true immediately after taking lethal damage.
 
-        champion_to_defeat.take_effect(vec![GameplayEffect::AttackDamage(lethal_damage)]);
+        champion_to_defeat.take_effect(vec![GameplayEffect::PhysicalDamage(lethal_damage)]);
 
         assert_eq!(
             champion_to_defeat.stats.health, 0,
@@ -869,7 +886,7 @@ mod tests {
         let additional_damage = 10;
 
         champion_already_defeated
-            .take_effect(vec![GameplayEffect::AttackDamage(additional_damage)]);
+            .take_effect(vec![GameplayEffect::PhysicalDamage(additional_damage)]);
         assert_eq!(
             champion_already_defeated.stats.health, 0,
             "Health should remain at 0 if already defeated"
@@ -1831,7 +1848,8 @@ mod tests {
                 health: None,
                 armor: None,
                 mana: None,
-                health_regen: None,
+                buffs: None,
+                effects: None,
             },
         };
 
@@ -1848,7 +1866,8 @@ mod tests {
                 health: Some(50),
                 armor: Some(5),
                 mana: None,
-                health_regen: None,
+                buffs: None,
+                effects: None,
             },
         };
 
@@ -1879,7 +1898,8 @@ mod tests {
                     health: None,
                     armor: None,
                     mana: None,
-                    health_regen: None,
+                    buffs: None,
+                    effects: None,
                 },
             };
             champion.add_item(item.clone()).unwrap();
@@ -1899,7 +1919,8 @@ mod tests {
                 health: None,
                 armor: None,
                 mana: None,
-                health_regen: None,
+                buffs: None,
+                effects: None,
             },
         };
         let result = champion.add_item(extra_item);
@@ -1927,7 +1948,8 @@ mod tests {
                 health: None,
                 armor: None,
                 mana: None,
-                health_regen: None,
+                buffs: None,
+                effects: None,
             },
         };
 
@@ -1956,7 +1978,8 @@ mod tests {
                 health: None,
                 armor: None,
                 mana: None,
-                health_regen: None,
+                buffs: None,
+                effects: None,
             },
         };
 
@@ -1973,7 +1996,8 @@ mod tests {
                 health: Some(50),
                 armor: Some(5),
                 mana: None,
-                health_regen: None,
+                buffs: None,
+                effects: None,
             },
         };
 
@@ -2018,17 +2042,13 @@ mod tests {
                 health: None,
                 armor: None,
                 mana: None,
-                health_regen: Some(1.0),
+                buffs: Some(vec!["health_regen_item".to_string()]),
+                effects: Some(vec![1.0]),
             },
         };
 
         champion.add_item(item).unwrap();
-
-        let base_hp_per_sec =
-            champion.stats.max_health as f32 * champion.champion_stats.health_per_sec;
-        let expected_hp_per_sec = base_hp_per_sec * 2.0; // 1.0 bonus = 100% increase
-
-        assert!((champion.stats.hp_per_sec - expected_hp_per_sec).abs() < f32::EPSILON);
+        assert_eq!(champion.active_buffs.len(), 1)
     }
 
     #[test]
@@ -2051,7 +2071,8 @@ mod tests {
                 health: None,
                 armor: None,
                 mana: None,
-                health_regen: Some(1.0),
+                buffs: Some(vec!["health_regen_item".to_string()]),
+                effects: Some(vec![1.0]),
             },
         };
         let item2 = Item {
@@ -2067,18 +2088,14 @@ mod tests {
                 health: None,
                 armor: None,
                 mana: None,
-                health_regen: Some(0.5),
+                buffs: Some(vec!["health_regen_item".to_string()]),
+                effects: Some(vec![1.0]),
             },
         };
 
         champion.add_item(item1).unwrap();
         champion.add_item(item2).unwrap();
-
-        let base_hp_per_sec =
-            champion.stats.max_health as f32 * champion.champion_stats.health_per_sec;
-        let expected_hp_per_sec = base_hp_per_sec * (1.0 + 1.0 + 0.5); // 1.0 base + 1.0 from item1 + 0.5 from item2
-
-        assert!((champion.stats.hp_per_sec - expected_hp_per_sec).abs() < f32::EPSILON);
+        assert_eq!(champion.active_buffs.len(), 1)
     }
 
     #[test]
@@ -2101,7 +2118,8 @@ mod tests {
                 health: Some(50),
                 armor: Some(5),
                 mana: None,
-                health_regen: Some(1.0),
+                buffs: Some(vec!["health_regen_item".to_string()]),
+                effects: Some(vec![1.0]),
             },
         };
 
@@ -2109,11 +2127,7 @@ mod tests {
 
         let expected_max_health = 200 + 50;
         assert_eq!(champion.stats.max_health, expected_max_health);
-
-        let base_hp_per_sec = expected_max_health as f32 * champion.champion_stats.health_per_sec;
-        let expected_hp_per_sec = base_hp_per_sec * (1.0 + 1.0);
-
-        assert!((champion.stats.hp_per_sec - expected_hp_per_sec).abs() < f32::EPSILON);
+        assert_eq!(champion.active_buffs.len(), 1)
     }
 
     #[test]
@@ -2204,7 +2218,8 @@ mod tests {
                 health: None,
                 armor: None,
                 mana: None,
-                health_regen: None,
+                buffs: None,
+                effects: None,
             },
         }
     }

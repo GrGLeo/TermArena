@@ -379,7 +379,7 @@ mod tests {
         let attacker_id = 42; // Player's ID
 
         // Apply damage effect
-        let effects = vec![GameplayEffect::AttackDamage(30)];
+        let effects = vec![GameplayEffect::PhysicalDamage(30)];
         manager.apply_effects_to_monster(&monster_id, effects, attacker_id);
 
         // Get the monster to check its new state
@@ -405,7 +405,7 @@ mod tests {
         // First attack sets the aggro
         manager.apply_effects_to_monster(
             &monster_id,
-            vec![GameplayEffect::AttackDamage(10)],
+            vec![GameplayEffect::PhysicalDamage(10)],
             attacker_1,
         );
         let monster = manager.active_monsters.get(&monster_id).unwrap();
@@ -419,7 +419,7 @@ mod tests {
         // Second attack from a different champion
         manager.apply_effects_to_monster(
             &monster_id,
-            vec![GameplayEffect::AttackDamage(10)],
+            vec![GameplayEffect::PhysicalDamage(10)],
             attacker_2,
         );
         let monster = manager.active_monsters.get(&monster_id).unwrap();
@@ -551,7 +551,7 @@ mod tests {
         let (target, effect) = &pending_effects[0];
         assert_eq!(*target, Target::Champion(attacker_id));
         assert_eq!(effect.len(), 1);
-        assert_eq!(effect[0], GameplayEffect::AttackDamage(10))
+        assert_eq!(effect[0], GameplayEffect::PhysicalDamage(10))
     }
 
     #[test]

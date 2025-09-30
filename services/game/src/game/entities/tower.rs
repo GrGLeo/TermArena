@@ -110,7 +110,8 @@ impl Fighter for Tower {
     fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
         for effect in effects.into_iter() {
             match effect {
-                GameplayEffect::AttackDamage(damage) => {
+                // Tower can only take aa damage, no spell
+                GameplayEffect::AutoAttackDamage(damage) => {
                     let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, false);
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                     if self.stats.health == 0 {
@@ -129,7 +130,7 @@ impl Fighter for Tower {
             Some(AttackAction::Projectile {
                 speed: 1,
                 visual: CellAnimation::TowerHit,
-                effects: vec![GameplayEffect::AttackDamage(self.stats.attack_damage)],
+                effects: vec![GameplayEffect::PhysicalDamage(self.stats.attack_damage)],
             })
         } else {
             None
@@ -257,7 +258,7 @@ mod tests {
         let damage = 50;
         let armor = tower.stats.armor as u16;
 
-        tower.take_effect(vec![GameplayEffect::AttackDamage(damage)]);
+        tower.take_effect(vec![GameplayEffect::AutoAttackDamage(damage)]);
 
         // Calculate expected health after damage reduction by armor
         let reduced_damage = reduced_damage(damage, armor, 0, false);
@@ -275,7 +276,7 @@ mod tests {
         let mut tower_to_destroy = Tower::new(2, Team::Red, 10, 20, create_default_tower_stats());
         let lethal_damage = 500; // Damage exceeding health + armor
 
-        tower_to_destroy.take_effect(vec![GameplayEffect::AttackDamage(lethal_damage)]);
+        tower_to_destroy.take_effect(vec![GameplayEffect::AutoAttackDamage(lethal_damage)]);
 
         assert_eq!(
             tower_to_destroy.stats.health, 0,
@@ -293,7 +294,7 @@ mod tests {
         tower_already_destroyed.destroyed = true;
         let additional_damage = 10;
 
-        tower_already_destroyed.take_effect(vec![GameplayEffect::AttackDamage(additional_damage)]);
+        tower_already_destroyed.take_effect(vec![GameplayEffect::PhysicalDamage(additional_damage)]);
         assert_eq!(
             tower_already_destroyed.stats.health, 0,
             "Health should remain at 0 if already destroyed"

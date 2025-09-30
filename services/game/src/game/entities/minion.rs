@@ -269,11 +269,7 @@ impl Minion {
                                 } => {
                                     animation.attach_target(*id);
                                     new_animations.push(animation);
-                                    pending_effects.push((
-                                        None,
-                                        Target::Tower(*id),
-                                        effect,
-                                    ))
+                                    pending_effects.push((None, Target::Tower(*id), effect))
                                 }
                                 _ => {}
                             }
@@ -288,11 +284,7 @@ impl Minion {
                                 } => {
                                     animation.attach_target(*id);
                                     new_animations.push(animation);
-                                    pending_effects.push((
-                                        None,
-                                        Target::Minion(*id),
-                                        effect,
-                                    ))
+                                    pending_effects.push((None, Target::Minion(*id), effect))
                                 }
                                 _ => {}
                             }
@@ -306,11 +298,7 @@ impl Minion {
                                     effects: effect,
                                 } => {
                                     new_animations.push(animation);
-                                    pending_effects.push((
-                                        None,
-                                        Target::Base(*team),
-                                        effect
-                                    ))
+                                    pending_effects.push((None, Target::Base(*team), effect))
                                 }
                                 _ => {}
                             }
@@ -325,11 +313,7 @@ impl Minion {
                                 } => {
                                     animation.attach_target(*id);
                                     new_animations.push(animation);
-                                    pending_effects.push((
-                                        None,
-                                        Target::Champion(*id),
-                                        effect
-                                    ))
+                                    pending_effects.push((None, Target::Champion(*id), effect))
                                 }
                                 _ => {}
                             }
@@ -388,12 +372,27 @@ impl Fighter for Minion {
     fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
         for effect in effects.into_iter() {
             match effect {
-                GameplayEffect::AttackDamage(damage) => {
-                    let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, false);
+                GameplayEffect::AutoAttackDamage(damage) => {
+                    let reduced_damage = reduced_damage(
+                        damage,
+                        self.stats.armor,
+                        self.stats.magic_resistance,
+                        false,
+                    );
+                    self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
+                }
+                GameplayEffect::PhysicalDamage(damage) => {
+                    let reduced_damage = reduced_damage(
+                        damage,
+                        self.stats.armor,
+                        self.stats.magic_resistance,
+                        false,
+                    );
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                 }
                 GameplayEffect::MagicDamage(damage) => {
-                    let reduced_damage = reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, true);
+                    let reduced_damage =
+                        reduced_damage(damage, self.stats.armor, self.stats.magic_resistance, true);
                     self.stats.health = self.stats.health.saturating_sub(reduced_damage as u16);
                 }
                 GameplayEffect::Heal(heal_amount) => {
@@ -414,7 +413,7 @@ impl Fighter for Minion {
             let animation = MeleeAnimation::new(self.minion_id);
             Some(AttackAction::Melee {
                 animation: Box::new(animation),
-                effects: vec![GameplayEffect::AttackDamage(self.stats.attack_damage)],
+                effects: vec![GameplayEffect::AutoAttackDamage(self.stats.attack_damage)],
             })
         } else {
             None
@@ -1602,7 +1601,12 @@ mod tests {
         minion.take_effect(vec![GameplayEffect::MagicDamage(magic_damage)]);
 
         // Since MR=0, damage should not be reduced
-        let reduced_damage = reduced_damage(magic_damage, minion.stats.armor, minion.stats.magic_resistance, true);
+        let reduced_damage = reduced_damage(
+            magic_damage,
+            minion.stats.armor,
+            minion.stats.magic_resistance,
+            true,
+        );
         let expected_health = initial_health.saturating_sub(reduced_damage);
         assert_eq!(
             minion.stats.health, expected_health,
