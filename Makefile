@@ -29,7 +29,7 @@ build-message:
 build-room-manager:
 	@echo "Building room manager service..."
 	@mkdir -p bin
-	cd services/room_manager_service/cmd && go build -o ../../../bin/room_manager_service .
+	cd services/room_manager_service/cmd && go build -o ../../../bin/room_service .
 
 build-client:
 	@echo "Building client..."
@@ -39,8 +39,6 @@ build-client:
 package: build
 	@echo "Packaging application..."
 	@mkdir -p bin
-	@cp services/auth/target/release/auth bin/auth
-	@cp services/game/target/release/game bin/game
 
 run-auth:
 	@echo "Running auth service..."
@@ -52,7 +50,7 @@ run-message:
 
 run-room-manager:
 	@echo "Running room manager service..."
-	./bin/room_manager_service
+	./bin/room_service
 
 run-game:
 	@echo "Running game engine..."
@@ -70,6 +68,20 @@ run-simulation:
 	@echo "Running simulation..."
 	cd test/e2e && go run game_simulation.go
 
+run-e2e:
+	@echo "Starting services..."
+	./bin/auth >> auth.log 2>&1 &
+	./bin/server >> server.log 2>&1 &
+	./bin/room_service >> room.log 2>&1 &
+	./bin/message_service >> message.log 2>&1 &
+	@sleep 2
+	cd test/e2e && go run main.go
+	@echo "Stopping services..."
+	@pkill auth || true
+	@pkill server || true
+	@pkill room_service || true
+	@pkill message_service || true
+
 test:
 	@echo "Running tests..."
 	go test -v ./...
@@ -79,21 +91,3 @@ clean:
 	rm -rf bin
 	cd services/auth && cargo clean
 	cd services/game && cargo clean
-
-deploy: package
-	@echo "Deploying to production..."
-	ssh leo@endurace.cloud "mkdir -p /home/leo/bin /home/leo/game/target/debug"
-	ssh leo@endurace.cloud "pkill auth || true"
-	ssh leo@endurace.cloud "pkill server || true"
-	ssh leo@endurace.cloud "pkill game || true"
-	ssh leo@endurace.cloud "pkill message_service || true"
-	ssh leo@endurace.cloud "pkill room_manager_service || true"
-	scp bin/auth leo@endurace.cloud:/home/leo/bin/
-	scp bin/server leo@endurace.cloud:/home/leo/bin/
-	scp bin/message_service leo@endurace.cloud:/home/leo/bin/
-	scp bin/room_manager_service leo@endurace.cloud:/home/leo/bin/
-	scp bin/game leo@endurace.cloud:/home/leo/game/target/debug/
-	scp services/game/spells.toml leo@endurace.cloud:/home/leo/game/
-	scp services/game/items.toml leo@endurace.cloud:/home/leo/game/
-	scp services/game/rules.toml leo@endurace.cloud:/home/leo/game/
-	scp services/game/stats.toml leo@endurace.cloud:/home/leo/game/

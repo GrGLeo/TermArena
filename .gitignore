@@ -3,6 +3,7 @@
 /bin
 services/auth/target
 services/game/target
+scripts/deploy.sh
 GEMINI.md
 *.jsonl
 *.json
