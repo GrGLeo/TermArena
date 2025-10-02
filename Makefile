@@ -36,6 +36,11 @@ build-client:
 	@mkdir -p bin
 	cd client && go build -o ../bin/client .
 
+build-all-client:
+	@echo "Building client statically..."
+	@mkdir -p bin
+	cd client && CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o ../bin/client .
+
 package: build
 	@echo "Packaging application..."
 	@mkdir -p bin
