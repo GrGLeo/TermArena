@@ -33,7 +33,7 @@ type TestClient struct {
 }
 
 // Global quiet mode flag
-var quietMode = false
+var quietMode = true
 
 type TestScenario struct {
 	Name     string
@@ -84,10 +84,47 @@ func main() {
 		{Name: "Error Handling Test", Clients: []string{"user1", "user2"}, TestFunc: errorHandlingTest},
 		{Name: "Concurrent Messaging Test (No Rate Limit)", Clients: []string{"user1", "user2", "user3", "user4"}, TestFunc: concurrentMessagingTest},
 		{Name: "Look Room Test", Clients: []string{"user1", "user2", "user3", "user4"}, TestFunc: lookRoomTest},
+		{Name: "Multiple Rooms Test", Clients: []string{"user1", "user2", "user3", "user4", "user5", "user6"}, TestFunc: multipleRoomsTest},
 		{Name: "Registration Rate Limit Test", Clients: []string{"user1"}, TestFunc: registrationRateLimitTest},
 		{Name: "Authentication Rate Limit Test", Clients: []string{"user1"}, TestFunc: authRateLimitTest},
 		{Name: "Message Rate Limit Test", Clients: []string{"user1"}, TestFunc: messageRateLimitTest},
 	}
+
+	// Collect unique users
+	uniqueUsers := make(map[string]bool)
+	for _, scenario := range testScenarios {
+		for _, user := range scenario.Clients {
+			uniqueUsers[user] = true
+		}
+	}
+	var allUsers []string
+	for user := range uniqueUsers {
+		allUsers = append(allUsers, user)
+	}
+
+	// Pre-authenticate all users
+	preAuthClients := make(map[string]*TestClient)
+	if verbose {
+		fmt.Printf("Pre-authenticating %d unique users...\n", len(allUsers))
+	}
+	for i, username := range allUsers {
+		client := createTestClient(username)
+		go client.listenForResponses()
+		if err := client.authenticate(); err != nil {
+			log.Fatalf("Failed to pre-authenticate %s: %v", username, err)
+		}
+		preAuthClients[username] = client
+		if i < len(allUsers)-1 {
+			if verbose {
+				fmt.Printf("⏳ Waiting 30.5 seconds before next client authentication...\n")
+			}
+			time.Sleep(30500 * time.Millisecond)
+		}
+	}
+	if verbose {
+		fmt.Println("All users pre-authenticated!")
+	}
+
 	if len(args) > 0 {
 		testIndex, err := strconv.Atoi(args[0])
 		if err != nil {
@@ -100,10 +137,14 @@ func main() {
 		}
 		// Run specific test
 		scenario := testScenarios[testIndex-1]
+		clients := make([]*TestClient, len(scenario.Clients))
+		for i, user := range scenario.Clients {
+			clients[i] = preAuthClients[user]
+		}
 		fmt.Printf("Starting: %s\n", scenario.Name)
 		scenarioStart := time.Now()
 
-		err = runTestScenario(scenario, !verbose)
+		err = runTestScenario(scenario.Name, clients, scenario.TestFunc, !verbose)
 
 		scenarioDuration := time.Since(scenarioStart)
 
@@ -147,12 +188,16 @@ func main() {
 
 		// Run all test scenarios
 		for i, scenario := range testScenarios {
+			clients := make([]*TestClient, len(scenario.Clients))
+			for j, user := range scenario.Clients {
+				clients[j] = preAuthClients[user]
+			}
 			fmt.Printf("%d/%d Starting: %s\n", i+1, len(testScenarios), scenario.Name)
 			scenarioStart := time.Now()
 
 			// Run test
 			var err error
-			err = runTestScenario(scenario, !verbose)
+			err = runTestScenario(scenario.Name, clients, scenario.TestFunc, !verbose)
 
 			// Record result
 			testResults[i] = err
@@ -165,11 +210,6 @@ func main() {
 				fmt.Printf("   Error: %v\n", err)
 			}
 			fmt.Printf("   %s (%v)\n", status, scenarioDuration.Round(time.Second))
-
-			// Wait for rate limits to reset between scenarios (except for last scenario)
-			if i < len(testScenarios)-1 {
-				waitForRateLimitReset()
-			}
 		}
 
 		// Print final summary
@@ -203,77 +243,42 @@ func main() {
 		fmt.Printf("Total time: %v\n", totalDuration.Round(time.Second))
 		fmt.Println(strings.Repeat("=", 60))
 	}
+
+	// Clean up all pre-authenticated clients
+	var allClients []*TestClient
+	for _, c := range preAuthClients {
+		allClients = append(allClients, c)
+	}
+	cleanupClients(allClients)
 }
 
 // runTestScenario runs a test scenario
-func runTestScenario(scenario TestScenario, quiet bool) error {
+func runTestScenario(name string, clients []*TestClient, testFunc func([]*TestClient) error, quiet bool) error {
 	if quiet {
 		quietMode = true
 		defer func() { quietMode = false }()
 	}
 
 	if !quiet {
-		fmt.Printf("Setting up %d clients for test scenario...\n", len(scenario.Clients))
+		fmt.Printf("Running test scenario: %s with %d clients...\n", name, len(clients))
 	}
 
-	// Create test clients
-	clients := make([]*TestClient, len(scenario.Clients))
-	for i, username := range scenario.Clients {
-		clients[i] = createTestClient(username)
-	}
-
-	// Start response listeners for all clients (quiet mode)
-	for _, client := range clients {
-		go client.listenForResponses()
-	}
-
-	// Authenticate all clients with delays to avoid rate limiting
-	if !quiet {
-		fmt.Printf("Authenticating %d clients...\n", len(clients))
-	}
-	for i, client := range clients {
-		if err := client.authenticate(); err != nil {
-			if !quiet {
-				fmt.Printf("Failed to authenticate %s: %v\n", client.username, err)
-			}
-			// Clean up on failure
-			cleanupClients(clients)
-			return fmt.Errorf("failed to authenticate %s: %v", client.username, err)
-		}
-
-		// Add delay between client authentications to avoid rate limiting
-		if i < len(clients)-1 {
-			if !quiet {
-				fmt.Printf("⏳ Waiting 30.5 seconds before next client authentication...\n")
-			}
-			time.Sleep(30500 * time.Millisecond) // 30.5 seconds
-		}
-	}
-
-	if !quiet {
-		fmt.Printf("All %d clients authenticated successfully!\n", len(clients))
-	}
-
-	// Wait for auth to complete
+	// Wait for auth to complete (though pre-auth)
 	time.Sleep(500 * time.Millisecond)
 
 	// Run the test scenario
 	if !quiet {
 		fmt.Printf("Running test scenario...\n")
 	}
-	if err := scenario.TestFunc(clients); err != nil {
+	if err := testFunc(clients); err != nil {
 		if !quiet {
 			fmt.Printf("Test scenario failed: %v\n", err)
 		}
-		cleanupClients(clients)
+		// Don't cleanup, since reusing
 		return err
 	}
 
-	// Clean up connections
-	if !quiet {
-		fmt.Printf("Cleaning up connections...\n")
-	}
-	cleanupClients(clients)
+	// Don't cleanup
 	return nil
 }
 
@@ -286,9 +291,7 @@ func createTestClient(username string) *TestClient {
 	// Load private key from file
 	privateKey, publicKey := loadKeys(username)
 
-	if !quietMode {
-		fmt.Printf("Created test client: %s\n", username)
-	}
+	fmt.Printf("Created test client: %s\n", username)
 
 	return &TestClient{
 		conn:             conn,
@@ -370,6 +373,73 @@ func (c *TestClient) authenticate() error {
 	return nil
 }
 
+// multipleRoomsTest - Test multiple rooms creation with different room types
+func multipleRoomsTest(clients []*TestClient) error {
+	if len(clients) != 6 {
+		return fmt.Errorf("need exactly 6 clients")
+	}
+
+	if !quietMode {
+		fmt.Println("Starting Multiple Rooms test...")
+	}
+
+	// Send RoomRequest for first 4 clients (type 1)
+	for i := range 4 {
+		packet := shared.NewRoomRequestPacket(1)
+		data := packet.Serialize()
+
+		_, err := clients[i].conn.Write(data)
+		if err != nil {
+			return fmt.Errorf("failed to send room request for %s: %v", clients[i].username, err)
+		}
+
+		if !quietMode {
+			fmt.Printf("%s sent room request for type 1\n", clients[i].username)
+		}
+	}
+
+	// Send RoomRequest for last 2 clients (type 0)
+	for i := 4; i < 6; i++ {
+		packet := shared.NewRoomRequestPacket(0)
+		data := packet.Serialize()
+
+		_, err := clients[i].conn.Write(data)
+		if err != nil {
+			return fmt.Errorf("failed to send room request for %s: %v", clients[i].username, err)
+		}
+
+		if !quietMode {
+			fmt.Printf("%s sent room request for type 0\n", clients[i].username)
+		}
+	}
+
+	// Wait for responses
+	time.Sleep(1 * time.Second)
+
+	// Collect unique roomIDs
+	roomIDSet := make(map[uint32]bool)
+	for _, client := range clients {
+		if client.roomID == 0 {
+			return fmt.Errorf("%s did not receive room response", client.username)
+		}
+		roomIDSet[client.roomID] = true
+	}
+
+	if len(roomIDSet) != 3 {
+		return fmt.Errorf("expected 3 different roomIDs, got %d", len(roomIDSet))
+	}
+
+	if !quietMode {
+		fmt.Printf("Received %d different roomIDs: ", len(roomIDSet))
+		for id := range roomIDSet {
+			fmt.Printf("%d ", id)
+		}
+		fmt.Println()
+	}
+
+	return nil
+}
+
 // registrationRateLimitTest - Test registration rate limiting with empty key
 func registrationRateLimitTest(clients []*TestClient) error {
 	client := clients[0]
@@ -403,7 +473,7 @@ func registrationRateLimitTest(clients []*TestClient) error {
 	if !quietMode {
 		fmt.Println("Waiting for rate limit response...")
 	}
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	// Check if rate limit was triggered
 	if client.rateLimited {
@@ -450,7 +520,7 @@ func authRateLimitTest(clients []*TestClient) error {
 	if !quietMode {
 		fmt.Println("Waiting for rate limit response...")
 	}
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	// Check if rate limit was triggered
 	if client.rateLimited {
@@ -611,9 +681,6 @@ func (c *TestClient) listenForResponses() {
 			}
 			// Check for "use of closed network connection" error
 			if strings.Contains(err.Error(), "closed") {
-				if !quietMode {
-					fmt.Printf("[%s] Connection closed: %v\n", c.username, err)
-				}
 				return
 			}
 			if !quietMode {
@@ -774,7 +841,7 @@ func multiClientRoomTest(clients []*TestClient) error {
 		}
 	}
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 	return nil
 }
 
@@ -895,7 +962,7 @@ func concurrentMessagingTest(clients []*TestClient) error {
 	if !quietMode {
 		fmt.Println("Concurrent messaging test completed")
 	}
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 	return nil
 }
 
@@ -925,7 +992,7 @@ func lookRoomTest(clients []*TestClient) error {
 	}
 
 	// Wait for responses
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	// Check all got same roomID
 	var roomID uint32

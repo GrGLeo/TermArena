@@ -82,10 +82,6 @@ run-e2e:
 	@sleep 2
 	cd test/e2e && go run main.go
 	@echo "Stopping services..."
-	@pkill auth || true
-	@pkill server || true
-	@pkill room_service || true
-	@pkill message_service || true
 
 test:
 	@echo "Running tests..."
