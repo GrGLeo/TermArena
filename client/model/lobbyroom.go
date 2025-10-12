@@ -176,6 +176,21 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				message = strings.Trim(message, " ")
 				m.textInput.SetValue("")
 
+				// Handling /quit message
+				if message == "/quit" {
+					if err := communication.SendQuitRoom(m.conn); err != nil {
+						m.addMessage(Message{
+							Content:   fmt.Sprintf("Failed to quit room: %v", err),
+							SenderID:  "System",
+							Timestamp: time.Now(),
+							IsSystem:  true,
+						})
+						m.updateViewport()
+						return m, nil
+					}
+					m.updateViewport()
+					return m, nil
+				}
 				// Validate message before sending
 				if err := m.validateMessage(message); err != nil {
 					m.addMessage(Message{
