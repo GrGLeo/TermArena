@@ -25,17 +25,17 @@ func DecodeRLE(rle []byte) ([21][51]int, error) {
 	for _, part := range parts {
 		subParts := strings.SplitN(string(part), ":", 2)
 		if len(subParts) != 2 {
-      log.Printf("SubParts len error: %+v", subParts)
+			log.Printf("SubParts len error: %+v", subParts)
 			return [21][51]int{}, errors.New("Failed to decode RLE")
 		}
 		value, err := strconv.Atoi(subParts[0])
 		if err != nil {
-      log.Printf("SubParts 0 causing error: %+v", subParts[0])
+			log.Printf("SubParts 0 causing error: %+v", subParts[0])
 			return [21][51]int{}, err
 		}
 		count, err := strconv.Atoi(subParts[1])
 		if err != nil {
-      log.Printf("SubParts 1 causing error: %q", subParts[1])
+			log.Printf("SubParts 1 causing error: %q", subParts[1])
 			return [21][51]int{}, err
 		}
 
