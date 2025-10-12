@@ -142,6 +142,20 @@ func SendMessage(conn *net.TCPConn, sender, message string) error {
 	return err
 }
 
+func SendQuitRoom(conn *net.TCPConn) error {
+	log.Printf("[CLIENT] QuitMessage")
+	packet := shared.NewQuitRoomPacket()
+	data := packet.Serialize()
+	_, err := conn.Write(data)
+	if err != nil {
+		log.Printf("[CLIENT] QuitRoom: ERROR writing to connection: %v", err)
+	} else {
+		log.Printf("[CLIENT] QuitRoom: SUCCESS - spells sent to server")
+	}
+	return err
+
+}
+
 func SendUpdateSpell(conn *net.TCPConn, roomType, roomID int, username string, spells []int) error {
 	log.Printf("[CLIENT] SendUpateSpell: sender=%s, spells='%d|%d'", username, spells[0], spells[1])
 	spellPacket := shared.NewUpdateSpellReqPacket(roomType, roomID, username, spells[0], spells[1])
