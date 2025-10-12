@@ -29,6 +29,7 @@ Room management packets (50-99):
   55: update spell request
   56: update spell response
   57: game server is ready
+	58: client quit room
 
 Game packets (100-149):
   100: game start response
@@ -492,6 +493,25 @@ func (gsp *GameServerReadyPacket) Serialize() []byte {
 	buf.WriteByte(byte(gsp.version))
 	buf.WriteByte(byte(gsp.code))
 	binary.Write(&buf, binary.BigEndian, gsp.RoomIP)
+	return buf.Bytes()
+}
+
+type QuitRoomPacket struct {
+	version, code int
+}
+
+func NewQuitRoomPacket() *QuitRoomPacket {
+	return &QuitRoomPacket{
+		version: 1,
+		code:    CodeQuitRoom,
+	}
+}
+func (qrp *QuitRoomPacket) Version() int { return qrp.version }
+func (qrp *QuitRoomPacket) Code() int    { return qrp.code }
+func (qrp *QuitRoomPacket) Serialize() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(qrp.version))
+	buf.WriteByte(byte(qrp.code))
 	return buf.Bytes()
 }
 
@@ -1195,6 +1215,16 @@ func DeSerialize(data []byte) (Packet, int, error) {
 			RoomIP:  roomID,
 		}
 		return packet, 4, nil
+
+	case CodeQuitRoom:
+		if len(data) < 2 {
+			return nil, 0, errors.New("incomplete packet")
+		}
+		packet := &QuitRoomPacket{
+			version: version,
+			code:    code,
+		}
+		return packet, 2, nil
 
 	case CodeGameStart: // GameStartPacket
 		if len(data) < 3 {

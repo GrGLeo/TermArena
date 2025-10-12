@@ -21,6 +21,7 @@ const (
 	CodeUpdateSpellReq  = 55
 	CodeUpdateSpellRes  = 56
 	CodeGameServerReady = 57
+	CodeQuitRoom        = 58
 
 	// Game packets (100-149)
 	CodeGameStart      = 100
