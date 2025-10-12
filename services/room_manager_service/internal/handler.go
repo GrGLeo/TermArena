@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"sync"
 
 	pb "github.com/GrGLeo/TermArena/pkg/shared/proto/room_manager"
 	"google.golang.org/grpc"
@@ -14,6 +15,7 @@ import (
 type ManagerInterface interface {
 	MoveRoom(roomStatusIn, roomStatusOut RoomStatus, roomType RoomType, roomID RoomID)
 	LookRoom(username string, roomType RoomType) (Team, RoomID, RoomStatus)
+	CloseRoom(roomID RoomID, username string) ([]string, RoomType, error)
 	RemovePlayer(roomID RoomID, username string) error
 	GetRoomInfo(roomType RoomType, roomStatus RoomStatus, roomID RoomID) ([]*pb.UserInfo, error)
 	UpdatePlayerSpell(roomType RoomType, roomID RoomID, username string, spells Spells) ([]string, error)
@@ -54,21 +56,50 @@ func (rh *RoomHandler) LookRoom(ctx context.Context, req *pb.LookRoomRequest) (*
 }
 
 func (rh *RoomHandler) QuitRoom(ctx context.Context, req *pb.QuitRoomRequest) (*pb.QuitRoomResponse, error) {
-	err := rh.manager.RemovePlayer(RoomID(req.RoomID), req.Username)
+	usernames, roomType, err := rh.manager.CloseRoom(RoomID(req.RoomID), req.Username)
 	if err != nil {
 		// Handle the error by returning grpc error
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
-	return &pb.QuitRoomResponse{
-		Success: true,
-	}, nil
+	response := make(chan *pb.RequeueInfo, len(usernames)-1)
+	var wg sync.WaitGroup
+	for _, user := range usernames {
+		// We do not queue back the user who quit
+		if user == req.Username {
+			continue
+		}
+		wg.Add(1)
+		go func(u string) {
+      defer wg.Done()
+			resp, err := rh.LookRoom(ctx, &pb.LookRoomRequest{Username: u, RoomType: uint32(roomType)})
+			if err != nil {
+				rh.logger.Error("Failed to re-queue user", "user", u, "error", err)
+				response <- nil
+			} else {
+        info := &pb.RequeueInfo{
+          Username: u,
+          RoomID: resp.RoomID,
+          Team: resp.Team,
+        }
+				response <- info
+			}
+		}(user)
+	}
+	wg.Wait()
+	var reQueued []*pb.RequeueInfo
+	for i := 0; i < len(usernames)-1; i++ {
+		if resp := <-response; resp != nil {
+      reQueued = append(reQueued, resp)
+		}
+	}
+	return &pb.QuitRoomResponse{RequeueInfos: reQueued}, nil
 }
 
 func (rh *RoomHandler) NotifyRoomChanges(stream grpc.BidiStreamingServer[pb.Ack, pb.RoomChangeNotification]) error {
 	for {
 		select {
 		case notification := <-rh.changes:
-      rh.logger.Info("notification received", "roomID", notification.RoomID, "ready", notification.Ready)
+			rh.logger.Info("notification received", "roomID", notification.RoomID, "ready", notification.Ready)
 			if err := stream.Send(notification); err != nil {
 				rh.logger.Error("Failed to send notification: %v", err)
 				return err
