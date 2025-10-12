@@ -256,7 +256,7 @@ func (rm *RoomManager) RemovePlayer(roomID RoomID, username string) error {
 	return errors.New("room or player not found")
 }
 
-func (rm *RoomManager) CloseRoom(roomID RoomID, roomType RoomType, username string) ([]string, RoomType, error) {
+func (rm *RoomManager) CloseRoom(roomID RoomID, username string) ([]string, RoomType, error) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 
