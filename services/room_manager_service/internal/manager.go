@@ -256,6 +256,22 @@ func (rm *RoomManager) RemovePlayer(roomID RoomID, username string) error {
 	return errors.New("room or player not found")
 }
 
+func (rm *RoomManager) CloseRoom(roomID RoomID, roomType RoomType, username string) ([]string, RoomType, error) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+
+	if meta, exist := rm.roomLookup[roomID]; exist {
+		if room, exist := rm.rooms[meta.roomType][meta.roomStatus][roomID]; exist {
+			users := room.GetUsernames()
+			delete(rm.roomLookup, roomID)
+			delete(rm.rooms[meta.roomType][meta.roomStatus], roomID)
+			return users, meta.roomType, nil
+		}
+		return nil, NULL, errors.New("failed to find room")
+	}
+	return nil, NULL, errors.New("failed to find room")
+}
+
 func (rm *RoomManager) UpdatePlayerSpell(roomType RoomType, roomID RoomID, username string, spells Spells) ([]string, error) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()

@@ -121,6 +121,22 @@ func (rs *RoomServiceClient) HandleLookRoom(msg event.Message) event.Message {
 	}
 }
 
+func (rs *RoomServiceClient) HandleQuitRoom(msg event.Message) event.Message {
+  req := msg.(event.QuitRoomMessage) 
+  rs.logger.Info("QuitRoom called", "user", req.User, "roomID", req.RoomID)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	res, err := rs.Client.QuitRoom(ctx, &pb.QuitRoomRequest{
+    Username: req.User,
+    RoomID: req.RoomID,
+  })
+  if err != nil {
+		rs.logger.Error("gRPC QuitRoom call failed", "component", "room_manager", "error", err, "client_id", req.User)
+  }
+
+  return event.RateLimitResponse{}
+}
+
 func (rs *RoomServiceClient) HandleUpdateSpell(msg event.Message) event.Message {
 	req := msg.(event.UpdateSpellReqMessage)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -59,7 +59,7 @@ message QuitRoomRequest {
   uint32 roomID = 2;
 }
 
-message QuitRoomResponse { bool success = 1; }
+message QuitRoomResponse { repeated string usernames = 1; }
 
 // --- RoomChangeService ---
 message RoomChangeNotification {

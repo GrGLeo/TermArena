@@ -109,7 +109,6 @@ func SendPurchaseItemPacket(conn *net.TCPConn, itemID int) error {
 	log.Printf("Sending purchase item request for item ID: %d", itemID)
 	purchasePacket := shared.NewPurchaseItemPacket(itemID)
 	data := purchasePacket.Serialize()
-	log.Println(data)
 	_, err := conn.Write(data)
 	return err
 }
@@ -142,9 +141,9 @@ func SendMessage(conn *net.TCPConn, sender, message string) error {
 	return err
 }
 
-func SendQuitRoom(conn *net.TCPConn) error {
+func SendQuitRoom(conn *net.TCPConn, roomID int) error {
 	log.Printf("[CLIENT] QuitMessage")
-	packet := shared.NewQuitRoomPacket()
+	packet := shared.NewQuitRoomPacket(uint32(roomID))
 	data := packet.Serialize()
 	_, err := conn.Write(data)
 	if err != nil {

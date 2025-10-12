@@ -498,12 +498,14 @@ func (gsp *GameServerReadyPacket) Serialize() []byte {
 
 type QuitRoomPacket struct {
 	version, code int
+  RoomID uint32
 }
 
-func NewQuitRoomPacket() *QuitRoomPacket {
+func NewQuitRoomPacket(roomID uint32) *QuitRoomPacket {
 	return &QuitRoomPacket{
-		version: 1,
-		code:    CodeQuitRoom,
+		version:  1,
+		code:     CodeQuitRoom,
+		RoomID:   roomID,
 	}
 }
 func (qrp *QuitRoomPacket) Version() int { return qrp.version }
@@ -512,6 +514,7 @@ func (qrp *QuitRoomPacket) Serialize() []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(byte(qrp.version))
 	buf.WriteByte(byte(qrp.code))
+	binary.Write(&buf, binary.BigEndian, uint32(qrp.RoomID))
 	return buf.Bytes()
 }
 
@@ -1117,7 +1120,7 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		numUsers := binary.BigEndian.Uint32(data[6:10])
 		offset := 10
 		var userInfos []*pb.UserInfo
-		for i := uint32(0); i < numUsers; i++ {
+		for range numUsers {
 			if len(data) < offset+2 {
 				return nil, 0, errors.New("incomplete packet")
 			}
@@ -1217,14 +1220,16 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		return packet, 4, nil
 
 	case CodeQuitRoom:
-		if len(data) < 2 {
+		if len(data) < 6 {
 			return nil, 0, errors.New("incomplete packet")
 		}
+		roomID := binary.BigEndian.Uint32(data[2:6])
 		packet := &QuitRoomPacket{
-			version: version,
-			code:    code,
+			version:  version,
+			code:     code,
+			RoomID:   roomID,
 		}
-		return packet, 2, nil
+		return packet, 6, nil
 
 	case CodeGameStart: // GameStartPacket
 		if len(data) < 3 {
