@@ -327,6 +327,22 @@ func (rm QuitRoomMessage) Validate() error {
 }
 func (rm QuitRoomMessage) ResponseChan() chan Message { return rm.ResponseCh }
 
+type QuitRoomResponseMessage struct {
+	RoomID     uint32
+	Username   string
+	Conn       *net.TCPConn
+	ResponseCh chan Message
+}
+
+func (rm QuitRoomResponseMessage) Type() string { return "quit-room-response" }
+func (rm QuitRoomResponseMessage) Validate() error {
+	if rm.Conn == nil {
+		return errors.New("Connection cannot be nil")
+	}
+	return nil
+}
+func (rm QuitRoomResponseMessage) ResponseChan() chan Message { return rm.ResponseCh }
+
 type RoomCreateMessage struct {
 	RoomType   int
 	Conn       *net.TCPConn
