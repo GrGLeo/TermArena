@@ -19,6 +19,7 @@ const (
 	SANDBOX RoomType = iota
 	PRACTICE
 	CLASSIC
+  NULL
 )
 
 type Team int

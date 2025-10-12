@@ -235,6 +235,7 @@ func main() {
 	// Subscribe existing room handlers
 	broker.Subscribe("find-room", roomManager.HandleLookRoom)
 	broker.Subscribe("update-spell-request", roomManager.HandleUpdateSpell)
+  broker.Subscribe("quit-room", roomManager.HandleQuitRoom)
 	//broker.Subscribe("create-room", roomManager.CreateRoom)
 	//broker.Subscribe("join-room", roomManager.JoinRoom)
 

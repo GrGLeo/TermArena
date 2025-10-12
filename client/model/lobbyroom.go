@@ -178,7 +178,7 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				// Handling /quit message
 				if message == "/quit" {
-					if err := communication.SendQuitRoom(m.conn); err != nil {
+					if err := communication.SendQuitRoom(m.conn, m.roomID); err != nil {
 						m.addMessage(Message{
 							Content:   fmt.Sprintf("Failed to quit room: %v", err),
 							SenderID:  "System",
