@@ -122,32 +122,43 @@ func (rs *RoomServiceClient) HandleLookRoom(msg event.Message) event.Message {
 }
 
 func (rs *RoomServiceClient) HandleQuitRoom(msg event.Message) event.Message {
-  req := msg.(event.QuitRoomMessage) 
-  rs.logger.Info("QuitRoom called", "user", req.Username, "roomID", req.RoomID)
+	req := msg.(event.QuitRoomMessage)
+	rs.logger.Info("QuitRoom called", "user", req.Username, "roomID", req.RoomID)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	res, err := rs.Client.QuitRoom(ctx, &pb.QuitRoomRequest{
-    Username: req.Username,
-    RoomID: req.RoomID,
-  })
-  if err != nil {
+		Username: req.Username,
+		RoomID:   req.RoomID,
+	})
+	if err != nil {
 		rs.logger.Error("gRPC QuitRoom call failed", "component", "room_manager", "error", err, "client_id", req.Username)
-  }
-  rs.logger.Info("QuitRoom response", "return", res)
+	}
+	rs.logger.Info("QuitRoom response", "return", res)
 
-  for _, info := range res.RequeueInfos {
-    regResponseCh := make(chan event.Message, 1)
-    clientRegistration := event.ClientRegistrationMessage{
-      ClientID:   info.Username,
-      RoomID:     info.RoomID,
-      TeamID:     info.Team,
-      Conn:       req.Conn,
-      ResponseCh: regResponseCh,
-    }
-    rs.broker.Publish(clientRegistration)
-  }
+	// Requeued users
+	for _, info := range res.RequeueInfos {
+		regResponseCh := make(chan event.Message, 1)
+		clientRegistration := event.ClientRegistrationMessage{
+			ClientID:   info.Username,
+			RoomID:     info.RoomID,
+			TeamID:     info.Team,
+			Conn:       req.Conn,
+			ResponseCh: regResponseCh,
+		}
+		rs.broker.Publish(clientRegistration)
+	}
+	// Quit user
+	regResponseCh := make(chan event.Message, 1)
+	clientRegistration := event.ClientRegistrationMessage{
+		ClientID:   req.Username,
+		RoomID:     0,
+		TeamID:     0,
+		Conn:       req.Conn,
+		ResponseCh: regResponseCh,
+	}
+	rs.broker.Publish(clientRegistration)
 
-  return event.RateLimitResponse{}
+	return event.RateLimitResponse{}
 }
 
 func (rs *RoomServiceClient) HandleUpdateSpell(msg event.Message) event.Message {
