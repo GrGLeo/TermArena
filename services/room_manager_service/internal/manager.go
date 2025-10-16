@@ -110,6 +110,7 @@ type RoomManager struct {
 	roomCounter int
 	changes     chan *pb.RoomChangeNotification
 	logger      *slog.Logger
+	cancelChs   map[RoomID]chan struct{}
 	roomLookup  map[RoomID]struct {
 		roomType   RoomType
 		roomStatus RoomStatus
@@ -122,6 +123,7 @@ func NewRoomManager(changes chan *pb.RoomChangeNotification, maxRoom int, logger
 		roomType   RoomType
 		roomStatus RoomStatus
 	})
+	cancelChs := make(map[RoomID]chan struct{})
 	rooms := make(map[RoomType]map[RoomStatus]map[RoomID]*Room)
 	for _, rt := range []RoomType{SANDBOX, PRACTICE, CLASSIC} {
 		rooms[rt] = make(map[RoomStatus]map[RoomID]*Room)
@@ -134,6 +136,7 @@ func NewRoomManager(changes chan *pb.RoomChangeNotification, maxRoom int, logger
 		roomCounter: 0,
 		changes:     changes,
 		roomLookup:  roomLookup,
+		cancelChs:   cancelChs,
 		logger:      logger,
 		rooms:       rooms,
 	}
@@ -170,27 +173,37 @@ func (rm *RoomManager) LookRoom(username string, roomType RoomType) (Team, RoomI
 					roomStatus RoomStatus
 				}{roomType, LOBBY}
 				rm.logger.Info("room moved", "roomType", roomType, "roomStatusIn", "WAITING", "roomStatusOut", "LOBBY")
+
+				// Create the cancel channel for the room
+				cancelCh := make(chan struct{})
+				rm.cancelChs[roomID] = cancelCh
+
 				go func() {
-					<-time.After(1 * time.Minute)
-					rm.mu.Lock()
-					delete(rm.rooms[roomType][LOBBY], roomID)
-					rm.rooms[roomType][READY][roomID] = room
-					rm.roomLookup[roomID] = struct {
-						roomType   RoomType
-						roomStatus RoomStatus
-					}{roomType, READY}
-					rm.logger.Info("room moved", "roomType", roomType, "roomStatusIn", "LOBBY", "roomStatusOut", "READY")
-					rm.mu.Unlock()
-					userInfos, err := rm.GetRoomInfo(roomType, READY, roomID)
-					if err != nil {
-						rm.logger.Error("room not exist")
+					select {
+					case <-time.After(1 * time.Minute):
+						rm.mu.Lock()
+						delete(rm.rooms[roomType][LOBBY], roomID)
+						rm.rooms[roomType][READY][roomID] = room
+						rm.roomLookup[roomID] = struct {
+							roomType   RoomType
+							roomStatus RoomStatus
+						}{roomType, READY}
+						rm.logger.Info("room moved", "roomType", roomType, "roomStatusIn", "LOBBY", "roomStatusOut", "READY")
+						rm.mu.Unlock()
+						userInfos, err := rm.GetRoomInfo(roomType, READY, roomID)
+						if err != nil {
+							rm.logger.Error("room not exist")
+						}
+						notif := &pb.RoomChangeNotification{
+							RoomID:    uint32(roomID),
+							Ready:     true,
+							UserInfos: userInfos,
+						}
+						rm.changes <- notif
+          case <-cancelCh:
+						rm.logger.Info("room closed", "roomType", roomType, "roomStatusIn", "LOBBY", "roomStatusOut", "CLOSED")
+            return
 					}
-					notif := &pb.RoomChangeNotification{
-						RoomID:    uint32(roomID),
-						Ready:     true,
-						UserInfos: userInfos,
-					}
-					rm.changes <- notif
 				}()
 			}
 			return team, roomID, status
@@ -265,6 +278,13 @@ func (rm *RoomManager) CloseRoom(roomID RoomID, username string) ([]string, Room
 			users := room.GetUsernames()
 			delete(rm.roomLookup, roomID)
 			delete(rm.rooms[meta.roomType][meta.roomStatus], roomID)
+
+			// Cancel the goroutine for the room
+			if ch, exist := rm.cancelChs[roomID]; exist {
+				close(ch)
+				delete(rm.cancelChs, roomID)
+			}
+
 			return users, meta.roomType, nil
 		}
 		return nil, NULL, errors.New("failed to find room")
