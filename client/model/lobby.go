@@ -89,16 +89,17 @@ func (m LobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	if m.tabSelected == 0 {
+	switch m.tabSelected {
+	case 0:
 		var qm tea.Model
 		qm, cmd = m.queueModel.Update(msg)
-    m.RoomType = m.queueModel.roomType
+		m.RoomType = m.queueModel.roomType
 		m.queueModel = qm.(QueueModel)
-	} else if m.tabSelected == 1 {
+	case 1:
 		var cm tea.Model
 		cm, cmd = m.createModel.Update(msg)
 		m.createModel = cm.(CreateModel)
-	} else if m.tabSelected == 2 {
+	case 2:
 		var mm tea.Model
 		mm, cmd = m.messagingModel.Update(msg)
 		m.messagingModel = mm.(MessagingModel)
@@ -126,11 +127,12 @@ func (m LobbyModel) View() string {
 		}
 	}
 
-	if m.tabSelected == 0 {
+	switch m.tabSelected {
+	case 0:
 		content = m.queueModel.View()
-	} else if m.tabSelected == 1 {
+	case 1:
 		content = m.createModel.View()
-	} else if m.tabSelected == 2 {
+	case 2:
 		content = m.messagingModel.View()
 	}
 
