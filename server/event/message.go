@@ -328,8 +328,7 @@ func (rm QuitRoomMessage) Validate() error {
 func (rm QuitRoomMessage) ResponseChan() chan Message { return rm.ResponseCh }
 
 type QuitRoomResponseMessage struct {
-	RoomID     uint32
-	Username   string
+	UserMap    map[string]uint32
 	Conn       *net.TCPConn
 	ResponseCh chan Message
 }
