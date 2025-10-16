@@ -135,6 +135,8 @@ func (rs *RoomServiceClient) HandleQuitRoom(msg event.Message) event.Message {
 	}
 	rs.logger.Info("QuitRoom response", "return", res)
 
+	mapUser := make(map[string]uint32)
+
 	// Requeued users
 	for _, info := range res.RequeueInfos {
 		regResponseCh := make(chan event.Message, 1)
@@ -145,20 +147,26 @@ func (rs *RoomServiceClient) HandleQuitRoom(msg event.Message) event.Message {
 			Conn:       req.Conn,
 			ResponseCh: regResponseCh,
 		}
+		mapUser[info.Username] = info.RoomID
 		rs.broker.Publish(clientRegistration)
 	}
 	// Quit user
-	regResponseCh := make(chan event.Message, 1)
-	clientRegistration := event.ClientRegistrationMessage{
-		ClientID:   req.Username,
-		RoomID:     0,
-		TeamID:     0,
-		Conn:       req.Conn,
-		ResponseCh: regResponseCh,
-	}
-	rs.broker.Publish(clientRegistration)
+	// regResponseCh := make(chan event.Message, 1)
+	// clientRegistration := event.ClientRegistrationMessage{
+	// 	ClientID:   req.Username,
+	// 	RoomID:     0,
+	// 	TeamID:     0,
+	// 	Conn:       req.Conn,
+	// 	ResponseCh: regResponseCh,
+	// }
+	// mapUser[req.Username] = 0
+	// rs.broker.Publish(clientRegistration)
 
-	return event.RateLimitResponse{}
+	return event.QuitRoomResponseMessage{
+    UserMap: mapUser,
+    Conn: req.Conn,
+    ResponseCh: req.ResponseCh,
+  }
 }
 
 func (rs *RoomServiceClient) HandleUpdateSpell(msg event.Message) event.Message {
