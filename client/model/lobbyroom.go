@@ -188,6 +188,7 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.updateViewport()
 						return m, nil
 					}
+					log.Printf("[CLIENT] Quit packet sent successfully for user %s in room %d", m.username, m.roomID)
 					m.updateViewport()
 					return m, nil
 				}
