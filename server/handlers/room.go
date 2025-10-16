@@ -140,12 +140,13 @@ func (rs *RoomServiceClient) HandleQuitRoom(msg event.Message) event.Message {
 
 	// Requeued users
 	for _, info := range res.RequeueInfos {
+    conn, _ := rs.connManager.GetConn(info.Username)
 		regResponseCh := make(chan event.Message, 1)
 		clientRegistration := event.ClientRegistrationMessage{
 			ClientID:   info.Username,
 			RoomID:     info.RoomID,
 			TeamID:     info.Team,
-			Conn:       req.Conn,
+			Conn:       conn,
 			ResponseCh: regResponseCh,
 		}
 		mapUser[info.Username] = info.RoomID
