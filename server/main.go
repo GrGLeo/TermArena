@@ -159,7 +159,7 @@ func ProcessClient(conn *net.TCPConn, log *slog.Logger, broker *event.EventBroke
 							log.Warn("Could not find connection for receiver", "component", "server", "receiver", receiverID)
 						}
 					}
-
+					data = data[bytesConsumed:]
 				case event.UpdateSpellResMessage:
 					responsePacket, err := event.CreatePacketFromMessage(resp)
 					if err != nil {
