@@ -122,7 +122,7 @@ func SendUsernamePacket(conn *net.TCPConn, username string) error {
 }
 
 func SendMessage(conn *net.TCPConn, sender, message string) error {
-	log.Printf("[CLIENT] SendMessage: sender=%s, message='%s'", sender, message)
+	log.Printf("SendMessage: sender=%s, message='%s'", sender, message)
 	messageLen := len(message)
 	if messageLen == 0 {
 		return errors.New("Message cannot be empty")
@@ -131,39 +131,38 @@ func SendMessage(conn *net.TCPConn, sender, message string) error {
 	}
 	messagePacket := shared.NewMessagePacket(sender, message)
 	data := messagePacket.Serialize()
-	log.Printf("[CLIENT] SendMessage: packet created, data length=%d", len(data))
+	log.Printf("SendMessage: packet created, data length=%d", len(data))
 	_, err := conn.Write(data)
 	if err != nil {
-		log.Printf("[CLIENT] SendMessage: ERROR writing to connection: %v", err)
+		log.Printf("SendMessage: ERROR writing to connection: %v", err)
 	} else {
-		log.Printf("[CLIENT] SendMessage: SUCCESS - message sent to server")
+		log.Printf("SendMessage: SUCCESS - message sent to server")
 	}
 	return err
 }
 
 func SendQuitRoom(conn *net.TCPConn, roomID int) error {
-	log.Printf("[CLIENT] QuitMessage")
 	packet := shared.NewQuitRoomPacket(uint32(roomID))
 	data := packet.Serialize()
 	_, err := conn.Write(data)
 	if err != nil {
-		log.Printf("[CLIENT] QuitRoom: ERROR writing to connection: %v", err)
+		log.Printf("QuitRoom: ERROR writing to connection: %v", err)
 	} else {
-		log.Printf("[CLIENT] QuitRoom: SUCCESS - spells sent to server")
+		log.Printf("QuitRoom: SUCCESS - spells sent to server")
 	}
 	return err
 
 }
 
 func SendUpdateSpell(conn *net.TCPConn, roomType, roomID int, username string, spells []int) error {
-	log.Printf("[CLIENT] SendUpateSpell: sender=%s, spells='%d|%d'", username, spells[0], spells[1])
+	log.Printf("SendUpateSpell: sender=%s, spells='%d|%d'", username, spells[0], spells[1])
 	spellPacket := shared.NewUpdateSpellReqPacket(roomType, roomID, username, spells[0], spells[1])
 	data := spellPacket.Serialize()
 	_, err := conn.Write(data)
 	if err != nil {
-		log.Printf("[CLIENT] UpdateSpell: ERROR writing to connection: %v", err)
+		log.Printf("UpdateSpell: ERROR writing to connection: %v", err)
 	} else {
-		log.Printf("[CLIENT] UpdateSpell: SUCCESS - spells sent to server")
+		log.Printf("UpdateSpell: SUCCESS - spells sent to server")
 	}
 	return err
 }
@@ -255,12 +254,12 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 				log.Printf("Sending EndGameMsg: Win=%t", msg.Win)
 				msgs <- EndGameMsg{Win: msg.Win}
 			case *shared.MessageResponsePacket:
-				log.Printf("[CLIENT] Received message response: %s", msg.Message)
+				log.Printf("Received message response: %s", msg.Message)
 				msgs <- IncomingMessageMsg{
 					Content: msg.Message,
 				}
 			case *shared.MessageErrorPacket:
-				log.Printf("[CLIENT] Received message error: %s", msg.Error)
+				log.Printf("Received message error: %s", msg.Error)
 				msgs <- MessageErrorMsg{Error: msg.Error}
 			case *shared.RateLimitPacket:
 				msgs <- RateLimitMsg{}
