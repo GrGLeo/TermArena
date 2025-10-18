@@ -3,7 +3,10 @@ use std::ops::Add;
 use std::time::{Duration, Instant};
 use std::usize;
 
+use tracing::info;
+
 use crate::errors::GameError;
+use crate::game::entities::Target;
 use crate::game::Cell;
 use crate::game::animation::melee::MeleeAnimation;
 use crate::game::buffs::item_buff::HealthRegenItem;
@@ -72,6 +75,8 @@ pub enum Action {
     Action2,
     AttackMode,
     Recall,
+    CycleTarget,
+    ClearTarget,
     InvalidAction,
 }
 
@@ -93,6 +98,7 @@ pub struct Champion {
     death_timer: Instant,
     last_attacked: Instant,
     attack_mode: bool,
+    target: Option<Target>,
     stun_timer: Option<Instant>,
     inventory: [Option<Item>; 6],
     pub row: u16,
@@ -142,6 +148,7 @@ impl Champion {
             death_timer: Instant::now(),
             last_attacked: Instant::now(),
             attack_mode: false,
+            target: None,
             stun_timer: None,
             inventory: [None, None, None, None, None, None],
             active_buffs: HashMap::new(),
@@ -464,6 +471,15 @@ impl Champion {
             }
             Action::AttackMode => {
                 self.attack_mode = !self.attack_mode;
+                return Ok(());
+            }
+            Action::CycleTarget => {
+                info!("CycleTarget was called");
+                return Ok(());
+            }
+            Action::ClearTarget => {
+                info!("ClearTarget was called");
+                self.target = None;
                 return Ok(());
             }
             Action::InvalidAction => {
