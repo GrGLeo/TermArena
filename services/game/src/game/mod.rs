@@ -294,6 +294,8 @@ impl GameManager {
             6 => Action::Action2,
             7 => Action::AttackMode,
             8 => Action::Recall,
+            9 => Action::CycleTarget,
+            10 => Action::ClearTarget,
             _other => Action::InvalidAction,
         };
         self.player_action.insert(player_id, action);

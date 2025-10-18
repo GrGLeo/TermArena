@@ -15,24 +15,24 @@ import (
 )
 
 type GameModel struct {
-	currentBoard   [21][51]int
-	conn           *net.TCPConn
-	gameClock      time.Duration
-	height, width  int
-	healthProgress progress.Model
-	manaProgress   progress.Model
-	xpProgress     progress.Model
-	castingProgress       progress.Model
-	health         [2]int
-	mana           [2]int
-	level          int
-	xp             [2]int
-	casting        [2]int
-	attackMode     bool
-	recall         bool
-	recallDuration time.Duration
-	recallStart    time.Time
-	percent        float64
+	currentBoard    [21][51]int
+	conn            *net.TCPConn
+	gameClock       time.Duration
+	height, width   int
+	healthProgress  progress.Model
+	manaProgress    progress.Model
+	xpProgress      progress.Model
+	castingProgress progress.Model
+	health          [2]int
+	mana            [2]int
+	level           int
+	xp              [2]int
+	casting         [2]int
+	attackMode      bool
+	recall          bool
+	recallDuration  time.Duration
+	recallStart     time.Time
+	percent         float64
 }
 
 func NewGameModel(conn *net.TCPConn) GameModel {
@@ -44,12 +44,12 @@ func NewGameModel(conn *net.TCPConn) GameModel {
 	blueSolid := progress.WithSolidFill("#3E84D4")
 	purpleSolid := progress.WithSolidFill("#A51CC4")
 	return GameModel{
-		conn:           conn,
-		healthProgress: progress.New(redSolid),
-		manaProgress:   progress.New(blueSolid),
-		xpProgress:     progress.New(purpleSolid),
-		castingProgress:       progress.New(yellowGradient),
-		recallDuration: 6 * time.Second,
+		conn:            conn,
+		healthProgress:  progress.New(redSolid),
+		manaProgress:    progress.New(blueSolid),
+		xpProgress:      progress.New(purpleSolid),
+		castingProgress: progress.New(yellowGradient),
+		recallDuration:  6 * time.Second,
 	}
 }
 
@@ -85,24 +85,31 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "w":
+      // Move up
 			communication.SendAction(m.conn, 1)
 			return m, nil
 		case "s":
+      // Move down
 			communication.SendAction(m.conn, 2)
 			return m, nil
 		case "a":
+      // Move left
 			communication.SendAction(m.conn, 3)
 			return m, nil
 		case "d":
+      // Move right
 			communication.SendAction(m.conn, 4)
 			return m, nil
 		case "q":
+      // Cast spell 1
 			communication.SendAction(m.conn, 5)
 			return m, nil
 		case "e":
+      // Cast spell 2
 			communication.SendAction(m.conn, 6)
 			return m, nil
 		case "v":
+      // Champion only target
 			if m.attackMode {
 				m.attackMode = false
 			} else {
@@ -111,13 +118,24 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			communication.SendAction(m.conn, 7)
 			return m, nil
 		case "b":
+      // Recall action
 			m.recall = true
 			m.recallStart = time.Now()
 			communication.SendAction(m.conn, 8)
+		case "tab":
+      // Cycle target
+			communication.SendAction(m.conn, 9)
+			return m, nil
+		case "esc":
+      // Clear target
+			communication.SendAction(m.conn, 10)
+			return m, nil
 		case "p":
+      // toggle shop
 			communication.SendShopRequest(m.conn)
 			return m, nil
 		case "ctrl+c":
+      // quit game
 			return m, tea.Quit
 		}
 	case communication.CooldownTickMsg:
@@ -280,13 +298,13 @@ func (m GameModel) View() string {
 
 	var castBar string
 	if m.casting[1] > 0 {
-    castPercent := min(float64(m.casting[0]) / float64(m.casting[1]), 1.0)
-    castBar = m.castingProgress.ViewAs(castPercent)
-    builder.WriteString(castBar)
-    builder.WriteString("\n")
+		castPercent := min(float64(m.casting[0])/float64(m.casting[1]), 1.0)
+		castBar = m.castingProgress.ViewAs(castPercent)
+		builder.WriteString(castBar)
+		builder.WriteString("\n")
 	} else {
-    builder.WriteString("\n")
-  }
+		builder.WriteString("\n")
+	}
 	gameStyle := lipgloss.NewStyle().Border(lipgloss.NormalBorder(), m.attackMode).BorderForeground(lipgloss.Color("#ff0000"))
 
 	return lipgloss.Place(
