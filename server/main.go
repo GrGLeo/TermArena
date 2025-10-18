@@ -103,8 +103,6 @@ func ProcessClient(conn *net.TCPConn, log *slog.Logger, broker *event.EventBroke
 				}
 
 				msg, err := event.CreateMessage(packet, conn, connManager)
-        user, _ := connManager.GetUser(conn)
-        log.Info("IP SENDER", "ip", conn.RemoteAddr(), "sender", user)
 				if err != nil {
 					log.Error("Error creating message from packet", "component", "server", "ip", conn.RemoteAddr(), "error", err)
 					data = data[bytesConsumed:]
