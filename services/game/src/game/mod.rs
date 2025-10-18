@@ -488,10 +488,7 @@ impl GameManager {
                         CellContent::Base(team) => {
                             if let Some(attack) = champ.can_attack() {
                                 match attack {
-                                    AttackAction::Melee {
-                                        animation,
-                                        effects,
-                                    } => {
+                                    AttackAction::Melee { animation, effects } => {
                                         new_animations.push(animation);
                                         pending_effects.push((
                                             Some(*player_id),
@@ -759,23 +756,31 @@ impl GameManager {
 
         println!("computing duration: {:?}", start_tick.elapsed());
         // --- Send per player there board view ---
+        let blue_visible_cells = self.board.compute_visibility(
+            Team::Blue,
+            &self.champions,
+            &self.blue_base,
+            &self.towers,
+            &self.minion_manager,
+        );
+        let red_visible_cells = self.board.compute_visibility(
+            Team::Red,
+            &self.champions,
+            &self.red_base,
+            &self.towers,
+            &self.minion_manager,
+        );
         let updates: HashMap<PlayerId, ClientMessage> = self
             .champions
             .par_iter()
             .map(|(player_id, champion)| {
-                let base = if champion.team_id == Team::Blue {
-                    &self.blue_base
+                let visible_cells = if champion.team_id == Team::Blue {
+                    &blue_visible_cells
                 } else {
-                    &self.red_base
+                    &red_visible_cells
                 };
-                let visible_cells = self.board.compute_visibility(
-                    champion.team_id,
-                    &self.champions,
-                    base,
-                    &self.towers,
-                    &self.minion_manager,
-                );
                 // 1. Get player-specific board view
+                
                 let board_rle_vec = self.board.run_length_encode(
                     champion.row,
                     champion.col,
