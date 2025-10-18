@@ -145,7 +145,6 @@ func ProcessClient(conn *net.TCPConn, log *slog.Logger, broker *event.EventBroke
 							RoomIP:     "",
 							ResponseCh: nil,
 						})
-            log.Info(receiverID)
 						if err != nil {
 							log.Error("Error creating packet from message", "component", "server", "error", err)
 							data = data[bytesConsumed:]
