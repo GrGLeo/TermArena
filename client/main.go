@@ -199,15 +199,15 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.GameModel = model.NewGameModel(m.GameConnection)
 			m.GameModel.SetDimension(m.height, m.width)
 			return m, tea.Batch(m.GameModel.Init(), outCmd, alertCmd)
-    case communication.LookRoomMsg:
-      m.state = Lobby
-      if msg.RoomID == 0 {
+		case communication.LookRoomMsg:
+			m.state = Lobby
+			if msg.RoomID == 0 {
 				m.LobbyModel = model.NewLobbyModel(m.Connection, m.Username)
 				m.LobbyModel.SetDimension(m.height, m.width)
-      } else {
-        m.LobbyModel.SetLooking(true)
-      }
-      return m, tea.Batch(cmd, outCmd, alertCmd)
+			} else {
+				m.LobbyModel.SetLooking(true)
+			}
+			return m, tea.Batch(cmd, outCmd, alertCmd)
 		}
 
 	case Game:
