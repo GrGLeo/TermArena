@@ -720,11 +720,11 @@ mod tests {
         };
         let base = Base::new(Team::Red, (0, 0), base_stats);
 
-        let visible_cells =
-            board.compute_visibility(Team::Blue, &champions, &base, &towers, &minion_manager);
+        board.compute_visibility(&champions, &base, &towers, &minion_manager);
 
         // Champion at (2,2) should see a 10x10 area around it.
         // But (5,5) is a wall, so vision should be blocked beyond it.
+        let visible_cells = board.visibility_map.get(&Team::Blue).unwrap();
         assert!(visible_cells.contains(&(2, 2)));
         assert!(visible_cells.contains(&(4, 4)));
         assert!(!visible_cells.contains(&(6, 6))); // Blocked by wall at (5,5)
@@ -733,15 +733,16 @@ mod tests {
         let champion2 = Champion::new(2, Team::Blue, 8, 8, stats.clone(), HashMap::new());
         champions.insert(2, champion2);
 
-        let visible_cells =
-            board.compute_visibility(Team::Blue, &champions, &base, &towers, &minion_manager);
+        board.compute_visibility(&champions, &base, &towers, &minion_manager);
+        let visible_cells = board.visibility_map.get(&Team::Blue).unwrap();
         assert!(visible_cells.contains(&(6, 6))); // Now visible because of champion2
     }
 
     #[test]
     fn test_run_length_encode_with_fog() {
-        use crate::config::MinionStats;
-        use std::collections::HashSet;
+        use crate::config::{BaseStats, ChampionStats, MinionStats};
+        use crate::game::entities::champion::Champion;
+        use std::collections::HashMap;
 
         let mut board = Board::new(10, 10);
         board.change_base(BaseTerrain::Wall, 0, 1);
@@ -760,20 +761,47 @@ mod tests {
         };
         let minion_manager = MinionManager::new(minion_stats);
 
-        let mut visible_cells = HashSet::new();
-        visible_cells.insert((0, 0));
-        visible_cells.insert((0, 1)); // Wall
-        visible_cells.insert((5, 5)); // Champion
+        // Set up entities for visibility computation
+        let mut champions = HashMap::new();
+        let stats = ChampionStats {
+            health: 100,
+            mana: 100,
+            attack_damage: 10,
+            magic_power: 0,
+            armor: 10,
+            magic_resistance: 0,
+            attack_speed_ms: 1000,
+            xp_per_level: vec![100, 200, 300],
+            level_up_health_increase: 50,
+            level_up_attack_damage_increase: 5,
+            level_up_armor_increase: 2,
+            health_per_sec: 0.0,
+            mana_per_sec: 0.0,
+            attack_range_row: 1,
+            attack_range_col: 1,
+        };
+        let champion = Champion::new(1, Team::Blue, 5, 5, stats, HashMap::new());
+        champions.insert(1, champion);
 
-        let rle = board.run_length_encode(5, 5, &minion_manager, &visible_cells);
+        let towers = HashMap::new();
+        let base_stats = BaseStats {
+            health: 5000,
+            armor: 10,
+            magic_resistance: 0,
+        };
+        let base = Base::new(Team::Red, (0, 0), base_stats);
+
+        // Compute visibility first
+        board.compute_visibility(&champions, &base, &towers, &minion_manager);
+
+        let rle = board.run_length_encode(Team::Blue, 5, 5, &minion_manager).unwrap();
         let rle_str = String::from_utf8(rle).unwrap();
 
-        // This is a simplified check. A more robust test would decode the RLE
-        // and verify the full board state.
-        // Expected: 1 Floor, 1 Wall, 8 Fog, ..., 1 Champion, ...
-        // 1:1|0:1|15:8|...
+        // With the new visibility system, the champion at (5,5) with vision range (8,10)
+        // can see the entire 10x10 board, so there should be no fog.
+        // Expected: Floor, Wall, more Floor, Champion, more Floor
         assert!(rle_str.contains("1:1|0:1")); // Visible floor and wall
-        assert!(rle_str.contains(&format!("{}:", EncodedCellValue::Fog as u8))); // Fog is present
+        assert!(!rle_str.contains(&format!("{}:", EncodedCellValue::Fog as u8))); // No fog should be present
         assert!(rle_str.contains(&format!("{}:1", EncodedCellValue::ChampionBlue as u8))); // Champion is visible
     }
 }
