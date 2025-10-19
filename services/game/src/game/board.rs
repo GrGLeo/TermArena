@@ -1,6 +1,8 @@
+use crate::errors::GameError;
 use crate::game::algorithms::bresenham::Bresenham;
 use crate::game::cell::Team;
 use crate::game::minion_manager::MinionManager;
+use strum::IntoEnumIterator;
 
 use super::cell::{BaseTerrain, Cell, CellAnimation, CellContent, EncodedCellValue};
 use super::entities::base::Base;
@@ -22,6 +24,7 @@ struct BoardLayout {
 #[derive(Debug)]
 pub struct Board {
     grid: Vec<Vec<Cell>>,
+    visibility_map: HashMap<Team, HashSet<(u16, u16)>>,
     pub rows: usize,
     pub cols: usize,
 }
@@ -49,6 +52,7 @@ impl Board {
         }
         let board = Board {
             grid,
+            visibility_map: HashMap::new(),
             rows: board_layout.rows,
             cols: board_layout.cols,
         };
@@ -65,7 +69,12 @@ impl Board {
             }
             grid.push(row)
         }
-        Board { grid, rows, cols }
+        Board {
+            grid,
+            visibility_map: HashMap::new(),
+            rows,
+            cols,
+        }
     }
 
     pub fn get_cell(&self, row: usize, col: usize) -> Option<&Cell> {
@@ -170,6 +179,16 @@ impl Board {
             .collect()
     }
 
+    /// Adds cells visible from the given position within the specified vision range.
+    ///
+    /// This function iterates over a rectangular area around the position, limited by the vision range.
+    /// For each cell in this area, it checks if there is a clear line of sight using Bresenham's algorithm.
+    /// If the line of sight is not blocked by obstacles (walls or bushes), the cell is added to the visible set.
+    ///
+    /// # Arguments
+    /// * `visible_cells` - A mutable reference to the HashSet collecting visible positions.
+    /// * `pos` - The source position (row, col) as a tuple.
+    /// * `vision_range` - The vision range (row_range, col_range) as a tuple.
     fn add_vision_from_pos(
         &self,
         visible_cells: &mut HashSet<(u16, u16)>,
@@ -209,44 +228,53 @@ impl Board {
         }
     }
 
+    /// Computes the set of cells visible to the given team by aggregating vision from team entities.
+    ///
+    /// This includes vision from champions (range 8x10), the base (range 29x29), towers (range 7x7),
+    /// and minions (range 7x7). Line of sight is checked for each entity's vision, blocking on walls/bushes.
+    ///
+    /// # Arguments
+    /// * `champions` - HashMap of all champions.
+    /// * `base` - The base entity.
+    /// * `towers` - HashMap of all towers.
+    /// * `minion_manager` - Manager containing all minions.
     pub fn compute_visibility(
-        &self,
-        team: Team,
+        &mut self,
         champions: &HashMap<PlayerId, Champion>,
         base: &Base,
         towers: &HashMap<TowerId, Tower>,
         minion_manager: &MinionManager,
-    ) -> HashSet<(u16, u16)> {
-        let mut visible_cells = HashSet::new();
+    ) {
+        for team in Team::iter() {
+            let mut visible_cells = HashSet::new();
+            for champion in champions.values().filter(|c| c.team_id == team) {
+                self.add_vision_from_pos(&mut visible_cells, (champion.row, champion.col), (8, 10));
+            }
 
-        for champion in champions.values().filter(|c| c.team_id == team) {
-            self.add_vision_from_pos(&mut visible_cells, (champion.row, champion.col), (8, 10));
+            self.add_vision_from_pos(&mut visible_cells, base.position, (29, 29));
+
+            for tower in towers.values().filter(|t| t.team_id == team) {
+                self.add_vision_from_pos(&mut visible_cells, (tower.row, tower.col), (7, 7));
+            }
+
+            for minion in minion_manager
+                .minions
+                .values()
+                .filter(|m| m.team_id == team)
+            {
+                self.add_vision_from_pos(&mut visible_cells, (minion.row, minion.col), (7, 7));
+            }
+            let _ = self.visibility_map.insert(team, visible_cells);
         }
-
-        self.add_vision_from_pos(&mut visible_cells, base.position, (29, 29));
-
-        for tower in towers.values().filter(|t| t.team_id == team) {
-            self.add_vision_from_pos(&mut visible_cells, (tower.row, tower.col), (7, 7));
-        }
-
-        for minion in minion_manager
-            .minions
-            .values()
-            .filter(|m| m.team_id == team)
-        {
-            self.add_vision_from_pos(&mut visible_cells, (minion.row, minion.col), (7, 7));
-        }
-
-        visible_cells
     }
 
     pub fn run_length_encode(
         &self,
+        player_team: Team,
         player_row: u16,
         player_col: u16,
         minion_manager: &MinionManager,
-        visible_cells: &HashSet<(u16, u16)>,
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, GameError> {
         let flattened_grid: Vec<&Cell> = self
             .center_view(player_row, player_col, 21, 51)
             .into_iter()
@@ -255,30 +283,35 @@ impl Board {
         let mut rle: Vec<String> = Vec::new();
 
         if flattened_grid.is_empty() {
-            return Vec::new();
+            return Err(GameError::EncodingError);
         }
 
-        let mut current_cell_value: EncodedCellValue;
-        if let Some(first_cell) = flattened_grid.get(0) {
-            current_cell_value = get_encoded_cell_value(first_cell, minion_manager, visible_cells);
-        } else {
-            return Vec::new(); // Should not happen if flattened_grid is not empty
-        }
-        let mut count = 1;
-
-        for i in 1..flattened_grid.len() {
-            let encoded_value =
-                get_encoded_cell_value(flattened_grid[i], minion_manager, visible_cells);
-            if encoded_value == current_cell_value {
-                count += 1;
+        if let Some(visible_cells) = &self.visibility_map.get(&player_team) {
+            let mut current_cell_value: EncodedCellValue;
+            if let Some(first_cell) = flattened_grid.get(0) {
+                current_cell_value =
+                    get_encoded_cell_value(first_cell, minion_manager, visible_cells);
             } else {
-                rle.push(format!("{}:{}", current_cell_value as u8, count));
-                current_cell_value = encoded_value;
-                count = 1;
+                return Err(GameError::EncodingError);
             }
+            let mut count = 1;
+
+            for i in 1..flattened_grid.len() {
+                let encoded_value =
+                    get_encoded_cell_value(flattened_grid[i], minion_manager, visible_cells);
+                if encoded_value == current_cell_value {
+                    count += 1;
+                } else {
+                    rle.push(format!("{}:{}", current_cell_value as u8, count));
+                    current_cell_value = encoded_value;
+                    count = 1;
+                }
+            }
+            rle.push(format!("{}:{}", current_cell_value as u8, count));
+            return Ok(rle.join("|").into_bytes());
+        } else {
+            return Err(GameError::EncodingError);
         }
-        rle.push(format!("{}:{}", current_cell_value as u8, count));
-        rle.join("|").into_bytes()
     }
 }
 
