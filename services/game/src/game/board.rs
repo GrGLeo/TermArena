@@ -268,6 +268,33 @@ impl Board {
         }
     }
 
+    /// Encodes the visible portion of the board around a player's position using run-length encoding.
+    ///
+    /// This function creates a centered view of the board (21 rows x 51 columns) around the specified
+    /// player position and compresses it using run-length encoding. Only cells visible to the
+    /// player's team are included in the encoding - non-visible cells are encoded as fog.
+    ///
+    /// The encoding format is: "value:count|value:count|..." where:
+    /// - `value` is the encoded cell type (see `EncodedCellValue` enum)
+    /// - `count` is the number of consecutive cells with that value
+    ///
+    /// # Arguments
+    /// * `player_team` - The team of the player requesting the encoding
+    /// * `player_row` - The row position of the player (center of the view)
+    /// * `player_col` - The column position of the player (center of the view)
+    /// * `minion_manager` - Reference to the minion manager for encoding minion states
+    ///
+    /// # Returns
+    /// * `Ok(Vec<u8>)` - The run-length encoded board data as UTF-8 bytes
+    /// * `Err(GameError::EncodingError)` - If encoding fails (empty view or no visibility data)
+    ///
+    /// # Example
+    /// ```
+    /// // Assuming visibility has been computed for Team::Blue
+    /// let encoded = board.run_length_encode(Team::Blue, 10, 20, &minion_manager)?;
+    /// let encoded_str = String::from_utf8(encoded)?;
+    /// // Result: "1:5|0:1|2:10|..." (floor, wall, fog, etc.)
+    /// ```
     pub fn run_length_encode(
         &self,
         player_team: Team,
