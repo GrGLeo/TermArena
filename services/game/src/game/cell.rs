@@ -6,7 +6,7 @@ pub type MonsterId = usize;
 pub type FlagId = usize;
 pub type TowerId = usize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, EnumIter)]
 pub enum Team {
     Blue,
     Red,

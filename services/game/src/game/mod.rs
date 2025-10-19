@@ -31,6 +31,7 @@ use projectile_manager::ProjectileManager;
 use rayon::prelude::*;
 use spell::Spell;
 use tokio::sync::mpsc;
+use tracing::error;
 
 use std::{
     collections::{HashMap, HashSet},
@@ -756,17 +757,9 @@ impl GameManager {
 
         println!("computing duration: {:?}", start_tick.elapsed());
         // --- Send per player there board view ---
-        let blue_visible_cells = self.board.compute_visibility(
-            Team::Blue,
+        self.board.compute_visibility(
             &self.champions,
             &self.blue_base,
-            &self.towers,
-            &self.minion_manager,
-        );
-        let red_visible_cells = self.board.compute_visibility(
-            Team::Red,
-            &self.champions,
-            &self.red_base,
             &self.towers,
             &self.minion_manager,
         );
@@ -774,19 +767,20 @@ impl GameManager {
             .champions
             .par_iter()
             .map(|(player_id, champion)| {
-                let visible_cells = if champion.team_id == Team::Blue {
-                    &blue_visible_cells
-                } else {
-                    &red_visible_cells
-                };
                 // 1. Get player-specific board view
-                
-                let board_rle_vec = self.board.run_length_encode(
+                let res = self.board.run_length_encode(
+                    champion.team_id,
                     champion.row,
                     champion.col,
                     &self.minion_manager,
-                    &visible_cells,
                 );
+                let board_rle_vec = match res {
+                    Ok(rle_vec) => rle_vec,
+                    Err(e) => {
+                        error!(component = "game", error = %e);
+                        Vec::new()
+                        }
+                };
                 // 2. Create the board packet
                 let cast_info = champion.get_cast_info();
                 let health = champion.get_health();

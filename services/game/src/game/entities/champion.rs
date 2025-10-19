@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::Add;
 use std::time::{Duration, Instant};
 use std::usize;
@@ -98,6 +98,7 @@ pub struct Champion {
     pub row: u16,
     pub col: u16,
     pub direction: Direction,
+    pub visible_map: HashSet<(u16, u16)>,
 }
 
 impl Champion {
@@ -151,6 +152,7 @@ impl Champion {
             row,
             col,
             direction: Direction::Up,
+            visible_map: HashSet::new(),
         }
     }
 
