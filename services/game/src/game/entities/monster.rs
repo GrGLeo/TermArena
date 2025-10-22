@@ -6,12 +6,7 @@ use std::{
 use crate::{
     config::MonsterStats,
     game::{
-        Board, PlayerId,
-        algorithms::pathfinding::find_path_on_board,
-        animation::melee::MeleeAnimation,
-        buffs::{Buff, HasBuff},
-        cell::MonsterId,
-        entities::AttackAction,
+        algorithms::pathfinding::find_path_on_board, animation::melee::MeleeAnimation, buffs::{Buff, HasBuff}, cell::MonsterId, entities::AttackAction, Board, Cell, PlayerId
     },
 };
 
@@ -179,8 +174,8 @@ impl Fighter for Monster {
 
     fn get_potential_target<'a>(
         &self,
-        _board: &'a crate::game::Board,
-    ) -> Option<&'a crate::game::Cell> {
+        _board: &'a Board,
+    ) -> Option<Cell> {
         // No need for monster
         unimplemented!()
     }

@@ -769,7 +769,7 @@ impl GameManager {
             .map(|(player_id, champion)| {
                 // 1. Get player-specific board view
                 let res = self.board.run_length_encode(
-                    champion.team_id,
+                    &champion.team_id,
                     champion.row,
                     champion.col,
                     &self.minion_manager,

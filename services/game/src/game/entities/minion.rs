@@ -420,12 +420,13 @@ impl Fighter for Minion {
         }
     }
 
-    fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell> {
+    fn get_potential_target<'a>(&self, board: &'a Board) -> Option<Cell> {
         let (row_range, col_range) = (
             self.minion_stats.aggro_range_row,
             self.minion_stats.aggro_range_col,
         );
-        let target_area = board.center_view(self.row, self.col, row_range, col_range);
+        let target_area =
+            board.center_view(&self.team_id, self.row, self.col, row_range, col_range);
         let center_row = target_area.len() / 2;
         let center_col = target_area[0].len() / 2;
 
