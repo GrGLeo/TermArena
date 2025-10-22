@@ -50,13 +50,16 @@ impl Board {
             }
             grid.push(grid_row);
         }
+        let mut visibility_map = HashMap::new();
+
+        visibility_map.insert(Team::Blue, HashSet::<(u16, u16)>::new());
+        visibility_map.insert(Team::Red, HashSet::<(u16, u16)>::new());
         let board = Board {
             grid,
-            visibility_map: HashMap::new(),
+            visibility_map,
             rows: board_layout.rows,
             cols: board_layout.cols,
         };
-
         Ok(board)
     }
 
@@ -128,11 +131,13 @@ impl Board {
 
     pub fn center_view(
         &self,
-        player_row: u16,
-        player_col: u16,
+        entity_team: &Team,
+        entity_row: u16,
+        entity_col: u16,
         view_height: u16,
         view_width: u16,
-    ) -> Vec<Vec<&Cell>> {
+    ) -> Vec<Vec<Cell>> {
+        let visible_map = self.visibility_map.get(entity_team).unwrap();
         let grid_height = self.grid.len() as u16;
         let grid_width = self.grid.get(0).map_or(0, |r| r.len() as u16);
 
@@ -140,8 +145,8 @@ impl Board {
         let half_width = view_width / 2;
 
         // Calculate  potential min and max row
-        let mut min_row = (player_row as i16 - half_height as i16).max(0) as u16;
-        let mut max_row = (player_row + half_height).min(grid_height - 1);
+        let mut min_row = (entity_row as i16 - half_height as i16).max(0) as u16;
+        let mut max_row = (entity_row + half_height).min(grid_height - 1);
 
         // Adjust if view hit the top
         if min_row == 0 {
@@ -157,8 +162,8 @@ impl Board {
         }
 
         // Calculate potential min and max col
-        let mut min_col = (player_col as i16 - half_width as i16).max(0) as u16;
-        let mut max_col = (player_col + half_width).min(grid_width - 1);
+        let mut min_col = (entity_col as i16 - half_width as i16).max(0) as u16;
+        let mut max_col = (entity_col + half_width).min(grid_width - 1);
         // Adjust if with hit the left
         if min_col == 0 {
             max_col = (view_width - 1).min(grid_width - 1);
@@ -174,8 +179,42 @@ impl Board {
 
         self.grid[min_row as usize..=max_row as usize]
             .iter()
-            .map(|row| &row[min_col as usize..=max_col as usize])
-            .map(|slice| slice.iter().collect())
+            .enumerate()
+            .map(|(row_idx, row)| {
+                let actual_row = min_row + row_idx as u16;
+                row[min_col as usize..=max_col as usize]
+                    .iter()
+                    .enumerate()
+                    .map(move |(col_idx, cell)| {
+                        let actual_col = min_col + col_idx as u16;
+                        let position = (actual_row, actual_col);
+                        if !visible_map.contains(&position) {
+                            match cell.base {
+                                BaseTerrain::Wall => cell.clone(),
+                                BaseTerrain::Bush => {
+                                    let mut bush_cell = cell.clone();
+                                    bush_cell.clear_content();
+                                    bush_cell
+                                }
+                                _ => {
+                                    let mut fog_cell = cell.clone();
+                                    fog_cell.base = BaseTerrain::Fog;
+                                    fog_cell.clear_content();
+                                    fog_cell
+                                }
+                            }
+                        } else {
+                            if cell.base == BaseTerrain::Bush {
+                                let mut bush_cell = cell.clone();
+                                bush_cell.clear_content();
+                                bush_cell
+                            } else {
+                                cell.clone()
+                            }
+                        }
+                    })
+                    .collect()
+            })
             .collect()
     }
 
@@ -297,13 +336,13 @@ impl Board {
     /// ```
     pub fn run_length_encode(
         &self,
-        player_team: Team,
+        player_team: &Team,
         player_row: u16,
         player_col: u16,
         minion_manager: &MinionManager,
     ) -> Result<Vec<u8>, GameError> {
-        let flattened_grid: Vec<&Cell> = self
-            .center_view(player_row, player_col, 21, 51)
+        let flattened_grid: Vec<Cell> = self
+            .center_view(player_team, player_row, player_col, 21, 51)
             .into_iter()
             .flat_map(|row| row.into_iter())
             .collect();
@@ -313,47 +352,30 @@ impl Board {
             return Err(GameError::EncodingError);
         }
 
-        if let Some(visible_cells) = &self.visibility_map.get(&player_team) {
-            let mut current_cell_value: EncodedCellValue;
-            if let Some(first_cell) = flattened_grid.get(0) {
-                current_cell_value =
-                    get_encoded_cell_value(first_cell, minion_manager, visible_cells);
-            } else {
-                return Err(GameError::EncodingError);
-            }
-            let mut count = 1;
-
-            for i in 1..flattened_grid.len() {
-                let encoded_value =
-                    get_encoded_cell_value(flattened_grid[i], minion_manager, visible_cells);
-                if encoded_value == current_cell_value {
-                    count += 1;
-                } else {
-                    rle.push(format!("{}:{}", current_cell_value as u8, count));
-                    current_cell_value = encoded_value;
-                    count = 1;
-                }
-            }
-            rle.push(format!("{}:{}", current_cell_value as u8, count));
-            return Ok(rle.join("|").into_bytes());
+        let mut current_cell_value: EncodedCellValue;
+        if let Some(first_cell) = flattened_grid.get(0) {
+            current_cell_value = get_encoded_cell_value(first_cell, minion_manager);
         } else {
             return Err(GameError::EncodingError);
         }
+        let mut count = 1;
+
+        for i in 1..flattened_grid.len() {
+            let encoded_value = get_encoded_cell_value(&flattened_grid[i], minion_manager);
+            if encoded_value == current_cell_value {
+                count += 1;
+            } else {
+                rle.push(format!("{}:{}", current_cell_value as u8, count));
+                current_cell_value = encoded_value;
+                count = 1;
+            }
+        }
+        rle.push(format!("{}:{}", current_cell_value as u8, count));
+        return Ok(rle.join("|").into_bytes());
     }
 }
 
-fn get_encoded_cell_value(
-    cell: &Cell,
-    minion_manager: &MinionManager,
-    visible_cells: &HashSet<(u16, u16)>,
-) -> EncodedCellValue {
-    if !visible_cells.contains(&cell.position) {
-        return match cell.base {
-            BaseTerrain::Wall => EncodedCellValue::Wall,
-            BaseTerrain::Bush => EncodedCellValue::Bush,
-            _ => EncodedCellValue::Fog,
-        };
-    }
+fn get_encoded_cell_value(cell: &Cell, minion_manager: &MinionManager) -> EncodedCellValue {
     if let Some(animation) = &cell.animation {
         match animation {
             CellAnimation::MeleeHitOne => EncodedCellValue::MeleeHitAnimationOne,
@@ -390,6 +412,7 @@ fn get_encoded_cell_value(
         match cell.base {
             BaseTerrain::Wall => EncodedCellValue::Wall,
             BaseTerrain::Floor => EncodedCellValue::Floor,
+            BaseTerrain::Fog => EncodedCellValue::Fog,
             BaseTerrain::Bush => EncodedCellValue::Bush,
             BaseTerrain::TowerDestroyed => EncodedCellValue::TowerDestroyed,
         }
@@ -821,7 +844,9 @@ mod tests {
         // Compute visibility first
         board.compute_visibility(&champions, &base, &towers, &minion_manager);
 
-        let rle = board.run_length_encode(Team::Blue, 5, 5, &minion_manager).unwrap();
+        let rle = board
+            .run_length_encode(&Team::Blue, 5, 5, &minion_manager)
+            .unwrap();
         let rle_str = String::from_utf8(rle).unwrap();
 
         // With the new visibility system, the champion at (5,5) with vision range (8,10)

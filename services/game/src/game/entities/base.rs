@@ -58,7 +58,7 @@ impl Fighter for Base {
         None
     }
 
-    fn get_potential_target<'a>(&self, _board: &'a Board) -> Option<&'a Cell> {
+    fn get_potential_target<'a>(&self, _board: &'a Board) -> Option<Cell> {
         // Base can't get potential target
         None
     }

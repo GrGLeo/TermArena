@@ -56,7 +56,7 @@ pub struct Stats {
 pub trait Fighter {
     fn take_effect(&mut self, effects: Vec<GameplayEffect>);
     fn can_attack(&mut self) -> Option<AttackAction>;
-    fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell>;
+    fn get_potential_target<'a>(&self, board: &'a Board) -> Option<Cell>;
 }
 
 pub fn reduced_damage(damage: u16, armor: u16, magic_resistance: u16, is_magic: bool) -> u16 {
