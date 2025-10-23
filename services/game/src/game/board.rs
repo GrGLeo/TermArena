@@ -72,9 +72,12 @@ impl Board {
             }
             grid.push(row)
         }
+        let mut visibility_map = HashMap::new();
+        visibility_map.insert(Team::Blue, HashSet::<(u16, u16)>::new());
+        visibility_map.insert(Team::Red, HashSet::<(u16, u16)>::new());
         Board {
             grid,
-            visibility_map: HashMap::new(),
+            visibility_map,
             rows,
             cols,
         }
@@ -280,11 +283,11 @@ impl Board {
     pub fn compute_visibility(
         &mut self,
         champions: &HashMap<PlayerId, Champion>,
-        base: &Base,
+        bases: Vec<&Base>,
         towers: &HashMap<TowerId, Tower>,
         minion_manager: &MinionManager,
     ) {
-        for team in Team::iter() {
+        for (team, base) in Team::iter().zip(bases) {
             let mut visible_cells = HashSet::new();
             for champion in champions.values().filter(|c| c.team_id == team) {
                 self.add_vision_from_pos(&mut visible_cells, (champion.row, champion.col), (8, 10));
@@ -582,6 +585,7 @@ mod tests {
         let center_player_row = rows / 2;
         let center_player_col = cols / 2;
         let center_view = board.center_view(
+            &Team::Blue,
             center_player_row as u16,
             center_player_col as u16,
             view_height,
@@ -605,6 +609,7 @@ mod tests {
         let top_left_player_row = 0;
         let top_left_player_col = 0;
         let top_left_view = board.center_view(
+            &Team::Blue,
             top_left_player_row as u16,
             top_left_player_col as u16,
             view_height,
@@ -623,6 +628,7 @@ mod tests {
         let bottom_right_player_row = rows - 1;
         let bottom_right_player_col = cols - 1;
         let bottom_right_view = board.center_view(
+            &Team::Blue,
             bottom_right_player_row as u16,
             bottom_right_player_col as u16,
             view_height,
@@ -643,6 +649,7 @@ mod tests {
         let top_edge_player_row = 1;
         let top_edge_player_col = cols / 2;
         let top_edge_view = board.center_view(
+            &Team::Blue,
             top_edge_player_row as u16,
             top_edge_player_col as u16,
             view_height,
@@ -656,6 +663,7 @@ mod tests {
         let left_edge_player_row = rows / 2;
         let left_edge_player_col = 1;
         let left_edge_view = board.center_view(
+            &Team::Blue,
             left_edge_player_row as u16,
             left_edge_player_col as u16,
             view_height,
@@ -668,6 +676,10 @@ mod tests {
 
     #[test]
     fn test_run_length_encode() {
+        use crate::config::{BaseStats, ChampionStats, MinionStats};
+        use crate::game::entities::champion::Champion;
+        use std::collections::HashMap;
+
         // Create a small board with varied cell types
         let mut board = Board::new(3, 4);
         board.change_base(BaseTerrain::Wall, 0, 0);
@@ -676,6 +688,52 @@ mod tests {
         board.place_animation(CellAnimation::MeleeHitOne, 2, 3);
         board.change_base(BaseTerrain::TowerDestroyed, 2, 0);
 
+        // Set up entities for visibility computation
+        let mut champions = HashMap::new();
+        let stats = ChampionStats {
+            health: 100,
+            mana: 100,
+            attack_damage: 10,
+            magic_power: 0,
+            armor: 10,
+            magic_resistance: 0,
+            attack_speed_ms: 1000,
+            xp_per_level: vec![100, 200, 300],
+            level_up_health_increase: 50,
+            level_up_attack_damage_increase: 5,
+            level_up_armor_increase: 2,
+            health_per_sec: 0.0,
+            mana_per_sec: 0.0,
+            attack_range_row: 1,
+            attack_range_col: 1,
+        };
+        let champion = Champion::new(1, Team::Blue, 1, 1, stats, HashMap::new());
+        champions.insert(1, champion);
+
+        let towers = HashMap::new();
+        let minion_stats = MinionStats {
+            health: 50,
+            attack_damage: 5,
+            attack_speed_ms: 1000,
+            armor: 5,
+            magic_resistance: 0,
+            aggro_range_row: 5,
+            aggro_range_col: 5,
+            attack_range_row: 1,
+            attack_range_col: 1,
+        };
+        let minion_manager = MinionManager::new(minion_stats);
+
+        let base_stats = BaseStats {
+            health: 5000,
+            armor: 10,
+            magic_resistance: 0,
+        };
+        let base = Base::new(Team::Blue, (1, 1), base_stats);
+
+        // Compute visibility first to make cells visible
+        board.compute_visibility(&champions, vec![&base], &towers, &minion_manager);
+
         // Set player position and view dimensions to cover the entire small board
         let player_row = 1; // Center row
         let player_col = 1; // Center col
@@ -683,10 +741,10 @@ mod tests {
         let view_width = 4; // Match board width
 
         // Get the view and flatten it for RLE
-        let flattened_grid: Vec<&Cell> = board
-            .center_view(player_row, player_col, view_height, view_width)
-            .into_iter()
-            .flat_map(|row| row.into_iter())
+        let view = board.center_view(&Team::Blue, player_row, player_col, view_height, view_width);
+        let flattened_grid: Vec<&Cell> = view
+            .iter()
+            .flat_map(|row| row.iter())
             .collect();
 
         let mut rle: Vec<String> = Vec::new();
@@ -770,7 +828,7 @@ mod tests {
         };
         let base = Base::new(Team::Red, (0, 0), base_stats);
 
-        board.compute_visibility(&champions, &base, &towers, &minion_manager);
+        board.compute_visibility(&champions, vec![&base], &towers, &minion_manager);
 
         // Champion at (2,2) should see a 10x10 area around it.
         // But (5,5) is a wall, so vision should be blocked beyond it.
@@ -783,7 +841,7 @@ mod tests {
         let champion2 = Champion::new(2, Team::Blue, 8, 8, stats.clone(), HashMap::new());
         champions.insert(2, champion2);
 
-        board.compute_visibility(&champions, &base, &towers, &minion_manager);
+        board.compute_visibility(&champions, vec![&base], &towers, &minion_manager);
         let visible_cells = board.visibility_map.get(&Team::Blue).unwrap();
         assert!(visible_cells.contains(&(6, 6))); // Now visible because of champion2
     }
@@ -842,7 +900,7 @@ mod tests {
         let base = Base::new(Team::Red, (0, 0), base_stats);
 
         // Compute visibility first
-        board.compute_visibility(&champions, &base, &towers, &minion_manager);
+        board.compute_visibility(&champions, vec![&base], &towers, &minion_manager);
 
         let rle = board
             .run_length_encode(&Team::Blue, 5, 5, &minion_manager)

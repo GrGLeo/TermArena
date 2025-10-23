@@ -12,6 +12,7 @@ use crate::{
         animation::{AnimationTrait, melee::MeleeAnimation},
         buffs::{Buff, HasBuff},
         cell::Team,
+        Base, MinionManager,
     },
 };
 
@@ -1362,13 +1363,28 @@ mod tests {
         let enemy_row = minion_row + 2; // Within 10x10 range
         let enemy_col = minion_col + 3; // Within 10x10 range
         let enemy_content = CellContent::Champion(99, enemy_team);
-        board.place_cell(
-            enemy_content.clone(),
-            enemy_row as usize,
-            enemy_col as usize,
-        );
+         board.place_cell(
+             enemy_content.clone(),
+             enemy_row as usize,
+             enemy_col as usize,
+         );
 
-        let target_cell_option = minion.get_potential_target(&board);
+         // Set up visibility computation
+         let mut champions = HashMap::new();
+         let base_stats = create_test_base_stats();
+         let base_red = Base::new(Team::Red, (0, 0), base_stats.clone());
+         let base_blue = Base::new(Team::Blue, (49, 49), base_stats);
+         let bases = vec![&base_red, &base_blue];
+
+         let towers = HashMap::new();
+         let minion_stats = create_default_minion_stats();
+         let mut minion_manager = MinionManager::new(minion_stats.clone());
+         let minion_for_visibility = Minion::new(minion_id, minion_team, Lane::Mid, minion_stats);
+         minion_manager.minions.insert(minion_id, minion_for_visibility);
+
+         board.compute_visibility(&champions, bases, &towers, &minion_manager);
+
+         let target_cell_option = minion.get_potential_target(&board);
 
         assert!(
             target_cell_option.is_some(),
@@ -1519,12 +1535,27 @@ mod tests {
             further_enemy_col_2,
             dist_further2
         );
-        assert!(
-            dist_closest < dist_further1 && dist_closest < dist_further2,
-            "Closest enemy distance calculation error"
-        );
+         assert!(
+             dist_closest < dist_further1 && dist_closest < dist_further2,
+             "Closest enemy distance calculation error"
+         );
 
-        let target_cell_option = minion.get_potential_target(&board);
+         // Set up visibility computation
+         let mut champions = HashMap::new();
+         let base_stats = create_test_base_stats();
+         let base_red = Base::new(Team::Red, (0, 0), base_stats.clone());
+         let base_blue = Base::new(Team::Blue, (49, 49), base_stats);
+         let bases = vec![&base_red, &base_blue];
+
+         let towers = HashMap::new();
+         let minion_stats = create_default_minion_stats();
+         let mut minion_manager = MinionManager::new(minion_stats.clone());
+         let minion_for_visibility = Minion::new(minion_id, minion_team, Lane::Mid, minion_stats);
+         minion_manager.minions.insert(minion_id, minion_for_visibility);
+
+         board.compute_visibility(&champions, bases, &towers, &minion_manager);
+
+         let target_cell_option = minion.get_potential_target(&board);
 
         assert!(
             target_cell_option.is_some(),
@@ -1613,5 +1644,13 @@ mod tests {
             minion.stats.health, expected_health,
             "Minion health should be reduced by full magic damage since MR=0"
         );
+    }
+
+    fn create_test_base_stats() -> crate::config::BaseStats {
+        crate::config::BaseStats {
+            health: 5000,
+            armor: 10,
+            magic_resistance: 0,
+        }
     }
 }
