@@ -759,7 +759,7 @@ impl GameManager {
         // --- Send per player there board view ---
         self.board.compute_visibility(
             &self.champions,
-            &self.blue_base,
+            vec![&self.blue_base, &self.red_base],
             &self.towers,
             &self.minion_manager,
         );

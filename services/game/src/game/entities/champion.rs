@@ -758,6 +758,8 @@ mod tests {
     use crate::game::BaseTerrain;
     use crate::game::Board;
     use crate::game::buffs::stun_buff::StunBuff;
+    use crate::game::Base;
+    use crate::game::MinionManager;
     use crate::game::entities::item::{Item, ItemStats};
     use crate::game::spell::freeze_wall::FreezeWallSpell;
     use crate::game::spell::pierce::PierceSpell;
@@ -1415,6 +1417,38 @@ mod tests {
             enemy_col as usize,
         );
 
+        // Set up visibility computation
+        let mut champions = HashMap::new();
+        let champion_for_visibility = Champion::new(
+            player_id,
+            champion_team,
+            champion_row,
+            champion_col,
+            create_default_champion_stats(),
+            HashMap::new(),
+        );
+        champions.insert(player_id, champion_for_visibility);
+        let enemy_champion = Champion::new(
+            enemy_id,
+            enemy_team,
+            enemy_row,
+            enemy_col,
+            create_default_champion_stats(),
+            HashMap::new(),
+        );
+        champions.insert(enemy_id, enemy_champion);
+
+        let base_stats = create_test_base_stats();
+        let base_red = Base::new(Team::Red, (0, 0), base_stats.clone());
+        let base_blue = Base::new(Team::Blue, (9, 9), base_stats);
+        let bases = vec![&base_red, &base_blue];
+
+        let towers = HashMap::new();
+        let minion_stats = create_test_minion_stats();
+        let minion_manager = MinionManager::new(minion_stats);
+
+        board.compute_visibility(&champions, bases, &towers, &minion_manager);
+
         let target = champion.get_potential_target(&board);
 
         assert!(
@@ -1440,6 +1474,11 @@ mod tests {
             tower_row as usize,
             tower_col as usize,
         );
+
+        // Update champions map and recompute visibility
+        champions.remove(&enemy_id); // Remove the enemy champion
+        let bases_updated = vec![&base_red, &base_blue];
+        board.compute_visibility(&champions, bases_updated, &towers, &minion_manager);
 
         let target_tower = champion.get_potential_target(&board);
         assert!(
@@ -1505,13 +1544,46 @@ mod tests {
         let even_further_enemy_row = champion_row - 1;
         let even_further_enemy_col = champion_col - 1;
         let even_further_enemy_content = CellContent::Tower(1, enemy_team);
-        board.place_cell(
-            even_further_enemy_content.clone(),
-            even_further_enemy_row as usize,
-            even_further_enemy_col as usize,
-        );
+         board.place_cell(
+             even_further_enemy_content.clone(),
+             even_further_enemy_row as usize,
+             even_further_enemy_col as usize,
+         );
 
-        let target = champion.get_potential_target(&board);
+         // Set up visibility computation
+         let mut champions = HashMap::new();
+         let champion_for_visibility = Champion::new(
+             player_id,
+             champion_team,
+             champion_row,
+             champion_col,
+             create_default_champion_stats(),
+             HashMap::new(),
+         );
+         champions.insert(player_id, champion_for_visibility);
+
+         let closest_enemy_champion = Champion::new(
+             2,
+             enemy_team,
+             closest_enemy_row,
+             closest_enemy_col,
+             create_default_champion_stats(),
+             HashMap::new(),
+         );
+         champions.insert(2, closest_enemy_champion);
+
+         let base_stats = create_test_base_stats();
+         let base_red = Base::new(Team::Red, (0, 0), base_stats.clone());
+         let base_blue = Base::new(Team::Blue, (9, 9), base_stats);
+         let bases = vec![&base_red, &base_blue];
+
+         let towers = HashMap::new();
+         let minion_stats = create_test_minion_stats();
+         let minion_manager = MinionManager::new(minion_stats);
+
+         board.compute_visibility(&champions, bases, &towers, &minion_manager);
+
+         let target = champion.get_potential_target(&board);
 
         assert!(
             target.is_some(),
@@ -1738,15 +1810,48 @@ mod tests {
         let enemy_champion_row = champion_row + 1;
         let enemy_champion_col = champion_col + 1;
         let enemy_champion_content = CellContent::Champion(2, enemy_team);
-        board.place_cell(
-            enemy_champion_content.clone(),
-            enemy_champion_row as usize,
-            enemy_champion_col as usize,
-        );
+         board.place_cell(
+             enemy_champion_content.clone(),
+             enemy_champion_row as usize,
+             enemy_champion_col as usize,
+         );
 
-        // Test with attack_mode = true (should target only champion)
-        champion.attack_mode = true;
-        let target_with_attack_mode = champion.get_potential_target(&board);
+         // Set up visibility computation
+         let mut champions = HashMap::new();
+         let champion_for_visibility = Champion::new(
+             player_id,
+             champion_team,
+             champion_row,
+             champion_col,
+             create_default_champion_stats(),
+             HashMap::new(),
+         );
+         champions.insert(player_id, champion_for_visibility);
+
+         let enemy_champion_visibility = Champion::new(
+             2,
+             enemy_team,
+             enemy_champion_row,
+             enemy_champion_col,
+             create_default_champion_stats(),
+             HashMap::new(),
+         );
+         champions.insert(2, enemy_champion_visibility);
+
+         let base_stats = create_test_base_stats();
+         let base_red = Base::new(Team::Red, (0, 0), base_stats.clone());
+         let base_blue = Base::new(Team::Blue, (9, 9), base_stats);
+         let bases = vec![&base_red, &base_blue];
+
+         let towers = HashMap::new();
+         let minion_stats = create_test_minion_stats();
+         let minion_manager = MinionManager::new(minion_stats);
+
+         board.compute_visibility(&champions, bases, &towers, &minion_manager);
+
+         // Test with attack_mode = true (should target only champion)
+         champion.attack_mode = true;
+         let target_with_attack_mode = champion.get_potential_target(&board);
         assert!(
             target_with_attack_mode.is_some(),
             "Should find a target when attack_mode is true"
@@ -1799,14 +1904,37 @@ mod tests {
         let monster_id = 1;
         let monster_row = champion_row + 1;
         let monster_col = champion_col;
-        board.place_cell(
-            CellContent::Monster(monster_id),
-            monster_row as usize,
-            monster_col as usize,
-        );
+         board.place_cell(
+             CellContent::Monster(monster_id),
+             monster_row as usize,
+             monster_col as usize,
+         );
 
-        // Verify that the monster is a potential target
-        let target_cell_option = champion.get_potential_target(&board);
+         // Set up visibility computation
+         let mut champions = HashMap::new();
+         let champion_for_visibility = Champion::new(
+             player_id,
+             champion_team,
+             champion_row,
+             champion_col,
+             create_default_champion_stats(),
+             HashMap::new(),
+         );
+         champions.insert(player_id, champion_for_visibility);
+
+         let base_stats = create_test_base_stats();
+         let base_red = Base::new(Team::Red, (0, 0), base_stats.clone());
+         let base_blue = Base::new(Team::Blue, (9, 9), base_stats);
+         let bases = vec![&base_red, &base_blue];
+
+         let towers = HashMap::new();
+         let minion_stats = create_test_minion_stats();
+         let minion_manager = MinionManager::new(minion_stats);
+
+         board.compute_visibility(&champions, bases, &towers, &minion_manager);
+
+         // Verify that the monster is a potential target
+         let target_cell_option = champion.get_potential_target(&board);
         assert!(
             target_cell_option.is_some(),
             "Champion should be able to target a monster"
@@ -2341,18 +2469,51 @@ mod tests {
         let enemy_team = Team::Blue;
         let enemy_row = 2;
         let enemy_col = 3;
-        board.place_cell(
-            CellContent::Champion(enemy_id, enemy_team),
-            enemy_row as usize,
-            enemy_col as usize,
-        );
+         board.place_cell(
+             CellContent::Champion(enemy_id, enemy_team),
+             enemy_row as usize,
+             enemy_col as usize,
+         );
 
-        // Ensure champion can attack (cooldown ready)
-        champion.last_attacked =
-            Instant::now() - champion.stats.attack_speed - Duration::from_secs(1);
+         // Set up visibility computation
+         let mut champions = HashMap::new();
+         let champion_for_visibility = Champion::new(
+             1,
+             Team::Red,
+             2,
+             2,
+             create_default_champion_stats(),
+             HashMap::new(),
+         );
+         champions.insert(1, champion_for_visibility);
 
-        // The champion should have a target.
-        assert!(champion.get_potential_target(&board).is_some());
+         let enemy_champion_visibility = Champion::new(
+             enemy_id,
+             enemy_team,
+             enemy_row,
+             enemy_col,
+             create_default_champion_stats(),
+             HashMap::new(),
+         );
+         champions.insert(enemy_id, enemy_champion_visibility);
+
+         let base_stats = create_test_base_stats();
+         let base_red = Base::new(Team::Red, (0, 0), base_stats.clone());
+         let base_blue = Base::new(Team::Blue, (9, 9), base_stats);
+         let bases = vec![&base_red, &base_blue];
+
+         let towers = HashMap::new();
+         let minion_stats = create_test_minion_stats();
+         let minion_manager = MinionManager::new(minion_stats);
+
+         board.compute_visibility(&champions, bases, &towers, &minion_manager);
+
+         // Ensure champion can attack (cooldown ready)
+         champion.last_attacked =
+             Instant::now() - champion.stats.attack_speed - Duration::from_secs(1);
+
+         // The champion should have a target.
+         assert!(champion.get_potential_target(&board).is_some());
 
         // Perform the attack
         let attack_action_opt = champion.can_attack();
@@ -2376,5 +2537,27 @@ mod tests {
 
         // After the attack, the champion's on_hit_effects should be empty again.
         assert!(champion.on_hit_effects.is_empty());
+    }
+
+    fn create_test_base_stats() -> crate::config::BaseStats {
+        crate::config::BaseStats {
+            health: 5000,
+            armor: 10,
+            magic_resistance: 0,
+        }
+    }
+
+    fn create_test_minion_stats() -> crate::config::MinionStats {
+        crate::config::MinionStats {
+            health: 50,
+            attack_damage: 5,
+            attack_speed_ms: 1000,
+            armor: 5,
+            magic_resistance: 0,
+            aggro_range_row: 5,
+            aggro_range_col: 5,
+            attack_range_row: 1,
+            attack_range_col: 1,
+        }
     }
 }
