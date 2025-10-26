@@ -38,6 +38,10 @@ impl Base {
             position,
         }
     }
+
+    pub fn get_health_stats(&self) -> (u16, u16) {
+        (self.stats.health, self.stats.max_health)
+    }
 }
 
 impl Fighter for Base {

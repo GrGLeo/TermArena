@@ -122,14 +122,16 @@ type EndGameMsg struct {
 
 // BoardMsg is used to transfer the board to game model
 type BoardMsg struct {
-	Casting   [2]int
-	Health    [2]int
-	Mana      [2]int
-	Level     int
-	Xp        [2]int
-	TargetRow int
-	TargetCol int
-	Board     [21][51]int
+	Casting      [2]int
+	Health       [2]int
+	Mana         [2]int
+	Level        int
+	Xp           [2]int
+	TargetRow    int
+	TargetCol    int
+	TargetHealth [2]int
+	TargetMana   [2]int
+	Board        [21][51]int
 }
 
 type DeltaMsg struct {

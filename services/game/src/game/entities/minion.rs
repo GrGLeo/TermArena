@@ -56,6 +56,10 @@ impl Minion {
         self.stats.max_health
     }
 
+    pub fn get_health_stats(&self) -> (u16, u16) {
+        (self.stats.health, self.stats.max_health)
+    }
+
     pub fn new(minion_id: MinionId, team_id: Team, lane: Lane, minion_stats: MinionStats) -> Self {
         let stats = Stats {
             attack_damage: minion_stats.attack_damage,

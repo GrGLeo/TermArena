@@ -89,6 +89,10 @@ impl Tower {
         self.destroyed
     }
 
+    pub fn get_health(&self) -> (u16, u16) {
+        (self.stats.health, self.stats.max_health)
+    }
+
     pub fn destroy_tower(&self, board: &mut Board) {
         // Clear cell
         board.clear_cell(self.row as usize, self.col as usize);
