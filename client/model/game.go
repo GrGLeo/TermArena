@@ -176,7 +176,6 @@ func (m GameModel) View() string {
 	monsterStyle := lipgloss.NewStyle().Background(lipgloss.Color("208"))
 	towerDest := lipgloss.NewStyle().Background(lipgloss.Color("91"))
 	bushStyle := lipgloss.NewStyle().Background(lipgloss.Color("34"))
-	targetStyle := lipgloss.NewStyle().Background(lipgloss.Color("196")).Foreground(lipgloss.Color("255"))
 	grayStyle := lipgloss.NewStyle().Background(lipgloss.Color("240"))
 	freezeStyle := lipgloss.NewStyle().Background(lipgloss.Color("39"))
 	healStyle := lipgloss.NewStyle().Background(lipgloss.Color("30"))
@@ -218,54 +217,74 @@ func (m GameModel) View() string {
 	// Iterate through the board and apply styles
 	for rowIdx, row := range m.currentBoard {
 		for colIdx, cell := range row {
-			// Check if this position has a target indicator
-			if rowIdx == m.targetRow && colIdx == m.targetCol && m.targetRow >= 0 && m.targetCol >= 0 && m.targetRow < 65535 && m.targetCol < 65535 {
-				builder.WriteString(targetStyle.Render("X"))
-				continue
-			}
-
+			var style lipgloss.Style
+			var char string
 			switch cell {
 			case 0:
-				builder.WriteString(grayStyle.Render(" ")) // Render gray for walls
+				style = grayStyle
+				char = " "
 			case 1:
-				builder.WriteString(bgStyle.Render(" ")) // Render empty space
+				style = bgStyle
+				char = " "
 			case 2:
-				builder.WriteString(fogStyle.Render(" ")) // Render empty space
+				style = fogStyle
+				char = " "
 			case 3:
-				builder.WriteString(bushStyle.Render(" ")) // Render green for bush
+				style = bushStyle
+				char = " "
 			case 4:
-				builder.WriteString(blueTeamStyle.Render(" ")) // Render blue for team blue
+				style = blueTeamStyle
+				char = " "
 			case 5:
-				builder.WriteString(redTeamStyle.Render(" ")) // Render red for team red
+				style = redTeamStyle
+				char = " "
 			case 6:
-				builder.WriteString(bgStyle.Render("⍓")) // Render for tower
+				style = bgStyle
+				char = "⍓"
 			case 7:
-				builder.WriteString(towerDest.Render(" ")) // Render purple for tower destroyed
+				style = towerDest
+				char = " "
 			case 8:
-				builder.WriteString(baseBlueStyle.Render(" ")) // Render for BaseBlue
+				style = baseBlueStyle
+				char = " "
 			case 9:
-				builder.WriteString(baseRedStyle.Render(" ")) // Render for BaseRed
+				style = baseRedStyle
+				char = " "
 			case 10:
-				builder.WriteString(monsterStyle.Render(" ")) // Render for monster
+				style = monsterStyle
+				char = " "
 			case 11:
-				builder.WriteString(fgStyle.Render("x")) // Render for melee animation one
+				style = fgStyle
+				char = "x"
 			case 12:
-				builder.WriteString(fgStyle.Render("+")) // Render for melee animation two
+				style = fgStyle
+				char = "+"
 			case 13:
-				builder.WriteString(bgStyle.Render("𐙢")) // Render for tower animation
+				style = bgStyle
+				char = "𐙢"
 			case 14:
-				builder.WriteString(freezeStyle.Render("𐙂")) // Render for freeze spell
+				style = freezeStyle
+				char = "𐙂"
 			case 15:
-				builder.WriteString(bgStyle.Render("𐁙")) // Render for fireball
+				style = bgStyle
+				char = "𐁙"
 			case 16:
-				builder.WriteString(healStyle.Render("𐫱")) // Render for heal spell
+				style = healStyle
+				char = "𐫱"
 			case 100, 101, 102, 103, 104, 105, 106, 107: // Friendly minion health (1/8 to 8/8)
 				healthIndex := cell - 100
-				builder.WriteString(blueTeamStyle.Render(minionHealthChars[healthIndex]))
+				style = blueTeamStyle
+				char = minionHealthChars[healthIndex]
 			case 108, 109, 110, 111, 112, 113, 114, 115: // Enemy minion health (1/8 to 8/8)
 				healthIndex := cell - 108
-				builder.WriteString(redTeamStyle.Render(minionHealthChars[healthIndex]))
+				style = redTeamStyle
+				char = minionHealthChars[healthIndex]
 			}
+			if rowIdx == m.targetRow && colIdx == m.targetCol && m.targetRow >= 0 && m.targetCol >= 0 && m.targetRow < 65535 && m.targetCol < 65535 {
+				char = "X"
+			}
+			cellStr := style.Render(char)
+			builder.WriteString(cellStr)
 		}
 		builder.WriteString("\n") // New line at the end of each row
 	}
@@ -312,7 +331,7 @@ func (m GameModel) View() string {
 	builder.WriteString(xpHUD)
 	builder.WriteString("\n")
 
-  builder.WriteString("Target Information\n")
+	builder.WriteString("Target Information\n")
 
 	var targetHealthBar string
 	if m.targetHealth[1] > 0 {
