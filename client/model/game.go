@@ -33,6 +33,8 @@ type GameModel struct {
 	recallDuration  time.Duration
 	recallStart     time.Time
 	percent         float64
+	targetRow       int
+	targetCol       int
 }
 
 func NewGameModel(conn *net.TCPConn) GameModel {
@@ -75,6 +77,9 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mana = msg.Mana
 		m.level = msg.Level
 		m.xp = msg.Xp
+		m.targetRow = msg.TargetRow
+		m.targetCol = msg.TargetCol
+		log.Printf("Received target position: row=%d, col=%d", msg.TargetRow, msg.TargetCol)
 		m.currentBoard = msg.Board
 	case communication.DeltaMsg:
 		m.gameClock = time.Duration(50*int(msg.TickID)) * time.Millisecond
@@ -85,31 +90,31 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "w":
-      // Move up
+			// Move up
 			communication.SendAction(m.conn, 1)
 			return m, nil
 		case "s":
-      // Move down
+			// Move down
 			communication.SendAction(m.conn, 2)
 			return m, nil
 		case "a":
-      // Move left
+			// Move left
 			communication.SendAction(m.conn, 3)
 			return m, nil
 		case "d":
-      // Move right
+			// Move right
 			communication.SendAction(m.conn, 4)
 			return m, nil
 		case "q":
-      // Cast spell 1
+			// Cast spell 1
 			communication.SendAction(m.conn, 5)
 			return m, nil
 		case "e":
-      // Cast spell 2
+			// Cast spell 2
 			communication.SendAction(m.conn, 6)
 			return m, nil
 		case "v":
-      // Champion only target
+			// Champion only target
 			if m.attackMode {
 				m.attackMode = false
 			} else {
@@ -118,24 +123,24 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			communication.SendAction(m.conn, 7)
 			return m, nil
 		case "b":
-      // Recall action
+			// Recall action
 			m.recall = true
 			m.recallStart = time.Now()
 			communication.SendAction(m.conn, 8)
 		case "tab":
-      // Cycle target
+			// Cycle target
 			communication.SendAction(m.conn, 9)
 			return m, nil
 		case "esc":
-      // Clear target
+			// Clear target
 			communication.SendAction(m.conn, 10)
 			return m, nil
 		case "p":
-      // toggle shop
+			// toggle shop
 			communication.SendShopRequest(m.conn)
 			return m, nil
 		case "ctrl+c":
-      // quit game
+			// quit game
 			return m, tea.Quit
 		}
 	case communication.CooldownTickMsg:
@@ -167,6 +172,7 @@ func (m GameModel) View() string {
 	monsterStyle := lipgloss.NewStyle().Background(lipgloss.Color("208"))
 	towerDest := lipgloss.NewStyle().Background(lipgloss.Color("91"))
 	bushStyle := lipgloss.NewStyle().Background(lipgloss.Color("34"))
+	targetStyle := lipgloss.NewStyle().Background(lipgloss.Color("196")).Foreground(lipgloss.Color("255"))
 	grayStyle := lipgloss.NewStyle().Background(lipgloss.Color("240"))
 	freezeStyle := lipgloss.NewStyle().Background(lipgloss.Color("39"))
 	healStyle := lipgloss.NewStyle().Background(lipgloss.Color("30"))
@@ -206,8 +212,14 @@ func (m GameModel) View() string {
 	builder.WriteString(hudContent)
 
 	// Iterate through the board and apply styles
-	for _, row := range m.currentBoard {
-		for _, cell := range row {
+	for rowIdx, row := range m.currentBoard {
+		for colIdx, cell := range row {
+			// Check if this position has a target indicator
+			if rowIdx == m.targetRow && colIdx == m.targetCol && m.targetRow >= 0 && m.targetCol >= 0 && m.targetRow < 65535 && m.targetCol < 65535 {
+				builder.WriteString(targetStyle.Render("X"))
+				continue
+			}
+
 			switch cell {
 			case 0:
 				builder.WriteString(grayStyle.Render(" ")) // Render gray for walls

@@ -97,10 +97,12 @@ pub struct Champion {
     death_counter: u8,
     death_timer: Instant,
     last_attacked: Instant,
-    attack_mode: bool,
-    target: Option<Target>,
-    stun_timer: Option<Instant>,
-    inventory: [Option<Item>; 6],
+     attack_mode: bool,
+     pub target: Option<Target>,
+     pub enemies_in_range: Vec<Target>,
+     pub target_index: usize,
+     stun_timer: Option<Instant>,
+     inventory: [Option<Item>; 6],
     pub row: u16,
     pub col: u16,
     pub direction: Direction,
@@ -147,9 +149,11 @@ impl Champion {
             death_counter: 0,
             death_timer: Instant::now(),
             last_attacked: Instant::now(),
-            attack_mode: false,
-            target: None,
-            stun_timer: None,
+             attack_mode: false,
+             target: None,
+             enemies_in_range: Vec::new(),
+             target_index: 0,
+             stun_timer: None,
             inventory: [None, None, None, None, None, None],
             active_buffs: HashMap::new(),
             on_hit_effects: Vec::new(),
@@ -473,10 +477,13 @@ impl Champion {
                 self.attack_mode = !self.attack_mode;
                 return Ok(());
             }
-            Action::CycleTarget => {
-                info!("CycleTarget was called");
-                return Ok(());
-            }
+             Action::CycleTarget => {
+                 if !self.enemies_in_range.is_empty() {
+                     self.target_index = (self.target_index + 1) % self.enemies_in_range.len();
+                     self.target = Some(self.enemies_in_range[self.target_index].clone());
+                 }
+                 return Ok(());
+             }
             Action::ClearTarget => {
                 info!("ClearTarget was called");
                 self.target = None;
@@ -606,11 +613,68 @@ impl Champion {
                 self.stats.mana = (self.stats.mana + mana_to_add as u16).min(self.stats.max_mana);
                 self.stats.mana_regen_acc -= mana_to_add
             }
-        }
-    }
-}
+         }
+     }
 
-impl Fighter for Champion {
+     pub fn get_enemies_in_range(&self, board: &Board) -> Vec<Target> {
+         let target_area = board.center_view(&self.team_id, self.row, self.col, 10, 10);
+
+         target_area
+             .iter()
+             .enumerate()
+             .flat_map(|(row_index, row)| {
+                 row.iter()
+                     .enumerate()
+                     .map(move |(col_index, cell)| (row_index, col_index, cell))
+             })
+             .filter_map(|(_, _, cell)| {
+                 if let Some(content) = &cell.content {
+                     let is_enemy = match content {
+                         CellContent::Champion(_, team_id)
+                         | CellContent::Tower(_, team_id)
+                         | CellContent::Minion(_, team_id)
+                         | CellContent::Base(team_id) => *team_id != self.team_id,
+                         CellContent::Monster(..) => true,
+                     };
+
+                     if is_enemy {
+                         match content {
+                             CellContent::Champion(player_id, _) => Some(Target::Champion(*player_id)),
+                             CellContent::Tower(tower_id, _) => Some(Target::Tower(*tower_id)),
+                             CellContent::Minion(minion_id, _) => Some(Target::Minion(*minion_id)),
+                             CellContent::Base(team_id) => Some(Target::Base(*team_id)),
+                             CellContent::Monster(monster_id) => Some(Target::Monster(*monster_id)),
+                         }
+                     } else {
+                         None
+                     }
+                 } else {
+                     None
+                 }
+             })
+             .collect()
+     }
+
+      pub fn update_targets(&mut self, board: &Board) {
+          self.enemies_in_range = self.get_enemies_in_range(board);
+
+          // Reset target index if it exceeds the new list length
+          if self.target_index >= self.enemies_in_range.len() {
+              self.target_index = 0;
+          }
+
+          // Clear target if no enemies in range or if current target is not in the list
+          if self.enemies_in_range.is_empty() {
+              self.target = None;
+          } else if let Some(current_target) = &self.target {
+              if !self.enemies_in_range.contains(current_target) {
+                  self.target = None;
+              }
+          }
+      }
+ }
+
+ impl Fighter for Champion {
     fn take_effect(&mut self, effects: Vec<GameplayEffect>) {
         for effect in effects.into_iter() {
             match effect {
@@ -694,6 +758,28 @@ impl Fighter for Champion {
             self.champion_stats.attack_range_col,
         );
         let target_area = board.center_view(&self.team_id, self.row, self.col, row_range, col_range);
+
+        // First, check if we have a manually selected target
+        if let Some(selected_target) = &self.target {
+            for cell in target_area.iter().flatten() {
+                if let Some(content) = &cell.content {
+                    let matches_target = match (content, selected_target) {
+                        (CellContent::Champion(player_id, _), Target::Champion(target_id)) => player_id == target_id,
+                        (CellContent::Tower(tower_id, _), Target::Tower(target_id)) => tower_id == target_id,
+                        (CellContent::Minion(minion_id, _), Target::Minion(target_id)) => minion_id == target_id,
+                        (CellContent::Base(team_id), Target::Base(target_team)) => team_id == target_team,
+                        (CellContent::Monster(monster_id), Target::Monster(target_id)) => monster_id == target_id,
+                        _ => false,
+                    };
+
+                    if matches_target {
+                        return Some(*cell);
+                    }
+                }
+            }
+        }
+
+        // Fall back to auto-targeting if no manual target or target not found
         let center_row = target_area.len() / 2;
         let center_col = target_area[0].len() / 2;
 
@@ -739,9 +825,9 @@ impl Fighter for Champion {
                 let dist2 = r2.abs_diff(center_row) + c2.abs_diff(center_col);
                 dist1.cmp(&dist2)
             })
-            .map(|(_, _, &cell)| cell)
-    }
-}
+             .map(|(_, _, &cell)| cell)
+     }
+ }
 
 impl HasBuff for Champion {
     fn get_stats_mut(&mut self) -> &mut Stats {

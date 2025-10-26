@@ -498,14 +498,14 @@ func (gsp *GameServerReadyPacket) Serialize() []byte {
 
 type QuitRoomPacket struct {
 	version, code int
-  RoomID uint32
+	RoomID        uint32
 }
 
 func NewQuitRoomPacket(roomID uint32) *QuitRoomPacket {
 	return &QuitRoomPacket{
-		version:  1,
-		code:     CodeQuitRoom,
-		RoomID:   roomID,
+		version: 1,
+		code:    CodeQuitRoom,
+		RoomID:  roomID,
 	}
 }
 func (qrp *QuitRoomPacket) Version() int { return qrp.version }
@@ -575,11 +575,13 @@ type BoardPacket struct {
 	Level         int
 	Xp            int
 	XpNeeded      int
+	TargetRow     int
+	TargetCol     int
 	Length        int
 	EncodedBoard  []byte
 }
 
-func NewBoardPacket(castTime, castDuration, health, maxHealth, mana, maxMana, level, xp, xpNeeded int, encodedBoard []byte) *BoardPacket {
+func NewBoardPacket(castTime, castDuration, health, maxHealth, mana, maxMana, level, xp, xpNeeded, targetRow, targetCol int, encodedBoard []byte) *BoardPacket {
 	return &BoardPacket{
 		version:      1,
 		code:         CodeBoard,
@@ -592,6 +594,8 @@ func NewBoardPacket(castTime, castDuration, health, maxHealth, mana, maxMana, le
 		Level:        level,
 		Xp:           xp,
 		XpNeeded:     xpNeeded,
+		TargetRow:    targetRow,
+		TargetCol:    targetCol,
 		Length:       len(encodedBoard),
 		EncodedBoard: encodedBoard,
 	}
@@ -612,6 +616,8 @@ func (bp *BoardPacket) Serialize() []byte {
 	buf.WriteByte(byte(bp.Level))
 	binary.Write(&buf, binary.BigEndian, uint16(bp.Xp))
 	binary.Write(&buf, binary.BigEndian, uint16(bp.XpNeeded))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.TargetRow))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.TargetCol))
 	binary.Write(&buf, binary.BigEndian, uint16(len(bp.EncodedBoard)))
 	buf.Write(bp.EncodedBoard)
 	return buf.Bytes()
@@ -1225,9 +1231,9 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		}
 		roomID := binary.BigEndian.Uint32(data[2:6])
 		packet := &QuitRoomPacket{
-			version:  version,
-			code:     code,
-			RoomID:   roomID,
+			version: version,
+			code:    code,
+			RoomID:  roomID,
 		}
 		return packet, 6, nil
 
@@ -1254,11 +1260,11 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		return packet, 3, nil
 
 	case CodeBoard: // BoardPacket
-		if len(data) < 21 {
+		if len(data) < 25 {
 			return nil, 0, errors.New("incomplete packet")
 		}
-		length := int(binary.BigEndian.Uint16(data[19:21]))
-		totalLen := 21 + length
+		length := int(binary.BigEndian.Uint16(data[23:25]))
+		totalLen := 25 + length
 		if len(data) < totalLen {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1271,7 +1277,9 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		level := int(data[14])
 		xp := int(binary.BigEndian.Uint16(data[15:17]))
 		xpNeeded := int(binary.BigEndian.Uint16(data[17:19]))
-		encodedBoard := data[21:totalLen]
+		targetRow := int(binary.BigEndian.Uint16(data[19:21]))
+		targetCol := int(binary.BigEndian.Uint16(data[21:23]))
+		encodedBoard := data[25:totalLen]
 		packet := &BoardPacket{
 			version:      version,
 			code:         code,
@@ -1284,6 +1292,8 @@ func DeSerialize(data []byte) (Packet, int, error) {
 			Level:        level,
 			Xp:           xp,
 			XpNeeded:     xpNeeded,
+			TargetRow:    targetRow,
+			TargetCol:    targetCol,
 			Length:       length,
 			EncodedBoard: encodedBoard,
 		}

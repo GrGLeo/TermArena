@@ -376,6 +376,29 @@ impl Board {
         rle.push(format!("{}:{}", current_cell_value as u8, count));
         return Ok(rle.join("|").into_bytes());
     }
+
+    /// Find the position of a target entity on the board
+    pub fn find_entity_position(&self, target: &super::entities::Target) -> Option<(u16, u16)> {
+        for (row_idx, row) in self.grid.iter().enumerate() {
+            for (col_idx, cell) in row.iter().enumerate() {
+                if let Some(content) = &cell.content {
+                    let matches = match (content, target) {
+                        (CellContent::Champion(player_id, _), super::entities::Target::Champion(target_id)) => player_id == target_id,
+                        (CellContent::Tower(tower_id, _), super::entities::Target::Tower(target_id)) => tower_id == target_id,
+                        (CellContent::Minion(minion_id, _), super::entities::Target::Minion(target_id)) => minion_id == target_id,
+                        (CellContent::Base(team_id), super::entities::Target::Base(target_team)) => team_id == target_team,
+                        (CellContent::Monster(monster_id), super::entities::Target::Monster(target_id)) => monster_id == target_id,
+                        _ => false,
+                    };
+
+                    if matches {
+                        return Some((row_idx as u16, col_idx as u16));
+                    }
+                }
+            }
+        }
+        None
+    }
 }
 
 fn get_encoded_cell_value(cell: &Cell, minion_manager: &MinionManager) -> EncodedCellValue {
