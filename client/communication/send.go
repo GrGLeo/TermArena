@@ -90,7 +90,7 @@ func SendRoomCreatePacket(conn *net.TCPConn, roomType int) error {
 }
 
 func SendAction(conn *net.TCPConn, action int) error {
-	log.Println("Sent action")
+	log.Printf("Sent action: %d", action)
 	actionPacket := shared.NewActionPacket(action)
 	data := actionPacket.Serialize()
 	_, err := conn.Write(data)
@@ -244,8 +244,8 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 				health := [2]int{msg.Health, msg.MaxHealth}
 				mana := [2]int{msg.Mana, msg.MaxMana}
 				xp := [2]int{msg.Xp, msg.XpNeeded}
-				log.Printf("Sending BoardMsg: Casting=%v, Health=%v, Level=%d, Xp=%v", casting, health, msg.Level, xp)
-				msgs <- BoardMsg{Casting: casting, Health: health, Mana: mana, Level: msg.Level, Xp: xp, Board: board}
+				log.Printf("Sending BoardMsg: Casting=%v, Health=%v, Level=%d, Xp=%v, Target=%d,%d", casting, health, msg.Level, xp, msg.TargetRow, msg.TargetCol)
+				msgs <- BoardMsg{Casting: casting, Health: health, Mana: mana, Level: msg.Level, Xp: xp, TargetRow: msg.TargetRow, TargetCol: msg.TargetCol, Board: board}
 			case *shared.DeltaPacket:
 				deltas := DecodeDeltas(msg.Deltas)
 				log.Printf("Sending DeltaMsg: TickID=%d, Deltas=%v", msg.TickID, deltas)

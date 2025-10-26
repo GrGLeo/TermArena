@@ -16,6 +16,8 @@ pub struct BoardPacket {
     pub level: u8,
     pub xp: u16,
     pub xp_needed: u16,
+    pub target_row: Option<u16>,
+    pub target_col: Option<u16>,
     pub length: u16,
     pub encoded_board: Vec<u8>,
 }
@@ -31,6 +33,8 @@ impl BoardPacket {
         level: u8,
         xp: u16,
         xp_needed: u16,
+        target_row: Option<u16>,
+        target_col: Option<u16>,
         encoded_board: Vec<u8>,
     ) -> Self {
         let length = encoded_board.len().try_into().unwrap();
@@ -46,6 +50,8 @@ impl BoardPacket {
             level,
             xp,
             xp_needed,
+            target_row,
+            target_col,
             length,
             encoded_board,
         }
@@ -64,6 +70,8 @@ impl BoardPacket {
         buffer.put_u8(self.level);
         buffer.put_u16(self.xp);
         buffer.put_u16(self.xp_needed);
+        buffer.put_u16(self.target_row.unwrap_or(u16::MAX));
+        buffer.put_u16(self.target_col.unwrap_or(u16::MAX));
         buffer.put_u16(self.length);
         buffer.extend_from_slice(&self.encoded_board);
         buffer
@@ -99,6 +107,8 @@ mod tests {
             level,
             xp,
             xp_needed,
+            None,
+            None,
             encoded_board_data.clone(),
         );
 
@@ -139,6 +149,8 @@ mod tests {
             level,
             xp,
             xp_needed,
+            None,
+            None,
             encoded_board_data.clone(),
         );
 
@@ -157,6 +169,8 @@ mod tests {
         expected_buffer.put_u8(packet.level);
         expected_buffer.put_u16(packet.xp);
         expected_buffer.put_u16(packet.xp_needed);
+        expected_buffer.put_u16(packet.target_row.unwrap_or(u16::MAX));
+        expected_buffer.put_u16(packet.target_col.unwrap_or(u16::MAX));
         expected_buffer.put_u16(packet.length);
         expected_buffer.extend_from_slice(&packet.encoded_board);
 
