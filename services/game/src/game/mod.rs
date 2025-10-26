@@ -854,15 +854,49 @@ impl GameManager {
                     None => (None, None),
                 };
 
-                if let Some(target) = &champion.target {
-                    if let Some((world_row, world_col)) = self.board.find_entity_position(target) {
-                        info!("Target: {:?} at board position ({}, {})", target, world_row, world_col);
-                    } else {
-                        info!("Target: {:?} not found on board", target);
+                // Get target stats
+                let (target_health, target_max_health, target_mana, target_max_mana) = if let Some(target) = &champion.target {
+                    match target {
+                        Target::Champion(player_id) => {
+                            if let Some(target_champ) = self.champions.get(player_id) {
+                                (target_champ.stats.health, target_champ.stats.max_health, target_champ.stats.mana, target_champ.stats.max_mana)
+                            } else {
+                                (0, 0, 0, 0)
+                            }
+                        }
+                        Target::Tower(tower_id) => {
+                            if let Some(tower) = self.towers.get(tower_id) {
+                                let (h, mh) = tower.get_health();
+                                (h, mh, 0, 0)
+                            } else {
+                                (0, 0, 0, 0)
+                            }
+                        }
+                        Target::Minion(minion_id) => {
+                            if let Some(minion) = self.minion_manager.minions.get(minion_id) {
+                                let (h, mh) = minion.get_health_stats();
+                                (h, mh, 0, 0)
+                            } else {
+                                (0, 0, 0, 0)
+                            }
+                        }
+                        Target::Base(team) => {
+                            let base = if *team == Team::Red { &self.red_base } else { &self.blue_base };
+                            let (h, mh) = base.get_health_stats();
+                            (h, mh, 0, 0)
+                        }
+                        Target::Monster(monster_id) => {
+                            if let Some(monster) = self.monster_manager.active_monsters.get(monster_id) {
+                                let (h, mh) = monster.get_health_stats();
+                                (h, mh, 0, 0)
+                            } else {
+                                (0, 0, 0, 0)
+                            }
+                        }
                     }
                 } else {
-                    info!("No target selected");
-                }
+                    (0, 0, 0, 0)
+                };
 
                 let board_packet = BoardPacket::new(
                     cast_info.0,
@@ -876,6 +910,10 @@ impl GameManager {
                     xp_needed,
                     target_row,
                     target_col,
+                    target_health,
+                    target_max_health,
+                    target_mana,
+                    target_max_mana,
                     board_rle_vec,
                 );
                 let serialized_packet = board_packet.serialize();

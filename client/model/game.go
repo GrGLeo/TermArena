@@ -35,6 +35,8 @@ type GameModel struct {
 	percent         float64
 	targetRow       int
 	targetCol       int
+	targetHealth    [2]int
+	targetMana      [2]int
 }
 
 func NewGameModel(conn *net.TCPConn) GameModel {
@@ -79,6 +81,8 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.xp = msg.Xp
 		m.targetRow = msg.TargetRow
 		m.targetCol = msg.TargetCol
+		m.targetHealth = msg.TargetHealth
+		m.targetMana = msg.TargetMana
 		log.Printf("Received target position: row=%d, col=%d", msg.TargetRow, msg.TargetCol)
 		m.currentBoard = msg.Board
 	case communication.DeltaMsg:
@@ -306,6 +310,36 @@ func (m GameModel) View() string {
 		xpBar,
 	)
 	builder.WriteString(xpHUD)
+	builder.WriteString("\n")
+
+  builder.WriteString("Target Information\n")
+
+	var targetHealthBar string
+	if m.targetHealth[1] > 0 {
+		targetHealthPercent := (float32(m.targetHealth[0]) / float32(m.targetHealth[1]))
+		targetHealthBar = m.healthProgress.ViewAs(float64(targetHealthPercent))
+	}
+	targetHealthInfo := fmt.Sprintf("%d / %d", m.targetHealth[0], m.targetHealth[1])
+	targetHealthHUD := lipgloss.JoinHorizontal(
+		lipgloss.Right,
+		targetHealthInfo,
+		targetHealthBar,
+	)
+	builder.WriteString(targetHealthHUD)
+	builder.WriteString("\n")
+
+	var targetManaBar string
+	if m.targetMana[1] > 0 {
+		targetManaPercent := (float32(m.targetMana[0]) / float32(m.targetMana[1]))
+		targetManaBar = m.manaProgress.ViewAs(float64(targetManaPercent))
+	}
+	targetManaInfo := fmt.Sprintf("%d / %d", m.targetMana[0], m.targetMana[1])
+	targetManaHUD := lipgloss.JoinHorizontal(
+		lipgloss.Right,
+		targetManaInfo,
+		targetManaBar,
+	)
+	builder.WriteString(targetManaHUD)
 	builder.WriteString("\n")
 
 	var castBar string

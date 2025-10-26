@@ -565,39 +565,47 @@ func (ap *ActionPacket) Serialize() []byte {
 }
 
 type BoardPacket struct {
-	version, code int
-	CastTime      int
-	CastDuration  int
-	Health        int
-	MaxHealth     int
-	Mana          int
-	MaxMana       int
-	Level         int
-	Xp            int
-	XpNeeded      int
-	TargetRow     int
-	TargetCol     int
-	Length        int
-	EncodedBoard  []byte
+	version, code   int
+	CastTime        int
+	CastDuration    int
+	Health          int
+	MaxHealth       int
+	Mana            int
+	MaxMana         int
+	Level           int
+	Xp              int
+	XpNeeded        int
+	TargetRow       int
+	TargetCol       int
+	TargetHealth    int
+	TargetMaxHealth int
+	TargetMana      int
+	TargetMaxMana   int
+	Length          int
+	EncodedBoard    []byte
 }
 
-func NewBoardPacket(castTime, castDuration, health, maxHealth, mana, maxMana, level, xp, xpNeeded, targetRow, targetCol int, encodedBoard []byte) *BoardPacket {
+func NewBoardPacket(castTime, castDuration, health, maxHealth, mana, maxMana, level, xp, xpNeeded, targetRow, targetCol, targetHealth, targetMaxHealth, targetMana, targetMaxMana int, encodedBoard []byte) *BoardPacket {
 	return &BoardPacket{
-		version:      1,
-		code:         CodeBoard,
-		CastTime:     castTime,
-		CastDuration: castDuration,
-		Health:       health,
-		MaxHealth:    maxHealth,
-		Mana:         mana,
-		MaxMana:      maxMana,
-		Level:        level,
-		Xp:           xp,
-		XpNeeded:     xpNeeded,
-		TargetRow:    targetRow,
-		TargetCol:    targetCol,
-		Length:       len(encodedBoard),
-		EncodedBoard: encodedBoard,
+		version:         1,
+		code:            CodeBoard,
+		CastTime:        castTime,
+		CastDuration:    castDuration,
+		Health:          health,
+		MaxHealth:       maxHealth,
+		Mana:            mana,
+		MaxMana:         maxMana,
+		Level:           level,
+		Xp:              xp,
+		XpNeeded:        xpNeeded,
+		TargetRow:       targetRow,
+		TargetCol:       targetCol,
+		TargetHealth:    targetHealth,
+		TargetMaxHealth: targetMaxHealth,
+		TargetMana:      targetMana,
+		TargetMaxMana:   targetMaxMana,
+		Length:          len(encodedBoard),
+		EncodedBoard:    encodedBoard,
 	}
 }
 
@@ -618,6 +626,10 @@ func (bp *BoardPacket) Serialize() []byte {
 	binary.Write(&buf, binary.BigEndian, uint16(bp.XpNeeded))
 	binary.Write(&buf, binary.BigEndian, uint16(bp.TargetRow))
 	binary.Write(&buf, binary.BigEndian, uint16(bp.TargetCol))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.TargetHealth))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.TargetMaxHealth))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.TargetMana))
+	binary.Write(&buf, binary.BigEndian, uint16(bp.TargetMaxMana))
 	binary.Write(&buf, binary.BigEndian, uint16(len(bp.EncodedBoard)))
 	buf.Write(bp.EncodedBoard)
 	return buf.Bytes()
@@ -1260,11 +1272,11 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		return packet, 3, nil
 
 	case CodeBoard: // BoardPacket
-		if len(data) < 25 {
+		if len(data) < 33 {
 			return nil, 0, errors.New("incomplete packet")
 		}
-		length := int(binary.BigEndian.Uint16(data[23:25]))
-		totalLen := 25 + length
+		length := int(binary.BigEndian.Uint16(data[31:33]))
+		totalLen := 33 + length
 		if len(data) < totalLen {
 			return nil, 0, errors.New("incomplete packet")
 		}
@@ -1279,23 +1291,31 @@ func DeSerialize(data []byte) (Packet, int, error) {
 		xpNeeded := int(binary.BigEndian.Uint16(data[17:19]))
 		targetRow := int(binary.BigEndian.Uint16(data[19:21]))
 		targetCol := int(binary.BigEndian.Uint16(data[21:23]))
-		encodedBoard := data[25:totalLen]
+		targetHealth := int(binary.BigEndian.Uint16(data[23:25]))
+		targetMaxHealth := int(binary.BigEndian.Uint16(data[25:27]))
+		targetMana := int(binary.BigEndian.Uint16(data[27:29]))
+		targetMaxMana := int(binary.BigEndian.Uint16(data[29:31]))
+		encodedBoard := data[33:totalLen]
 		packet := &BoardPacket{
-			version:      version,
-			code:         code,
-			CastTime:     castTime,
-			CastDuration: castDuration,
-			Health:       health,
-			MaxHealth:    maxHealth,
-			Mana:         mana,
-			MaxMana:      maxMana,
-			Level:        level,
-			Xp:           xp,
-			XpNeeded:     xpNeeded,
-			TargetRow:    targetRow,
-			TargetCol:    targetCol,
-			Length:       length,
-			EncodedBoard: encodedBoard,
+			version:         version,
+			code:            code,
+			CastTime:        castTime,
+			CastDuration:    castDuration,
+			Health:          health,
+			MaxHealth:       maxHealth,
+			Mana:            mana,
+			MaxMana:         maxMana,
+			Level:           level,
+			Xp:              xp,
+			XpNeeded:        xpNeeded,
+			TargetRow:       targetRow,
+			TargetCol:       targetCol,
+			TargetHealth:    targetHealth,
+			TargetMaxHealth: targetMaxHealth,
+			TargetMana:      targetMana,
+			TargetMaxMana:   targetMaxMana,
+			Length:          length,
+			EncodedBoard:    encodedBoard,
 		}
 		return packet, totalLen, nil
 

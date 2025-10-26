@@ -90,6 +90,10 @@ impl Monster {
         }
     }
 
+    pub fn get_health_stats(&self) -> (u16, u16) {
+        (self.stats.health, self.stats.max_health)
+    }
+
     pub fn start_returning(&mut self, board: &Board) {
         self.state = MonsterState::Returning;
         self.target_champion_id = None;
