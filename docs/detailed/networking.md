@@ -211,6 +211,18 @@ sequenceDiagram
   Size (bytes):  1       1       1
   ```
 
+#### `QuitRoomPacket` (Code 11)
+- **Direction:** Client -> Server
+- **Purpose:** Allows a player to quit their current room.
+- **Structure:**
+  ```
+  Byte Offset: 0       1
+               +-------+-------+
+               |Version| Code  |
+               +-------+-------+
+  Size (bytes):  1       1
+  ```
+
 ---
 
 ## Part 2: Rust Game Server Communication (In-Game)
