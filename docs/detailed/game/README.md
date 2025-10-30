@@ -13,6 +13,12 @@ This directory contains detailed documentation for the core real-time gameplay m
 - **[Projectile Mechanism](./projectile_mechanism.md)**
   - This system governs all non-instant attacks and spells. It is responsible for creating, moving, and detecting collisions for projectiles. This allows for skillshots that can be dodged by opponents, a key feature of tactical gameplay.
 
+- **Target System**
+  - This system enables players to select and interact with specific targets on the game board. It provides target information display and handles target-based actions, allowing for more precise and strategic gameplay.
+
+- **Visibility Map**
+  - This system manages line-of-sight and fog-of-war mechanics. It computes visibility for each team based on entity positions, revealing only areas that are currently visible to players, adding tactical depth to exploration and positioning.
+
 ## How They Interact
 
 These systems are deeply interconnected within the main game loop:
@@ -21,5 +27,7 @@ These systems are deeply interconnected within the main game loop:
 2.  Once the cast is complete, the spell might spawn a projectile, which is now managed by the **Projectile Mechanism**.
 3.  When the projectile hits a target, the **Projectile Mechanism** applies a `GameplayEffect`.
 4.  This effect could be a buff (e.g., a stun), which is then applied to the target entity and managed by the **Buff Mechanism**.
+5.  The **Visibility Map** determines what areas are visible to each team, affecting target selection and strategic positioning.
+6.  The **Target System** allows players to select specific entities, providing information and enabling targeted actions within visible areas.
 
-Understanding these three systems is key to developing new gameplay features. Each document provides a detailed explanation of its own components and a guide for how to extend it.
+Understanding these systems is key to developing new gameplay features. Each document provides a detailed explanation of its own components and a guide for how to extend it.

@@ -189,18 +189,26 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg := msg.(type) {
 		case communication.GameServerReadyMsg:
 			return m, tea.Batch(communication.AttemptGameConnection(msg.RoomIP), outCmd, alertCmd)
-    case communication.GameConnectionMsg:
-      m.GameConnection = msg.Conn
-      communication.SendUsernamePacket(m.GameConnection, m.Username)
-      go communication.ListenForPackets(m.GameConnection, m.msgs)
-      return m, tea.Batch(outCmd, alertCmd)
+		case communication.GameConnectionMsg:
+			m.GameConnection = msg.Conn
+			communication.SendUsernamePacket(m.GameConnection, m.Username)
+			go communication.ListenForPackets(m.GameConnection, m.msgs)
+			return m, tea.Batch(outCmd, alertCmd)
 		case communication.GameStartMsg:
 			m.state = Game
 			m.GameModel = model.NewGameModel(m.GameConnection)
 			m.GameModel.SetDimension(m.height, m.width)
 			return m, tea.Batch(m.GameModel.Init(), outCmd, alertCmd)
+		case communication.LookRoomMsg:
+			m.state = Lobby
+			if msg.RoomID == 0 {
+				m.LobbyModel = model.NewLobbyModel(m.Connection, m.Username)
+				m.LobbyModel.SetDimension(m.height, m.width)
+			} else {
+				m.LobbyModel.SetLooking(true)
+			}
+			return m, tea.Batch(cmd, outCmd, alertCmd)
 		}
-		return m, tea.Batch(cmd, outCmd, alertCmd)
 
 	case Game:
 		newmodel, cmd = m.GameModel.Update(msg)
@@ -213,7 +221,7 @@ func (m MetaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				msg.Health,
 				msg.Mana,
 				msg.AttackDamage,
-        msg.MagicPower,
+				msg.MagicPower,
 				msg.Armor,
 				msg.Gold,
 				msg.Inventory,

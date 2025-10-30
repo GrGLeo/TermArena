@@ -121,6 +121,56 @@ func (rs *RoomServiceClient) HandleLookRoom(msg event.Message) event.Message {
 	}
 }
 
+func (rs *RoomServiceClient) HandleQuitRoom(msg event.Message) event.Message {
+	req := msg.(event.QuitRoomMessage)
+	rs.logger.Info("Starting QuitRoom", "user", req.Username, "roomID", req.RoomID)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	res, err := rs.Client.QuitRoom(ctx, &pb.QuitRoomRequest{
+		Username: req.Username,
+		RoomID:   req.RoomID,
+	})
+	if err != nil {
+		rs.logger.Error("gRPC QuitRoom call failed", "component", "room_manager", "error", err, "client_id", req.Username)
+	} else {
+		rs.logger.Info("QuitRoom gRPC succeeded", "requeueCount", len(res.RequeueInfos))
+	}
+
+	mapUser := make(map[string]uint32)
+
+	// Requeued users
+	for _, info := range res.RequeueInfos {
+    conn, _ := rs.connManager.GetConn(info.Username)
+		regResponseCh := make(chan event.Message, 1)
+		clientRegistration := event.ClientRegistrationMessage{
+			ClientID:   info.Username,
+			RoomID:     info.RoomID,
+			TeamID:     info.Team,
+			Conn:       conn,
+			ResponseCh: regResponseCh,
+		}
+		mapUser[info.Username] = info.RoomID
+		rs.broker.Publish(clientRegistration)
+	}
+	// Quit user
+	regResponseCh := make(chan event.Message, 1)
+	clientRegistration := event.ClientRegistrationMessage{
+		ClientID:   req.Username,
+		RoomID:     0,
+		TeamID:     0,
+		Conn:       req.Conn,
+		ResponseCh: regResponseCh,
+	}
+	mapUser[req.Username] = 0
+	rs.broker.Publish(clientRegistration)
+
+	return event.QuitRoomResponseMessage{
+		UserMap:    mapUser,
+		Conn:       req.Conn,
+		ResponseCh: req.ResponseCh,
+	}
+}
+
 func (rs *RoomServiceClient) HandleUpdateSpell(msg event.Message) event.Message {
 	req := msg.(event.UpdateSpellReqMessage)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

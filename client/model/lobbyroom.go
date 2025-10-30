@@ -113,7 +113,7 @@ func NewLobbyRoomModel(conn *net.TCPConn, username string, roomType int, roomID 
 		height:         30,  // Default height
 		viewport:       vp,
 		textInput:      ti,
-		timer:          timer.NewWithInterval(time.Minute, time.Second),
+    timer:          timer.NewWithInterval(time.Minute, time.Second),
 		messages:       []Message{},
 		conn:           conn,
 		username:       username,
@@ -133,6 +133,10 @@ func (m LobbyRoomModel) Init() tea.Cmd {
 
 func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case timer.TickMsg:
+		var cmd tea.Cmd
+		m.timer, cmd = m.timer.Update(msg)
+		return m, cmd
 	case communication.MoveLobbyRoomMsg:
 		for _, ui := range msg.UserInfos {
 			player := NewPlayer(ui.Username)
@@ -176,6 +180,22 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				message = strings.Trim(message, " ")
 				m.textInput.SetValue("")
 
+				// Handling /quit message
+				if message == "/quit" {
+					if err := communication.SendQuitRoom(m.conn, m.roomID); err != nil {
+						m.addMessage(Message{
+							Content:   fmt.Sprintf("Failed to quit room: %v", err),
+							SenderID:  "System",
+							Timestamp: time.Now(),
+							IsSystem:  true,
+						})
+						m.updateViewport()
+						return m, nil
+					}
+					log.Printf("Quit packet sent successfully for user %s in room %d", m.username, m.roomID)
+					m.updateViewport()
+					return m, nil
+				}
 				// Validate message before sending
 				if err := m.validateMessage(message); err != nil {
 					m.addMessage(Message{
@@ -224,12 +244,13 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.textInput.Blur()
 				}
 			default:
-				if m.activePanel == 0 {
+				switch m.activePanel {
+				case 0:
 					// Handle text input
 					newInput, cmd := m.textInput.Update(msg)
 					m.textInput = newInput
 					return m, cmd
-				} else if m.activePanel == 1 {
+				case 1:
 					// Handle spell selection
 					newModel, _ := m.SpellSelection.Update(msg)
 					m.SpellSelection = newModel.(SpellSelectionModel)
@@ -254,10 +275,6 @@ func (m LobbyRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			IsSystem:  true,
 		})
 		m.updateViewport()
-	case timer.TickMsg:
-		var cmd tea.Cmd
-		m.timer, cmd = m.timer.Update(msg)
-		return m, cmd
 	}
 	return m, nil
 }

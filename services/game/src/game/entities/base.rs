@@ -38,6 +38,10 @@ impl Base {
             position,
         }
     }
+
+    pub fn get_health_stats(&self) -> (u16, u16) {
+        (self.stats.health, self.stats.max_health)
+    }
 }
 
 impl Fighter for Base {
@@ -58,7 +62,7 @@ impl Fighter for Base {
         None
     }
 
-    fn get_potential_target<'a>(&self, _board: &'a Board) -> Option<&'a Cell> {
+    fn get_potential_target<'a>(&self, _board: &'a Board) -> Option<Cell> {
         // Base can't get potential target
         None
     }

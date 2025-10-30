@@ -61,6 +61,17 @@ func CreateMessage(packet shared.Packet, conn *net.TCPConn, connManager *conm.Co
 			Conn:       conn,
 			ResponseCh: responseChan,
 		}, nil
+	case *shared.QuitRoomPacket:
+		user, exist := connManager.GetUser(conn)
+		if !exist {
+			return nil, fmt.Errorf("failed to find associated user")
+		}
+		return QuitRoomMessage{
+			RoomID:     pkt.RoomID,
+			Username:   user,
+			Conn:       conn,
+			ResponseCh: responseChan,
+		}, nil
 	case *shared.UpdateSpellReqPacket:
 		_, exist := connManager.GetUser(conn)
 		if !exist {
@@ -270,7 +281,7 @@ type RoomRequestMessage struct {
 func (fm RoomRequestMessage) Type() string { return "find-room" }
 func (fm RoomRequestMessage) Validate() error {
 	if fm.RoomType < 0 || fm.RoomType >= 4 {
-		return errors.New(fmt.Sprintf("Invalid room type: %d", fm.RoomType))
+		return fmt.Errorf("Invalid room type: %d", fm.RoomType)
 	}
 
 	if fm.Conn == nil {
@@ -300,10 +311,40 @@ func (rm RoomJoinMessage) Validate() error {
 }
 func (rm RoomJoinMessage) ResponseChan() chan Message { return rm.ResponseCh }
 
+type QuitRoomMessage struct {
+	RoomID     uint32
+	Username   string
+	Conn       *net.TCPConn
+	ResponseCh chan Message
+}
+
+func (rm QuitRoomMessage) Type() string { return "quit-room" }
+func (rm QuitRoomMessage) Validate() error {
+	if rm.Conn == nil {
+		return errors.New("Connection cannot be nil")
+	}
+	return nil
+}
+func (rm QuitRoomMessage) ResponseChan() chan Message { return rm.ResponseCh }
+
+type QuitRoomResponseMessage struct {
+	UserMap    map[string]uint32
+	Conn       *net.TCPConn
+	ResponseCh chan Message
+}
+
+func (rm QuitRoomResponseMessage) Type() string { return "quit-room-response" }
+func (rm QuitRoomResponseMessage) Validate() error {
+	if rm.Conn == nil {
+		return errors.New("Connection cannot be nil")
+	}
+	return nil
+}
+func (rm QuitRoomResponseMessage) ResponseChan() chan Message { return rm.ResponseCh }
+
 type RoomCreateMessage struct {
-	RoomType int
-	Conn     *net.TCPConn
-	// ResponseCh is the channel to send the response to.
+	RoomType   int
+	Conn       *net.TCPConn
 	ResponseCh chan Message
 }
 

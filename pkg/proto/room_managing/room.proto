@@ -11,6 +11,12 @@ message UserInfo {
   uint32 spell2 = 4;
 }
 
+message RequeueInfo {
+  string username = 1;
+  uint32 roomID = 2;
+  uint32 team = 3;
+}
+
 service RoomService {
   rpc LookRoom(LookRoomRequest) returns (LookRoomResponse);
   rpc QuitRoom(QuitRoomRequest) returns (QuitRoomResponse);
@@ -59,7 +65,7 @@ message QuitRoomRequest {
   uint32 roomID = 2;
 }
 
-message QuitRoomResponse { bool success = 1; }
+message QuitRoomResponse { repeated RequeueInfo requeue_infos = 1; }
 
 // --- RoomChangeService ---
 message RoomChangeNotification {

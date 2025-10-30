@@ -15,24 +15,28 @@ import (
 )
 
 type GameModel struct {
-	currentBoard   [21][51]int
-	conn           *net.TCPConn
-	gameClock      time.Duration
-	height, width  int
-	healthProgress progress.Model
-	manaProgress   progress.Model
-	xpProgress     progress.Model
-	castingProgress       progress.Model
-	health         [2]int
-	mana           [2]int
-	level          int
-	xp             [2]int
-	casting        [2]int
-	attackMode     bool
-	recall         bool
-	recallDuration time.Duration
-	recallStart    time.Time
-	percent        float64
+	currentBoard    [21][51]int
+	conn            *net.TCPConn
+	gameClock       time.Duration
+	height, width   int
+	healthProgress  progress.Model
+	manaProgress    progress.Model
+	xpProgress      progress.Model
+	castingProgress progress.Model
+	health          [2]int
+	mana            [2]int
+	level           int
+	xp              [2]int
+	casting         [2]int
+	attackMode      bool
+	recall          bool
+	recallDuration  time.Duration
+	recallStart     time.Time
+	percent         float64
+	targetRow       int
+	targetCol       int
+	targetHealth    [2]int
+	targetMana      [2]int
 }
 
 func NewGameModel(conn *net.TCPConn) GameModel {
@@ -44,12 +48,12 @@ func NewGameModel(conn *net.TCPConn) GameModel {
 	blueSolid := progress.WithSolidFill("#3E84D4")
 	purpleSolid := progress.WithSolidFill("#A51CC4")
 	return GameModel{
-		conn:           conn,
-		healthProgress: progress.New(redSolid),
-		manaProgress:   progress.New(blueSolid),
-		xpProgress:     progress.New(purpleSolid),
-		castingProgress:       progress.New(yellowGradient),
-		recallDuration: 6 * time.Second,
+		conn:            conn,
+		healthProgress:  progress.New(redSolid),
+		manaProgress:    progress.New(blueSolid),
+		xpProgress:      progress.New(purpleSolid),
+		castingProgress: progress.New(yellowGradient),
+		recallDuration:  6 * time.Second,
 	}
 }
 
@@ -75,6 +79,11 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mana = msg.Mana
 		m.level = msg.Level
 		m.xp = msg.Xp
+		m.targetRow = msg.TargetRow
+		m.targetCol = msg.TargetCol
+		m.targetHealth = msg.TargetHealth
+		m.targetMana = msg.TargetMana
+		log.Printf("Received target position: row=%d, col=%d", msg.TargetRow, msg.TargetCol)
 		m.currentBoard = msg.Board
 	case communication.DeltaMsg:
 		m.gameClock = time.Duration(50*int(msg.TickID)) * time.Millisecond
@@ -85,24 +94,31 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "w":
+			// Move up
 			communication.SendAction(m.conn, 1)
 			return m, nil
 		case "s":
+			// Move down
 			communication.SendAction(m.conn, 2)
 			return m, nil
 		case "a":
+			// Move left
 			communication.SendAction(m.conn, 3)
 			return m, nil
 		case "d":
+			// Move right
 			communication.SendAction(m.conn, 4)
 			return m, nil
 		case "q":
+			// Cast spell 1
 			communication.SendAction(m.conn, 5)
 			return m, nil
 		case "e":
+			// Cast spell 2
 			communication.SendAction(m.conn, 6)
 			return m, nil
 		case "v":
+			// Champion only target
 			if m.attackMode {
 				m.attackMode = false
 			} else {
@@ -111,13 +127,24 @@ func (m GameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			communication.SendAction(m.conn, 7)
 			return m, nil
 		case "b":
+			// Recall action
 			m.recall = true
 			m.recallStart = time.Now()
 			communication.SendAction(m.conn, 8)
+		case "tab":
+			// Cycle target
+			communication.SendAction(m.conn, 9)
+			return m, nil
+		case "esc":
+			// Clear target
+			communication.SendAction(m.conn, 10)
+			return m, nil
 		case "p":
+			// toggle shop
 			communication.SendShopRequest(m.conn)
 			return m, nil
 		case "ctrl+c":
+			// quit game
 			return m, tea.Quit
 		}
 	case communication.CooldownTickMsg:
@@ -188,50 +215,76 @@ func (m GameModel) View() string {
 	builder.WriteString(hudContent)
 
 	// Iterate through the board and apply styles
-	for _, row := range m.currentBoard {
-		for _, cell := range row {
+	for rowIdx, row := range m.currentBoard {
+		for colIdx, cell := range row {
+			var style lipgloss.Style
+			var char string
 			switch cell {
 			case 0:
-				builder.WriteString(grayStyle.Render(" ")) // Render gray for walls
+				style = grayStyle
+				char = " "
 			case 1:
-				builder.WriteString(bgStyle.Render(" ")) // Render empty space
+				style = bgStyle
+				char = " "
 			case 2:
-				builder.WriteString(fogStyle.Render(" ")) // Render empty space
+				style = fogStyle
+				char = " "
 			case 3:
-				builder.WriteString(bushStyle.Render(" ")) // Render green for bush
+				style = bushStyle
+				char = " "
 			case 4:
-				builder.WriteString(blueTeamStyle.Render(" ")) // Render blue for team blue
+				style = blueTeamStyle
+				char = " "
 			case 5:
-				builder.WriteString(redTeamStyle.Render(" ")) // Render red for team red
+				style = redTeamStyle
+				char = " "
 			case 6:
-				builder.WriteString(bgStyle.Render("⍓")) // Render for tower
+				style = bgStyle
+				char = "⍓"
 			case 7:
-				builder.WriteString(towerDest.Render(" ")) // Render purple for tower destroyed
+				style = towerDest
+				char = " "
 			case 8:
-				builder.WriteString(baseBlueStyle.Render(" ")) // Render for BaseBlue
+				style = baseBlueStyle
+				char = " "
 			case 9:
-				builder.WriteString(baseRedStyle.Render(" ")) // Render for BaseRed
+				style = baseRedStyle
+				char = " "
 			case 10:
-				builder.WriteString(monsterStyle.Render(" ")) // Render for monster
+				style = monsterStyle
+				char = " "
 			case 11:
-				builder.WriteString(fgStyle.Render("x")) // Render for melee animation one
+				style = fgStyle
+				char = "x"
 			case 12:
-				builder.WriteString(fgStyle.Render("+")) // Render for melee animation two
+				style = fgStyle
+				char = "+"
 			case 13:
-				builder.WriteString(bgStyle.Render("𐙢")) // Render for tower animation
+				style = bgStyle
+				char = "𐙢"
 			case 14:
-				builder.WriteString(freezeStyle.Render("𐙂")) // Render for freeze spell
+				style = freezeStyle
+				char = "𐙂"
 			case 15:
-				builder.WriteString(bgStyle.Render("𐁙")) // Render for fireball
+				style = bgStyle
+				char = "𐁙"
 			case 16:
-				builder.WriteString(healStyle.Render("𐫱")) // Render for heal spell
+				style = healStyle
+				char = "𐫱"
 			case 100, 101, 102, 103, 104, 105, 106, 107: // Friendly minion health (1/8 to 8/8)
 				healthIndex := cell - 100
-				builder.WriteString(blueTeamStyle.Render(minionHealthChars[healthIndex]))
+				style = blueTeamStyle
+				char = minionHealthChars[healthIndex]
 			case 108, 109, 110, 111, 112, 113, 114, 115: // Enemy minion health (1/8 to 8/8)
 				healthIndex := cell - 108
-				builder.WriteString(redTeamStyle.Render(minionHealthChars[healthIndex]))
+				style = redTeamStyle
+				char = minionHealthChars[healthIndex]
 			}
+			if rowIdx == m.targetRow && colIdx == m.targetCol && m.targetRow >= 0 && m.targetCol >= 0 && m.targetRow < 65535 && m.targetCol < 65535 {
+				char = "X"
+			}
+			cellStr := style.Render(char)
+			builder.WriteString(cellStr)
 		}
 		builder.WriteString("\n") // New line at the end of each row
 	}
@@ -278,15 +331,45 @@ func (m GameModel) View() string {
 	builder.WriteString(xpHUD)
 	builder.WriteString("\n")
 
+	builder.WriteString("Target Information\n")
+
+	var targetHealthBar string
+	if m.targetHealth[1] > 0 {
+		targetHealthPercent := (float32(m.targetHealth[0]) / float32(m.targetHealth[1]))
+		targetHealthBar = m.healthProgress.ViewAs(float64(targetHealthPercent))
+	}
+	targetHealthInfo := fmt.Sprintf("%d / %d", m.targetHealth[0], m.targetHealth[1])
+	targetHealthHUD := lipgloss.JoinHorizontal(
+		lipgloss.Right,
+		targetHealthInfo,
+		targetHealthBar,
+	)
+	builder.WriteString(targetHealthHUD)
+	builder.WriteString("\n")
+
+	var targetManaBar string
+	if m.targetMana[1] > 0 {
+		targetManaPercent := (float32(m.targetMana[0]) / float32(m.targetMana[1]))
+		targetManaBar = m.manaProgress.ViewAs(float64(targetManaPercent))
+	}
+	targetManaInfo := fmt.Sprintf("%d / %d", m.targetMana[0], m.targetMana[1])
+	targetManaHUD := lipgloss.JoinHorizontal(
+		lipgloss.Right,
+		targetManaInfo,
+		targetManaBar,
+	)
+	builder.WriteString(targetManaHUD)
+	builder.WriteString("\n")
+
 	var castBar string
 	if m.casting[1] > 0 {
-    castPercent := min(float64(m.casting[0]) / float64(m.casting[1]), 1.0)
-    castBar = m.castingProgress.ViewAs(castPercent)
-    builder.WriteString(castBar)
-    builder.WriteString("\n")
+		castPercent := min(float64(m.casting[0])/float64(m.casting[1]), 1.0)
+		castBar = m.castingProgress.ViewAs(castPercent)
+		builder.WriteString(castBar)
+		builder.WriteString("\n")
 	} else {
-    builder.WriteString("\n")
-  }
+		builder.WriteString("\n")
+	}
 	gameStyle := lipgloss.NewStyle().Border(lipgloss.NormalBorder(), m.attackMode).BorderForeground(lipgloss.Color("#ff0000"))
 
 	return lipgloss.Place(

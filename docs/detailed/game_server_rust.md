@@ -20,12 +20,42 @@ The `GameManager` is the central component of the game server. It is responsible
 - Tracking player connections.
 - Processing player actions.
 - Broadcasting game state updates to clients.
+- Handling target selection and information display.
+- Computing and maintaining visibility maps for each team.
+- Managing room lifecycle including quit operations.
 
 ### Asynchronous Networking
 
 The server uses asynchronous networking to handle client connections. Each client is assigned its own task, which is responsible for reading data from the client and sending game state updates.
 
 This approach allows the server to handle a large number of clients without blocking the main game loop.
+
+### Target System
+
+The target system allows players to select and interact with specific entities on the game board. It provides:
+
+- Target selection and validation
+- Target information display to clients
+- Target-based action processing
+- Integration with visibility mechanics
+
+### Visibility Map
+
+The visibility map system implements fog-of-war mechanics:
+
+- Computes visible areas for each team based on entity positions
+- Maintains a HashMap of visibility data per team
+- Updates visibility in real-time as entities move
+- Affects target selection and strategic gameplay
+
+### Room Management Integration
+
+The game server integrates with room management for:
+
+- Player quit handling and cleanup
+- Room state synchronization
+- Graceful disconnection handling
+- Real-time room updates
 
 ## Code Structure
 

@@ -7,6 +7,9 @@ use crate::game::BaseTerrain;
 use crate::game::board::Board;
 use crate::game::cell::{Cell, CellAnimation, CellContent, Team, TowerId};
 use crate::game::entities::reduced_damage;
+use crate::game::Base;
+use crate::game::MinionManager;
+use std::collections::HashMap;
 
 use super::projectile::GameplayEffect;
 use super::{AttackAction, Fighter, Stats};
@@ -86,6 +89,10 @@ impl Tower {
         self.destroyed
     }
 
+    pub fn get_health(&self) -> (u16, u16) {
+        (self.stats.health, self.stats.max_health)
+    }
+
     pub fn destroy_tower(&self, board: &mut Board) {
         // Clear cell
         board.clear_cell(self.row as usize, self.col as usize);
@@ -137,12 +144,12 @@ impl Fighter for Tower {
         }
     }
 
-    fn get_potential_target<'a>(&self, board: &'a Board) -> Option<&'a Cell> {
+    fn get_potential_target<'a>(&self, board: &'a Board) -> Option<Cell> {
         let (row_range, col_range) = (
             self.tower_stats.attack_range_row,
             self.tower_stats.attack_range_col,
         );
-        let target_area = board.center_view(self.row, self.col, row_range, col_range);
+        let target_area = board.center_view(&self.team_id, self.row, self.col, row_range, col_range);
         let center_row = target_area.len() / 2;
         let center_col = target_area[0].len() / 2;
 
@@ -565,13 +572,28 @@ mod tests {
         let enemy_champ_row = tower_row + 2; // Within 7x9 range
         let enemy_champ_col = tower_col + 3; // Within 7x9 range
         let enemy_champ_content = CellContent::Champion(enemy_champ_id, enemy_team);
-        board.place_cell(
-            enemy_champ_content.clone(),
-            enemy_champ_row as usize,
-            enemy_champ_col as usize,
-        );
+         board.place_cell(
+             enemy_champ_content.clone(),
+             enemy_champ_row as usize,
+             enemy_champ_col as usize,
+         );
 
-        let target_champ = tower.get_potential_target(&board);
+         // Set up visibility computation
+         let mut champions = HashMap::new();
+         let base_stats = create_test_base_stats();
+         let base_red = Base::new(Team::Red, (0, 0), base_stats.clone());
+         let base_blue = Base::new(Team::Blue, (19, 19), base_stats);
+         let bases = vec![&base_red, &base_blue];
+
+         let mut towers = HashMap::new();
+         let tower_for_visibility = Tower::new(tower_id, tower_team, tower_row, tower_col, create_default_tower_stats());
+         towers.insert(tower_id, tower_for_visibility);
+         let minion_stats = create_test_minion_stats();
+         let minion_manager = MinionManager::new(minion_stats);
+
+         board.compute_visibility(&champions, bases, &towers, &minion_manager);
+
+         let target_champ = tower.get_potential_target(&board);
         assert!(
             target_champ.is_some(),
             "Tower scan_range should return Some when an enemy champion is in range"
@@ -650,13 +672,28 @@ mod tests {
         let further_enemy_row_2 = tower_row - 1;
         let further_enemy_col_2 = tower_col + 2;
         let further_enemy_content_2 = CellContent::Champion(2, enemy_team);
-        board.place_cell(
-            further_enemy_content_2.clone(),
-            further_enemy_row_2 as usize,
-            further_enemy_col_2 as usize,
-        );
+         board.place_cell(
+             further_enemy_content_2.clone(),
+             further_enemy_row_2 as usize,
+             further_enemy_col_2 as usize,
+         );
 
-        let target = tower.get_potential_target(&board);
+         // Set up visibility computation
+         let mut champions = HashMap::new();
+         let base_stats = create_test_base_stats();
+         let base_red = Base::new(Team::Red, (0, 0), base_stats.clone());
+         let base_blue = Base::new(Team::Blue, (19, 19), base_stats);
+         let bases = vec![&base_red, &base_blue];
+
+         let mut towers = HashMap::new();
+         let tower_for_visibility = Tower::new(tower_id, tower_team, tower_row, tower_col, create_default_tower_stats());
+         towers.insert(tower_id, tower_for_visibility);
+         let minion_stats = create_test_minion_stats();
+         let minion_manager = MinionManager::new(minion_stats);
+
+         board.compute_visibility(&champions, bases, &towers, &minion_manager);
+
+         let target = tower.get_potential_target(&board);
 
         assert!(
             target.is_some(),
@@ -716,5 +753,27 @@ mod tests {
             target_minion_outside.is_none(),
             "Tower scan_range should return None when enemies are outside the 7x9 range"
         );
+    }
+
+    fn create_test_base_stats() -> crate::config::BaseStats {
+        crate::config::BaseStats {
+            health: 5000,
+            armor: 10,
+            magic_resistance: 0,
+        }
+    }
+
+    fn create_test_minion_stats() -> crate::config::MinionStats {
+        crate::config::MinionStats {
+            health: 50,
+            attack_damage: 5,
+            attack_speed_ms: 1000,
+            armor: 5,
+            magic_resistance: 0,
+            aggro_range_row: 5,
+            aggro_range_col: 5,
+            attack_range_row: 1,
+            attack_range_col: 1,
+        }
     }
 }

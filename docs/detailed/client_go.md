@@ -7,6 +7,7 @@ The Go client provides a terminal-based user interface (TUI) for the CTF game. I
 - **TUI Interface:** Provides a clean and intuitive interface for players to interact with the game.
 - **Real-time Updates:** Receives real-time game state updates from the server and renders them in the TUI.
 - **Real-time Messaging:** Integrated messaging interface for player-to-player communication with broadcast and private messaging.
+- **Room Management:** Supports room creation, joining, and quitting with real-time room state updates.
 - **State Management:** Manages the client-side game state, including the player's current status and game progress.
 
 ## Architecture

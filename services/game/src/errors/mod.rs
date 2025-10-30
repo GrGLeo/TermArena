@@ -4,6 +4,8 @@ use crate::game::PlayerId;
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum GameError {
+    #[error("Board could not be rle")]
+    EncodingError,
     #[error("Player: {0} cannot move there")]
     CannotMoveHere(PlayerId),
     #[error("Cell not found)")]

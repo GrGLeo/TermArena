@@ -31,6 +31,17 @@ This module defines the core traits and concrete implementations for all status 
     -   `on_tick()` checks if the elapsed time since application is greater than its duration.
     -   `on_remove()` calls `target.set_stunned(false, None)` to revert the effect.
 
+4.  **`RedBuff` and `DoTBuff` Structs (`health_buff.rs`)**: These provide health-related effects.
+    -   `RedBuff`: Grants bonus health regeneration per second for a duration.
+    -   `DoTBuff`: Deals damage over time, applying damage per second to the target's health.
+
+5.  **`BlueBuff` Struct (`mana_buff.rs`)**: Provides mana regeneration bonus.
+    -   Grants bonus mana regeneration per second for a duration, similar to RedBuff but for mana.
+
+6.  **Item Buffs (`item_buff.rs`)**: Permanent buffs from items.
+    -   `HealthRegenItem`: Provides ongoing health regeneration.
+    -   `ThornDamageItem`: Deals damage to attackers (passive effect).
+
 ### Entity Integration (`game/src/game/entities/`)
 
 For an entity to be affected by buffs, it must be integrated into this system.

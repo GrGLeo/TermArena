@@ -90,7 +90,7 @@ func SendRoomCreatePacket(conn *net.TCPConn, roomType int) error {
 }
 
 func SendAction(conn *net.TCPConn, action int) error {
-	log.Println("Sent action")
+	log.Printf("Sent action: %d", action)
 	actionPacket := shared.NewActionPacket(action)
 	data := actionPacket.Serialize()
 	_, err := conn.Write(data)
@@ -109,7 +109,6 @@ func SendPurchaseItemPacket(conn *net.TCPConn, itemID int) error {
 	log.Printf("Sending purchase item request for item ID: %d", itemID)
 	purchasePacket := shared.NewPurchaseItemPacket(itemID)
 	data := purchasePacket.Serialize()
-	log.Println(data)
 	_, err := conn.Write(data)
 	return err
 }
@@ -123,7 +122,7 @@ func SendUsernamePacket(conn *net.TCPConn, username string) error {
 }
 
 func SendMessage(conn *net.TCPConn, sender, message string) error {
-	log.Printf("[CLIENT] SendMessage: sender=%s, message='%s'", sender, message)
+	log.Printf("SendMessage: sender=%s, message='%s'", sender, message)
 	messageLen := len(message)
 	if messageLen == 0 {
 		return errors.New("Message cannot be empty")
@@ -132,25 +131,38 @@ func SendMessage(conn *net.TCPConn, sender, message string) error {
 	}
 	messagePacket := shared.NewMessagePacket(sender, message)
 	data := messagePacket.Serialize()
-	log.Printf("[CLIENT] SendMessage: packet created, data length=%d", len(data))
+	log.Printf("SendMessage: packet created, data length=%d", len(data))
 	_, err := conn.Write(data)
 	if err != nil {
-		log.Printf("[CLIENT] SendMessage: ERROR writing to connection: %v", err)
+		log.Printf("SendMessage: ERROR writing to connection: %v", err)
 	} else {
-		log.Printf("[CLIENT] SendMessage: SUCCESS - message sent to server")
+		log.Printf("SendMessage: SUCCESS - message sent to server")
 	}
 	return err
 }
 
+func SendQuitRoom(conn *net.TCPConn, roomID int) error {
+	packet := shared.NewQuitRoomPacket(uint32(roomID))
+	data := packet.Serialize()
+	_, err := conn.Write(data)
+	if err != nil {
+		log.Printf("QuitRoom: ERROR writing to connection: %v", err)
+	} else {
+		log.Printf("QuitRoom: SUCCESS - spells sent to server")
+	}
+	return err
+
+}
+
 func SendUpdateSpell(conn *net.TCPConn, roomType, roomID int, username string, spells []int) error {
-	log.Printf("[CLIENT] SendUpateSpell: sender=%s, spells='%d|%d'", username, spells[0], spells[1])
+	log.Printf("SendUpateSpell: sender=%s, spells='%d|%d'", username, spells[0], spells[1])
 	spellPacket := shared.NewUpdateSpellReqPacket(roomType, roomID, username, spells[0], spells[1])
 	data := spellPacket.Serialize()
 	_, err := conn.Write(data)
 	if err != nil {
-		log.Printf("[CLIENT] UpdateSpell: ERROR writing to connection: %v", err)
+		log.Printf("UpdateSpell: ERROR writing to connection: %v", err)
 	} else {
-		log.Printf("[CLIENT] UpdateSpell: SUCCESS - spells sent to server")
+		log.Printf("UpdateSpell: SUCCESS - spells sent to server")
 	}
 	return err
 }
@@ -232,8 +244,10 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 				health := [2]int{msg.Health, msg.MaxHealth}
 				mana := [2]int{msg.Mana, msg.MaxMana}
 				xp := [2]int{msg.Xp, msg.XpNeeded}
-				log.Printf("Sending BoardMsg: Casting=%v, Health=%v, Level=%d, Xp=%v", casting, health, msg.Level, xp)
-				msgs <- BoardMsg{Casting: casting, Health: health, Mana: mana, Level: msg.Level, Xp: xp, Board: board}
+				targetHealth := [2]int{msg.TargetHealth, msg.TargetMaxHealth}
+				targetMana := [2]int{msg.TargetMana, msg.TargetMaxMana}
+				log.Printf("Sending BoardMsg: Casting=%v, Health=%v, Level=%d, Xp=%v, Target=%d,%d", casting, health, msg.Level, xp, msg.TargetRow, msg.TargetCol)
+				msgs <- BoardMsg{Casting: casting, Health: health, Mana: mana, Level: msg.Level, Xp: xp, TargetRow: msg.TargetRow, TargetCol: msg.TargetCol, TargetHealth: targetHealth, TargetMana: targetMana, Board: board}
 			case *shared.DeltaPacket:
 				deltas := DecodeDeltas(msg.Deltas)
 				log.Printf("Sending DeltaMsg: TickID=%d, Deltas=%v", msg.TickID, deltas)
@@ -242,12 +256,12 @@ func ListenForPackets(conn *net.TCPConn, msgs chan<- tea.Msg) {
 				log.Printf("Sending EndGameMsg: Win=%t", msg.Win)
 				msgs <- EndGameMsg{Win: msg.Win}
 			case *shared.MessageResponsePacket:
-				log.Printf("[CLIENT] Received message response: %s", msg.Message)
+				log.Printf("Received message response: %s", msg.Message)
 				msgs <- IncomingMessageMsg{
 					Content: msg.Message,
 				}
 			case *shared.MessageErrorPacket:
-				log.Printf("[CLIENT] Received message error: %s", msg.Error)
+				log.Printf("Received message error: %s", msg.Error)
 				msgs <- MessageErrorMsg{Error: msg.Error}
 			case *shared.RateLimitPacket:
 				msgs <- RateLimitMsg{}

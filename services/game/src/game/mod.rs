@@ -31,6 +31,7 @@ use projectile_manager::ProjectileManager;
 use rayon::prelude::*;
 use spell::Spell;
 use tokio::sync::mpsc;
+use tracing::{error, info};
 
 use std::{
     collections::{HashMap, HashSet},
@@ -293,6 +294,8 @@ impl GameManager {
             6 => Action::Action2,
             7 => Action::AttackMode,
             8 => Action::Recall,
+            9 => Action::CycleTarget,
+            10 => Action::ClearTarget,
             _other => Action::InvalidAction,
         };
         self.player_action.insert(player_id, action);
@@ -375,10 +378,13 @@ impl GameManager {
                 champ.place_at_base(&mut self.board);
                 continue;
             }
-            // 1. Apply regeneration
-            champ.regen_health_mana();
+             // 1. Apply regeneration
+             champ.regen_health_mana();
 
-            // 2. Iterate through player action
+             // 1.5. Update targets
+             champ.update_targets(&self.board);
+
+             // 2. Iterate through player action
             if let Some(action) = self.player_action.get(&player_id) {
                 if let Err(e) =
                     champ.take_action(action, &mut self.board, &mut self.projectile_manager)
@@ -488,10 +494,7 @@ impl GameManager {
                         CellContent::Base(team) => {
                             if let Some(attack) = champ.can_attack() {
                                 match attack {
-                                    AttackAction::Melee {
-                                        animation,
-                                        effects,
-                                    } => {
+                                    AttackAction::Melee { animation, effects } => {
                                         new_animations.push(animation);
                                         pending_effects.push((
                                             Some(*player_id),
@@ -759,33 +762,142 @@ impl GameManager {
 
         println!("computing duration: {:?}", start_tick.elapsed());
         // --- Send per player there board view ---
+        self.board.compute_visibility(
+            &self.champions,
+            vec![&self.blue_base, &self.red_base],
+            &self.towers,
+            &self.minion_manager,
+        );
         let updates: HashMap<PlayerId, ClientMessage> = self
             .champions
             .par_iter()
             .map(|(player_id, champion)| {
-                let base = if champion.team_id == Team::Blue {
-                    &self.blue_base
-                } else {
-                    &self.red_base
-                };
-                let visible_cells = self.board.compute_visibility(
-                    champion.team_id,
-                    &self.champions,
-                    base,
-                    &self.towers,
-                    &self.minion_manager,
-                );
                 // 1. Get player-specific board view
-                let board_rle_vec = self.board.run_length_encode(
+                // First, calculate the view bounds
+                let grid_height = self.board.rows as u16;
+                let grid_width = self.board.cols as u16;
+                let view_height = 21;
+                let view_width = 51;
+                let half_height = view_height / 2;
+                let half_width = view_width / 2;
+
+                let mut min_row = (champion.row as i16 - half_height as i16).max(0) as u16;
+                let mut max_row = (champion.row + half_height).min(grid_height - 1);
+                if min_row == 0 {
+                    max_row = (view_height - 1).min(grid_height - 1);
+                }
+                if max_row == grid_height - 1 {
+                    if grid_height > view_height {
+                        min_row = (grid_height - view_height).max(0);
+                    } else {
+                        min_row = 0;
+                    }
+                }
+
+                let mut min_col = (champion.col as i16 - half_width as i16).max(0) as u16;
+                let mut max_col = (champion.col + half_width).min(grid_width - 1);
+                if min_col == 0 {
+                    max_col = (view_width - 1).min(grid_width - 1);
+                }
+                if max_col == grid_width - 1 {
+                    if grid_width > view_width {
+                        min_col = (grid_width - view_width).max(0);
+                    } else {
+                        min_col = 0;
+                    }
+                }
+
+                let res = self.board.run_length_encode(
+                    &champion.team_id,
                     champion.row,
                     champion.col,
                     &self.minion_manager,
-                    &visible_cells,
                 );
+                let board_rle_vec = match res {
+                    Ok(rle_vec) => rle_vec,
+                    Err(e) => {
+                        error!(component = "game", error = %e);
+                        Vec::new()
+                        }
+                };
                 // 2. Create the board packet
                 let cast_info = champion.get_cast_info();
                 let health = champion.get_health();
                 let xp_needed = champion.xp_for_next_level().unwrap_or(0); // Get XP needed, 0 if max level
+
+                // Calculate target coordinates relative to the view
+                let target_coords = if let Some(target) = &champion.target {
+                    // Find the target entity position
+                    let target_pos = self.board.find_entity_position(target);
+                    if let Some((target_world_row, target_world_col)) = target_pos {
+                        // Convert world coordinates to view coordinates
+                        let target_view_row = target_world_row - min_row;
+                        let target_view_col = target_world_col - min_col;
+
+                        // Check if target is within view bounds
+                        let view_rows = max_row - min_row + 1;
+                        let view_cols = max_col - min_col + 1;
+                        if target_view_row < view_rows && target_view_col < view_cols {
+                            Some((target_view_row, target_view_col))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+
+                let (target_row, target_col) = match target_coords {
+                    Some((row, col)) => (Some(row), Some(col)),
+                    None => (None, None),
+                };
+
+                // Get target stats
+                let (target_health, target_max_health, target_mana, target_max_mana) = if let Some(target) = &champion.target {
+                    match target {
+                        Target::Champion(player_id) => {
+                            if let Some(target_champ) = self.champions.get(player_id) {
+                                (target_champ.stats.health, target_champ.stats.max_health, target_champ.stats.mana, target_champ.stats.max_mana)
+                            } else {
+                                (0, 0, 0, 0)
+                            }
+                        }
+                        Target::Tower(tower_id) => {
+                            if let Some(tower) = self.towers.get(tower_id) {
+                                let (h, mh) = tower.get_health();
+                                (h, mh, 0, 0)
+                            } else {
+                                (0, 0, 0, 0)
+                            }
+                        }
+                        Target::Minion(minion_id) => {
+                            if let Some(minion) = self.minion_manager.minions.get(minion_id) {
+                                let (h, mh) = minion.get_health_stats();
+                                (h, mh, 0, 0)
+                            } else {
+                                (0, 0, 0, 0)
+                            }
+                        }
+                        Target::Base(team) => {
+                            let base = if *team == Team::Red { &self.red_base } else { &self.blue_base };
+                            let (h, mh) = base.get_health_stats();
+                            (h, mh, 0, 0)
+                        }
+                        Target::Monster(monster_id) => {
+                            if let Some(monster) = self.monster_manager.active_monsters.get(monster_id) {
+                                let (h, mh) = monster.get_health_stats();
+                                (h, mh, 0, 0)
+                            } else {
+                                (0, 0, 0, 0)
+                            }
+                        }
+                    }
+                } else {
+                    (0, 0, 0, 0)
+                };
+
                 let board_packet = BoardPacket::new(
                     cast_info.0,
                     cast_info.1,
@@ -796,6 +908,12 @@ impl GameManager {
                     champion.level,
                     champion.xp,
                     xp_needed,
+                    target_row,
+                    target_col,
+                    target_health,
+                    target_max_health,
+                    target_mana,
+                    target_max_mana,
                     board_rle_vec,
                 );
                 let serialized_packet = board_packet.serialize();

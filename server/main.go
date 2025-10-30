@@ -136,6 +136,30 @@ func ProcessClient(conn *net.TCPConn, log *slog.Logger, broker *event.EventBroke
 						}
 					}
 					data = data[bytesConsumed:]
+				case event.QuitRoomResponseMessage:
+					log.Debug("QuitRoomResponseMessage found", "component", "server")
+					for receiverID, roomID := range resp.UserMap {
+						responsePacket, err := event.CreatePacketFromMessage(event.LookRoomResponseMessage{
+							Success:    true,
+							RoomID:     roomID,
+							RoomIP:     "",
+							ResponseCh: nil,
+						})
+						if err != nil {
+							log.Error("Error creating packet from message", "component", "server", "error", err)
+							data = data[bytesConsumed:]
+							continue
+						}
+						receiverConn, exist := connManager.GetConn(receiverID)
+						if exist {
+							if _, err := receiverConn.Write(responsePacket); err != nil {
+								log.Error("Error writing response to client", "component", "server", "receiver", receiverID, "error", err)
+							}
+						} else {
+							log.Warn("Could not find connection for receiver", "component", "server", "receiver", receiverID)
+						}
+					}
+					data = data[bytesConsumed:]
 				case event.UpdateSpellResMessage:
 					responsePacket, err := event.CreatePacketFromMessage(resp)
 					if err != nil {
@@ -235,6 +259,7 @@ func main() {
 	// Subscribe existing room handlers
 	broker.Subscribe("find-room", roomManager.HandleLookRoom)
 	broker.Subscribe("update-spell-request", roomManager.HandleUpdateSpell)
+	broker.Subscribe("quit-room", roomManager.HandleQuitRoom)
 	//broker.Subscribe("create-room", roomManager.CreateRoom)
 	//broker.Subscribe("join-room", roomManager.JoinRoom)
 

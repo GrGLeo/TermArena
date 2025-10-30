@@ -1,6 +1,8 @@
+use crate::errors::GameError;
 use crate::game::algorithms::bresenham::Bresenham;
 use crate::game::cell::Team;
 use crate::game::minion_manager::MinionManager;
+use strum::IntoEnumIterator;
 
 use super::cell::{BaseTerrain, Cell, CellAnimation, CellContent, EncodedCellValue};
 use super::entities::base::Base;
@@ -22,6 +24,7 @@ struct BoardLayout {
 #[derive(Debug)]
 pub struct Board {
     grid: Vec<Vec<Cell>>,
+    visibility_map: HashMap<Team, HashSet<(u16, u16)>>,
     pub rows: usize,
     pub cols: usize,
 }
@@ -47,12 +50,16 @@ impl Board {
             }
             grid.push(grid_row);
         }
+        let mut visibility_map = HashMap::new();
+
+        visibility_map.insert(Team::Blue, HashSet::<(u16, u16)>::new());
+        visibility_map.insert(Team::Red, HashSet::<(u16, u16)>::new());
         let board = Board {
             grid,
+            visibility_map,
             rows: board_layout.rows,
             cols: board_layout.cols,
         };
-
         Ok(board)
     }
 
@@ -65,7 +72,15 @@ impl Board {
             }
             grid.push(row)
         }
-        Board { grid, rows, cols }
+        let mut visibility_map = HashMap::new();
+        visibility_map.insert(Team::Blue, HashSet::<(u16, u16)>::new());
+        visibility_map.insert(Team::Red, HashSet::<(u16, u16)>::new());
+        Board {
+            grid,
+            visibility_map,
+            rows,
+            cols,
+        }
     }
 
     pub fn get_cell(&self, row: usize, col: usize) -> Option<&Cell> {
@@ -119,11 +134,13 @@ impl Board {
 
     pub fn center_view(
         &self,
-        player_row: u16,
-        player_col: u16,
+        entity_team: &Team,
+        entity_row: u16,
+        entity_col: u16,
         view_height: u16,
         view_width: u16,
-    ) -> Vec<Vec<&Cell>> {
+    ) -> Vec<Vec<Cell>> {
+        let visible_map = self.visibility_map.get(entity_team).unwrap();
         let grid_height = self.grid.len() as u16;
         let grid_width = self.grid.get(0).map_or(0, |r| r.len() as u16);
 
@@ -131,8 +148,8 @@ impl Board {
         let half_width = view_width / 2;
 
         // Calculate  potential min and max row
-        let mut min_row = (player_row as i16 - half_height as i16).max(0) as u16;
-        let mut max_row = (player_row + half_height).min(grid_height - 1);
+        let mut min_row = (entity_row as i16 - half_height as i16).max(0) as u16;
+        let mut max_row = (entity_row + half_height).min(grid_height - 1);
 
         // Adjust if view hit the top
         if min_row == 0 {
@@ -148,8 +165,8 @@ impl Board {
         }
 
         // Calculate potential min and max col
-        let mut min_col = (player_col as i16 - half_width as i16).max(0) as u16;
-        let mut max_col = (player_col + half_width).min(grid_width - 1);
+        let mut min_col = (entity_col as i16 - half_width as i16).max(0) as u16;
+        let mut max_col = (entity_col + half_width).min(grid_width - 1);
         // Adjust if with hit the left
         if min_col == 0 {
             max_col = (view_width - 1).min(grid_width - 1);
@@ -165,11 +182,55 @@ impl Board {
 
         self.grid[min_row as usize..=max_row as usize]
             .iter()
-            .map(|row| &row[min_col as usize..=max_col as usize])
-            .map(|slice| slice.iter().collect())
+            .enumerate()
+            .map(|(row_idx, row)| {
+                let actual_row = min_row + row_idx as u16;
+                row[min_col as usize..=max_col as usize]
+                    .iter()
+                    .enumerate()
+                    .map(move |(col_idx, cell)| {
+                        let actual_col = min_col + col_idx as u16;
+                        let position = (actual_row, actual_col);
+                        if !visible_map.contains(&position) {
+                            match cell.base {
+                                BaseTerrain::Wall => cell.clone(),
+                                BaseTerrain::Bush => {
+                                    let mut bush_cell = cell.clone();
+                                    bush_cell.clear_content();
+                                    bush_cell
+                                }
+                                _ => {
+                                    let mut fog_cell = cell.clone();
+                                    fog_cell.base = BaseTerrain::Fog;
+                                    fog_cell.clear_content();
+                                    fog_cell
+                                }
+                            }
+                        } else {
+                            if cell.base == BaseTerrain::Bush {
+                                let mut bush_cell = cell.clone();
+                                bush_cell.clear_content();
+                                bush_cell
+                            } else {
+                                cell.clone()
+                            }
+                        }
+                    })
+                    .collect()
+            })
             .collect()
     }
 
+    /// Adds cells visible from the given position within the specified vision range.
+    ///
+    /// This function iterates over a rectangular area around the position, limited by the vision range.
+    /// For each cell in this area, it checks if there is a clear line of sight using Bresenham's algorithm.
+    /// If the line of sight is not blocked by obstacles (walls or bushes), the cell is added to the visible set.
+    ///
+    /// # Arguments
+    /// * `visible_cells` - A mutable reference to the HashSet collecting visible positions.
+    /// * `pos` - The source position (row, col) as a tuple.
+    /// * `vision_range` - The vision range (row_range, col_range) as a tuple.
     fn add_vision_from_pos(
         &self,
         visible_cells: &mut HashSet<(u16, u16)>,
@@ -209,66 +270,101 @@ impl Board {
         }
     }
 
+    /// Computes the set of cells visible to the given team by aggregating vision from team entities.
+    ///
+    /// This includes vision from champions (range 8x10), the base (range 29x29), towers (range 7x7),
+    /// and minions (range 7x7). Line of sight is checked for each entity's vision, blocking on walls/bushes.
+    ///
+    /// # Arguments
+    /// * `champions` - HashMap of all champions.
+    /// * `base` - The base entity.
+    /// * `towers` - HashMap of all towers.
+    /// * `minion_manager` - Manager containing all minions.
     pub fn compute_visibility(
-        &self,
-        team: Team,
+        &mut self,
         champions: &HashMap<PlayerId, Champion>,
-        base: &Base,
+        bases: Vec<&Base>,
         towers: &HashMap<TowerId, Tower>,
         minion_manager: &MinionManager,
-    ) -> HashSet<(u16, u16)> {
-        let mut visible_cells = HashSet::new();
+    ) {
+        for (team, base) in Team::iter().zip(bases) {
+            let mut visible_cells = HashSet::new();
+            for champion in champions.values().filter(|c| c.team_id == team) {
+                self.add_vision_from_pos(&mut visible_cells, (champion.row, champion.col), (8, 10));
+            }
 
-        for champion in champions.values().filter(|c| c.team_id == team) {
-            self.add_vision_from_pos(&mut visible_cells, (champion.row, champion.col), (8, 10));
+            self.add_vision_from_pos(&mut visible_cells, base.position, (29, 29));
+
+            for tower in towers.values().filter(|t| t.team_id == team) {
+                self.add_vision_from_pos(&mut visible_cells, (tower.row, tower.col), (7, 7));
+            }
+
+            for minion in minion_manager
+                .minions
+                .values()
+                .filter(|m| m.team_id == team)
+            {
+                self.add_vision_from_pos(&mut visible_cells, (minion.row, minion.col), (7, 7));
+            }
+            let _ = self.visibility_map.insert(team, visible_cells);
         }
-
-        self.add_vision_from_pos(&mut visible_cells, base.position, (29, 29));
-
-        for tower in towers.values().filter(|t| t.team_id == team) {
-            self.add_vision_from_pos(&mut visible_cells, (tower.row, tower.col), (7, 7));
-        }
-
-        for minion in minion_manager
-            .minions
-            .values()
-            .filter(|m| m.team_id == team)
-        {
-            self.add_vision_from_pos(&mut visible_cells, (minion.row, minion.col), (7, 7));
-        }
-
-        visible_cells
     }
 
+    /// Encodes the visible portion of the board around a player's position using run-length encoding.
+    ///
+    /// This function creates a centered view of the board (21 rows x 51 columns) around the specified
+    /// player position and compresses it using run-length encoding. Only cells visible to the
+    /// player's team are included in the encoding - non-visible cells are encoded as fog.
+    ///
+    /// The encoding format is: "value:count|value:count|..." where:
+    /// - `value` is the encoded cell type (see `EncodedCellValue` enum)
+    /// - `count` is the number of consecutive cells with that value
+    ///
+    /// # Arguments
+    /// * `player_team` - The team of the player requesting the encoding
+    /// * `player_row` - The row position of the player (center of the view)
+    /// * `player_col` - The column position of the player (center of the view)
+    /// * `minion_manager` - Reference to the minion manager for encoding minion states
+    ///
+    /// # Returns
+    /// * `Ok(Vec<u8>)` - The run-length encoded board data as UTF-8 bytes
+    /// * `Err(GameError::EncodingError)` - If encoding fails (empty view or no visibility data)
+    ///
+    /// # Example
+    /// ```
+    /// // Assuming visibility has been computed for Team::Blue
+    /// let encoded = board.run_length_encode(Team::Blue, 10, 20, &minion_manager)?;
+    /// let encoded_str = String::from_utf8(encoded)?;
+    /// // Result: "1:5|0:1|2:10|..." (floor, wall, fog, etc.)
+    /// ```
     pub fn run_length_encode(
         &self,
+        player_team: &Team,
         player_row: u16,
         player_col: u16,
         minion_manager: &MinionManager,
-        visible_cells: &HashSet<(u16, u16)>,
-    ) -> Vec<u8> {
-        let flattened_grid: Vec<&Cell> = self
-            .center_view(player_row, player_col, 21, 51)
+    ) -> Result<Vec<u8>, GameError> {
+        let flattened_grid: Vec<Cell> = self
+            .center_view(player_team, player_row, player_col, 21, 51)
             .into_iter()
             .flat_map(|row| row.into_iter())
             .collect();
         let mut rle: Vec<String> = Vec::new();
 
         if flattened_grid.is_empty() {
-            return Vec::new();
+            return Err(GameError::EncodingError);
         }
 
         let mut current_cell_value: EncodedCellValue;
         if let Some(first_cell) = flattened_grid.get(0) {
-            current_cell_value = get_encoded_cell_value(first_cell, minion_manager, visible_cells);
+            current_cell_value = get_encoded_cell_value(first_cell, minion_manager);
         } else {
-            return Vec::new(); // Should not happen if flattened_grid is not empty
+            return Err(GameError::EncodingError);
         }
         let mut count = 1;
 
         for i in 1..flattened_grid.len() {
-            let encoded_value =
-                get_encoded_cell_value(flattened_grid[i], minion_manager, visible_cells);
+            let encoded_value = get_encoded_cell_value(&flattened_grid[i], minion_manager);
             if encoded_value == current_cell_value {
                 count += 1;
             } else {
@@ -278,22 +374,34 @@ impl Board {
             }
         }
         rle.push(format!("{}:{}", current_cell_value as u8, count));
-        rle.join("|").into_bytes()
+        return Ok(rle.join("|").into_bytes());
+    }
+
+    /// Find the position of a target entity on the board
+    pub fn find_entity_position(&self, target: &super::entities::Target) -> Option<(u16, u16)> {
+        for (row_idx, row) in self.grid.iter().enumerate() {
+            for (col_idx, cell) in row.iter().enumerate() {
+                if let Some(content) = &cell.content {
+                    let matches = match (content, target) {
+                        (CellContent::Champion(player_id, _), super::entities::Target::Champion(target_id)) => player_id == target_id,
+                        (CellContent::Tower(tower_id, _), super::entities::Target::Tower(target_id)) => tower_id == target_id,
+                        (CellContent::Minion(minion_id, _), super::entities::Target::Minion(target_id)) => minion_id == target_id,
+                        (CellContent::Base(team_id), super::entities::Target::Base(target_team)) => team_id == target_team,
+                        (CellContent::Monster(monster_id), super::entities::Target::Monster(target_id)) => monster_id == target_id,
+                        _ => false,
+                    };
+
+                    if matches {
+                        return Some((row_idx as u16, col_idx as u16));
+                    }
+                }
+            }
+        }
+        None
     }
 }
 
-fn get_encoded_cell_value(
-    cell: &Cell,
-    minion_manager: &MinionManager,
-    visible_cells: &HashSet<(u16, u16)>,
-) -> EncodedCellValue {
-    if !visible_cells.contains(&cell.position) {
-        return match cell.base {
-            BaseTerrain::Wall => EncodedCellValue::Wall,
-            BaseTerrain::Bush => EncodedCellValue::Bush,
-            _ => EncodedCellValue::Fog,
-        };
-    }
+fn get_encoded_cell_value(cell: &Cell, minion_manager: &MinionManager) -> EncodedCellValue {
     if let Some(animation) = &cell.animation {
         match animation {
             CellAnimation::MeleeHitOne => EncodedCellValue::MeleeHitAnimationOne,
@@ -330,6 +438,7 @@ fn get_encoded_cell_value(
         match cell.base {
             BaseTerrain::Wall => EncodedCellValue::Wall,
             BaseTerrain::Floor => EncodedCellValue::Floor,
+            BaseTerrain::Fog => EncodedCellValue::Fog,
             BaseTerrain::Bush => EncodedCellValue::Bush,
             BaseTerrain::TowerDestroyed => EncodedCellValue::TowerDestroyed,
         }
@@ -499,6 +608,7 @@ mod tests {
         let center_player_row = rows / 2;
         let center_player_col = cols / 2;
         let center_view = board.center_view(
+            &Team::Blue,
             center_player_row as u16,
             center_player_col as u16,
             view_height,
@@ -522,6 +632,7 @@ mod tests {
         let top_left_player_row = 0;
         let top_left_player_col = 0;
         let top_left_view = board.center_view(
+            &Team::Blue,
             top_left_player_row as u16,
             top_left_player_col as u16,
             view_height,
@@ -540,6 +651,7 @@ mod tests {
         let bottom_right_player_row = rows - 1;
         let bottom_right_player_col = cols - 1;
         let bottom_right_view = board.center_view(
+            &Team::Blue,
             bottom_right_player_row as u16,
             bottom_right_player_col as u16,
             view_height,
@@ -560,6 +672,7 @@ mod tests {
         let top_edge_player_row = 1;
         let top_edge_player_col = cols / 2;
         let top_edge_view = board.center_view(
+            &Team::Blue,
             top_edge_player_row as u16,
             top_edge_player_col as u16,
             view_height,
@@ -573,6 +686,7 @@ mod tests {
         let left_edge_player_row = rows / 2;
         let left_edge_player_col = 1;
         let left_edge_view = board.center_view(
+            &Team::Blue,
             left_edge_player_row as u16,
             left_edge_player_col as u16,
             view_height,
@@ -585,6 +699,10 @@ mod tests {
 
     #[test]
     fn test_run_length_encode() {
+        use crate::config::{BaseStats, ChampionStats, MinionStats};
+        use crate::game::entities::champion::Champion;
+        use std::collections::HashMap;
+
         // Create a small board with varied cell types
         let mut board = Board::new(3, 4);
         board.change_base(BaseTerrain::Wall, 0, 0);
@@ -593,6 +711,52 @@ mod tests {
         board.place_animation(CellAnimation::MeleeHitOne, 2, 3);
         board.change_base(BaseTerrain::TowerDestroyed, 2, 0);
 
+        // Set up entities for visibility computation
+        let mut champions = HashMap::new();
+        let stats = ChampionStats {
+            health: 100,
+            mana: 100,
+            attack_damage: 10,
+            magic_power: 0,
+            armor: 10,
+            magic_resistance: 0,
+            attack_speed_ms: 1000,
+            xp_per_level: vec![100, 200, 300],
+            level_up_health_increase: 50,
+            level_up_attack_damage_increase: 5,
+            level_up_armor_increase: 2,
+            health_per_sec: 0.0,
+            mana_per_sec: 0.0,
+            attack_range_row: 1,
+            attack_range_col: 1,
+        };
+        let champion = Champion::new(1, Team::Blue, 1, 1, stats, HashMap::new());
+        champions.insert(1, champion);
+
+        let towers = HashMap::new();
+        let minion_stats = MinionStats {
+            health: 50,
+            attack_damage: 5,
+            attack_speed_ms: 1000,
+            armor: 5,
+            magic_resistance: 0,
+            aggro_range_row: 5,
+            aggro_range_col: 5,
+            attack_range_row: 1,
+            attack_range_col: 1,
+        };
+        let minion_manager = MinionManager::new(minion_stats);
+
+        let base_stats = BaseStats {
+            health: 5000,
+            armor: 10,
+            magic_resistance: 0,
+        };
+        let base = Base::new(Team::Blue, (1, 1), base_stats);
+
+        // Compute visibility first to make cells visible
+        board.compute_visibility(&champions, vec![&base], &towers, &minion_manager);
+
         // Set player position and view dimensions to cover the entire small board
         let player_row = 1; // Center row
         let player_col = 1; // Center col
@@ -600,10 +764,10 @@ mod tests {
         let view_width = 4; // Match board width
 
         // Get the view and flatten it for RLE
-        let flattened_grid: Vec<&Cell> = board
-            .center_view(player_row, player_col, view_height, view_width)
-            .into_iter()
-            .flat_map(|row| row.into_iter())
+        let view = board.center_view(&Team::Blue, player_row, player_col, view_height, view_width);
+        let flattened_grid: Vec<&Cell> = view
+            .iter()
+            .flat_map(|row| row.iter())
             .collect();
 
         let mut rle: Vec<String> = Vec::new();
@@ -687,11 +851,11 @@ mod tests {
         };
         let base = Base::new(Team::Red, (0, 0), base_stats);
 
-        let visible_cells =
-            board.compute_visibility(Team::Blue, &champions, &base, &towers, &minion_manager);
+        board.compute_visibility(&champions, vec![&base], &towers, &minion_manager);
 
         // Champion at (2,2) should see a 10x10 area around it.
         // But (5,5) is a wall, so vision should be blocked beyond it.
+        let visible_cells = board.visibility_map.get(&Team::Blue).unwrap();
         assert!(visible_cells.contains(&(2, 2)));
         assert!(visible_cells.contains(&(4, 4)));
         assert!(!visible_cells.contains(&(6, 6))); // Blocked by wall at (5,5)
@@ -700,15 +864,16 @@ mod tests {
         let champion2 = Champion::new(2, Team::Blue, 8, 8, stats.clone(), HashMap::new());
         champions.insert(2, champion2);
 
-        let visible_cells =
-            board.compute_visibility(Team::Blue, &champions, &base, &towers, &minion_manager);
+        board.compute_visibility(&champions, vec![&base], &towers, &minion_manager);
+        let visible_cells = board.visibility_map.get(&Team::Blue).unwrap();
         assert!(visible_cells.contains(&(6, 6))); // Now visible because of champion2
     }
 
     #[test]
     fn test_run_length_encode_with_fog() {
-        use crate::config::MinionStats;
-        use std::collections::HashSet;
+        use crate::config::{BaseStats, ChampionStats, MinionStats};
+        use crate::game::entities::champion::Champion;
+        use std::collections::HashMap;
 
         let mut board = Board::new(10, 10);
         board.change_base(BaseTerrain::Wall, 0, 1);
@@ -727,20 +892,49 @@ mod tests {
         };
         let minion_manager = MinionManager::new(minion_stats);
 
-        let mut visible_cells = HashSet::new();
-        visible_cells.insert((0, 0));
-        visible_cells.insert((0, 1)); // Wall
-        visible_cells.insert((5, 5)); // Champion
+        // Set up entities for visibility computation
+        let mut champions = HashMap::new();
+        let stats = ChampionStats {
+            health: 100,
+            mana: 100,
+            attack_damage: 10,
+            magic_power: 0,
+            armor: 10,
+            magic_resistance: 0,
+            attack_speed_ms: 1000,
+            xp_per_level: vec![100, 200, 300],
+            level_up_health_increase: 50,
+            level_up_attack_damage_increase: 5,
+            level_up_armor_increase: 2,
+            health_per_sec: 0.0,
+            mana_per_sec: 0.0,
+            attack_range_row: 1,
+            attack_range_col: 1,
+        };
+        let champion = Champion::new(1, Team::Blue, 5, 5, stats, HashMap::new());
+        champions.insert(1, champion);
 
-        let rle = board.run_length_encode(5, 5, &minion_manager, &visible_cells);
+        let towers = HashMap::new();
+        let base_stats = BaseStats {
+            health: 5000,
+            armor: 10,
+            magic_resistance: 0,
+        };
+        let base = Base::new(Team::Red, (0, 0), base_stats);
+
+        // Compute visibility first
+        board.compute_visibility(&champions, vec![&base], &towers, &minion_manager);
+
+        let rle = board
+            .run_length_encode(&Team::Blue, 5, 5, &minion_manager)
+            .unwrap();
         let rle_str = String::from_utf8(rle).unwrap();
 
-        // This is a simplified check. A more robust test would decode the RLE
-        // and verify the full board state.
-        // Expected: 1 Floor, 1 Wall, 8 Fog, ..., 1 Champion, ...
-        // 1:1|0:1|15:8|...
+        // With the new visibility system, the champion at (5,5) with vision range (8,10)
+        // can see the entire 10x10 board, so there should be no fog.
+        // Expected: Floor, Wall, more Floor, Champion, more Floor
         assert!(rle_str.contains("1:1|0:1")); // Visible floor and wall
-        assert!(rle_str.contains(&format!("{}:", EncodedCellValue::Fog as u8))); // Fog is present
+        assert!(!rle_str.contains(&format!("{}:", EncodedCellValue::Fog as u8))); // No fog should be present
         assert!(rle_str.contains(&format!("{}:1", EncodedCellValue::ChampionBlue as u8))); // Champion is visible
     }
 }

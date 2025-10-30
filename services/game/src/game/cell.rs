@@ -3,10 +3,9 @@ use strum_macros::EnumIter;
 pub type PlayerId = usize;
 pub type MinionId = usize;
 pub type MonsterId = usize;
-pub type FlagId = usize;
 pub type TowerId = usize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, EnumIter)]
 pub enum Team {
     Blue,
     Red,
@@ -16,11 +15,12 @@ pub enum Team {
 pub enum BaseTerrain {
     Wall,
     Floor,
+    Fog,
     Bush,
     TowerDestroyed,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CellContent {
     Champion(PlayerId, Team),
     Minion(MinionId, Team),
@@ -29,7 +29,7 @@ pub enum CellContent {
     Base(Team),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CellAnimation {
     MeleeHitOne,
     MeleeHitTwo,
@@ -39,7 +39,7 @@ pub enum CellAnimation {
     Heal,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Cell {
     pub position: (u16, u16),
     pub base: BaseTerrain,
@@ -63,7 +63,13 @@ impl Cell {
             BaseTerrain::TowerDestroyed => false,
             BaseTerrain::Floor => self.content.is_none(),
             BaseTerrain::Bush => self.content.is_none(),
+            BaseTerrain::Fog => self.content.is_none(),
         }
+    }
+
+    pub fn clear_content(&mut self) {
+        self.content = None;
+        self.animation = None;
     }
 }
 
@@ -167,6 +173,7 @@ impl From<&Cell> for EncodedCellValue {
                 BaseTerrain::Floor => EncodedCellValue::Floor,
                 BaseTerrain::Bush => EncodedCellValue::Bush,
                 BaseTerrain::TowerDestroyed => EncodedCellValue::TowerDestroyed,
+                BaseTerrain::Fog => EncodedCellValue::Fog,
             }
         }
     }
