@@ -35,6 +35,10 @@ impl Spell for FreezeWallSpell {
         &self.stats.mana_cost
     }
 
+    fn cast_time_ms(&self) -> u16 {
+        self.stats.cast_time_ms
+    }
+
     fn clone_box(&self) -> Box<dyn Spell> {
         Box::new(self.clone())
     }
@@ -109,7 +113,7 @@ impl Spell for FreezeWallSpell {
             if let Some(duration) = self.stats.effect_duration {
                 payloads = vec![
                     GameplayEffect::MagicDamage(spell_damage),
-                    GameplayEffect::Buff(Box::new(StunBuff::new(duration as u64))),
+                    GameplayEffect::Buff(Box::new(StunBuff::new(Duration::from_secs(duration as u64)))),
                 ];
             };
 

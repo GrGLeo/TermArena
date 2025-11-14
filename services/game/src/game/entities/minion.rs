@@ -551,7 +551,7 @@ mod tests {
 
         // Apply a stun buff
         let stun_duration_secs = 5;
-        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(stun_duration_secs)));
+        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(Duration::from_secs(stun_duration_secs))));
         minion.take_effect(vec![stun_effect]);
 
         // Assert minion is stunned
@@ -604,7 +604,7 @@ mod tests {
         minion.col = 10;
 
         // Apply a very short stun buff
-        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(0))); // Duration 0 for immediate expiration
+        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(Duration::from_secs(0)))); // Duration 0 for immediate expiration
         minion.take_effect(vec![stun_effect]);
 
         // Manually process buffs to trigger expiration

@@ -98,6 +98,8 @@ pub struct SpellStats {
     pub effect_duration: Option<u8>,
     #[serde(default)]
     pub is_heal: Option<bool>,
+    #[serde(default)]
+    pub cast_time_ms: u16,
 }
 
 #[derive(Debug, Deserialize, Clone)]

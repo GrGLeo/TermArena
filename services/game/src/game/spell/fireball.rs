@@ -34,6 +34,10 @@ impl Spell for FireballSpell {
         &self.stats.mana_cost
     }
 
+    fn cast_time_ms(&self) -> u16 {
+        self.stats.cast_time_ms
+    }
+
     fn clone_box(&self) -> Box<dyn Spell> {
         Box::new(self.clone())
     }

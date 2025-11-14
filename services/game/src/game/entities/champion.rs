@@ -434,14 +434,23 @@ impl Champion {
                 if self.current_cast.is_some() {
                     return Err(GameError::ChampionBusy);
                 }
-                if let Some(mut spell) = self.spells.remove(&0) {
-                    spell.cast(
-                        self,
-                        self.stats.attack_damage,
-                        self.stats.magic_power,
-                        projectile_manager,
-                    );
-                    self.spells.insert(0, spell);
+                if let Some(spell) = self.spells.get(&0) {
+                    if spell.cast_time_ms() > 0 {
+                        self.current_cast = Some(Cast {
+                            start_time: Instant::now(),
+                            cast_time: Duration::from_millis(spell.cast_time_ms() as u64),
+                            action: Castable::Spell(spell.clone_box()),
+                        });
+                    } else {
+                        let mut spell = self.spells.remove(&0).unwrap();
+                        spell.cast(
+                            self,
+                            self.stats.attack_damage,
+                            self.stats.magic_power,
+                            projectile_manager,
+                        );
+                        self.spells.insert(0, spell);
+                    }
                     return Ok(());
                 }
                 return Ok(());
@@ -450,14 +459,23 @@ impl Champion {
                 if self.current_cast.is_some() {
                     return Err(GameError::ChampionBusy);
                 }
-                if let Some(mut spell) = self.spells.remove(&1) {
-                    spell.cast(
-                        self,
-                        self.stats.attack_damage,
-                        self.stats.magic_power,
-                        projectile_manager,
-                    );
-                    self.spells.insert(1, spell);
+                if let Some(spell) = self.spells.get(&1) {
+                    if spell.cast_time_ms() > 0 {
+                        self.current_cast = Some(Cast {
+                            start_time: Instant::now(),
+                            cast_time: Duration::from_millis(spell.cast_time_ms() as u64),
+                            action: Castable::Spell(spell.clone_box()),
+                        });
+                    } else {
+                        let mut spell = self.spells.remove(&1).unwrap();
+                        spell.cast(
+                            self,
+                            self.stats.attack_damage,
+                            self.stats.magic_power,
+                            projectile_manager,
+                        );
+                        self.spells.insert(1, spell);
+                    }
                     return Ok(());
                 }
                 return Ok(());
@@ -1327,6 +1345,7 @@ mod tests {
             magic_ratio: 0.,
             effect_duration: Some(5),
             is_heal: Some(false),
+            cast_time_ms: 0,
         };
         let mut spell_stats: HashMap<u8, Box<dyn Spell>> = HashMap::new();
         let spell = Box::new(FreezeWallSpell::new(spell_stat));
@@ -1754,7 +1773,7 @@ mod tests {
 
         // Apply a stun buff
         let stun_duration_secs = 5;
-        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(stun_duration_secs)));
+        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(Duration::from_secs(stun_duration_secs))));
         champion.take_effect(vec![stun_effect]);
 
         // Assert champion is stunned
@@ -1796,7 +1815,7 @@ mod tests {
         let mut champion = Champion::new(1, Team::Red, 0, 0, champion_stats, spell_stats);
 
         // Apply a very short stun buff
-        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(0))); // Duration 0 for immediate expiration
+        let stun_effect = GameplayEffect::Buff(Box::new(StunBuff::new(Duration::from_secs(0)))); // Duration 0 for immediate expiration
         champion.take_effect(vec![stun_effect]);
 
         // Manually process buffs to trigger expiration
@@ -2542,6 +2561,7 @@ mod tests {
             damage_ratio: 0.5,
             magic_ratio: 0.,
             effect_duration: Some(5),
+            cast_time_ms: 0,
             is_heal: Some(false),
         };
         let pierce_spell = Box::new(PierceSpell::new(pierce_spell_stats));

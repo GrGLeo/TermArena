@@ -34,6 +34,10 @@ impl Spell for HealingWaveSpell {
         &self.stats.mana_cost
     }
 
+    fn cast_time_ms(&self) -> u16 {
+        self.stats.cast_time_ms
+    }
+
     fn clone_box(&self) -> Box<dyn Spell> {
         Box::new(self.clone())
     }
@@ -168,6 +172,7 @@ mod tests {
             base_magic_damage: 20,
             effect_duration: None,
             is_heal: Some(true),
+            cast_time_ms: 0,
         };
 
         let mut champion = Champion::new(1, Team::Red, 5, 5, champion_stats, HashMap::new());

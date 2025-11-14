@@ -13,6 +13,7 @@ pub mod freeze_wall;
 pub mod healing_wave;
 pub mod whirlwind;
 pub mod pierce;
+pub mod electric_pulse;
 
 pub struct ProjectileBlueprint {
     pub projectile_type: ProjectileType,
@@ -37,6 +38,7 @@ pub enum ProjectileType {
 pub trait Spell: Send + Sync + Debug + 'static {
     fn id(&self) -> u8;
     fn mana_cost(&self) -> &u16;
+    fn cast_time_ms(&self) -> u16;
     fn cast(
         &mut self,
         caster: &mut Champion,
@@ -54,6 +56,7 @@ pub fn create_spell_from_id(id: u8, stats: SpellStats) -> Box<dyn Spell> {
         2 => Box::new(healing_wave::HealingWaveSpell::new(stats)),
         3 => Box::new(whirlwind::WhirlwindSpell::new(stats)),
         4 => Box::new(pierce::PierceSpell::new(stats)),
+        5 => Box::new(electric_pulse::ElectricPulseSpell::new(stats)),
         _ => panic!("Unknown spell ID: {}", id),
     }
 }

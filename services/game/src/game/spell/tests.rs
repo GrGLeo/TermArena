@@ -48,6 +48,7 @@ fn mock_fireball_spell_stats() -> SpellStats {
         width: 1,
         effect_duration: None,
         is_heal: Some(false),
+        cast_time_ms: 0,
     }
 }
 
@@ -65,6 +66,7 @@ fn mock_freezewall_spell_stats() -> SpellStats {
         width: 3,
         effect_duration: Some(2),
         is_heal: Some(false),
+        cast_time_ms: 0,
     }
 }
 

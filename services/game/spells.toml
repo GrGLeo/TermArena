@@ -65,3 +65,17 @@ base_magic_damage = 0
 damage_ratio = 0.1
 magic_ratio = 0
 effect_duration = 5
+
+# electric_pulse
+[[spell]]
+id = 5
+mana_cost = 15
+cooldown_secs = 8
+range = 10
+width = 1
+speed = 1
+base_attack_damage = 0
+base_magic_damage = 0
+damage_ratio = 0
+magic_ratio = 0
+cast_time_ms = 500

@@ -38,9 +38,9 @@ pub enum Target {
 
 #[derive(Debug)]
 pub struct Stats {
-    attack_damage: u16,
+    pub attack_damage: u16,
     attack_speed: Duration,
-    magic_power: u16,
+    pub magic_power: u16,
     pub health: u16,
     pub max_health: u16,
     pub hp_per_sec: f32,
@@ -49,8 +49,8 @@ pub struct Stats {
     pub mana: u16,
     pub max_mana: u16,
     pub mp_per_sec: f32,
-    armor: u16,
-    magic_resistance: u16,
+    pub armor: u16,
+    pub magic_resistance: u16,
 }
 
 pub trait Fighter {

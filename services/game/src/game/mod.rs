@@ -400,8 +400,14 @@ impl GameManager {
                         Castable::Ability(Ability::Recall) => {
                             champ.place_at_base(&mut self.board);
                         }
-                        Castable::Spell(_) => {
-                            //TODO: Handle spell casting
+                        Castable::Spell(spell) => {
+                            let mut spell = spell.clone_box();
+                            spell.cast(
+                                champ,
+                                champ.stats.attack_damage,
+                                champ.stats.magic_power,
+                                &mut self.projectile_manager,
+                            );
                         }
                     }
                     champ.current_cast = None;

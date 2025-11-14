@@ -9,9 +9,9 @@ pub struct StunBuff {
 }
 
 impl StunBuff {
-    pub fn new(duration: u64) -> StunBuff {
+    pub fn new(duration: Duration) -> StunBuff {
         StunBuff {
-            duration_remaining: Duration::from_secs(duration),
+            duration_remaining: duration,
             applied_at: Instant::now(),
         }
     }
